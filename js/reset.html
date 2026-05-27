@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Nytt passord</title>
+</head>
+<body>
+
+<h2>Sett nytt passord</h2>
+
+<input type="password" id="nyttPassord" placeholder="Nytt passord">
+<button onclick="lagreNyttPassord()">Lagre passord</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/config.js"></script>
+
+<script>
+async function lagreNyttPassord() {
+  const nyttPassord = document.getElementById("nyttPassord").value;
+
+  if (!nyttPassord || nyttPassord.length < 6) {
+    alert("Minst 6 tegn");
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.updateUser({
+    password: nyttPassord
+  });
+
+  if (error) {
+    alert("Feil: " + error.message);
+    console.error(error);
+    return;
+  }
+
+  alert("Passord oppdatert!");
+  await supabaseClient.auth.signOut();
+  window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

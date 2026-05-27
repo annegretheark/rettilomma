@@ -1,0 +1,14 @@
+# Lokale hemmeligheter og midlertidige filer
+.env
+*.log
+.DS_Store
+Thumbs.db
+
+# Backupfiler
+*.bak
+*.old
+*_backup.*
+
+# Ikke legg store gamle zip-backuper i repo
+*backup*.zip
+knappervirkerikke.zip

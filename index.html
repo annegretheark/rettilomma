@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    #prosjektVindu {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      max-width: 90%;
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
+
+    #prosjektOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 9998;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .kort {
+      background: #ffffff;
+      max-width: 900px;
+      margin: 0 auto 18px auto;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 11px 14px;
+      margin: 6px 4px 6px 0;
+      border: 0;
+      border-radius: 8px;
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button.danger {
+      background: #b42318;
+    }
+
+    .rad {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .skjult {
+      display: none;
+    }
+
+    .melding {
+      margin-top: 10px;
+      color: #b42318;
+      font-weight: bold;
+    }
+
+    #lonnPanel {
+      border: 2px solid #1f6feb;
+    }
+
+    #lonnPanel h2 {
+      color: #1f6feb;
+    }
+
+    #testMelding {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      min-height: 140px;
+      max-height: 360px;
+      overflow: auto;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    #testMelding .ok { color: #86efac; }
+    #testMelding .feil { color: #fca5a5; }
+
+    .okonomi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .okonomi-boks {
+      background: #f8fafc;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .okonomi-boks strong {
+      display: block;
+      font-size: 18px;
+      margin-top: 4px;
+    }
+
+    .okonomi-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .okonomi-tabell th,
+    .okonomi-tabell td {
+      border-bottom: 1px solid #d0d7de;
+      padding: 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .okonomi-tabell th {
+      background: #f1f5f9;
+    }
+
+    .okonomi-advarsel {
+      color: #b42318;
+    }
+
+    .modul-skjult {
+      display: none !important;
+    }
+
+    .modul-rad {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modul-rad label {
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .modul-rad input {
+      width: auto;
+      margin: 0 8px 0 0;
+    }
+
+  </style>
+</head>
+
+<body>
+  <img id="fakturaLogoBilde" src="/NyTimerdelt/bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
+
+  <!-- LOGIN -->
+  <section id="loginSide" class="kort">
+    <h1>Timeregistrering</h1>
+
+    <label for="loginEpost">E-post</label>
+    <input id="loginEpost" type="email" autocomplete="username">
+
+    <label for="loginPassord">Passord</label>
+    <input id="loginPassord" type="password" autocomplete="current-password">
+
+    <label>
+      <input id="loginSomAdmin" type="checkbox" style="width:auto;">
+      Logg inn som admin
+    </label>
+
+    <button id="loginKnapp" type="button" onclick="loggInn()">Logg inn</button>
+<button id="glemtPassordKnapp" type="button" class="secondary" onclick="glemtPassord()">Glemt passord</button>
+
+    <div id="loginMelding" class="melding"></div>
+  </section>
+
+  <!-- NYTT PASSORD -->
+  <section id="nyttPassordSide" class="kort skjult">
+    <h2>Nytt passord</h2>
+
+    <label for="nyttPassord">Nytt passord</label>
+    <input id="nyttPassord" type="password">
+
+    <label for="gjentaNyttPassord">Gjenta nytt passord</label>
+    <input id="gjentaNyttPassord" type="password">
+
+    <button id="lagreNyttPassordKnapp" type="button">Lagre nytt passord</button>
+    <button id="tilbakeTilLoginKnapp" type="button" class="secondary">Tilbake</button>
+
+    <div id="nyttPassordMelding" class="melding"></div>
+  </section>
+
+  <!-- APP -->
+  <section id="appSide" class="skjult">
+
+    <div class="kort">
+      <h1>Timeregistrering</h1>
+
+      <button id="visTimerKnapp" type="button">Timer</button>
+      <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
+      <button id="varerKnapp" class="admin-only" data-modul="varer" type="button" onclick="window.visVarerSide && window.visVarerSide()">Varer</button>
+      <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">Lønn</button>
+      <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
+      <button id="visAnsattKnapp" class="admin-only" type="button">Ansatte</button>
+      <button id="visFirmaKnapp" class="admin-only" type="button">Firma</button>
+      <button id="visBackupKnapp" class="admin-only" type="button">Backup/Restore</button>
+      <button id="visTestKnapp" class="admin-only" type="button">Testpanel</button>
+      <button id="visModulerKnapp" class="admin-only" type="button">Moduler</button>
+      <button id="visHovslagerKnapp" class="admin-only" data-modul="hovslager" type="button" onclick="window.location.href='hovslager.html'">Hovslager</button>
+      <button id="loggUtKnapp" type="button" class="danger">Logg ut</button>
+    </div>
+
+
+    <section id="backupSide" class="kort admin-only skjult">
+      <h2>Admin-konsoll</h2>
+      <h3>Backup / Restore</h3>
+      <p>Ta full backup før større endringer, og bruk restore hvis noe må rulles tilbake.</p>
+
+      <button id="backupKnapp" type="button">
+        Ta backup
+      </button>
+
+      <label for="importFil" style="font-weight:bold; display:block; margin-top:14px;">
+        Restore fra backupfil
+      </label>
+
+      <input id="importFil" type="file" accept=".json">
+
+      <div id="backupMelding" class="melding"></div>
+    </section>
+
+    <!-- TIMER -->
+    <section id="timerSide" class="kort">
+      <h2>Registrer timer</h2>
+
+      <div class="rad">
+        <div>
+          <label for="dato">Dato</label>
+          <input id="dato" type="date">
+        </div>
+
+        <div>
+          <label for="kundeValg">Kunde</label>
+          <select id="kundeValg">
+            <option value="">Velg kunde</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="kundeNrVisning">Kundenr</label>
+          <input id="kundeNrVisning" readonly>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="prosjektValg">Prosjekt</label>
+          <select id="prosjektValg">
+            <option value="">Velg kunde først</option>
+          </select>
+        </div>
+      </div>
+  <div class="rad">
+  <div>
+    <label for="start">Start</label>
+    <input id="startTid" type="time" value="08:00">
+  </div>
+
+  <div>
+    <label for="slutt">Slutt</label>
+    <input id="sluttTid" type="time" value="16:00">
+  </div>
+
+  <div>
+    <label for="timepris">Timepris</label>
+    <input id="timepris" type="number" value="1100">
+  </div>
+</div>
+  <div class="rad" data-modul="biler">
+  <div>
+    <label for="bilValg">Aktiv bil / lager</label>
+    <select id="bilValg">
+      <option value="">Velg bil</option>
+    </select>
+    <div id="aktivBilInfo" class="melding" style="font-size:0.9em; margin-top:4px;"></div>
+    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil</button>
+  </div>
+
+  <div data-modul="varer">
+    <label for="vareValg">Vare</label>
+    <select id="vareValg">
+      <option value="">Velg vare</option>
+    </select>
+  </div>
+
+  
+
+  <div data-modul="varer">
+    <label for="vareAntall">Antall</label>
+    <input id="vareAntall" type="number" value="1" step="1" min="1">
+  </div>
+  <div data-modul="varer">
+  <label for="varePris">Varepris</label>
+  <input id="varePris" type="number" value="0" step="0.01">
+</div>
+<button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
+  Legg til vare på faktura
+</button>
+<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
+</div>
+
+      <div class="rad">
+  <div>
+    <label for="utgiftType">Utgiftstype</label>
+    <select id="utgiftType">
+      <option value="">Ingen utgift</option>
+      <option value="kjoring">Kjøring</option>
+      <option value="bompenger">Bompenger</option>
+      <option value="parkering">Parkering</option>
+      <option value="ferge">Ferge</option>
+      <option value="diett">Diett</option>
+      <option value="billetter">Billetter</option>
+      <option value="annet">Annet</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="utgiftBelop">Beløp</label>
+    <input id="utgiftBelop" type="number" value="0" step="0.01">
+  </div>
+
+  <div>
+    <label for="utgiftKm">Km</label>
+    <input id="utgiftKm" type="number" value="0" step="0.1">
+  </div>
+
+  <div>
+    <label for="utgiftKmPris">Pris pr km</label>
+    <input id="utgiftKmPris" type="number" value="5.30" step="0.01">
+  </div>
+
+  <div>
+    <label for="fakturerbar">Fakturerbar</label>
+    <select id="fakturerbar">
+      <option value="ja">Ja</option>
+      <option value="nei">Nei</option>
+    </select>
+  
+        </div>
+      </div>
+      <label for="beskrivelse">Beskrivelse</label>
+      <textarea id="beskrivelse"></textarea>
+      <label for="timerBildeGalleri">
+  Velg bilde
+</label>
+
+<input
+  id="timerBildeGalleri"
+  type="file"
+  accept="image/*">
+
+<label for="timerBildeKamera">
+  Ta bilde
+</label>
+
+<input
+  id="timerBildeKamera"
+  type="file"
+  accept="image/*"
+  capture="environment">
+
+<label for="timerBildeTekst">
+  Bildetekst
+</label>
+
+<input
+  id="timerBildeTekst"
+  type="text"
+  placeholder="F.eks. før arbeid">
+<button id="leggTilUtleggKnapp" type="button">
+  Legg til utlegg på faktura
+</button>
+
+<div id="utleggListe" style="margin-top:10px;">
+  Utlegg som legges her kommer med på neste faktura.
+</div>
+      <button id="lagreTimerKnapp" type="button">Lagre timer</button>
+
+      <div id="timerMelding" class="melding"></div>
+    </section>
+
+    <!-- FAKTURA -->
+    <section id="fakturaSide" class="kort skjult admin-only" data-modul="faktura">
+      <h2>Faktura</h2>
+      <p>Velg kunde og lag faktura kun for den kunden. Timer og varelinjer som allerede er fakturert blir ikke tatt med.</p>
+
+      <label for="fakturaKundeValg">Kunde som skal faktureres</label>
+      <select id="fakturaKundeValg">
+        <option value="">Velg kunde</option>
+      </select>
+
+      <div id="fakturaMelding" class="melding"></div>
+
+      <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
+      <button id="excelKnapp" type="button">MVA Excel</button>
+      <button id="purringKnapp" type="button">Kjør purring</button>
+      <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
+      <button id="kreditnotaKnapp" type="button">Kreditnota</button>
+
+      <div id="fakturaKopiOmrade" style="display:none; margin-top:15px;">
+        <label for="fakturaKopiValg">Velg faktura for kopi</label>
+
+        <select id="fakturaKopiValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtFakturaKopiKnapp" type="button">
+          Skriv ut fakturakopi
+        </button>
+      </div>
+
+      <div id="kreditnotaOmrade" style="display:none; margin-top:15px;">
+        <label id="kreditnotaLabel" for="kreditnotaFakturaValg">
+          Velg faktura for kreditnota
+        </label>
+
+        <select id="kreditnotaFakturaValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtKreditnotaKnapp" type="button">
+          Skriv ut kreditnota
+        </button>
+      </div>
+
+      <div id="fakturaMelding" class="melding"></div>
+    
+      <hr>
+
+      <h3>Økonomioversikt</h3>
+      <p>Se hva som ikke er fakturert, hva som er fakturert, og hva som er ubetalt eller forfalt.</p>
+
+      <div class="rad">
+        <div>
+          <label for="okonomiFraDato">Fra dato</label>
+          <input id="okonomiFraDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiTilDato">Til dato</label>
+          <input id="okonomiTilDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiKundeValg">Kunde</label>
+          <select id="okonomiKundeValg">
+            <option value="">Alle kunder</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="okonomiOversiktKnapp" type="button">Vis økonomioversikt</button>
+
+      <div id="okonomiMelding" class="melding"></div>
+      <div id="okonomiOversikt"></div>
+
+</section>
+
+    <!-- VARER -->
+    <section id="varerSide" class="kort skjult" data-modul="varer">
+      <h2>Vareregister</h2>
+
+      <label for="varenr">Varenr</label>
+      <input id="varenr">
+
+      <label for="varenavn">Varenavn</label>
+      <input id="varenavn">
+
+      <label for="varebeskrivelse">Beskrivelse</label>
+      <textarea id="varebeskrivelse"></textarea>
+
+      <div class="rad">
+        <div>
+          <label for="vareinnpris">Innpris eks. mva</label>
+          <input id="vareinnpris" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varepaslag">Påslag faktor</label>
+          <input id="varepaslag" type="number" step="0.01" value="3">
+        </div>
+
+        <div>
+          <label for="varepris">Utpris eks. mva</label>
+          <input id="varepris" type="number" step="0.01">
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="varelagerAntall">Antall på hovedlager</label>
+          <input id="varelagerAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="vareMinimumAntall">Minimum hovedlager</label>
+          <input id="vareMinimumAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varemva">MVA %</label>
+          <input id="varemva" type="number" value="25">
+        </div>
+      </div>
+
+      <button id="lagreVareKnapp" type="button">Lagre vare</button>
+      <button id="tilbakeFraVarerKnapp" type="button" class="secondary">Tilbake</button>
+      <label for="importVarerFil">
+  Importer varer fra Excel/CSV
+</label>
+
+<input
+  id="importVarerFil"
+  type="file"
+  accept=".xlsx,.xls,.csv">
+
+<button
+  id="importVarerKnapp"
+  type="button">
+
+  Importer varer
+
+</button>
+
+      <hr>
+
+      <h3>Biler og bil-lager</h3>
+      <div class="rad">
+        <div>
+          <label for="bilNavn">Bilnavn</label>
+          <input id="bilNavn" placeholder="Servicebil 1">
+        </div>
+        <div>
+          <label for="bilRegnr">Regnr</label>
+          <input id="bilRegnr" placeholder="TEST123">
+        </div>
+      </div>
+      <button id="lagreBilKnapp" type="button">Lagre bil</button>
+
+      <div class="rad">
+        <div>
+          <label for="lagerBilValg">Bil</label>
+          <select id="lagerBilValg"><option value="">Velg bil</option></select>
+        </div>
+        <div>
+          <label for="lagerVareValg">Vare fra hovedlager</label>
+          <select id="lagerVareValg"><option value="">Velg vare</option></select>
+        </div>
+        <div>
+          <label for="lagerFlyttAntall">Antall til bil</label>
+          <input id="lagerFlyttAntall" type="number" step="1" min="1" step="0.01" value="1">
+        </div>
+      </div>
+      <button id="flyttVareTilBilKnapp" type="button" class="btn btn-primary" style="margin-top:10px;">Flytt fra hovedlager til bil</button>
+
+      <h4>Fyll bil med flere varer</h4>
+      <p style="margin-top:0;">Skriv antall på de varene som skal legges i valgt bil. Tomme felt blir ignorert.</p>
+      <div id="fyllBilListe" style="margin-top:10px;"></div>
+      <button id="fyllBilFlereKnapp" type="button" onclick="window.fyllBilMedFlereVarer && window.fyllBilMedFlereVarer()">Overfør alle valgte varer til bil</button>
+
+      <div id="bilLagerListe" style="margin-top:10px;"></div>
+
+      <hr>
+
+      <div id="vareListe"></div>
+    </section>
+
+    <!-- LØNN -->
+    <section id="lonnPanel" class="kort skjult" data-modul="lonn">
+      <h2>Lønn</h2>
+      <p>Lønn hentes fra registrerte timer. Her kan du lage lønnsslipper og regneark.</p>
+
+      <div class="rad">
+        <div>
+          <label for="lonnManed">Måned</label>
+          <select id="lonnManed">
+            <option value="1">Januar</option>
+            <option value="2">Februar</option>
+            <option value="3">Mars</option>
+            <option value="4">April</option>
+            <option value="5">Mai</option>
+            <option value="6">Juni</option>
+            <option value="7">Juli</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="lonnAar">År</label>
+          <input id="lonnAar" type="number" value="2026">
+        </div>
+
+        <div>
+          <label for="lonnUtbetalingsdato">Utbetalingsdato</label>
+          <input id="lonnUtbetalingsdato" type="date">
+        </div>
+
+        <div>
+          <label for="lonnAnsattValg">Ansatt</label>
+          <select id="lonnAnsattValg">
+            <option value="">Alle ansatte</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="kjorLonnKnapp" type="button">Kjør lønn</button>
+      <button id="lonnsslippKnapp" type="button">Lønnsslipp valgt/alle PDF</button>
+      <button id="lonnsslippKopiKnapp" type="button">Kopi valgt/alle PDF</button>
+      <button id="lonnsslippAlleKnapp" type="button">Alle lønnsslipper PDF</button>
+      <button id="lonnsslippAlleKopiKnapp" type="button">Kopi alle PDF</button>
+      <button id="trekkExcelKnapp" type="button">Skattetrekk Excel</button>
+      <button id="utbetalingExcelKnapp" type="button">Utbetalinger Excel</button>
+
+      <div id="lonnMelding" class="melding"></div>
+    </section>
+
+    <!-- KUNDER -->
+    <section id="kundeSide" class="kort skjult">
+      <h2>Kunder</h2>
+
+      <input id="kundeId" type="hidden">
+
+      <label for="kundeNavn">Navn</label>
+      <input id="kundeNavn">
+
+      <label for="kundeAdresse">Adresse</label>
+      <input id="kundeAdresse">
+
+      <label for="kundeEpost">E-post</label>
+      <input id="kundeEpost">
+
+      <label for="kundeKontonr">Kontonr</label>
+      <input id="kundeKontonr" type="text">
+
+      <button type="button" class="secondary" onclick="visProsjektVindu()">
+        Legg til prosjekt
+      </button>
+
+      <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
+
+      <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
+        <h3>Legg til prosjekt</h3>
+
+        <label for="prosjektNr">Prosjektnr</label>
+        <input id="prosjektNr" type="text" placeholder="Prosjektnr">
+
+        <label for="prosjektNavn">Prosjektnavn</label>
+        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
+
+        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
+        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
+
+        <button type="button" onclick="lagreProsjektForValgtKunde()">
+          Lagre prosjekt
+        </button>
+
+        <button type="button" class="secondary" onclick="skjulProsjektVindu()">
+          Lukk
+        </button>
+      </div>
+
+      <label for="kundeKontaktperson">Kontaktperson</label>
+      <input id="kundeKontaktperson">
+
+      <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
+      <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="kundeMelding" class="melding"></div>
+      <div id="kundeListe"></div>
+    </section>
+
+    <!-- ANSATTE -->
+    <section id="ansattSide" class="kort skjult">
+      <h2>Ansatte</h2>
+
+      <input id="ansattId" type="hidden">
+
+      <label for="ansattNavn">Navn</label>
+      <input id="ansattNavn">
+
+      <label for="ansattEpost">E-post</label>
+      <input id="ansattEpost">
+
+      <label for="ansattMobil">Mobil</label>
+      <input id="ansattMobil">
+
+      <label for="ansattStandardBil">Standard bil</label>
+      <select id="ansattStandardBil">
+        <option value="">Ingen fast bil</option>
+      </select>
+
+      <label for="ansattTimepris">Timepris</label>
+      <input id="ansattTimepris" type="number" value="1100">
+
+      <h3>Trekk</h3>
+
+      <div class="rad">
+        <div>
+          <label for="trekkType">Type trekk</label>
+
+          <select id="trekkType">
+            <option value="">Velg trekk</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="trekkBelop">Beløp</label>
+          <input id="trekkBelop" type="number" value="0">
+        </div>
+      </div>
+
+      <button id="leggTilTrekkKnapp" type="button">Legg til trekk</button>
+      <button id="lagreAnsattKnapp" type="button">Lagre ansatt</button>
+      <button id="tilbakeFraAnsattKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="trekkListe"></div>
+      <div id="ansattListe"></div>
+    </section>
+
+    <!-- FIRMA -->
+    <section id="firmaSide" class="kort skjult">
+      <h2>Firma</h2>
+
+      <label for="firmaNavn">Firmanavn</label>
+      <input id="firmaNavn">
+
+      <label for="firmaAdresse">Adresse</label>
+      <input id="firmaAdresse">
+
+      <label for="firmaEpost">E-post</label>
+      <input id="firmaEpost">
+
+      <label for="firmaKontonr">Kontonr</label>
+      <input id="firmaKontonr">
+
+      <label for="firmaOrgNr">Org nr</label>
+      <input id="firmaOrgNr">
+
+      <label for="firmaMvaNr">MVA nr</label>
+      <input id="firmaMvaNr">
+
+      <label for="firmaLogo">Logo</label>
+      <input id="firmaLogo" type="file" accept="image/*">
+
+      <button id="lagreFirmaKnapp" type="button">Lagre firma</button>
+      <button id="tilbakeFraFirmaKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="firmaMelding" class="melding"></div>
+    </section>
+
+    <!-- TESTPANEL -->
+
+
+
+
+    <section id="modulerSide" class="kort skjult admin-only">
+      <h2>Moduler</h2>
+      <p>Skru av det kunden ikke trenger. Valget lagres lokalt i nettleseren på denne installasjonen.</p>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">Håndverker</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
+      </div>
+
+      <div id="modulListe"></div>
+
+      <button id="lagreModulerKnapp" type="button">Lagre moduler</button>
+      <button type="button" class="secondary" onclick="visTimerSide()">Tilbake</button>
+
+      <div id="modulStatus" class="melding"></div>
+      <div id="modulMelding" class="melding"></div>
+    </section>
+
+    <section id="testSide" class="kort skjult admin-only">
+      <h2>Testpanel</h2>
+
+      <button id="testFakturaProsjektGrupperingKnapp" type="button" onclick="testFakturaProsjektGruppering()">Test faktura per prosjekt</button>
+      <button id="kjorHelsetestKnapp" type="button">Kjør helsetest</button>
+      <button id="kjorStresstestKnapp" type="button">Kjør stresstest</button>
+      <button id="testDobbeltregistreringKnapp" type="button">Test dobbeltregistrering</button>
+      <button id="testBlankLagringKnapp" type="button">Test blank lagring</button>
+      <button id="testLonnKnapp" type="button">Test lønn</button>
+      <button id="testFakturaGrunnlagKnapp" type="button">Test fakturagrunnlag</button>
+      <button id="testMvaKnapp" type="button">Test MVA</button>
+      <button id="testFakturaSperreKnapp" type="button">Test fakturasperre</button>
+      <button id="testMvaSperreKnapp" type="button">Test MVA-sperre</button>
+      <button id="testRettigheterKnapp" type="button">Test rettigheter</button>
+      <button id="lagStresstestFakturaKnapp" type="button">Lag stresstest faktura</button>
+<button id="slettKunTestdataKnapp" type="button" class="danger">Slett kun testdata</button>
+
+      <div id="testMelding"></div>
+    </section>
+
+  </section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="js/core/config.js?v=999"></script>
+<script src="js/core/state.js?v=999"></script>
+<script src="js/core/moduler.js?v=999"></script>
+<script src="js/navigation.js?v=999"></script>
+<script src="js/auth.js?v=33"></script>
+<script src="js/kunder.js?v=32"></script>
+<script src="js/prosjekter.js?v=31"></script>
+<script src="js/ansatte.js?v=33"></script>
+<script src="js/firma.js?v=31"></script>
+<script src="js/timer.js?v=48"></script>
+<script src="js/utils.js?v=31"></script>
+<script src="js/fakturaData.js?v=32"></script>
+<script src="js/pdfLayout.js?v=31"></script>
+<script src="js/fakturaPdf.js?v=31"></script>
+<script src="js/faktura.js?v=32"></script>
+<script src="js/okonomi.js?v=1"></script>
+<script src="js/fakturaValg.js?v=31"></script>
+<script src="js/backup.js?v=33"></script>
+<script src="js/lonn.js?v=32"></script>
+<script src="js/tester.js?v=31"></script>
+<script src="js/varer.js?v=49"></script>
+<script src="js/app.js?v=999"></script>
+<script>
+window.addEventListener("load", function () {
+  const loginKnapp = document.getElementById("loginKnapp");
+  const glemtKnapp = document.getElementById("glemtPassordKnapp");
+
+  if (loginKnapp) {
+    loginKnapp.onclick = function () {
+      if (typeof loggInn === "function") {
+        loggInn();
+      } else {
+        alert("Feil: loggInn finnes ikke. auth.js er ikke lastet.");
+      }
+    };
+  }
+
+  if (glemtKnapp) {
+    glemtKnapp.onclick = function () {
+      if (typeof glemtPassord === "function") {
+        glemtPassord();
+      } else {
+        alert("Feil: glemtPassord finnes ikke. auth.js er ikke lastet.");
+      }
+    };
+  }
+});
+</script>
+
+<script>
+window.addEventListener("load", function () {
+  var varerKnapp = document.getElementById("varerKnapp");
+
+  if (varerKnapp) {
+    varerKnapp.onclick = function () {
+      console.log("Varer-knapp trykket");
+
+      if (typeof window.visVarer === "function") {
+        window.visVarer();
+        return;
+      }
+
+      if (typeof window.visVarerSide === "function") {
+        window.visVarerSide();
+        return;
+      }
+
+      if (typeof window.skjulAlleSider === "function") {
+        window.skjulAlleSider();
+      }
+
+      var varerSide = document.getElementById("varerSide");
+      if (varerSide) {
+        varerSide.classList.remove("hidden");
+        varerSide.classList.remove("skjult");
+        varerSide.style.display = "";
+      } else {
+        alert("Fant ikke varerSide i index.html");
+      }
+    };
+  }
+});
+</script>
+
+
+<script>
+window.addEventListener("load", function () {
+  var backupKnapp = document.getElementById("backupKnapp");
+  var importFil = document.getElementById("importFil");
+
+  if (backupKnapp) {
+    backupKnapp.onclick = function () {
+      if (typeof window.backup === "function") {
+        window.backup();
+      } else {
+        alert("Backup-funksjonen er ikke lastet. Sjekk js/backup.js.");
+      }
+    };
+  }
+
+  if (importFil) {
+    importFil.onchange = function (event) {
+      if (typeof window.importerBackup === "function") {
+        window.importerBackup(event);
+      } else {
+        alert("Restore-funksjonen er ikke lastet. Sjekk js/backup.js.");
+      }
+    };
+  }
+});
+</script>
+
+
+<script>
+/* MODULER HARDFIX: lager knapp og side selv hvis gammel HTML/cache mangler den */
+(function () {
+  function vis(el) {
+    if (!el) return;
+    el.classList.remove("hidden", "skjult", "modul-skjult");
+    el.style.display = "";
+  }
+
+  function skjul(el) {
+    if (!el) return;
+    el.classList.add("hidden", "skjult");
+    el.style.display = "none";
+  }
+
+  function ensureModuler() {
+    var loggUt = document.getElementById("loggUtKnapp");
+    var knapp = document.getElementById("visModulerKnapp");
+
+    if (!knapp) {
+      knapp = document.createElement("button");
+      knapp.id = "visModulerKnapp";
+      knapp.type = "button";
+      knapp.className = "admin-only";
+      knapp.textContent = "Moduler";
+      if (loggUt && loggUt.parentNode) {
+        loggUt.parentNode.insertBefore(knapp, loggUt);
+      }
+    }
+
+    vis(knapp);
+
+    var side = document.getElementById("modulerSide");
+    if (!side) {
+      side = document.createElement("section");
+      side.id = "modulerSide";
+      side.className = "kort skjult admin-only";
+      side.innerHTML = `
+        <h2>Moduler</h2>
+        <p>Skru av det kunden ikke trenger.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+          <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('handverker')">Håndverker</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
+        </div>
+        <div id="modulListe"></div>
+        <button id="lagreModulerKnapp" type="button">Lagre moduler</button>
+        <button type="button" class="secondary" onclick="visTimerSide()">Tilbake</button>
+        <div id="modulStatus" class="melding"></div>
+        <div id="modulMelding" class="melding"></div>
+      `;
+      var testSide = document.getElementById("testSide");
+      var appSide = document.getElementById("appSide");
+      if (testSide && testSide.parentNode) testSide.parentNode.insertBefore(side, testSide);
+      else if (appSide) appSide.appendChild(side);
+    }
+
+    window.visModulerSide = function () {
+      if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
+      else document.querySelectorAll("#timerSide,#backupSide,#fakturaSide,#varerSide,#kundeSide,#ansattSide,#firmaSide,#testSide,#lonnPanel,#modulerSide").forEach(skjul);
+
+      vis(document.getElementById("modulerSide"));
+
+      if (typeof window.tegnModulGui === "function") window.tegnModulGui();
+      if (typeof window.oppdaterModulVisning === "function") window.oppdaterModulVisning();
+    };
+
+    knapp.onclick = window.visModulerSide;
+
+    var lagre = document.getElementById("lagreModulerKnapp");
+    if (lagre && typeof window.lagreModuler === "function") {
+      lagre.onclick = window.lagreModuler;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", ensureModuler);
+  window.addEventListener("load", ensureModuler);
+  setTimeout(ensureModuler, 500);
+  setTimeout(ensureModuler, 1500);
+})();
+</script>
+
+</body>
+</html>
