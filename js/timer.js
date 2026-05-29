@@ -46,7 +46,7 @@ async function fyllVarevalgFraAktivBil() {
   const aktivBilId = hentAktivBilIdFraSkjerm();
 
   if (!vareValg) return;
-  vareValg.innerHTML = '<option value="">Velg vare fra bil</option>';
+  vareValg.innerHTML = '<option value="">Velg vare</option>';
 
   if (!aktivBilId) {
     const opt = document.createElement("option");
@@ -56,15 +56,27 @@ async function fyllVarevalgFraAktivBil() {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("bil_varer")
-    .select("id, antall, varer(id, varenr, navn, pris, utpris, mva_sats)")
-    .eq("bil_id", aktivBilId)
-    .gt("antall", 0)
-    .order("id", { ascending: true });
+  const { data: alleVarer, error: varerFeil } = await supabaseClient
+    .from("varer")
+    .select("id, varenr, navn, pris, utpris, mva_sats, antall, lager_antall, lager, beholdning")
+    .order("navn", { ascending: true });
 
-  if (error) {
-    console.error("Feil ved henting av varer fra bil:", error);
+  if (varerFeil) {
+    console.error("Feil ved henting av varer:", varerFeil);
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Feil ved henting av varer";
+    vareValg.appendChild(opt);
+    return;
+  }
+
+  const { data: bilVarer, error: bilFeil } = await supabaseClient
+    .from("bil_varer")
+    .select("id, vare_id, antall")
+    .eq("bil_id", aktivBilId);
+
+  if (bilFeil) {
+    console.error("Feil ved henting av bil-lager:", bilFeil);
     const opt = document.createElement("option");
     opt.value = "";
     opt.textContent = "Feil ved henting av bil-lager";
@@ -72,24 +84,39 @@ async function fyllVarevalgFraAktivBil() {
     return;
   }
 
-  if (!data || !data.length) {
+  if (!alleVarer || !alleVarer.length) {
     const opt = document.createElement("option");
     opt.value = "";
-    opt.textContent = "Ingen varer på valgt bil";
+    opt.textContent = "Ingen varer registrert";
     vareValg.appendChild(opt);
     return;
   }
 
-  data.forEach(rad => {
-    const v = rad.varer || {};
+  const bilMap = new Map();
+  (bilVarer || []).forEach(rad => {
+    bilMap.set(String(rad.vare_id), rad);
+  });
+
+  alleVarer.forEach(v => {
+    const bilRad = bilMap.get(String(v.id));
+    const antallBil = Number(bilRad?.antall || 0);
     const pris = Number(v.pris ?? v.utpris ?? 0);
+    const hovedlagerAntall = Number(
+      v.antall ??
+      v.lager_antall ??
+      v.lager ??
+      v.beholdning ??
+      0
+    );
+
     const opt = document.createElement("option");
     opt.value = v.id;
     opt.dataset.pris = String(pris);
-    opt.dataset.antallBil = String(rad.antall || 0);
-    opt.dataset.kilde = "bil";
-    opt.dataset.bilVareId = String(rad.id || "");
-    opt.textContent = `${v.varenr || ""} ${v.navn || ""} - i bil: ${rad.antall} - ${pris.toFixed(2)} kr`;
+    opt.dataset.antallBil = String(antallBil);
+    opt.dataset.antallHovedlager = String(hovedlagerAntall);
+    opt.dataset.kilde = antallBil > 0 ? "bil" : "mangler";
+    opt.dataset.bilVareId = String(bilRad?.id || "");
+    opt.textContent = `${v.varenr || ""} ${v.navn || ""} - i bil: ${antallBil} - hovedlager: ${hovedlagerAntall} - ${pris.toFixed(2)} kr`;
     vareValg.appendChild(opt);
   });
 
@@ -617,6 +644,112 @@ function lagMvaExcel() {
   XLSX.writeFile(wb, "mva_rapport.xlsx");
 }
 
+
+async function handterManglendeVareTilBil({ vareId, aktivBilId, antall, antallIBil, vareNavn }) {
+  const manglerAntall = Math.max(0, Number(antall || 0) - Number(antallIBil || 0));
+
+  if (manglerAntall <= 0) return false;
+
+  const valg = prompt(
+    "Du har ikke nok av denne varen på bilen.\n\n" +
+    "Vare: " + (vareNavn || "Valgt vare") + "\n" +
+    "Bilen har: " + Number(antallIBil || 0) + "\n" +
+    "Du prøver å bruke: " + Number(antall || 0) + "\n" +
+    "Mangler: " + manglerAntall + "\n\n" +
+    "Skriv:\n" +
+    "1 = Velg annen vare\n" +
+    "2 = Bestill varen til bilen\n" +
+    "3 = Avbryt",
+    "1"
+  );
+
+  if (valg === null || valg === "3") {
+    return false;
+  }
+
+  if (valg === "1") {
+    const vareValg = document.getElementById("vareValg");
+    if (vareValg) vareValg.focus();
+    return false;
+  }
+
+  if (valg !== "2") {
+    alert("Ugyldig valg. Ingen bestilling ble opprettet.");
+    return false;
+  }
+
+  const { data: hovedvare, error: hovedvareFeil } = await supabaseClient
+    .from("varer")
+    .select("*")
+    .eq("id", vareId)
+    .single();
+
+  if (hovedvareFeil) {
+    alert("Kunne ikke sjekke hovedlager: " + hovedvareFeil.message);
+    return false;
+  }
+
+  const hovedlagerAntall = Number(
+    hovedvare.antall ??
+    hovedvare.lager_antall ??
+    hovedvare.lager ??
+    hovedvare.beholdning ??
+    0
+  );
+
+  const { error: bestillingFeil } = await supabaseClient
+    .from("lager_bestillinger")
+    .insert({
+      vare_id: vareId,
+      bil_id: Number(aktivBilId),
+      ansatt_id: window.innloggetAnsattId || null,
+      antall: manglerAntall,
+      status: "ny",
+      kommentar: "Bestilling fra timerbildet. Bilen manglet varen."
+    });
+
+  if (bestillingFeil) {
+    alert("Kunne ikke opprette lagerbestilling: " + bestillingFeil.message);
+    return false;
+  }
+
+  if (hovedlagerAntall < manglerAntall) {
+    const manglerInnkjop = manglerAntall - hovedlagerAntall;
+    const lagInnkjop = confirm(
+      "Bestilling til bil er opprettet.\n\n" +
+      "Men hovedlager har ikke nok.\n" +
+      "Hovedlager har: " + hovedlagerAntall + "\n" +
+      "Mangler for innkjøp: " + manglerInnkjop + "\n\n" +
+      "Vil du opprette innkjøpsbehov?"
+    );
+
+    if (lagInnkjop) {
+      const { error: innkjopFeil } = await supabaseClient
+        .from("innkjopsvarsler")
+        .insert({
+          vare_id: vareId,
+          antall: manglerInnkjop,
+          status: "ma_bestilles",
+          kommentar: "Innkjøpsbehov fra timerbildet. Hovedlager hadde ikke nok til bilbestilling."
+        });
+
+      if (innkjopFeil) {
+        alert("Lagerbestilling ble opprettet, men innkjøpsvarsel feilet: " + innkjopFeil.message);
+        return true;
+      }
+
+      alert("Lagerbestilling og innkjøpsbehov er opprettet.");
+      return true;
+    }
+
+    alert("Lagerbestilling er opprettet. Innkjøpsbehov ble ikke opprettet.");
+    return true;
+  }
+
+  alert("Lagerbestilling til bil er opprettet.");
+  return true;
+}
+
 async function lagreVarelinjeTilFaktura() {
   const melding = hentTimerMelding();
 
@@ -655,8 +788,8 @@ async function lagreVarelinjeTilFaktura() {
   }
 
   const valgtVareOption = vareValg.options[vareValg.selectedIndex];
-  if (!valgtVareOption || valgtVareOption.dataset.kilde !== "bil") {
-    alert("Denne varen kan ikke selges her. Varelisten må være fra aktiv bil, ikke hovedlager.");
+  if (!valgtVareOption || !["bil", "mangler"].includes(valgtVareOption.dataset.kilde || "")) {
+    alert("Velg en gyldig vare.");
     await fyllVarevalgFraAktivBil();
     return;
   }
@@ -670,7 +803,14 @@ async function lagreVarelinjeTilFaktura() {
   }
 
   if (antallPaValgtBil < antall) {
-    alert(`Du kan ikke selge mer enn bilen har. Bilen har ${antallPaValgtBil}, du prøver å selge ${antall}.`);
+    await handterManglendeVareTilBil({
+      vareId: vareValg.value,
+      aktivBilId,
+      antall,
+      antallIBil: antallPaValgtBil,
+      vareNavn: valgtVareOption.textContent || "Valgt vare"
+    });
+    await fyllVarevalgFraAktivBil();
     return;
   }
 
@@ -699,7 +839,14 @@ async function lagreVarelinjeTilFaktura() {
 
   const antallIBil = Number(bilVare?.antall || 0);
   if (!bilVare || antallIBil < antall) {
-    alert(`Ikke nok vare i valgt bil. Bilen har ${antallIBil}, du prøver å selge ${antall}.`);
+    await handterManglendeVareTilBil({
+      vareId: vareValg.value,
+      aktivBilId,
+      antall,
+      antallIBil,
+      vareNavn: valgtVareOption.textContent || "Valgt vare"
+    });
+    await fyllVarevalgFraAktivBil();
     return;
   }
 
