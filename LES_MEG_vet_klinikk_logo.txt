@@ -1,0 +1,20 @@
+Veterinær klinikklogo-pakke
+
+Dette er lagt til:
+- Klinikklogo på klinikksiden
+- Kun admin ser logo/km-oppsett
+- Logo lagres i Supabase Storage bucket: vet-logoer
+- URL lagres i vet_klinikker.logo_url
+- Km-pris lagres i vet_klinikker.km_pris med standard 5,30
+
+Slik gjør du:
+1. Kjør vet_klinikk_logo.sql i Supabase.
+2. Hvis Storage-policy feiler, lag bucket manuelt:
+   Storage -> New bucket -> vet-logoer -> Public bucket.
+3. Bytt ut:
+   veterinaer.html
+   js/veterinaer/vet-app.js
+4. Logg inn som admin.
+5. Gå til Klinikk, velg logo og lagre.
+
+Vanlige brukere skal ikke se logo-oppsettet.

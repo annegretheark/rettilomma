@@ -1,0 +1,15 @@
+STARTMODUL FIX
+
+Denne pakken endrer js/navigation.js.
+
+Hva den gjør:
+- Hvis Veterinær er valgt som eneste fagmodul, åpnes veterinaer.html automatisk etter innlogging.
+- Hvis Hovslager er valgt som eneste fagmodul, åpnes hovslager.html automatisk etter innlogging.
+- Hvis både Veterinær og Hovslager er aktive, lander admin på menyen som før.
+- Veterinær og hovslager forblir egne sider.
+
+Slik installerer du:
+1. Pakk ut ZIP over prosjektmappen.
+2. Overskriv js/navigation.js.
+3. Test login.
+4. Push til GitHub main når det fungerer.

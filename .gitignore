@@ -1,0 +1,10 @@
+config.js
+config.old
+js/config.js
+js/config.old
+js/core/config.js
+js/backup-supabase.ps1
+js/hovslager/config.old
+*.old
+env.ps1
+*.ps1

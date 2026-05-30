@@ -1,0 +1,18 @@
+Rettet admin-visning for klinikklogo
+
+Feilen var at logo-feltet fantes i HTML, men ble skjult fordi admin-sjekken ikke fant innlogget bruker.
+
+Ny løsning:
+- Sjekker supabaseClient.auth.getUser()
+- Viser alltid adminfelt for greknuts@online.no
+- Ellers sjekkes ansatte-tabellen: epost = innlogget epost og rolle = admin
+
+Slik installerer du:
+1. Kjør vet_logo_admin_fiks.sql hvis nødvendig.
+2. Bytt ut:
+   veterinaer.html
+   js/veterinaer/vet-app.js
+3. Last siden med Ctrl+F5.
+4. Gå til Klinikk.
+5. Hvis du vil teste i konsollen:
+   erVetAdmin().then(console.log)

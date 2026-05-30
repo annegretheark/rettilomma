@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Ansattregister</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/ansatte.js" defer></script>
+</head>
+
+<body>
+
+  <h1 style="color:red;">TEST ANSATTREGISTER</h1>
+
+  <h1>Ansattregister</h1>
+
+  <input type="hidden" id="ansattId">
+
+  <div>
+    <label for="ansattNavn">Navn</label><br>
+    <input type="text" id="ansattNavn">
+  </div>
+
+  <div>
+    <label for="ansattEpost">E-post</label><br>
+    <input type="email" id="ansattEpost">
+  </div>
+
+  <div>
+    <label for="ansattMobil">Mobil</label><br>
+    <input type="text" id="ansattMobil">
+  </div>
+
+  <br>
+
+  <button type="button" id="lagreAnsattKnapp">Lagre ansatt</button>
+  <button type="button" id="nyAnsattKnapp">Ny ansatt</button>
+
+  <hr>
+
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Navn</th>
+        <th>E-post</th>
+        <th>Mobil</th>
+        <th>Handling</th>
+      </tr>
+    </thead>
+    <tbody id="ansattListe">
+      <tr>
+        <td>TEST</td>
+        <td>TEST</td>
+        <td>TEST</td>
+        <td><button type="button">KNAPP</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>

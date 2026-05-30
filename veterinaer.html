@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Veterinær - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:20px; }
+    .kort { background:#fff; max-width:980px; margin:0 auto 18px auto; padding:18px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+    h1,h2,h3 { margin-top:0; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input,select,textarea { width:100%; box-sizing:border-box; padding:10px; margin-top:4px; border:1px solid #ccc; border-radius:8px; }
+    textarea { min-height:90px; }
+    button { padding:11px 14px; margin:6px 4px 6px 0; border:0; border-radius:8px; background:#1f6feb; color:white; cursor:pointer; font-size:15px; }
+    button.secondary { background:#555; }
+    button.danger { background:#b42318; }
+    .rad { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .skjult { display:none; }
+    .melding { margin-top:10px; color:#b42318; font-weight:bold; }
+    .listekort { border:1px solid #ddd; padding:10px; border-radius:8px; margin-top:8px; background:#fafafa; }
+    .lite { color:#555; font-size:13px; }
+  </style>
+</head>
+<body>
+<section id="appSide">
+  <div class="kort">
+    <h1>Veterinær</h1>
+    <button type="button"
+        class="danger"
+        onclick="loggUtVeterinaer()">
+  Logg ut
+</button>
+    <button type="button" onclick="visVetSide('klinikkSide')">Klinikk</button>
+    <button type="button" onclick="visVetSide('eierSide')">Dyreeiere</button>
+    <button type="button" onclick="visVetSide('dyrSide')">Dyr / pasienter</button>
+    <button type="button" onclick="visVetSide('prisSide')">Prisliste</button>
+    <button type="button" onclick="visVetSide('journalSide')">Journal</button>
+    <button type="button" onclick="visVetSide('fakturaSide')">Faktura</button>
+    <button type="button" onclick="visVetSide('backupSide')">Backup / Import</button>
+    <p class="lite">Første versjon: journal, behandling og pasienthistorikk. Resept er ikke med ennå.</p>
+    <p id="aktivKlinikkInfo" class="lite"></p>
+  </div>
+
+  <section id="klinikkSide" class="kort">
+    <h2>Klinikk</h2>
+    <p class="lite">Alle veterinærer hører til en klinikk. Klinikken kan senere kobles til et konsern, f.eks. EMET.</p>
+    <input id="klinikkId" type="hidden">
+    <label for="klinikkNavn">Klinikknavn</label>
+    <input id="klinikkNavn" placeholder="Dyrlegene i Norderhov">
+    <label for="konsernNavn">Konsern / kjede</label>
+    <input id="konsernNavn" placeholder="Valgfritt, f.eks. EMET">
+    <div class="rad">
+      <div><label for="klinikkTelefon">Telefon</label><input id="klinikkTelefon"></div>
+      <div><label for="klinikkEpost">E-post</label><input id="klinikkEpost" type="email"></div>
+    </div>
+    <label for="klinikkAdresse">Adresse</label>
+    <input id="klinikkAdresse">
+
+    <div id="adminKlinikkLogo" class="skjult">
+      <h3>Klinikkoppsett</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin ser dette. Logo brukes på faktura, brevhode og utskrifter.</p>
+
+      <div class="rad">
+        <div>
+          <label for="klinikkKmPris">Km-pris</label>
+          <input id="klinikkKmPris" type="number" step="0.01" min="0" value="5.30">
+        </div>
+        <div>
+          <label for="klinikkLogoFil">Klinikklogo</label>
+          <input id="klinikkLogoFil" type="file" accept="image/*">
+        </div>
+      </div>
+
+      <img id="klinikkLogoPreview" alt="Klinikklogo" class="skjult" style="max-height:120px; margin-top:10px; border:1px solid #ddd; border-radius:8px; padding:6px;">
+    </div>
+
+    
+    <div id="adminKlinikkBrukere" class="skjult">
+      <h3>Brukere på klinikk</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin. Opprett innlogging og velg om brukeren er vanlig veterinær eller klinikkadmin.</p>
+
+      <div class="rad">
+        <div>
+          <label for="nyBrukerNavn">Navn</label>
+          <input id="nyBrukerNavn" placeholder="Navn på bruker">
+        </div>
+        <div>
+          <label for="nyBrukerEpost">E-post</label>
+          <input id="nyBrukerEpost" type="email" placeholder="navn@klinikk.no">
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="nyBrukerPassord">Midlertidig passord</label>
+          <input id="nyBrukerPassord" type="password" placeholder="Minst 6 tegn">
+        </div>
+        <div>
+          <label for="nyBrukerRolle">Rolle</label>
+          <select id="nyBrukerRolle">
+            <option value="veterinaer">Vanlig bruker</option>
+            <option value="admin">Klinikkadmin</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="opprettKlinikkBrukerKnapp" type="button" class="secondary">Opprett bruker</button>
+
+      <hr>
+
+      <h4>Eksisterende brukere</h4>
+      <div id="klinikkBrukerMelding" class="melding"></div>
+      <div id="klinikkBrukerListe"></div>
+    </div>
+
+    <button id="lagreKlinikkKnapp" type="button">Lagre klinikk</button>
+    <div id="klinikkMelding" class="melding"></div>
+    <div id="klinikkListe"></div>
+  </section>
+
+  <section id="eierSide" class="kort skjult">
+    <h2>Dyreeiere</h2>
+    <input id="dyreeierId" type="hidden">
+    <label for="dyreeierVelgForDyr">Velg dyreeier</label>
+    <select id="dyreeierVelgForDyr">
+      <option value="">Velg dyreeier</option>
+    </select>
+    <div class="rad">
+      <div><label for="dyreeierNavn">Navn</label><input id="dyreeierNavn"></div>
+      <div><label for="dyreeierTelefon">Telefon</label><input id="dyreeierTelefon"></div>
+    </div>
+    <label for="dyreeierEpost">E-post</label>
+    <input id="dyreeierEpost" type="email">
+    <label for="dyreeierAdresse">Adresse</label>
+    <input id="dyreeierAdresse">
+
+    <h3>Dyr hos valgt dyreeier</h3>
+    <p class="lite">Når du redigerer en dyreeier, vises bare dyrene som tilhører denne eieren her.</p>
+    <select id="dyreeierDyrValg">
+      <option value="">Velg/rediger dyreeier først</option>
+    </select>
+    <p id="dyreeierDyrInfo" class="lite"></p>
+
+    <button id="lagreDyreeierKnapp" type="button">Lagre dyreeier</button>
+    <div id="dyreeierMelding" class="melding"></div>
+    <div id="dyreeierListe"></div>
+  </section>
+
+  <section id="dyrSide" class="kort skjult">
+    <h2>Dyr / pasienter</h2>
+    <input id="dyrId" type="hidden">
+    <label for="dyrEierValg">Eier</label>
+    <select id="dyrEierValg"><option value="">Velg eier</option></select>
+    <div class="rad">
+      <div><label for="dyrNavn">Navn</label><input id="dyrNavn"></div>
+      <div><label for="dyrArt">Art</label><input id="dyrArt" placeholder="Hund, katt, hest ..."></div>
+      <div><label for="dyrRase">Rase</label><input id="dyrRase"></div>
+    </div>
+    <div class="rad">
+      <div><label for="dyrFodselsdato">Fødselsdato</label><input id="dyrFodselsdato" type="date"></div>
+      <div><label for="dyrKjonn">Kjønn</label><select id="dyrKjonn"><option value="">Velg</option><option>Hann</option><option>Hunn</option><option>Vallak</option><option>Ukjent</option></select></div>
+      <div><label for="dyrIdmerking">ID/chip</label><input id="dyrIdmerking"></div>
+    </div>
+    <button id="lagreDyrKnapp" type="button">Lagre dyr</button>
+    <div id="dyrMelding" class="melding"></div>
+    <div id="dyrListe"></div>
+  </section>
+
+
+  <section id="prisSide" class="kort skjult">
+    <h2>Prisliste</h2>
+    <p class="lite">Her kan veterinæren lage både fastpriser og timepriser. Prisene kan senere velges inn i journal/behandling.</p>
+    <input id="prisId" type="hidden">
+    <div class="rad">
+      <div>
+        <label for="prisNavn">Navn på pris</label>
+        <input id="prisNavn" placeholder="Konsultasjon hest, vaksine, akuttvakt ...">
+      </div>
+      <div>
+        <label for="prisType">Pristype</label>
+        <select id="prisType">
+          <option value="fastpris">Fastpris</option>
+          <option value="timepris">Timepris</option>
+          <option value="kmpris">Kjøring per km</option>
+          <option value="annet">Annet</option>
+        </select>
+      </div>
+      <div>
+        <label for="prisBelop">Pris eks. mva</label>
+        <input id="prisBelop" type="number" step="0.01" min="0" placeholder="1200">
+      </div>
+    </div>
+    <label for="prisBeskrivelse">Beskrivelse</label>
+    <input id="prisBeskrivelse" placeholder="Valgfritt">
+    <button id="lagrePrisKnapp" type="button">Lagre pris</button>
+    <button id="nyPrisKnapp" type="button" class="secondary">Ny pris</button>
+    <div id="prisMelding" class="melding"></div>
+    <div id="prisListe"></div>
+  </section>
+
+  <section id="journalSide" class="kort skjult">
+    <h2>Journal / behandling</h2>
+    <label for="journalDyrValg">Dyr</label>
+    <select id="journalDyrValg"><option value="">Velg dyr</option></select>
+    <div class="rad">
+      <div><label for="journalDato">Dato</label><input id="journalDato" type="date"></div>
+      <div><label for="journalType">Type</label><input id="journalType" placeholder="Konsultasjon, vaksine, sår, kontroll ..."></div>
+    </div>
+    <label for="journalPrisValg">Velg fra prisliste</label>
+    <select id="journalPrisValg">
+      <option value="">Velg pris / behandling</option>
+    </select>
+    <div class="rad">
+      <div>
+        <label for="journalBehandlingAntall">Antall / timer</label>
+        <input id="journalBehandlingAntall" type="number" step="0.25" min="0" value="1">
+      </div>
+      <div style="align-self:end;">
+        <button id="leggTilJournalBehandlingKnapp" type="button" class="secondary">Legg til behandling</button>
+      </div>
+    </div>
+    <div id="journalBehandlingListe" class="lite">Ingen behandlinger lagt til.</div>
+    <div class="rad">
+      <div><label for="journalFastpris">Fastpris eks. mva</label><input id="journalFastpris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimepris">Timepris eks. mva</label><input id="journalTimepris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimer">Antall timer</label><input id="journalTimer" type="number" step="0.25" min="0" placeholder="0"></div>
+      <div><label for="journalKm">Kjøring km</label><input id="journalKm" type="number" step="1" min="0" placeholder="0"></div>
+      <div><label for="journalKmPris">Pris per km</label><input id="journalKmPris" type="number" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <p class="lite">Sum eks. mva: <strong id="journalSumVisning">0,00</strong></p>
+    <label for="journalNotat">Journalnotat</label>
+    <textarea id="journalNotat" placeholder="Skriv notat. Tale kommer i versjon 2 der pilotene bruker det mest."></textarea>
+    <label for="journalMedisin">Medisin / reseptkladd</label>
+    <textarea id="journalMedisin" placeholder="Kun kladd/notat. Ikke e-resept."></textarea>
+
+    <h3>Varer / medisiner til faktura</h3>
+    <p class="lite">Legg inn medisiner, forbruksmateriell eller andre varelinjer.</p>
+    <div class="rad">
+      <div><label for="journalVareNavn">Vare / medisin</label><input id="journalVareNavn" placeholder="F.eks. ormekur, vaksine, bandasjemateriell"></div>
+      <div><label for="journalVareAntall">Antall</label><input id="journalVareAntall" type="number" step="0.01" min="0" value="1"></div>
+      <div><label for="journalVarePris">Pris per stk eks. mva</label><input id="journalVarePris" type="number" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <button id="leggTilJournalVareKnapp" type="button" class="secondary">Legg til vare</button>
+    <div id="journalVareListe" class="lite">Ingen varer lagt til.</div>
+
+    <h3>Journalbilder</h3>
+    <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
+    <div class="rad">
+      <div><label for="journalBildeGalleri">Velg bilde fra galleri</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
+      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+    </div>
+    <label for="journalBildeTekst">Bildetekst</label>
+    <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
+    <p id="journalBildeInfo" class="lite">Ingen bilder valgt.</p>
+
+    <button id="lagreJournalKnapp" type="button">Lagre journal</button>
+    <div id="journalMelding" class="melding"></div>
+    <div id="journalListe"></div>
+  </section>
+
+
+  <section id="backupSide" class="kort skjult">
+    <h2>Backup / Restore / Import</h2>
+    <p class="lite">Kun systemadmin. Her kan du ta backup og importere behandlinger/varer.</p>
+    <button id="vetBackupKnapp" type="button" onclick="vetLagBackup()">Last ned backup</button>
+    <label for="vetRestoreFil">Velg backupfil (.json)</label>
+    <input id="vetRestoreFil" type="file" accept=".json,application/json">
+    <button id="vetRestoreKnapp" type="button" class="secondary" onclick="vetRestoreBackup()">Les inn backup</button>
+    <label for="vetImportPriserFil">Velg CSV-fil</label>
+    <input id="vetImportPriserFil" type="file" accept=".csv,text/csv">
+    <button id="vetImportPriserKnapp" type="button" class="secondary" onclick="vetImporterPriserCsv()">Importer behandlinger/varer</button>
+    <div id="backupMelding" class="melding"></div>
+  </section>
+
+  <section id="fakturaSide" class="kort skjult">
+    <h2>Faktura veterinær</h2>
+    <p class="lite">Velg dyreeier og lag faktura fra journaler, behandlinger, kjøring og varer/medisiner. Logo hentes fra klinikkoppsettet.</p>
+
+    <label for="fakturaDyreeierValg">Dyreeier / kunde</label>
+    <select id="fakturaDyreeierValg">
+      <option value="">Velg dyreeier</option>
+    </select>
+
+    <div class="rad">
+      <div>
+        <label for="fakturaDato">Fakturadato</label>
+        <input id="fakturaDato" type="date">
+      </div>
+      <div>
+        <label for="fakturaForfallsdato">Forfallsdato</label>
+        <input id="fakturaForfallsdato" type="date">
+      </div>
+    </div>
+
+    <button id="hentFakturaGrunnlagKnapp" type="button" class="secondary">Hent fakturagrunnlag</button>
+    <button id="skrivUtVetFakturaKnapp" type="button">Skriv ut faktura med logo</button>
+
+    <div id="fakturaMelding" class="melding"></div>
+    <div id="fakturaGrunnlagListe"></div>
+  </section>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/config.js"></script>
+<script src="js/veterinaer/vet-app.js?v=12"></script>
+<script>
+async function loggUtVeterinaer() {
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (e) {
+    console.error(e);
+  }
+
+  window.location.href = "index.html";
+}
+</script>
+</body>
+</html>

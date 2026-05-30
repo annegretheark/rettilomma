@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>HovslagerSystem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .kort {
+      background: white;
+      max-width: 900px;
+      margin: 0 auto 18px auto;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 11px 14px;
+      margin: 6px 4px 6px 0;
+      border: 0;
+      border-radius: 8px;
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button.danger {
+      background: #b42318;
+    }
+
+    button.voice {
+      width: 100%;
+      font-size: 20px;
+      padding: 18px;
+      background: #0f766e;
+    }
+
+    .rad {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .skjult {
+      display: none;
+    }
+
+    .melding {
+      margin-top: 10px;
+      color: #b42318;
+      font-weight: bold;
+    }
+
+    .info {
+      margin-top: 8px;
+      font-size: 15px;
+      color: #555;
+    }
+
+    .listekort {
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 8px;
+      background: #fafafa;
+    }
+  </style>
+</head>
+
+<body>
+
+<section id="appSide">
+
+  <div class="kort">
+    <h1>HovslagerSystem</h1>
+
+    <button type="button" class="secondary" onclick="window.location.href='index.html'">Tilbake til Rett i Lomma</button>
+    <button type="button" onclick="visSide('jobbSide')">Jobber</button>
+    <button type="button" onclick="visSide('kundeSide')">Kunder</button>
+    <button type="button" onclick="visSide('hesterSide')">Hester</button>
+    <button type="button" onclick="visSide('fakturaSide')">Faktura</button>
+    <button type="button" onclick="visSide('firmaSide')">Firma / oppsett</button>
+
+    <hr>
+
+    <h3>Fakturaoversikt</h3>
+
+    <button id="hentFakturaOversiktKnapp" type="button">
+      Vis fakturaoversikt
+    </button>
+
+    <button id="eksporterFakturaExcelKnapp" type="button">
+      Eksporter fakturaoversikt Excel
+    </button>
+
+    <div id="fakturaOversikt"></div>
+  </div>
+  <div class="kort">
+
+  <h3>Backup / Restore</h3>
+
+  <button id="backupKnapp" type="button">
+    Ta backup
+  </button>
+
+  <label
+    for="importFil"
+    style="font-weight:bold; display:block; margin-top:14px;">
+
+    Restore fra backupfil
+
+  </label>
+
+  <input
+    id="importFil"
+    type="file"
+    accept=".json">
+
+</div>
+
+  <section id="jobbSide" class="kort">
+
+  <h2>🎙️ Snakk inn jobb</h2>
+
+  <button type="button"
+          id="taleJobbKnapp"
+          class="voice">
+
+    🎙️ Snakk inn og lagre jobb
+
+  </button>
+
+  <div id="taleResultat"
+       class="info">
+
+    Si for eksempel:
+    Skodde Quen 20 kilometer
+
+  </div>
+  <label for="jobbBildeKamera">
+  Ta bilde
+</label>
+
+<input
+  id="jobbBildeKamera"
+  type="file"
+  accept="image/*"
+  capture="environment">
+
+<label for="jobbBildeGalleri">
+  Velg bilde
+</label>
+
+<input
+  id="jobbBildeGalleri"
+  type="file"
+  accept="image/*">
+
+  <hr>
+
+  <button type="button"
+          class="secondary"
+          onclick="
+            document
+              .getElementById('manuellJobb')
+              .classList
+              .toggle('skjult')
+          ">
+
+    Vis/skjul manuell registrering
+
+  </button>
+
+  <div id="manuellJobb"
+       class="skjult">
+
+    <h3>Manuell registrering</h3>
+
+    <div class="rad">
+
+      <div>
+
+        <label for="jobbDato">
+          Dato
+        </label>
+
+        <input id="jobbDato"
+               type="date">
+
+      </div>
+
+      <div>
+
+        <label for="jobbKunde">
+          Kunde
+        </label>
+
+        <select id="jobbKunde">
+
+          <option value="">
+            Velg kunde
+          </option>
+
+        </select>
+
+      </div>
+
+      <div>
+
+        <label for="jobbHest">
+          Hest
+        </label>
+
+        <select id="jobbHest">
+
+          <option value="">
+            Velg hest
+          </option>
+
+        </select>
+
+      </div>
+
+    </div>
+
+    <label for="jobbType">
+      Jobbtype
+    </label>
+
+    <select id="jobbType">
+
+      <option value="">
+        Velg jobbtype
+      </option>
+
+      <option value="Fullbeslag">
+        Fullbeslag
+      </option>
+
+      <option value="Forsko">
+        Forsko
+      </option>
+
+      <option value="Baksko">
+        Baksko
+      </option>
+
+      <option value="Barfot/verking">
+        Barfot/verking
+      </option>
+
+      <option value="Enkeltsko">
+        Enkeltsko
+      </option>
+
+      <option value="Såler">
+        Såler
+      </option>
+
+      <option value="Brodder">
+        Brodder
+      </option>
+
+      <option value="Annet">
+        Annet
+      </option>
+
+    </select>
+
+    <label for="jobbBeskrivelse">
+      Beskrivelse
+    </label>
+
+    <textarea id="jobbBeskrivelse"></textarea>
+
+    <label for="jobbBildeKamera">
+      Ta bilde
+    </label>
+
+    <input
+      id="jobbBildeKamera"
+      type="file"
+      accept="image/*"
+      capture="environment">
+
+    <label for="jobbBildeGalleri">
+      Velg bilde
+    </label>
+
+    <input
+      id="jobbBildeGalleri"
+      type="file"
+      accept="image/*">
+
+    <div class="rad">
+
+      <div>
+
+        <label for="arbeidBelop">
+          Arbeid eks. mva
+        </label>
+
+        <input id="arbeidBelop"
+               type="number"
+               value="0"
+               step="0.01">
+
+      </div>
+
+      <div>
+
+        <label for="varerBelop">
+          Sko/varer eks. mva
+        </label>
+
+        <input id="varerBelop"
+               type="number"
+               value="0"
+               step="0.01">
+
+      </div>
+
+      <div>
+
+        <label for="jobbKm">
+          Kjøring km
+        </label>
+
+        <input id="jobbKm"
+               type="number"
+               value="0"
+               step="0.1">
+
+      </div>
+
+      <div>
+
+        <label for="jobbKmPris">
+          Pris pr km
+        </label>
+
+        <input id="jobbKmPris"
+               type="number"
+               value="5.30"
+               step="0.01">
+
+      </div>
+
+    </div>
+
+    <button id="lagreJobbKnapp"
+            type="button">
+
+      Lagre jobb manuelt
+
+    </button>
+
+    <div id="jobbMelding"
+         class="melding"></div>
+
+  </div>
+
+</section>
+
+  <section id="kundeSide" class="kort skjult">
+
+    <h2>Kunder</h2>
+
+    <input id="kundeId" type="hidden">
+
+    <label for="kundeNavn">Navn</label>
+    <input id="kundeNavn">
+
+    <label for="kundeAdresse">Adresse</label>
+    <input id="kundeAdresse">
+
+    <label for="kundeEpost">E-post</label>
+    <input id="kundeEpost">
+
+    <label for="kundeTelefon">Telefon</label>
+    <input id="kundeTelefon">
+
+    <label for="kundeKontaktperson">Kontaktperson</label>
+    <input id="kundeKontaktperson">
+
+    <button id="leggTilKundeKnapp" type="button">
+      Lagre kunde
+    </button>
+
+    <div id="kundeMelding" class="melding"></div>
+    <div id="kundeListe"></div>
+
+  </section>
+
+  <section id="hesterSide" class="kort skjult">
+
+    <h2>Hester</h2>
+
+    <label for="hestKunde">Eier/kunde</label>
+    <select id="hestKunde">
+      <option value="">Velg kunde</option>
+    </select>
+
+    <label for="hestNavn">Hestens navn</label>
+    <input id="hestNavn">
+
+    <label for="hestRase">Rase/type</label>
+    <input id="hestRase">
+
+    <label for="hestNotater">Notater</label>
+    <textarea id="hestNotater"></textarea>
+
+    <div class="rad">
+      <div>
+        <label for="sistSkodd">Sist skodd</label>
+        <input id="sistSkodd" type="date">
+      </div>
+
+      <div>
+        <label for="nesteBesok">Neste besøk</label>
+        <input id="nesteBesok" type="date">
+      </div>
+    </div>
+
+    <button id="lagreHestKnapp" type="button">
+      Lagre hest
+    </button>
+
+    <div id="hestMelding" class="melding"></div>
+    <div id="hesteListe"></div>
+
+  </section>
+
+  <section id="fakturaSide" class="kort skjult">
+
+    <h2>Faktura</h2>
+
+    <label for="fakturaKunde">Kunde</label>
+    <select id="fakturaKunde">
+      <option value="">Velg kunde</option>
+    </select>
+
+    <button id="lagFakturaKnapp" type="button">
+      Lag faktura PDF
+    </button>
+
+    <hr>
+
+    <h3>Kreditnota</h3>
+
+    <label for="kreditFakturaValg">Velg faktura å kreditere</label>
+    <select id="kreditFakturaValg">
+      <option value="">Velg faktura</option>
+    </select>
+
+    <label for="kreditGrunn">Grunn</label>
+    <textarea id="kreditGrunn">Feil beløp på faktura</textarea>
+
+    <button id="lagKreditnotaKnapp" type="button">
+      Lag kreditnota
+    </button>
+
+    <div id="fakturaMelding" class="melding"></div>
+
+  </section>
+
+
+  <section id="firmaSide" class="kort skjult">
+
+    <h2>Firma / oppsett</h2>
+
+    <p class="info">
+      Fylles ut ved første oppstart. Kan endres senere her.
+      Logo bør ligge som <strong>bilder/logo.png</strong>.
+    </p>
+
+    <input id="firmaId" type="hidden">
+
+    <label for="firmaNavn">Firmanavn</label>
+    <input id="firmaNavn" placeholder="Ditt firma">
+
+    <label for="firmaAdresse">Adresse</label>
+    <input id="firmaAdresse">
+
+    <div class="rad">
+      <div>
+        <label for="firmaTelefon">Telefon</label>
+        <input id="firmaTelefon">
+      </div>
+
+      <div>
+        <label for="firmaEpost">E-post</label>
+        <input id="firmaEpost" type="email">
+      </div>
+    </div>
+
+    <div class="rad">
+      <div>
+        <label for="firmaOrgnr">Org.nr</label>
+        <input id="firmaOrgnr">
+      </div>
+
+      <div>
+        <label for="firmaMvaNr">MVA-nr</label>
+        <input id="firmaMvaNr">
+      </div>
+
+      <div>
+        <label for="firmaKontonr">Kontonr</label>
+        <input id="firmaKontonr">
+      </div>
+    </div>
+
+    <label for="firmaLogoUrl">Logo</label>
+    <input id="firmaLogoUrl" placeholder="bilder/logo.png">
+
+    <div class="info">
+      <img id="firmaLogoForhandsvisning"
+           alt="Logo"
+           style="display:none; max-height:80px; max-width:240px; margin-top:8px;">
+    </div>
+
+    <label for="firmaBrevhodeTekst">Brevhode-tekst</label>
+    <textarea id="firmaBrevhodeTekst" placeholder="Valgfri tekst under logo/firmanavn"></textarea>
+
+    <label for="firmaBrevfotTekst">Brevfot-tekst</label>
+    <textarea id="firmaBrevfotTekst" placeholder="Valgfri tekst nederst på PDF"></textarea>
+
+    <button id="lagreHovOppsettKnapp" type="button">
+      Lagre oppsett
+    </button>
+
+    <div id="firmaMelding" class="melding"></div>
+
+  </section>
+
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="js/core/config.js"></script>
+<script src="js/hovslager/moduler.js"></script>
+<script src="js/hovslager/backup.js"></script>
+<script src="js/hovslager/state.js"></script>
+<script src="js/hovslager/hov-navigation.js"></script>
+<script src="js/hovslager/hov-kunder.js"></script>
+<script src="js/hovslager/hov-oppsett.js"></script>
+<script src="js/hovslager/hester.js"></script>
+<script src="js/hovslager/hov-jobber.js"></script>
+<script src="js/hovslager/hov-faktura.js"></script>
+<script src="js/hovslager/hov-kreditnota.js"></script>
+<script src="js/hovslager/hov-fakturaoversikt.js"></script>
+<script src="js/hovslager/hov-app.js?v=1"></script>
+
+</body>
+</html>
