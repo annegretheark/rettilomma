@@ -1,0 +1,18 @@
+Endring: Behandler/utfører på faktura
+
+Bytt inn hele pakken eller minst disse filene:
+- js/veterinaer/vet-app.js
+- js/faktura.js
+
+Veterinær:
+- Nye journaler lagrer oprettet_av fra innlogget Supabase-bruker.
+- Fakturagrunnlag og faktura viser Behandler per linje.
+- Hvis flere behandlere finnes på samme faktura, vises de i fakturahodet.
+
+Felles fakturasystem:
+- Håndverker/konsulent/hovslager-faktura får feltet Utfører fra ansatt_id der ansatte er lastet.
+
+SQL:
+- Ingen ny SQL er nødvendig hvis vet_journal allerede har oprettet_av.
+- Hvis en ny database mangler feltet, kjør:
+  alter table vet_journal add column if not exists oprettet_av uuid;

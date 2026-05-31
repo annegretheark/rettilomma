@@ -1,0 +1,15 @@
+Fiks: medisinnavn og knapper på linje
+
+Bytt ut:
+- veterinaer.html
+- js/veterinaer/vet-app.js
+
+Endringer:
+- Knapper ligger på linje med flex-rader der det passer.
+- Importfelt + importknapp ligger på samme linje på Prisliste og Lager / biler.
+- Vareliste viser tydelig Medisin/vare-navn først.
+- Hovedlager viser tydelig Medisin/vare-navn i tabell.
+- Bil-lager viser Bil + Medisin/vare-navn i tabell.
+- Dropdown for medisin/vare viser navn, kategori, pris og enhet.
+
+Ingen ny SQL er nødvendig hvis vet_varer allerede har innpris og vet_journal har fakturert/fakturanr.

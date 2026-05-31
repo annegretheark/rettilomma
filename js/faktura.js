@@ -13,6 +13,18 @@ function hentProsjektTekst(time) {
   return `${prosjekt.prosjektnr || ""} ${prosjekt.navn || ""}`.trim();
 }
 
+
+function hentUtforerNavnForFaktura(time) {
+  const ansattId = String(time?.ansatt_id || "");
+  const epost = String(time?.ansatt_epost || time?.epost || "").toLowerCase();
+  const liste = window.ansatte || [];
+  const ansatt = liste.find(a =>
+    (ansattId && String(a.id || "") === ansattId) ||
+    (epost && String(a.epost || "").toLowerCase() === epost)
+  );
+  return ansatt?.navn || ansatt?.epost || time?.ansatt_navn || "";
+}
+
 async function hentVareMapForTimer(timerListe) {
   const vareIder = [
     ...new Set(
@@ -48,6 +60,7 @@ function byggFakturaLinjer(timerListe, vareMap) {
   (timerListe || []).forEach(t => {
     const linje = beregnMvaLinje(t);
     const prosjektTekst = hentProsjektTekst(t);
+    const utforer = hentUtforerNavnForFaktura(t);
 
     linjer.push({
       dato: t.dato || "",
@@ -55,6 +68,7 @@ function byggFakturaLinjer(timerListe, vareMap) {
         (prosjektTekst ? prosjektTekst + " - " : "") +
         (t.beskrivelse || t.kommentar || "Timer")
       ).slice(0, 40),
+      utforer,
       antall: t.timer || 0,
       sumEksMva: linje.sumEksMva,
       mva: linje.mva
@@ -75,6 +89,7 @@ function byggFakturaLinjer(timerListe, vareMap) {
           beskrivelse: String(
             `${vare.varenr || ""} ${vare.navn || ""}`
           ).trim().slice(0, 40),
+          utforer,
           antall: antall,
           sumEksMva: sumEksMva,
           mva: mva
@@ -335,9 +350,10 @@ async function lagEnFakturaPdf(
   doc.setFontSize(10);
   doc.text("Dato", 14, y);
   doc.text("Beskrivelse", 45, y);
-  doc.text("Antall", 120, y);
-  doc.text("Eks mva", 145, y);
-  doc.text("MVA", 170, y);
+  doc.text("Utfører", 104, y);
+  doc.text("Antall", 132, y);
+  doc.text("Eks mva", 152, y);
+  doc.text("MVA", 176, y);
 
   y += 4;
 
@@ -365,9 +381,10 @@ async function lagEnFakturaPdf(
       doc.setFontSize(10);
       doc.text("Dato", 14, y);
       doc.text("Beskrivelse", 45, y);
-      doc.text("Antall", 120, y);
-      doc.text("Eks mva", 145, y);
-      doc.text("MVA", 170, y);
+      doc.text("Utfører", 104, y);
+      doc.text("Antall", 132, y);
+      doc.text("Eks mva", 152, y);
+      doc.text("MVA", 176, y);
 
       y += 4;
 
@@ -381,10 +398,11 @@ async function lagEnFakturaPdf(
     }
 
     doc.text(String(linje.dato || ""), 14, y);
-    doc.text(String(linje.beskrivelse || "").slice(0, 40), 45, y);
-    doc.text(String(linje.antall || 0), 120, y);
-    doc.text(formatBelop(linje.sumEksMva), 145, y);
-    doc.text(formatBelop(linje.mva), 170, y);
+    doc.text(String(linje.beskrivelse || "").slice(0, 28), 45, y);
+    doc.text(String(linje.utforer || "").slice(0, 20), 104, y);
+    doc.text(String(linje.antall || 0), 132, y);
+    doc.text(formatBelop(linje.sumEksMva), 152, y);
+    doc.text(formatBelop(linje.mva), 176, y);
 
     y += 6;
   }

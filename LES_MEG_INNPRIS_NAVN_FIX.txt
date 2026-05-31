@@ -1,0 +1,28 @@
+Fiks for feilen:
+Could not find the 'innpris' column of 'vet_varer' in the schema cache
+
+1. Kjør denne SQL-en i Supabase SQL Editor:
+   sql/vet_fix_innpris_og_fakturastatus.sql
+
+2. Hvis feilen fortsatt vises rett etter SQL:
+   - Refresh nettleseren med Ctrl+F5
+   - Vent 10-20 sekunder
+   - Prøv import igjen
+
+3. Økonomi-siden viser navn slik:
+   - Dyreeier
+   - Dyr
+   - Type/behandling
+   - Beløp
+   - Status fakturert / ikke fakturert
+
+4. Vareliste viser:
+   - Navn
+   - Kategori
+   - Enhet
+   - Innpris
+   - Utpris
+   - Avanse
+   - Hovedlager
+   - Bil-lager
+   - Totalt lager

@@ -1,0 +1,18 @@
+Vareimport veterinær
+
+1. Kjør sql/vet_varer_komplett.sql i Supabase hvis det ikke allerede er gjort.
+2. Åpne Veterinær -> Backup / Import.
+3. Velg CSV under "Importer medisiner/varer til lager".
+4. Bruk filen js/vet_varer_import.csv som startmal.
+
+CSV-kolonner:
+navn;kategori;enhet;utsalgspris;minimum_antall;hovedlager_antall
+
+Importen gjør dette:
+- Oppretter medisiner/varer i vet_varer.
+- Oppdaterer eksisterende vare hvis samme navn finnes på klinikken.
+- Setter hovedlager-antall i vet_lager hvis hovedlager_antall er større enn 0.
+
+Tips:
+- Bruk punktum eller komma i tall.
+- Ikke legg ekte persondata i testfilen.

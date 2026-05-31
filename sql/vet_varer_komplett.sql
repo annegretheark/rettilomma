@@ -51,3 +51,54 @@ where not exists (select 1 from vet_priser where lower(navn) = lower('Konsultasj
 insert into vet_priser (navn, type, pris, beskrivelse)
 select 'Timearbeid', 'timepris', 1500, 'Standard timepris'
 where not exists (select 1 from vet_priser where lower(navn) = lower('Timearbeid'));
+
+
+-- Veterinær: biler, hovedlager og bil-lager
+alter table vet_journal_varer add column if not exists vare_id uuid;
+alter table vet_journal_varer add column if not exists bil_id uuid;
+
+create table if not exists vet_varer (
+    id uuid primary key default gen_random_uuid(),
+    klinikk_id uuid references vet_klinikker(id) on delete cascade,
+    navn text not null,
+    kategori text default 'medisin',
+    enhet text default 'stk',
+    utsalgspris numeric(10,2) default 0,
+    minimum_antall numeric(10,2) default 0,
+    aktiv boolean default true,
+    created_at timestamptz default now()
+);
+
+create table if not exists vet_biler (
+    id uuid primary key default gen_random_uuid(),
+    klinikk_id uuid references vet_klinikker(id) on delete cascade,
+    navn text not null,
+    regnr text,
+    veterinaer_navn text,
+    aktiv boolean default true,
+    created_at timestamptz default now()
+);
+
+create table if not exists vet_lager (
+    id uuid primary key default gen_random_uuid(),
+    klinikk_id uuid references vet_klinikker(id) on delete cascade,
+    vare_id uuid references vet_varer(id) on delete cascade,
+    antall numeric(10,2) default 0,
+    created_at timestamptz default now(),
+    unique (klinikk_id, vare_id)
+);
+
+create table if not exists vet_bil_lager (
+    id uuid primary key default gen_random_uuid(),
+    klinikk_id uuid references vet_klinikker(id) on delete cascade,
+    bil_id uuid references vet_biler(id) on delete cascade,
+    vare_id uuid references vet_varer(id) on delete cascade,
+    antall numeric(10,2) default 0,
+    created_at timestamptz default now(),
+    unique (klinikk_id, bil_id, vare_id)
+);
+
+create index if not exists idx_vet_varer_klinikk on vet_varer(klinikk_id);
+create index if not exists idx_vet_biler_klinikk on vet_biler(klinikk_id);
+create index if not exists idx_vet_lager_klinikk on vet_lager(klinikk_id);
+create index if not exists idx_vet_bil_lager_klinikk on vet_bil_lager(klinikk_id);

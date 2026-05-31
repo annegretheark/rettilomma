@@ -1,0 +1,13 @@
+navn,kategori,enhet,innpris,utsalgspris,minimum_antall,hovedlager_antall
+Influensavaksine hest,medisin,dose,320,750,5,20
+Stivkrampevaksine hest,medisin,dose,290,750,5,20
+Ormekur hest,medisin,stk,180,420,5,15
+Sedalin gel,medisin,tube,210,480,2,6
+Penicillin injeksjon,medisin,dose,95,260,10,30
+Smertestillende injeksjon,medisin,dose,80,240,10,30
+Elastisk bandasje,bandasje,rull,35,95,10,50
+Kompresser sterile,bandasje,pakke,25,85,10,40
+Sårspray,forbruk,flaske,55,160,5,20
+Engangshansker,forbruk,pakke,65,145,5,20
+Kanyler,forbruk,pakke,40,120,5,20
+Sprøyter,forbruk,pakke,45,130,5,20

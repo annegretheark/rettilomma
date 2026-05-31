@@ -1,0 +1,10 @@
+Bytt ut:
+- veterinaer.html
+- js/veterinaer/vet-app.js
+
+Endringer:
+- Vanlig veterinær ser bare Logg ut, Dyreeiere, Dyr / pasienter, Journal og Faktura.
+- Admin/systemadmin ser administrasjonsknappene.
+- Admin/systemadmin får knappen "Vis som vanlig veterinær" for å teste brukerflyten.
+- Bil i journal velges automatisk når bilens veterinærnavn matcher innlogget bruker.
+- Bil kan fortsatt velges manuelt ved bytte/lånebil.

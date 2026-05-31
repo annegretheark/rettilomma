@@ -1,0 +1,15 @@
+FIKS: Knapper og navn i veterinærmodul
+
+Bytt ut:
+- veterinaer.html
+- js/veterinaer/vet-app.js
+
+Endringer:
+- Import av behandlingspriser ligger nå under Prisliste.
+- Import av medisiner/varer ligger under Lager / biler.
+- Backup / Restore er kun for systemadmin.
+- Importknapper vises for admin og systemadmin.
+- Navn på dyreeier og dyr hentes tydeligere i økonomioversikten.
+- Importmelding viser navn på varene/behandlingene som ble lest inn.
+
+Hvis innpris feiler, kjør SQL-filene i mappen sql først.
