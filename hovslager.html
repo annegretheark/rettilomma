@@ -8,13 +8,13 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f8;
+      background: #151819; color:#f3f4f6;
       margin: 0;
       padding: 20px;
     }
 
     .kort {
-      background: white;
+      background: #171a1b;
       max-width: 900px;
       margin: 0 auto 18px auto;
       padding: 18px;
@@ -69,6 +69,37 @@
       background: #0f766e;
     }
 
+    a.knapp {
+      display: inline-block;
+      padding: 11px 14px;
+      margin: 6px 4px 6px 0;
+      border: 0;
+      border-radius: 8px;
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+      text-decoration: none;
+    }
+
+    a.knapp.danger {
+      background: #b42318;
+    }
+
+    body:has(#kundeSide:target) #jobbSide,
+    body:has(#hesterSide:target) #jobbSide,
+    body:has(#fakturaSide:target) #jobbSide,
+    body:has(#firmaSide:target) #jobbSide {
+      display: none;
+    }
+
+    #kundeSide:target,
+    #hesterSide:target,
+    #fakturaSide:target,
+    #firmaSide:target {
+      display: block !important;
+    }
+
     .rad {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -92,28 +123,106 @@
     }
 
     .listekort {
-      border: 1px solid #ddd;
-      padding: 10px;
+      border: 1px solid #374151;
+      padding: 14px;
       border-radius: 8px;
       margin-top: 8px;
-      background: #fafafa;
+      background: #22272a;
+      color: #f3f4f6;
+    }
+
+    .listekort div,
+    .listekort p,
+    .listekort strong,
+    .listekort span {
+      color: #f3f4f6 !important;
+    }
+
+    .listekort button,
+    .listekort a.knapp {
+      color: white !important;
+    }
+
+    .info {
+      color: #cbd5e1;
+    }
+
+    input,
+    select,
+    textarea {
+      background: #f8fafc;
+      color: #111827;
+    }
+
+
+    .system-header {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .system-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #e0f2fe, #ffffff);
+      color: #0f172a;
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px #bae6fd, 0 8px 22px rgba(15, 23, 42, 0.25);
+      font-size: 34px;
+    }
+
+    .system-title {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.05;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+    }
+
+    .system-subtitle {
+      margin-top: 5px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .system-badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #0f766e;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
     }
   </style>
 </head>
 
 <body>
+<script>localStorage.setItem("rettilommaValgtModul", "hovslager");</script>
 
 <section id="appSide">
 
   <div class="kort">
-    <h1>HovslagerSystem</h1>
+    <div class="system-header">
+      <div class="system-logo" aria-hidden="true">♞</div>
+      <div>
+        <h1 class="system-title">HovslagerSystem</h1>
+        <div class="system-subtitle">Kunder, hester, jobber, kjøring og faktura</div>
+        <div class="system-badge">Rett i Lomma</div>
+      </div>
+    </div>
 
-    <button type="button" class="secondary" onclick="window.location.href='index.html'">Tilbake til Rett i Lomma</button>
-    <button type="button" onclick="visSide('jobbSide')">Jobber</button>
-    <button type="button" onclick="visSide('kundeSide')">Kunder</button>
-    <button type="button" onclick="visSide('hesterSide')">Hester</button>
-    <button type="button" onclick="visSide('fakturaSide')">Faktura</button>
-    <button type="button" onclick="visSide('firmaSide')">Firma / oppsett</button>
+    <a class="knapp danger" href="/rettilomma/index.html">Logg ut</a>
+    <a class="knapp" href="#jobbSide">Jobber</a>
+    <a class="knapp" href="#kundeSide">Kunder</a>
+    <a class="knapp" href="#hesterSide">Hester</a>
+    <a class="knapp" href="#fakturaSide">Faktura</a>
+    <a class="knapp" href="#firmaSide">Firma / oppsett</a>
 
     <hr>
 
@@ -149,6 +258,8 @@
     id="importFil"
     type="file"
     accept=".json">
+
+  <div id="backupMelding" class="melding"></div>
 
 </div>
 
@@ -545,8 +656,11 @@
       </div>
     </div>
 
-    <label for="firmaLogoUrl">Logo</label>
-    <input id="firmaLogoUrl" placeholder="bilder/logo.png">
+    <label for="firmaLogoUrl">Logo URL</label>
+    <input id="firmaLogoUrl" placeholder="Supabase URL eller bilder/logo.png">
+
+    <label for="firmaLogoFil">Last opp logo til Supabase</label>
+    <input id="firmaLogoFil" type="file" accept="image/png,image/jpeg,image/webp">
 
     <div class="info">
       <img id="firmaLogoForhandsvisning"
@@ -574,19 +688,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<script src="js/core/config.js"></script>
+<script src="js/hovslager/config.js"></script>
 <script src="js/hovslager/moduler.js"></script>
-<script src="js/hovslager/backup.js"></script>
+<script src="js/hovslager/backup.js?v=999"></script>
 <script src="js/hovslager/state.js"></script>
-<script src="js/hovslager/hov-navigation.js"></script>
+<script src="js/hovslager/hov-navigation.js?v=999"></script>
 <script src="js/hovslager/hov-kunder.js"></script>
-<script src="js/hovslager/hov-oppsett.js"></script>
+<script src="js/hovslager/hov-oppsett.js?v=999"></script>
 <script src="js/hovslager/hester.js"></script>
 <script src="js/hovslager/hov-jobber.js"></script>
 <script src="js/hovslager/hov-faktura.js"></script>
 <script src="js/hovslager/hov-kreditnota.js"></script>
 <script src="js/hovslager/hov-fakturaoversikt.js"></script>
-<script src="js/hovslager/hov-app.js?v=1"></script>
-
+<script src="js/hovslager/hov-app.js?v=999"></script>
 </body>
 </html>

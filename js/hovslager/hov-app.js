@@ -2,7 +2,53 @@ console.log("hov-app.js lastet");
 
 let alleHovHester = [];
 
+
+function kobleHovMenyOgLogout() {
+  const koblinger = [
+    ["visJobberKnapp", "jobbSide"],
+    ["visKunderKnapp", "kundeSide"],
+    ["visHesterKnapp", "hesterSide"],
+    ["visFakturaKnapp", "fakturaSide"],
+    ["visFirmaKnapp", "firmaSide"]
+  ];
+
+  koblinger.forEach(([knappId, sideId]) => {
+    const knapp = document.getElementById(knappId);
+    if (knapp) {
+      knapp.addEventListener("click", () => {
+        if (typeof window.visSide === "function") {
+          window.visSide(sideId);
+        } else {
+          alert("Programfeil: visSide mangler. Sjekk hov-navigation.js");
+        }
+      });
+    }
+  });
+
+  const loggUtKnapp = document.getElementById("loggUtKnapp");
+  if (loggUtKnapp) {
+    loggUtKnapp.addEventListener("click", async () => {
+      try {
+        if (window.supabaseClient && supabaseClient.auth) {
+          await supabaseClient.auth.signOut();
+        }
+      } catch (e) {
+        console.warn("Kunne ikke logge ut fra Supabase:", e);
+      }
+
+      localStorage.removeItem("rettilommaValgtModul");
+      window.location.href = "/rettilomma/index.html";
+    });
+  }
+
+  const velgModulKnapp = document.getElementById("velgModulKnapp");
+  if (velgModulKnapp) velgModulKnapp.remove();
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
+
+  kobleHovMenyOgLogout();
 
   kobleKnapp("leggTilKundeKnapp", "lagreKunde");
   kobleKnapp("lagreHestKnapp", "lagreHest");

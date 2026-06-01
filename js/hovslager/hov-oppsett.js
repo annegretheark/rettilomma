@@ -154,6 +154,28 @@ async function lastBildeSomDataUrl(url) {
   }
 }
 
+function hentLogoDimensjoner(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve({
+        bredde: img.naturalWidth || img.width || 1,
+        hoyde: img.naturalHeight || img.height || 1
+      });
+    };
+
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+function finnBildeFormat(dataUrl) {
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
+  return "JPEG";
+}
+
 async function leggTilLogo(doc, firma, x = 14, y = 10, maxW = 42, maxH = 24) {
   firma = firma || sisteHovFirma || {};
   const logoUrl = normaliserLogoUrl(firma.logo_url);
@@ -161,10 +183,36 @@ async function leggTilLogo(doc, firma, x = 14, y = 10, maxW = 42, maxH = 24) {
 
   if (!dataUrl) return false;
 
-  const format = dataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+  const dimensjoner = await hentLogoDimensjoner(dataUrl);
+  const format = finnBildeFormat(dataUrl);
 
   try {
-    doc.addImage(dataUrl, format, x, y, maxW, maxH, undefined, "FAST");
+    let tegnW = maxW;
+    let tegnH = maxH;
+
+    if (dimensjoner) {
+      const scale = Math.min(
+        maxW / dimensjoner.bredde,
+        maxH / dimensjoner.hoyde
+      );
+
+      tegnW = dimensjoner.bredde * scale;
+      tegnH = dimensjoner.hoyde * scale;
+    }
+
+    const sentrertY = y + ((maxH - tegnH) / 2);
+
+    doc.addImage(
+      dataUrl,
+      format,
+      x,
+      sentrertY,
+      tegnW,
+      tegnH,
+      undefined,
+      "FAST"
+    );
+
     return true;
   } catch (e) {
     console.warn("Kunne ikke legge logo i PDF:", e);
@@ -231,6 +279,61 @@ function tegnSkilleLinjePdf(doc, y, x1 = 14, x2 = 195) {
   doc.line(x1, y, x2, y);
 }
 
+
+async function lastOppHovLogoTilSupabase(event) {
+  const fil = event?.target?.files?.[0];
+  if (!fil) return;
+
+  if (!window.supabaseClient || !supabaseClient.storage) {
+    hovOppsettMelding("Supabase Storage er ikke tilgjengelig.", true);
+    return;
+  }
+
+  const tillatteTyper = ["image/png", "image/jpeg", "image/webp"];
+  if (!tillatteTyper.includes(fil.type)) {
+    hovOppsettMelding("Logo må være PNG, JPG eller WEBP.", true);
+    return;
+  }
+
+  if (fil.size > 2 * 1024 * 1024) {
+    hovOppsettMelding("Logoen er for stor. Maks 2 MB.", true);
+    return;
+  }
+
+  const endelse = fil.type === "image/png" ? "png" : fil.type === "image/webp" ? "webp" : "jpg";
+  const filnavn = "hovslager/logo_" + Date.now() + "_" + Math.random().toString(36).slice(2) + "." + endelse;
+
+  hovOppsettMelding("Laster opp logo...");
+
+  const { error } = await supabaseClient.storage
+    .from("bilder")
+    .upload(filnavn, fil, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: fil.type
+    });
+
+  if (error) {
+    console.error("Feil ved opplasting av logo:", error);
+    hovOppsettMelding("Feil ved opplasting av logo: " + error.message, true);
+    return;
+  }
+
+  const { data } = supabaseClient.storage
+    .from("bilder")
+    .getPublicUrl(filnavn);
+
+  const publicUrl = data?.publicUrl || "";
+  if (!publicUrl) {
+    hovOppsettMelding("Logo ble lastet opp, men kunne ikke hente offentlig URL.", true);
+    return;
+  }
+
+  hovOppsettSett("firmaLogoUrl", publicUrl);
+  oppdaterLogoForhandsvisning();
+  hovOppsettMelding("Logo lastet opp. Trykk Lagre oppsett for å lagre den.");
+}
+
 function kobleHovOppsett() {
   const knapp = hovOppsettEl("lagreHovOppsettKnapp");
   if (knapp) {
@@ -241,6 +344,11 @@ function kobleHovOppsett() {
   if (logoFelt) {
     logoFelt.addEventListener("change", oppdaterLogoForhandsvisning);
     logoFelt.addEventListener("input", oppdaterLogoForhandsvisning);
+  }
+
+  const logoFil = hovOppsettEl("firmaLogoFil");
+  if (logoFil) {
+    logoFil.addEventListener("change", lastOppHovLogoTilSupabase);
   }
 }
 
@@ -253,3 +361,4 @@ window.tegnBrevfotAlleSiderPdf = tegnBrevfotAlleSiderPdf;
 window.tegnSkilleLinjePdf = tegnSkilleLinjePdf;
 window.leggTilLogo = leggTilLogo;
 window.kobleHovOppsett = kobleHovOppsett;
+window.lastOppHovLogoTilSupabase = lastOppHovLogoTilSupabase;
