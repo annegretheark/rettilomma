@@ -1,0 +1,11 @@
+Bytt ut hovslager.html og js/hovslager/hov-priser.js.
+
+Kjør INSTALL_PRISER.sql i Supabase først.
+
+Importer CSV:
+1. Gå til Admin
+2. Faste priser
+3. Velg hov_priser.csv
+4. Trykk Importer CSV
+
+Knappene har nå direkte onclick, så de er ikke avhengige av Console eller automatisk event-kobling.

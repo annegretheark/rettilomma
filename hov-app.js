@@ -346,6 +346,73 @@ async function startTaleJobb() {
   }
 }
 
+
+function normaliserTaleTekst(verdi) {
+  return String(verdi || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function lagOrdRegex(navn) {
+  const escaped = navn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("(^|\\s)" + escaped + "(?=\\s|$)", "i");
+}
+
+function finnHestStrengtFraTale(tekst, hester) {
+  const normalTekst = normaliserTaleTekst(tekst);
+  const kompaktTekst = normalTekst.replace(/\s+/g, "");
+
+  const treff = [];
+
+  for (const h of hester || []) {
+    const navn = normaliserTaleTekst(h.navn || "");
+    if (!navn) continue;
+
+    const kompaktNavn = navn.replace(/\s+/g, "");
+
+    // 1: Eksakt navn som egne ord
+    if (lagOrdRegex(navn).test(normalTekst)) {
+      treff.push(h);
+      continue;
+    }
+
+    // 2: Tillat at tale deler opp et navn, f.eks. "Ding Doria" for "Dingdoria".
+    // Men IKKE tillat bare siste del, som "Doria".
+    if (kompaktNavn.length >= 4 && kompaktTekst.includes(kompaktNavn)) {
+      treff.push(h);
+    }
+  }
+
+  if (treff.length === 1) {
+    return {
+      hest: treff[0],
+      feil: ""
+    };
+  }
+
+  if (treff.length > 1) {
+    return {
+      hest: null,
+      feil:
+        "Fant flere mulige hester: " +
+        treff.map(h => h.navn).join(", ") +
+        ". Velg hest manuelt."
+    };
+  }
+
+  return {
+    hest: null,
+    feil:
+      "Fant ikke hesten i basen ut fra: \"" +
+      tekst +
+      "\". Velg hesten manuelt, eller si hele hestenavnet."
+  };
+}
+
 async function fyllJobbFraTale(tekst) {
 
   const lower =
@@ -357,38 +424,31 @@ async function fyllJobbFraTale(tekst) {
     await hentAlleHesterFraBase();
   }
 
-  const funnetHest =
-    alleHovHester.find(h => {
-
-      const navn =
-        String(h.navn || "")
-          .toLowerCase();
-
-      return (
-        lower.includes(navn) ||
-        lower.includes(
-          navn.replace("x", "ks")
-        ) ||
-        lower.includes(
-          navn.replace("z", "s")
-        ) ||
-        lower.includes(
-          navn.replace("z", "x")
-        ) ||
-        lower.includes(
-          navn.replace("y", "i")
-        )
-      );
-    });
-
-  if (!funnetHest) {
-
-    alert(
-      "Fant ikke hesten i basen."
+  const hestTreff =
+    finnHestStrengtFraTale(
+      tekst,
+      alleHovHester
     );
+
+  if (!hestTreff.hest) {
+
+    const resultat =
+      document.getElementById(
+        "taleResultat"
+      );
+
+    if (resultat) {
+      resultat.textContent =
+        hestTreff.feil;
+    }
+
+    alert(hestTreff.feil);
 
     return;
   }
+
+  const funnetHest =
+    hestTreff.hest;
 
   const kundeSelect =
     document.getElementById("jobbKunde");

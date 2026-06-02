@@ -1,0 +1,10 @@
+Denne pakken retter tale/innlesing av hest.
+
+Endring:
+- Systemet velger ikke lenger hest på delvis navn.
+- Hvis tale hører "Doria", men hesten heter "Dingdoria", stoppes lagring.
+- Brukeren får advarsel og må velge hest manuelt eller si hele hestenavnet.
+
+Bytt ut:
+- hovslager.html
+- js/hovslager/hov-app.js
