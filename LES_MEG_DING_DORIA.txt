@@ -1,0 +1,10 @@
+Retter tale-match slik at 'skodde ding Doria kjørte 40' finner Dingdoria.
+
+Hva er endret:
+- Koden lager kandidater av nabo-ord i setningen.
+- 'ding doria' blir også prøvd som 'dingdoria'.
+- 'doria' alene skal fortsatt bare gi forslag, ikke automatisk lagring.
+
+Bytt ut:
+- hovslager.html
+- js/hovslager/hov-app.js

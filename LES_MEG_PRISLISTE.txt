@@ -1,0 +1,16 @@
+Prisliste i appen
+
+Bytt ut:
+- hovslager.html
+- js/hovslager/hov-prisliste.js
+
+Hvis du også bruker medsendt hov-app.js, pass på at det er den aktive versjonen din.
+
+Ny knapp på forsiden:
+- Prisliste
+
+Den viser priser fra tabellen hov_priser:
+- Jobbtype
+- Eks. mva
+- MVA
+- Inkl. mva

@@ -90,7 +90,8 @@
     body:has(#hesterSide:target) #jobbSide,
     body:has(#fakturaSide:target) #jobbSide,
     body:has(#firmaSide:target) #jobbSide,
-    body:has(#adminSide:target) #jobbSide {
+    body:has(#adminSide:target) #jobbSide,
+    body:has(#prislisteSide:target) #jobbSide {
       display: none;
     }
 
@@ -98,7 +99,8 @@
     #hesterSide:target,
     #fakturaSide:target,
     #firmaSide:target,
-    #adminSide:target {
+    #adminSide:target,
+    #prislisteSide:target {
       display: block !important;
     }
 
@@ -218,6 +220,7 @@
 <a class="knapp danger" href="/index.html">Logg ut</a>
 <a class="knapp" href="#jobbSide">Jobber / timer</a>
 <a class="knapp" href="#hesterSide">Hester</a>
+<a class="knapp" href="#prislisteSide">Prisliste</a>
 <a class="knapp" href="#adminSide">Admin</a>
 </div>
 <section class="kort" id="jobbSide">
@@ -391,7 +394,15 @@
     </button>
 <div class="melding" id="hestMelding"></div>
 <div id="hesteListe"></div>
-</section><section class="kort skjult" id="adminSide"><h2>Admin</h2><p class="info">Faktura, priser, kunder, backup og firmaoppsett.</p><section class="kort" id="fakturaSide">
+</section><section class="kort skjult" id="prislisteSide">
+<h2>Prisliste</h2>
+<p class="info">Priser hentes fra Admin → Faste priser. Beløp vises eks. og inkl. mva.</p>
+
+<button id="oppdaterPrislisteKnapp" type="button" onclick="hentPrislisteTilApp()">Oppdater prisliste</button>
+
+<div id="prislisteAppMelding" class="melding"></div>
+<div id="prislisteApp"></div>
+</section><section class="kort skjult" id="adminSide"><h2>Admin</h2><p class="info">Kunder, faktura, backup og firmaoppsett.</p><section class="kort" id="fakturaSide">
 <h2>Faktura</h2>
 <label for="fakturaKunde">Kunde</label>
 <select id="fakturaKunde">
@@ -417,48 +428,7 @@
 <button id="hentFakturaOversiktKnapp" type="button">Vis fakturaoversikt</button>
 <button id="eksporterFakturaExcelKnapp" type="button">Eksporter fakturaoversikt Excel</button>
 <div id="fakturaOversikt"></div>
-</div><section class="kort" id="priserSide">
-<h2>Faste priser</h2>
-<p class="info">Legg inn standardpriser. Når du velger jobbtype på jobbregistrering, fylles arbeid eks. mva automatisk. Prisen kan fortsatt overstyres på jobben.</p>
-
-<div class="rad">
-  <div>
-    <label for="nyPrisNavn">Navn / jobbtype</label>
-    <input id="nyPrisNavn" placeholder="Fullbeslag">
-  </div>
-  <div>
-    <label for="nyPrisBelop">Pris eks. mva</label>
-    <input id="nyPrisBelop" type="number" step="0.01" placeholder="1800">
-  </div>
-  <div>
-    <label for="nyPrisSortering">Sortering</label>
-    <input id="nyPrisSortering" type="number" step="1" placeholder="10">
-  </div>
-</div>
-
-<button id="leggTilPrisKnapp" type="button" onclick="leggTilHovPris()">Legg til / oppdater pris</button>
-
-<hr>
-
-<h3>Importer priser</h3>
-<p class="info">CSV kan ha kolonnene <strong>navn;pris</strong>. Excel kan ha kolonnene <strong>navn</strong> og <strong>pris</strong>.</p>
-
-<label for="prisImportFil">Importer CSV</label>
-<input id="prisImportFil" type="file" accept=".csv,text/csv">
-<button id="importerPrisCsvKnapp" type="button" onclick="window.importerPriserCsvDirekte()">Importer CSV</button>
-
-<label for="prisImportExcelFil">Importer Excel</label>
-<input id="prisImportExcelFil" type="file" accept=".xlsx,.xls">
-<button id="importerPrisExcelKnapp" type="button" onclick="window.importerPriserExcelDirekte()">Importer Excel</button>
-
-<hr>
-
-<button id="eksporterPrisCsvKnapp" type="button" onclick="eksporterHovPriserCsv()">Eksporter priser CSV</button>
-<button id="eksporterPrisExcelKnapp" type="button" onclick="eksporterHovPriserExcel()">Eksporter priser Excel</button>
-
-<div id="prisMelding" class="melding"></div>
-<div id="prisListe" style="margin-top:14px;"></div>
-</section><section class="kort" id="kundeSide">
+</div><section class="kort" id="kundeSide">
 <h2>Kunder</h2>
 <input id="kundeId" type="hidden"/>
 <label for="kundeNavn">Navn</label>
@@ -540,130 +510,23 @@
 <div class="melding" id="backupMelding"></div>
 </div></section>
 </section>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=3012"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=3012"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=3012"></script>
-<script src="js/hovslager/config.js?v=3012"></script>
-<script src="js/hovslager/moduler.js?v=3012"></script>
-<script src="js/hovslager/backup.js?v=3012"></script>
-<script src="js/hovslager/state.js?v=3012"></script>
-<script src="js/hovslager/hov-navigation.js?v=3012"></script>
-<script src="js/hovslager/hov-kunder.js?v=3012"></script>
-<script src="js/hovslager/hov-oppsett.js?v=3012"></script>
-<script src="js/hovslager/hester.js?v=3012"></script>
-<script src="js/hovslager/hov-jobber.js?v=3012"></script>
-<script src="js/hovslager/hov-faktura.js?v=3012"></script>
-<script src="js/hovslager/hov-kreditnota.js?v=3012"></script>
-<script src="js/hovslager/hov-fakturaoversikt.js?v=3012"></script>
-<script src="js/hovslager/hov-priser.js?v=3012"></script>
-<script src="js/hovslager/hov-app.js?v=3012"></script>
-
-<script>
-window.importerPriserCsvDirekte = async function () {
-  var filInput = document.getElementById("prisImportFil");
-  var melding = document.getElementById("prisMelding");
-
-  function si(tekst, feil) {
-    if (melding) {
-      melding.textContent = tekst;
-      melding.style.color = feil ? "#b42318" : "#116329";
-    }
-    alert(tekst);
-  }
-
-  if (!filInput || !filInput.files || !filInput.files[0]) {
-    si("Velg CSV-fil først", true);
-    return;
-  }
-
-  if (!window.supabaseClient) {
-    si("Supabase er ikke klar. Last siden på nytt med Ctrl+F5.", true);
-    return;
-  }
-
-  try {
-    var tekst = await filInput.files[0].text();
-    var linjer = tekst.split(/\r?\n/).map(function (x) {
-      return x.trim();
-    }).filter(Boolean);
-
-    if (!linjer.length) {
-      si("CSV-filen er tom", true);
-      return;
-    }
-
-    var separator = linjer[0].indexOf(";") >= 0 ? ";" : ",";
-    var header = linjer[0].split(separator).map(function (x) {
-      return x.trim().toLowerCase();
-    });
-
-    var start = 0;
-    var navnIndex = 0;
-    var prisIndex = 1;
-    var sorteringIndex = 2;
-
-    if (header.indexOf("navn") >= 0 || header.indexOf("pris") >= 0) {
-      start = 1;
-      navnIndex = header.indexOf("navn");
-      if (navnIndex < 0) navnIndex = 0;
-
-      prisIndex = header.indexOf("pris");
-      if (prisIndex < 0) prisIndex = 1;
-
-      sorteringIndex = header.indexOf("sortering");
-      if (sorteringIndex < 0) sorteringIndex = 2;
-    }
-
-    var rader = [];
-
-    for (var i = start; i < linjer.length; i++) {
-      var deler = linjer[i].split(separator).map(function (x) {
-        return x.trim().replace(/^"|"$/g, "");
-      });
-
-      var navn = deler[navnIndex] || "";
-      var prisTekst = (deler[prisIndex] || "0").replace(",", ".");
-      var pris = Number(prisTekst) || 0;
-      var sortering = Number(deler[sorteringIndex] || ((i + 1) * 10));
-
-      if (navn) {
-        rader.push({
-          navn: navn,
-          pris: pris,
-          sortering: sortering,
-          aktiv: true
-        });
-      }
-    }
-
-    if (!rader.length) {
-      si("Fant ingen priser. CSV må ha navn;pris", true);
-      return;
-    }
-
-    var res = await window.supabaseClient
-      .from("hov_priser")
-      .upsert(rader, { onConflict: "navn" });
-
-    if (res.error) {
-      si(res.error.message, true);
-      return;
-    }
-
-    if (typeof window.hentHovPriser === "function") {
-      await window.hentHovPriser();
-    }
-
-    si("Importerte " + rader.length + " priser", false);
-  } catch (e) {
-    si("Feil ved import: " + e.message, true);
-  }
-};
-
-window.importerPriserExcelDirekte = async function () {
-  alert("Bruk CSV-import først. Den er nå direkte koblet.");
-};
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=3016"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=3016"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=3016"></script>
+<script src="js/hovslager/config.js?v=3016"></script>
+<script src="js/hovslager/moduler.js?v=3016"></script>
+<script src="js/hovslager/backup.js?v=3016"></script>
+<script src="js/hovslager/state.js?v=3016"></script>
+<script src="js/hovslager/hov-navigation.js?v=3016"></script>
+<script src="js/hovslager/hov-kunder.js?v=3016"></script>
+<script src="js/hovslager/hov-oppsett.js?v=3016"></script>
+<script src="js/hovslager/hester.js?v=3016"></script>
+<script src="js/hovslager/hov-jobber.js?v=3016"></script>
+<script src="js/hovslager/hov-faktura.js?v=3016"></script>
+<script src="js/hovslager/hov-kreditnota.js?v=3016"></script>
+<script src="js/hovslager/hov-fakturaoversikt.js?v=3016"></script>
+<script src="js/hovslager/hov-prisliste.js?v=3016"></script>
+<script src="js/hovslager/hov-prisliste.js?v=3016"></script>
+<script src="js/hovslager/hov-app.js?v=3016"></script>
 </body>
 </html>

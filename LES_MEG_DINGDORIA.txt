@@ -1,0 +1,11 @@
+Retter tale-match av hestenavn.
+
+Nå:
+- Dingdoria skal matche Dingdoria.
+- Ding Doria skal også matche Dingdoria.
+- Doria alene skal IKKE matche Dingdoria.
+- Små talefeil tillates bare når ordet er omtrent like langt som hestenavnet.
+
+Bytt ut:
+- hovslager.html
+- js/hovslager/hov-app.js
