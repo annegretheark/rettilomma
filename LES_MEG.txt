@@ -1,2 +1,0 @@
-Bytt ut veterinaer.html og js/veterinaer/vet-app.js. Ikke legg vet-app.js i root.
-Denne versjonen fikser at admin/sysadmin-knapper ikke ble synlige fordi CSS-klassen hadde display:none.
