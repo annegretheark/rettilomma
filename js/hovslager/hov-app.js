@@ -103,77 +103,42 @@ function kobleKnapp(id, funksjonsnavn) {
 
 async function startHovslager() {
 
-  async function steg(navn, fn) {
-    try {
-      await fn();
-    } catch (e) {
-      console.error("Oppstart feilet i steg:", navn, e);
-
-      alert(
-        "Feil ved oppstart av hovslager-systemet\n\n" +
-        "Steg: " + navn + "\n\n" +
-        "Feil: " + (e?.message || e)
-      );
-
-      throw e;
-    }
-  }
-
   try {
 
-    await steg("sjekkHovOppsett", async () => {
-      if (typeof sjekkHovOppsett === "function") {
-        const oppsettOk = await sjekkHovOppsett();
-        if (!oppsettOk) {
-          throw new Error("Firma/oppsett mangler eller kunne ikke leses");
-        }
-      }
-    });
+    if (typeof sjekkHovOppsett === "function") {
+      const oppsettOk = await sjekkHovOppsett();
+      if (!oppsettOk) return;
+    }
 
-    await steg("hentKunder", async () => {
-      if (typeof hentKunder === "function") {
-        await hentKunder();
-      }
-    });
+    if (typeof hentKunder === "function") {
+      await hentKunder();
+    }
 
-    await steg("hentAlleHesterFraBase", async () => {
-      await hentAlleHesterFraBase();
-    });
+    await hentAlleHesterFraBase();
+    await fyllJobbHesterForValgtKunde();
 
-    await steg("fyllJobbHesterForValgtKunde", async () => {
-      await fyllJobbHesterForValgtKunde();
-    });
+    if (typeof hentHester === "function") {
+      await hentHester();
+    }
 
-    await steg("hentHester", async () => {
-      if (typeof hentHester === "function") {
-        await hentHester();
-      }
-    });
+    if (typeof hentJobber === "function") {
+      await hentJobber();
+    }
 
-    await steg("hentJobber", async () => {
-      if (typeof hentJobber === "function") {
-        await hentJobber();
-      }
-    });
+    if (typeof fyllFakturaKunder === "function") {
+      await fyllFakturaKunder();
+    }
 
-    await steg("fyllFakturaKunder", async () => {
-      if (typeof fyllFakturaKunder === "function") {
-        await fyllFakturaKunder();
-      }
-    });
+    if (typeof fyllKreditFakturaer === "function") {
+      await fyllKreditFakturaer();
+    }
 
-    await steg("fyllKreditFakturaer", async () => {
-      if (typeof fyllKreditFakturaer === "function") {
-        await fyllKreditFakturaer();
-      }
-    });
-
-    await steg("settDagensDato", async () => {
-      settDagensDato();
-    });
+    settDagensDato();
 
   } catch (e) {
-    // Feilen er allerede vist med steg-navn over.
+
+    console.error(e);
+    alert("Feil ved oppstart av hovslager-systemet.");
   }
 }
 
@@ -197,7 +162,8 @@ function settDagensDato() {
 async function hentAlleHesterFraBase() {
 
   if (!window.supabaseClient) {
-    throw new Error("Mangler supabaseClient. Sjekk config.js og Supabase-nøkkel.");
+    console.error("Mangler supabaseClient");
+    return;
   }
 
   const { data, error } = await window.supabaseClient
@@ -207,7 +173,8 @@ async function hentAlleHesterFraBase() {
 
   if (error) {
     console.error("Feil ved henting av hester:", error);
-    throw new Error(error.message || "Feil ved henting av hester");
+    alert("Feil ved henting av hester.");
+    return;
   }
 
   alleHovHester = data || [];
@@ -390,34 +357,73 @@ async function fyllJobbFraTale(tekst) {
     await hentAlleHesterFraBase();
   }
 
+  function normaliserHesteNavn(verdi) {
+    return String(verdi || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/æ/g, "ae")
+      .replace(/ø/g, "o")
+      .replace(/å/g, "a")
+      .replace(/[^a-z0-9æøå\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const normalTekst =
+    normaliserHesteNavn(tekst);
+
+  const kompaktTekst =
+    normalTekst.replace(/\s+/g, "");
+
   const funnetHest =
     alleHovHester.find(h => {
 
       const navn =
-        String(h.navn || "")
-          .toLowerCase();
+        normaliserHesteNavn(h.navn);
+
+      const kompaktNavn =
+        navn.replace(/\s+/g, "");
+
+      if (!kompaktNavn) {
+        return false;
+      }
 
       return (
-        lower.includes(navn) ||
-        lower.includes(
-          navn.replace("x", "ks")
-        ) ||
-        lower.includes(
-          navn.replace("z", "s")
-        ) ||
-        lower.includes(
-          navn.replace("z", "x")
-        ) ||
-        lower.includes(
-          navn.replace("y", "i")
-        )
+        normalTekst.includes(navn) ||
+        kompaktTekst.includes(kompaktNavn)
       );
     });
 
   if (!funnetHest) {
 
+    const forslag =
+      alleHovHester
+        .filter(h => {
+          const navn =
+            normaliserHesteNavn(h.navn)
+              .replace(/\s+/g, "");
+
+          const ord =
+            normalTekst
+              .split(/\s+/)
+              .filter(o => o.length >= 4);
+
+          return ord.some(o =>
+            navn.includes(o) ||
+            o.includes(navn)
+          );
+        })
+        .slice(0, 3)
+        .map(h => h.navn);
+
     alert(
-      "Fant ikke hesten i basen."
+      "Fant ikke hesten i basen." +
+      (
+        forslag.length
+          ? "\n\nMente du: " + forslag.join(", ") + "?"
+          : ""
+      )
     );
 
     return;
