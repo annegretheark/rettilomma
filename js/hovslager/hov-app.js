@@ -103,53 +103,77 @@ function kobleKnapp(id, funksjonsnavn) {
 
 async function startHovslager() {
 
+  async function steg(navn, fn) {
+    try {
+      await fn();
+    } catch (e) {
+      console.error("Oppstart feilet i steg:", navn, e);
+
+      alert(
+        "Feil ved oppstart av hovslager-systemet\n\n" +
+        "Steg: " + navn + "\n\n" +
+        "Feil: " + (e?.message || e)
+      );
+
+      throw e;
+    }
+  }
+
   try {
 
-    if (typeof sjekkHovOppsett === "function") {
-      const oppsettOk = await sjekkHovOppsett();
-      if (!oppsettOk) return;
-    }
+    await steg("sjekkHovOppsett", async () => {
+      if (typeof sjekkHovOppsett === "function") {
+        const oppsettOk = await sjekkHovOppsett();
+        if (!oppsettOk) {
+          throw new Error("Firma/oppsett mangler eller kunne ikke leses");
+        }
+      }
+    });
 
-    if (typeof hentKunder === "function") {
-      await hentKunder();
-    }
+    await steg("hentKunder", async () => {
+      if (typeof hentKunder === "function") {
+        await hentKunder();
+      }
+    });
 
-    await hentAlleHesterFraBase();
-    await fyllJobbHesterForValgtKunde();
+    await steg("hentAlleHesterFraBase", async () => {
+      await hentAlleHesterFraBase();
+    });
 
-    if (typeof hentHester === "function") {
-      await hentHester();
-    }
+    await steg("fyllJobbHesterForValgtKunde", async () => {
+      await fyllJobbHesterForValgtKunde();
+    });
 
-    if (typeof hentJobber === "function") {
-      await hentJobber();
-    }
+    await steg("hentHester", async () => {
+      if (typeof hentHester === "function") {
+        await hentHester();
+      }
+    });
 
-    if (typeof fyllFakturaKunder === "function") {
-      await fyllFakturaKunder();
-    }
+    await steg("hentJobber", async () => {
+      if (typeof hentJobber === "function") {
+        await hentJobber();
+      }
+    });
 
-    if (typeof fyllKreditFakturaer === "function") {
-      await fyllKreditFakturaer();
-    }
+    await steg("fyllFakturaKunder", async () => {
+      if (typeof fyllFakturaKunder === "function") {
+        await fyllFakturaKunder();
+      }
+    });
 
-    settDagensDato();
+    await steg("fyllKreditFakturaer", async () => {
+      if (typeof fyllKreditFakturaer === "function") {
+        await fyllKreditFakturaer();
+      }
+    });
+
+    await steg("settDagensDato", async () => {
+      settDagensDato();
+    });
 
   } catch (e) {
-
-    alert(
-  "Feil ved oppstart av hovslager-systemet:\n\n" +
-  (e?.message || JSON.stringify(e))
-);
- } catch (e) {
-
-  console.error(e);
-
-  alert(
-    "Feil ved oppstart av hovslager-systemet:\n\n" +
-    (e?.message || e)
-  );
-}
+    // Feilen er allerede vist med steg-navn over.
   }
 }
 
@@ -173,8 +197,7 @@ function settDagensDato() {
 async function hentAlleHesterFraBase() {
 
   if (!window.supabaseClient) {
-    console.error("Mangler supabaseClient");
-    return;
+    throw new Error("Mangler supabaseClient. Sjekk config.js og Supabase-nøkkel.");
   }
 
   const { data, error } = await window.supabaseClient
@@ -184,8 +207,7 @@ async function hentAlleHesterFraBase() {
 
   if (error) {
     console.error("Feil ved henting av hester:", error);
-    alert("Feil ved henting av hester.");
-    return;
+    throw new Error(error.message || "Feil ved henting av hester");
   }
 
   alleHovHester = data || [];
