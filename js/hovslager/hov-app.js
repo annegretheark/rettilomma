@@ -198,7 +198,7 @@ async function fyllJobbHesterForValgtKunde() {
   }
 
   const hesterForKunde = alleHovHester.filter(h =>
-    String(h.kunde_id) === String(valgtKundeId)
+    String(h.eier_id) === String(valgtKundeId)
   );
 
   hesterForKunde.forEach(hest => {
@@ -243,7 +243,7 @@ async function lagreJobbMedHestSjekk() {
     return;
   }
 
-  if (String(valgtHest.kunde_id) !== String(kundeId)) {
+  if (String(valgtHest.eier_id) !== String(kundeId)) {
     alert("Denne hesten tilhører ikke valgt kunde/eier.");
     await fyllJobbHesterForValgtKunde();
     return;
@@ -395,7 +395,7 @@ async function fyllJobbFraTale(tekst) {
   if (kundeSelect) {
 
     kundeSelect.value =
-      funnetHest.kunde_id;
+      funnetHest.eier_id;
 
     await fyllJobbHesterForValgtKunde();
   }
