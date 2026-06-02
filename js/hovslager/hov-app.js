@@ -37,7 +37,7 @@ function kobleHovMenyOgLogout() {
       }
 
       localStorage.removeItem("rettilommaValgtModul");
-      window.location.href = "/rettilomma/index.html";
+      window.location.href = "/index.html";;
     });
   }
 
