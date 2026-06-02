@@ -137,8 +137,19 @@ async function startHovslager() {
 
   } catch (e) {
 
-    console.error(e);
-    alert("Feil ved oppstart av hovslager-systemet.");
+    alert(
+  "Feil ved oppstart av hovslager-systemet:\n\n" +
+  (e?.message || JSON.stringify(e))
+);
+ } catch (e) {
+
+  console.error(e);
+
+  alert(
+    "Feil ved oppstart av hovslager-systemet:\n\n" +
+    (e?.message || e)
+  );
+}
   }
 }
 
