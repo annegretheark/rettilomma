@@ -1,0 +1,13 @@
+Pakk ut i C:\inetpub\wwwroot\rettilomma og overskriv filene.
+
+Inneholder:
+- veterinaer-login.html
+- veterinaer/index.html
+- js/veterinaer/vet-app.js
+
+Viktig: Veterinaer/index.html er rettet til aa laste ../js/core/config.js og ../js/veterinaer/vet-app.js. Dette var trolig grunnen til at "Laster rolle ..." ble staaende.
+
+Logg inn paa:
+http://localhost/rettilomma/veterinaer-login.html
+
+Etter utpakking: Ctrl+F5 i nettleseren.

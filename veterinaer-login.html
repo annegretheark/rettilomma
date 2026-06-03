@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Veterinær - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .kort { background:#fff; width:420px; max-width:100%; padding:22px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.10); }
+    h1 { margin-top:0; }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input { width:100%; box-sizing:border-box; padding:10px; margin-top:4px; border:1px solid #ccc; border-radius:8px; }
+    button { padding:11px 14px; margin:14px 6px 0 0; border:0; border-radius:8px; background:#1f6feb; color:#fff; cursor:pointer; font-size:15px; }
+    button.secondary { background:#555; }
+    .melding { margin-top:12px; color:#b42318; font-weight:bold; }
+    .lite { color:#555; font-size:13px; }
+  </style>
+</head>
+<body>
+  <section class="kort">
+    <h1>Veterinær</h1>
+    <p class="lite">Logg inn i veterinærmodulen.</p>
+
+    <label for="loginEpost">E-post</label>
+    <input id="loginEpost" type="email" autocomplete="username">
+
+    <label for="loginPassord">Passord</label>
+    <input id="loginPassord" type="password" autocomplete="current-password">
+
+    <button id="loginKnapp" type="button">Logg inn</button>
+    <button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
+
+    <div id="loginMelding" class="melding"></div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/core/config.js"></script>
+  <script>
+    async function loggInnVeterinaer() {
+      const melding = document.getElementById("loginMelding");
+      melding.textContent = "";
+
+      const email = document.getElementById("loginEpost").value.trim().toLowerCase();
+      const password = document.getElementById("loginPassord").value;
+
+      if (!email || !password) {
+        melding.textContent = "Skriv inn e-post og passord.";
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        melding.textContent = "Innlogging feilet: " + error.message;
+        return;
+      }
+
+      localStorage.setItem("rettilommaValgtModul", "veterinaer");
+      localStorage.setItem("rettilommaSistEpost", email);
+      window.location.href = "veterinaer/index.html";
+    }
+
+    async function glemtPassordVeterinaer() {
+      const melding = document.getElementById("loginMelding");
+      melding.textContent = "";
+
+      const email = document.getElementById("loginEpost").value.trim().toLowerCase();
+      if (!email) {
+        melding.textContent = "Skriv inn e-postadressen først.";
+        return;
+      }
+
+      const redirectTo = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, "/reset.html?module=veterinaer");
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+
+      melding.textContent = error
+        ? "Kunne ikke sende e-post: " + error.message
+        : "E-post for tilbakestilling av passord er sendt.";
+    }
+
+    document.getElementById("loginKnapp").addEventListener("click", loggInnVeterinaer);
+    document.getElementById("glemtPassordKnapp").addEventListener("click", glemtPassordVeterinaer);
+    document.getElementById("loginPassord").addEventListener("keydown", e => {
+      if (e.key === "Enter") loggInnVeterinaer();
+    });
+
+    const sist = localStorage.getItem("rettilommaSistEpost") || "";
+    if (sist) document.getElementById("loginEpost").value = sist;
+  </script>
+</body>
+</html>

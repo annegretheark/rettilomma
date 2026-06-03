@@ -129,13 +129,27 @@ async function lastVetKlinikkTilgang() {
   vetAktivKlinikk = data?.vet_klinikker || null;
   vetKlinikkRolle = data?.rolle || "veterinaer";
   vetInnloggetBrukerNavn = String(data?.navn || data?.epost || epost || "").trim();
-  vetAdminCache = String(vetKlinikkRolle).toLowerCase() === "admin";
+
+  const rolle = String(vetKlinikkRolle || "").toLowerCase();
+  vetErSystemAdmin =
+    vetErSystemAdmin ||
+    rolle === "systemadmin" ||
+    epost === "greknuts@online.no";
+
+  vetAdminCache =
+    vetErSystemAdmin ||
+    rolle === "admin" ||
+    rolle === "systemadmin";
 
   oppdaterAktivKlinikkInfo();
 }
 
 function erKlinikkAdmin() {
-  return vetErSystemAdmin || String(vetKlinikkRolle || "").toLowerCase() === "admin";
+  const rolle = String(vetKlinikkRolle || "").toLowerCase();
+
+  return vetErSystemAdmin ||
+         rolle === "admin" ||
+         rolle === "systemadmin";
 }
 
 async function erVetAdmin() {
@@ -3296,9 +3310,27 @@ function kobleVet() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+
+  const { data: { session } } =
+    await supabaseClient.auth.getSession();
+
+  if (!session) {
+    window.location.replace("../veterinaer-login.html");
+    return;
+  }
+
+  await lastVetKlinikkTilgang();
+
+  if (!vetErSystemAdmin && !vetAktivKlinikkId) {
+    await supabaseClient.auth.signOut();
+    window.location.replace("../veterinaer-login.html");
+    return;
+  }
+
   kobleVet();
   await lastVetData();
   oppdaterVetMenySynlighet();
+
   if (erVetVisningVanlig()) {
     visVetSide("journalSide");
   } else {

@@ -232,7 +232,7 @@ async function loggInn() {
   innloggetEpost = email;
   window.innloggetEpost = email;
   localStorage.setItem("rettilommaSistEpost", email);
-  localStorage.setItem("rettilommaValgtModul", window.location.pathname.toLowerCase().includes("veterinaer") ? "veterinaer" : "handverker");
+  localStorage.setItem("rettilommaValgtModul", "handverker");
   visModulvalgKnappHvisSystemadmin(email);
 
   innloggetAnsattId = "";

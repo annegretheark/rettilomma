@@ -62,26 +62,7 @@ async function visApp() {
   if (typeof tegnFirmaInfo === "function") {
     tegnFirmaInfo();
   }
-
-  // Start på riktig modul når kunden kun har én fagmodul aktiv.
-  // Veterinær og hovslager er egne sider, ikke blandet inn i timerbildet.
-  const veterinaerAktiv =
-    typeof modulErAktiv === "function" && modulErAktiv("veterinaer");
-
-  const hovslagerAktiv =
-    typeof modulErAktiv === "function" && modulErAktiv("hovslager");
-
-  if (veterinaerAktiv && !hovslagerAktiv) {
-    visVeterinaerModul();
-    return;
-  }
-
-  if (hovslagerAktiv && !veterinaerAktiv) {
-    visHovslagerModul();
-    return;
-  }
-
-  // Hvis flere fagmoduler er aktive, eller ingen er valgt, land på timer/meny.
+  // Håndverker skal alltid lande på timer. Andre moduler har egne innganger.
   if (erAdmin) {
     skjulAlleSider();
   } else {
@@ -242,7 +223,7 @@ function visHovslagerModul() {
     return;
   }
 
-  window.location.href = "hovslager.html";
+  window.location.href = "/rettilomma/hovslager/";
 }
 
 function visVeterinaerModul() {
@@ -251,7 +232,7 @@ function visVeterinaerModul() {
     return;
   }
 
-  window.location.href = "veterinaer.html";
+  window.location.href = "/rettilomma/veterinar/";
 }
 
 window.visLogin = visLogin;
