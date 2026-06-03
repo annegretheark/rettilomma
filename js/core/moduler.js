@@ -11,16 +11,12 @@ const MODULER = [
   { id: "varer", navn: "Varer/lager", beskrivelse: "Vareregister, varelinjer og lager" },
   { id: "biler", navn: "Biler", beskrivelse: "Aktiv bil og bil-lager" },
   { id: "lonn", navn: "Lønn", beskrivelse: "Lønnsslipper og lønnsrapporter" },
-  { id: "hovslager", navn: "Hovslager", beskrivelse: "Hester, eiere, skoing, kjøring og hovslagerfaktura" },
-  { id: "veterinaer", navn: "Veterinær", beskrivelse: "Klinikk, dyreeiere, dyr/pasienter, journal og behandling" }
 ];
 
 const MODUL_PAKKER = {
-  solo: { timer: true, faktura: true, varer: false, biler: false, lonn: false, hovslager: false, veterinaer: false },
-  handverker: { timer: true, faktura: true, varer: true, biler: true, lonn: false, hovslager: false, veterinaer: false },
-  hovslager: { timer: true, faktura: true, varer: true, biler: true, lonn: false, hovslager: true, veterinaer: false },
-  pro: { timer: true, faktura: true, varer: true, biler: true, lonn: true, hovslager: true, veterinaer: true },
-  veterinaer: { timer: true, faktura: true, varer: false, biler: false, lonn: false, hovslager: false, veterinaer: true }
+  solo: { timer: true, faktura: true, varer: false, biler: false, lonn: false },
+  handverker: { timer: true, faktura: true, varer: true, biler: true, lonn: false },
+  pro: { timer: true, faktura: true, varer: true, biler: true, lonn: true },
 };
 
 let aktiveModuler = standardModuler();
@@ -29,7 +25,7 @@ let modulerKonfigurert = false;
 let harVistForstegangsvalgDenneSesjonen = false;
 
 function standardModuler() {
-  return { ...MODUL_PAKKER.pro, timer: true };
+  return { ...MODUL_PAKKER.handverker, timer: true };
 }
 
 function normaliserModuler(moduler) {

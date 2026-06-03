@@ -2,42 +2,96 @@
 <html lang="no">
 <head>
   <meta charset="UTF-8">
-  <title>Nytt passord</title>
+  <title>Nytt passord - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .kort { background:#fff; width:420px; max-width:100%; padding:22px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.10); }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input { width:100%; box-sizing:border-box; padding:10px; margin-top:4px; border:1px solid #ccc; border-radius:8px; }
+    button { padding:11px 14px; margin:14px 6px 0 0; border:0; border-radius:8px; background:#1f6feb; color:#fff; cursor:pointer; font-size:15px; }
+    .melding { margin-top:12px; color:#b42318; font-weight:bold; }
+    .ok { color:#166534; }
+  </style>
 </head>
 <body>
+  <section class="kort">
+    <h2>Sett nytt passord</h2>
 
-<h2>Sett nytt passord</h2>
+    <label for="nyttPassord">Nytt passord</label>
+    <input type="password" id="nyttPassord" autocomplete="new-password">
 
-<input type="password" id="nyttPassord" placeholder="Nytt passord">
-<button onclick="lagreNyttPassord()">Lagre passord</button>
+    <label for="gjentaPassord">Gjenta nytt passord</label>
+    <input type="password" id="gjentaPassord" autocomplete="new-password">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core/config.js"></script>
+    <button id="lagrePassordKnapp" type="button">Lagre passord</button>
+    <div id="resetMelding" class="melding"></div>
+  </section>
 
-<script>
-async function lagreNyttPassord() {
-  const nyttPassord = document.getElementById("nyttPassord").value;
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=vetpw2"></script>
+  <script src="js/core/config.js?v=vetpw2"></script>
 
-  if (!nyttPassord || nyttPassord.length < 6) {
-    alert("Minst 6 tegn");
-    return;
-  }
+  <script>
+    function moduleFraUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return (params.get("module") || localStorage.getItem("rettilommaValgtModul") || "handverker").toLowerCase();
+    }
 
-  const { error } = await supabaseClient.auth.updateUser({
-    password: nyttPassord
-  });
+    function loginSideForModule() {
+      const modul = moduleFraUrl();
+      if (modul === "veterinaer" || modul === "veterinær") return "veterinaer-login.html";
+      if (modul === "hovslager") return "hovslager-login.html";
+      return "handverker-login.html";
+    }
 
-  if (error) {
-    alert("Feil: " + error.message);
-    console.error(error);
-    return;
-  }
+    function visMelding(tekst, ok) {
+      const el = document.getElementById("resetMelding");
+      el.textContent = tekst || "";
+      el.classList.toggle("ok", ok === true);
+    }
 
-  alert("Passord oppdatert!");
-  await supabaseClient.auth.signOut();
-  window.location.href = "index.html";
-}
-</script>
+    async function lagreNyttPassord() {
+      visMelding("");
 
+      const passord1 = document.getElementById("nyttPassord")?.value || "";
+      const passord2 = document.getElementById("gjentaPassord")?.value || "";
+
+      if (!passord1 || passord1.length < 6) {
+        visMelding("Passordet må ha minst 6 tegn.");
+        return;
+      }
+
+      if (passord1 !== passord2) {
+        visMelding("Passordene er ikke like.");
+        return;
+      }
+
+      if (!window.supabaseClient || !supabaseClient.auth) {
+        visMelding("Supabase er ikke lastet. Sjekk js/core/config.js.");
+        return;
+      }
+
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password: passord1 });
+
+        if (error) {
+          visMelding("Kunne ikke oppdatere passord: " + error.message);
+          return;
+        }
+
+        visMelding("Passordet er oppdatert. Sender deg tilbake til innlogging.", true);
+        await supabaseClient.auth.signOut();
+        setTimeout(() => { window.location.href = loginSideForModule(); }, 800);
+      } catch (e) {
+        visMelding("Kunne ikke oppdatere passord: " + (e.message || e));
+      }
+    }
+
+    window.lagreNyttPassord = lagreNyttPassord;
+    document.getElementById("lagrePassordKnapp")?.addEventListener("click", lagreNyttPassord);
+    document.getElementById("gjentaPassord")?.addEventListener("keydown", e => {
+      if (e.key === "Enter") lagreNyttPassord();
+    });
+  </script>
 </body>
 </html>
