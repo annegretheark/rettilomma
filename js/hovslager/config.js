@@ -7,7 +7,15 @@ const SUPABASE_ANON_KEY =
 window.supabaseClient =
   supabase.createClient(
     SUPABASE_URL,
-    SUPABASE_ANON_KEY
+    SUPABASE_ANON_KEY,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage
+      }
+    }
   );
 
 console.log("Hovslager koblet til eget Supabase-prosjekt");

@@ -337,7 +337,7 @@ async function glemtPassord() {
 
   const redirectUrl =
   window.location.origin +
-  "/NyTimerdelt/reset.html";
+  "/reset.html";
 
   const { error } =
     await supabaseClient.auth.resetPasswordForEmail(

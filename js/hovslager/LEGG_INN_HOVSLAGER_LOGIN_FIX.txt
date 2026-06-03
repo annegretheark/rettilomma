@@ -1,0 +1,16 @@
+Legg filen hovslager-login-tekst.js i:
+
+  js/hovslager/hovslager-login-tekst.js
+
+Legg denne script-linjen nederst i hovslager.html, rett før </body>, ETTER hov-app.js:
+
+  <script src="js/hovslager/hovslager-login-tekst.js?v=5001"></script>
+
+Hvis hovslager bruker felles index.html/login, legg samme linje etter auth.js i den siden også.
+
+Denne fiksen gjør:
+- Timeregistrering -> HovslagerSystem
+- Registrer timer -> Registrer jobb
+- Jobber / timer -> Jobber
+- Logg ut -> Logg ut av HovslagerSystem
+- Gjelder bare når URL eller localStorage sier hovslager.

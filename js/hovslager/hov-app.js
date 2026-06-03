@@ -25,22 +25,6 @@ function kobleHovMenyOgLogout() {
     }
   });
 
-  const loggUtKnapp = document.getElementById("loggUtKnapp");
-  if (loggUtKnapp) {
-    loggUtKnapp.addEventListener("click", async () => {
-      try {
-        if (window.supabaseClient && supabaseClient.auth) {
-          await supabaseClient.auth.signOut();
-        }
-      } catch (e) {
-        console.warn("Kunne ikke logge ut fra Supabase:", e);
-      }
-
-      localStorage.removeItem("rettilommaValgtModul");
-      window.location.href = "/index.html";;
-    });
-  }
-
   const velgModulKnapp = document.getElementById("velgModulKnapp");
   if (velgModulKnapp) velgModulKnapp.remove();
 }
@@ -76,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
     taleKnapp.addEventListener("click", startTaleJobb);
   }
 
-  startHovslager();
+  // startHovslager kjøres fra js/auth.js når brukeren er innlogget.
 });
 
 function kobleKnapp(id, funksjonsnavn) {
@@ -101,7 +85,15 @@ function kobleKnapp(id, funksjonsnavn) {
   });
 }
 
+let hovslagerStartet = false;
+
 async function startHovslager() {
+
+  if (hovslagerStartet) {
+    return;
+  }
+
+  hovslagerStartet = true;
 
   try {
 
@@ -137,10 +129,13 @@ async function startHovslager() {
 
   } catch (e) {
 
+    hovslagerStartet = false;
     console.error(e);
     alert("Feil ved oppstart av hovslager-systemet.");
   }
 }
+
+window.startHovslager = startHovslager;
 
 function settDagensDato() {
 
