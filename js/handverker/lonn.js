@@ -180,6 +180,224 @@ function finnKmGodtgjorelse(t) {
     skattepliktig: 0
   };
 }
+
+function hentLonnstype(ansatt) {
+  return String(ansatt?.avlonningstype || ansatt?.lonnstype || ansatt?.lonn_type || "time").toLowerCase();
+}
+
+function harFastlonn(ansatt) {
+  const type = hentLonnstype(ansatt);
+  return type === "fast" || type === "fast_provisjon" || type === "fastlønn" || type === "fastlonn";
+}
+
+function harTimelonn(ansatt) {
+  const type = hentLonnstype(ansatt);
+  return type === "time" || type === "time_provisjon" || type === "timelønn" || type === "timelonn" || !harFastlonn(ansatt);
+}
+
+function harProvisjon(ansatt) {
+  const type = hentLonnstype(ansatt);
+  return type === "provisjon" || type === "fast_provisjon" || type === "time_provisjon" || lonnTall(ansatt?.provisjon_prosent) > 0;
+}
+
+function hentFastlonn(ansatt) {
+  return lonnTall(ansatt?.fastlonn || ansatt?.fast_lonn || ansatt?.maanedslonn || ansatt?.manedslonn);
+}
+
+function hentBonus(ansatt) {
+  return lonnTall(
+    ansatt?.bonus ??
+    ansatt?.bonus_belop ??
+    ansatt?.bonusbelop ??
+    ansatt?.bonus_maned ??
+    ansatt?.bonus_mnd ??
+    ansatt?.manedsbonus ??
+    ansatt?.maanedsbonus ??
+    0
+  );
+}
+
+function hentProvisjonProsent(ansatt) {
+  return lonnTall(
+    ansatt?.provisjon_prosent ??
+    ansatt?.provisjonsprosent ??
+    ansatt?.provisjon_pct ??
+    ansatt?.provisjon_percent ??
+    ansatt?.provisjon ??
+    0
+  );
+}
+
+function hentManueltProvisjonsgrunnlag(ansatt) {
+  return lonnTall(
+    ansatt?.provisjon_omsetning_manuell ??
+    ansatt?.provisjon_grunnlag_manuell ??
+    ansatt?.provisjonsgrunnlag_manuell ??
+    ansatt?.manuelt_provisjonsgrunnlag ??
+    ansatt?.manuell_omsetning ??
+    ansatt?.omsetning_manuell ??
+    0
+  );
+}
+
+function hentProvisjonGrunnlagType(ansatt) {
+  return String(
+    ansatt?.provisjon_grunnlag ??
+    ansatt?.provisjonsgrunnlag ??
+    ansatt?.provisjon_grunnlag_type ??
+    "egne_fakturerte_timer"
+  ).toLowerCase();
+}
+
+function erFakturertTimerad(t) {
+  return (
+    t.fakturert === true ||
+    t.er_fakturert === true ||
+    t.faktura_id ||
+    t.faktura_nr ||
+    t.fakturanr ||
+    t.fakturert_dato
+  );
+}
+
+function finnTimerBelop(t, ansatt) {
+  const direkte = lonnTall(
+    t.belop ||
+    t.belop_eks_mva ||
+    t.sum_eks_mva ||
+    t.sum ||
+    t.total ||
+    t.faktura_belop
+  );
+
+  if (direkte > 0) return direkte;
+
+  const totalTimer = hentTimerAntall(t);
+  const overtid50 = hentOvertid50(t);
+  const overtid100 = hentOvertid100(t);
+  const ordinare = Math.max(0, totalTimer - overtid50 - overtid100);
+  const pris = lonnTall(t.timepris || t.timesats || ansatt?.timepris || ansatt?.timelonn || 0);
+
+  return lonnRund(
+    ordinare * pris +
+    overtid50 * pris * 1.5 +
+    overtid100 * pris * 2
+  );
+}
+
+function erSkattTrekk(navn) {
+  const ren = String(navn || "").toLowerCase();
+  return ren.includes("skatt") || ren.includes("forskuddstrekk") || ren.includes("skattetrekk");
+}
+
+function erEkstraSkattTrekk(navn) {
+  return String(navn || "").toLowerCase().includes("ekstra");
+}
+
+async function hentAnsattTrekkMap(ansattIds) {
+  const map = new Map();
+  const ids = (ansattIds || []).filter(Boolean);
+  if (!ids.length) return map;
+
+  const { data, error } = await supabaseClient
+    .from("ansatt_trekk")
+    .select("*, trekk_typer(navn)")
+    .in("ansatt_id", ids);
+
+  if (error) {
+    console.warn("Kunne ikke hente ansatt_trekk:", error);
+    return map;
+  }
+
+  (data || [])
+    .filter(t => t.aktiv !== false)
+    .forEach(t => {
+      const ansattId = String(t.ansatt_id || "");
+      if (!map.has(ansattId)) map.set(ansattId, []);
+      const navn = t.trekk_typer?.navn || t.navn || t.trekk_navn || "Trekk";
+      map.get(ansattId).push({
+        id: t.id,
+        navn,
+        belop: lonnTall(t.belop),
+        prosent: lonnTall(t.prosent),
+        metode: t.trekk_metode || (t.prosent ? "prosent" : "belop")
+      });
+    });
+
+  return map;
+}
+
+function beregnTrekkLinjer(brutto, trekkListe, ansatt) {
+  const linjer = [];
+
+  (trekkListe || []).forEach(t => {
+    const erProsent = String(t.metode || "").toLowerCase() === "prosent" || lonnTall(t.prosent) > 0;
+    const verdi = erProsent ? lonnTall(t.prosent) : lonnTall(t.belop);
+    if (verdi <= 0) return;
+
+    const belop = erProsent ? lonnRund(brutto * verdi / 100) : lonnRund(verdi);
+    linjer.push({
+      navn: t.navn || "Trekk",
+      belop,
+      prosent: erProsent ? verdi : null,
+      erSkatt: erSkattTrekk(t.navn),
+      erEkstraSkatt: erEkstraSkattTrekk(t.navn)
+    });
+  });
+
+  // Bakoverkompatibilitet hvis gamle skattefelt fortsatt brukes på ansatt.
+  if (!linjer.some(l => l.erSkatt && !l.erEkstraSkatt)) {
+    const gammelSkatt = beregnSkatt(brutto, ansatt);
+    if (gammelSkatt > 0) linjer.push({ navn: "Forskuddstrekk", belop: gammelSkatt, erSkatt: true });
+  }
+
+  const gammelEkstraSkatt = lonnTall(ansatt?.ekstra_skatt || ansatt?.ekstraskatt);
+  if (gammelEkstraSkatt > 0 && !linjer.some(l => l.erEkstraSkatt)) {
+    linjer.push({ navn: "Ekstra skatt", belop: gammelEkstraSkatt, erSkatt: true, erEkstraSkatt: true });
+  }
+
+  return linjer;
+}
+
+function opprettLonnGruppe(ansatt, ansattId, periode) {
+  return {
+    ansatt,
+    ansattId,
+    ansattNavn: hentAnsattNavn(ansatt, ansattId),
+    kontonr: ansatt.kontonr || "",
+    periodeFra: periode.fra,
+    periodeTil: periode.til,
+    lonnstype: hentLonnstype(ansatt),
+    timer: 0,
+    ordinareTimer: 0,
+    overtid50Timer: 0,
+    overtid100Timer: 0,
+    ordinarlonn: 0,
+    overtid50Lonn: 0,
+    overtid100Lonn: 0,
+    fastlonn: 0,
+    provisjonGrunnlag: 0,
+    provisjonProsent: hentProvisjonProsent(ansatt),
+    provisjon: 0,
+    bonus: hentBonus(ansatt),
+    brutto: 0,
+    utlegg: 0,
+    kmSkattefri: 0,
+    kmSkattepliktig: 0,
+    diett: 0,
+    parkering: 0,
+    billetter: 0,
+    bompenger: 0,
+    andreUtlegg: 0,
+    skatt: 0,
+    ekstraSkatt: 0,
+    andreTrekk: 0,
+    trekkLinjer: [],
+    netto: 0,
+    timerIds: []
+  };
+}
+
 async function hentOgBeregnLonn() {
   const periode = hentLonnPeriode();
 
@@ -192,57 +410,45 @@ async function hentOgBeregnLonn() {
   if (ansatteRes.error) throw new Error(ansatteRes.error.message);
 
   const valgtAnsattId = hentVerdiFraElement("lonnAnsattValg");
+  const ansatte = ansatteRes.data || [];
+  fyllLonnAnsattValg(ansatte);
+
+  const ansatteFiltrert = ansatte.filter(a => !valgtAnsattId || String(a.id) === String(valgtAnsattId));
+  const ansatteMap = new Map(ansatte.map(a => [String(a.id), a]));
 
   const timerader = (timerRes.data || [])
     .filter(t => datoInnenforPeriode(t, periode.fra, periode.til))
     .filter(t => !erUtbetalt(t))
     .filter(t => !valgtAnsattId || String(t.ansatt_id) === String(valgtAnsattId));
 
-  const ansatte = ansatteRes.data || [];
-  fyllLonnAnsattValg(ansatte);
-  const ansatteMap = new Map(ansatte.map(a => [String(a.id), a]));
+  const trekkMap = await hentAnsattTrekkMap(ansatteFiltrert.map(a => a.id));
   const grupper = new Map();
+
+  function hentGruppe(ansattId) {
+    const id = String(ansattId || "");
+    if (!id) return null;
+    const ansatt = ansatteMap.get(id) || {};
+    if (!grupper.has(id)) grupper.set(id, opprettLonnGruppe(ansatt, id, periode));
+    return grupper.get(id);
+  }
+
+  // Opprett grupper også for fastlønn/provisjon/bonus selv om det ikke finnes timer.
+  ansatteFiltrert.forEach(ansatt => {
+    const fast = hentFastlonn(ansatt);
+    const bonus = hentBonus(ansatt);
+    const prov = hentProvisjonProsent(ansatt);
+    const manuell = hentManueltProvisjonsgrunnlag(ansatt);
+    if (fast > 0 || bonus > 0 || prov > 0 || manuell > 0) {
+      hentGruppe(ansatt.id);
+    }
+  });
 
   timerader.forEach(t => {
     const ansattId = String(t.ansatt_id || "");
-    if (!ansattId) return;
+    const g = hentGruppe(ansattId);
+    if (!g) return;
 
-    const ansatt = ansatteMap.get(ansattId) || {};
-
-    if (!grupper.has(ansattId)) {
-      grupper.set(ansattId, {
-        ansatt,
-        ansattId,
-        ansattNavn: hentAnsattNavn(ansatt, ansattId),
-        kontonr: ansatt.kontonr || "",
-        periodeFra: periode.fra,
-        periodeTil: periode.til,
-        timer: 0,
-        ordinareTimer: 0,
-        overtid50Timer: 0,
-        overtid100Timer: 0,
-        ordinarlonn: 0,
-        overtid50Lonn: 0,
-        overtid100Lonn: 0,
-        brutto: 0,
-        utlegg: 0,
-        kmSkattefri: 0,
-        kmSkattepliktig: 0,
-        diett: 0,
-        parkering: 0,
-        billetter: 0,
-        bompenger: 0,
-        andreUtlegg: 0,
-        skatt: 0,
-        ekstraSkatt: lonnTall(ansatt.ekstra_skatt),
-        andreTrekk: lonnTall(ansatt.andre_trekk),
-        netto: 0,
-        timerIds: []
-      });
-    }
-
-    const g = grupper.get(ansattId);
-
+    const ansatt = g.ansatt || {};
     const totalTimer = hentTimerAntall(t);
     const overtid50 = hentOvertid50(t);
     const overtid100 = hentOvertid100(t);
@@ -251,32 +457,38 @@ async function hentOgBeregnLonn() {
     const timelonn = hentTimelonn(ansatt, t);
     const km = finnKmGodtgjorelse(t);
     const andreUtlegg = finnAndreUtlegg(t);
+    const timerBelop = finnTimerBelop(t, ansatt);
 
     g.timer += totalTimer;
     g.ordinareTimer += ordinare;
     g.overtid50Timer += overtid50;
     g.overtid100Timer += overtid100;
 
-    g.ordinarlonn += ordinare * timelonn;
-    g.overtid50Lonn += overtid50 * timelonn * 1.5;
-    g.overtid100Lonn += overtid100 * timelonn * 2;
+    if (harTimelonn(ansatt)) {
+      g.ordinarlonn += ordinare * timelonn;
+      g.overtid50Lonn += overtid50 * timelonn * 1.5;
+      g.overtid100Lonn += overtid100 * timelonn * 2;
+    }
 
-    g.brutto += ordinare * timelonn;
-    g.brutto += overtid50 * timelonn * 1.5;
-    g.brutto += overtid100 * timelonn * 2;
-    g.brutto += km.skattepliktig;
+    const grunnlagType = hentProvisjonGrunnlagType(ansatt);
+    if (harProvisjon(ansatt)) {
+      if (grunnlagType.includes("egen") || grunnlagType.includes("timer")) {
+        // Bruk fakturerte timer hvis de er merket fakturert. Hvis ingen er merket ennå,
+        // brukes førte timer som grunnlag slik at provisjon kan beregnes før faktura kjøres.
+        if (erFakturertTimerad(t) || !timerader.some(x => String(x.ansatt_id) === ansattId && erFakturertTimerad(x))) {
+          g.provisjonGrunnlag += timerBelop;
+        }
+      } else if (grunnlagType.includes("fakturert") || grunnlagType.includes("omsetning")) {
+        g.provisjonGrunnlag += timerBelop;
+      }
+    }
 
-    g.utlegg += andreUtlegg;
-    g.utlegg += km.skattefri;
+    g.utlegg += andreUtlegg + km.skattefri;
     g.bompenger += lonnTall(t.bompenger);
     g.parkering += lonnTall(t.parkering);
     g.billetter += lonnTall(t.billetter);
     g.diett += lonnTall(t.diett);
-
-    g.andreUtlegg +=
-  lonnTall(t.andre_utlegg) +
-  lonnTall(t.andre_tillegg);
-
+    g.andreUtlegg += lonnTall(t.andre_utlegg) + lonnTall(t.andre_tillegg);
     g.kmSkattefri += km.skattefri;
     g.kmSkattepliktig += km.skattepliktig;
 
@@ -284,12 +496,10 @@ async function hentOgBeregnLonn() {
   });
 
   const resultat = Array.from(grupper.values())
-    .filter(g =>
-      lonnTall(g.timer) > 0 ||
-      lonnTall(g.brutto) > 0 ||
-      lonnTall(g.utlegg) > 0
-    )
     .map(g => {
+      const ansatt = g.ansatt || {};
+      const manueltGrunnlag = hentManueltProvisjonsgrunnlag(ansatt);
+
       g.timer = lonnRund(g.timer);
       g.ordinareTimer = lonnRund(g.ordinareTimer);
       g.overtid50Timer = lonnRund(g.overtid50Timer);
@@ -298,24 +508,57 @@ async function hentOgBeregnLonn() {
       g.ordinarlonn = lonnRund(g.ordinarlonn);
       g.overtid50Lonn = lonnRund(g.overtid50Lonn);
       g.overtid100Lonn = lonnRund(g.overtid100Lonn);
+      g.fastlonn = harFastlonn(ansatt) ? lonnRund(hentFastlonn(ansatt)) : 0;
+      g.bonus = lonnRund(hentBonus(ansatt));
+      g.provisjonGrunnlag = lonnRund(manueltGrunnlag > 0 ? manueltGrunnlag : g.provisjonGrunnlag);
+      g.provisjonProsent = hentProvisjonProsent(ansatt);
 
-      g.brutto = lonnRund(g.brutto);
+      // Hvis provisjon er satt, men grunnlaget ble 0 fordi timer ikke er markert som fakturert
+      // eller timer-tabellen mangler beløpsfelt, bruk beregnet egen timelønn som fall-back.
+      // Det gjør at provisjon faktisk kommer med når timer er ført.
+      if (g.provisjonProsent > 0 && g.provisjonGrunnlag <= 0) {
+        const beregnetEgenTimeOmsetning =
+          lonnTall(g.ordinarlonn) +
+          lonnTall(g.overtid50Lonn) +
+          lonnTall(g.overtid100Lonn);
+
+        if (beregnetEgenTimeOmsetning > 0) {
+          g.provisjonGrunnlag = lonnRund(beregnetEgenTimeOmsetning);
+        }
+      }
+
+      g.provisjon = g.provisjonProsent > 0
+        ? lonnRund(g.provisjonGrunnlag * g.provisjonProsent / 100)
+        : 0;
+
       g.utlegg = lonnRund(g.utlegg);
       g.kmSkattefri = lonnRund(g.kmSkattefri);
       g.kmSkattepliktig = lonnRund(g.kmSkattepliktig);
 
-      g.skatt = beregnSkatt(g.brutto, g.ansatt);
-
-      g.netto = lonnRund(
-        g.brutto -
-        g.skatt -
-        g.ekstraSkatt -
-        g.andreTrekk +
-        g.utlegg
+      g.brutto = lonnRund(
+        g.ordinarlonn +
+        g.overtid50Lonn +
+        g.overtid100Lonn +
+        g.fastlonn +
+        g.provisjon +
+        g.bonus +
+        g.kmSkattepliktig
       );
 
+      g.trekkLinjer = beregnTrekkLinjer(g.brutto, trekkMap.get(String(g.ansattId)) || [], ansatt);
+      g.skatt = lonnRund(g.trekkLinjer.filter(t => t.erSkatt && !t.erEkstraSkatt).reduce((sum, t) => sum + lonnTall(t.belop), 0));
+      g.ekstraSkatt = lonnRund(g.trekkLinjer.filter(t => t.erEkstraSkatt).reduce((sum, t) => sum + lonnTall(t.belop), 0));
+      g.andreTrekk = lonnRund(g.trekkLinjer.filter(t => !t.erSkatt).reduce((sum, t) => sum + lonnTall(t.belop), 0));
+
+      g.netto = lonnRund(g.brutto - g.skatt - g.ekstraSkatt - g.andreTrekk + g.utlegg);
       return g;
-    });
+    })
+    .filter(g =>
+      lonnTall(g.timer) > 0 ||
+      lonnTall(g.brutto) > 0 ||
+      lonnTall(g.utlegg) > 0 ||
+      lonnTall(g.netto) > 0
+    );
 
   sisteLonnData = resultat;
   return resultat;
@@ -333,7 +576,10 @@ async function kjorLonn() {
       return;
     }
 
-    lonnMelding("Lønn beregnet for " + data.length + " ansatt(e).");
+    const detaljer = data.map(r =>
+      `${r.ansattNavn}: brutto ${kroner(r.brutto)} kr, provisjon ${kroner(r.provisjon || 0)} kr, bonus ${kroner(r.bonus || 0)} kr`
+    ).join(" | ");
+    lonnMelding("Lønn beregnet for " + data.length + " ansatt(e). " + detaljer);
   } catch (e) {
     console.error(e);
     lonnMelding(e.message, true);
@@ -372,10 +618,12 @@ async function lagLonnsslipper(kopi = false) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    const firma =
-      typeof hentFirmaData === "function"
-        ? await hentFirmaData()
-        : {};
+    const firmaData =
+      typeof window.hentFirmaData === "function"
+        ? await window.hentFirmaData()
+        : (window.firmaData || window.firma || {});
+
+    const firma = firmaData || {};
 
     for (let index = 0; index < dataMedLonn.length; index++) {
       const r = dataMedLonn[index];
@@ -384,8 +632,8 @@ async function lagLonnsslipper(kopi = false) {
 
       let y = 70;
 
-      if (typeof tegnBrevhodePdf === "function") {
-        await tegnBrevhodePdf(doc, firma);
+      if (typeof window.tegnBrevhodePdf === "function") {
+        await window.tegnBrevhodePdf(doc, firma);
       }
 
       doc.setFontSize(16);
@@ -421,6 +669,22 @@ async function lagLonnsslipper(kopi = false) {
         y += 9;
       }
 
+      if (r.fastlonn > 0) {
+        pdfLinje(doc, "Fastlønn", r.fastlonn, y);
+        y += 9;
+      }
+
+      if (r.provisjon > 0) {
+        doc.text("Provisjon " + (r.provisjonProsent || 0) + "% av " + kroner(r.provisjonGrunnlag) + " kr", 20, y);
+        doc.text(kroner(r.provisjon) + " kr", 130, y);
+        y += 9;
+      }
+
+      if (r.bonus > 0) {
+        pdfLinje(doc, "Bonus", r.bonus, y);
+        y += 9;
+      }
+
       
       y += 3;
       pdfLinje(doc, "Brutto lønn", r.brutto, y);
@@ -438,16 +702,14 @@ pdfLinje(
 y += 9;
       y += 9;
 
-      pdfLinje(doc, "Forskuddstrekk", r.skatt, y, true);
-      y += 9;
-
-      if (r.ekstraSkatt > 0) {
-        pdfLinje(doc, "Ekstra skatt", r.ekstraSkatt, y, true);
-        y += 9;
-      }
-
-      if (r.andreTrekk > 0) {
-        pdfLinje(doc, "Andre trekk", r.andreTrekk, y, true);
+      if (Array.isArray(r.trekkLinjer) && r.trekkLinjer.length) {
+        r.trekkLinjer.forEach(t => {
+          const label = t.prosent ? `${t.navn} (${t.prosent}%)` : t.navn;
+          pdfLinje(doc, label, t.belop, y, true);
+          y += 9;
+        });
+      } else if (r.skatt > 0) {
+        pdfLinje(doc, "Forskuddstrekk", r.skatt, y, true);
         y += 9;
       }
 
@@ -516,8 +778,8 @@ if (
       pdfLinje(doc, "Netto utbetalt", r.netto, y);
     }
 
-    if (typeof tegnBrevfotAlleSiderPdf === "function") {
-      tegnBrevfotAlleSiderPdf(doc, firma);
+    if (typeof window.tegnBrevfotAlleSiderPdf === "function") {
+      window.tegnBrevfotAlleSiderPdf(doc, firma);
     }
 
     doc.save(kopi ? "lonnsslipper_kopi.pdf" : "lonnsslipper.pdf");
@@ -600,6 +862,13 @@ async function eksporterTrekkExcel() {
     ansatt: r.ansattNavn,
     periode_fra: r.periodeFra,
     periode_til: r.periodeTil,
+    timer: r.timer,
+    timelonn: r.ordinarlonn,
+    fastlonn: r.fastlonn,
+    provisjon_grunnlag: r.provisjonGrunnlag,
+    provisjon_prosent: r.provisjonProsent,
+    provisjon: r.provisjon,
+    bonus: r.bonus,
     brutto: r.brutto,
     forskuddstrekk: r.skatt,
     ekstra_skatt: r.ekstraSkatt,
@@ -619,8 +888,13 @@ async function eksporterUtbetalingerExcel() {
     kontonr: r.kontonr,
     periode_fra: r.periodeFra,
     periode_til: r.periodeTil,
+    timelonn: r.ordinarlonn,
+    fastlonn: r.fastlonn,
+    provisjon: r.provisjon,
+    bonus: r.bonus,
     brutto: r.brutto,
     utlegg: r.utlegg,
+    trekk: lonnTall(r.skatt) + lonnTall(r.ekstraSkatt) + lonnTall(r.andreTrekk),
     netto_utbetalt: r.netto
   }));
 

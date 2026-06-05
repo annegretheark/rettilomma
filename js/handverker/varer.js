@@ -1,759 +1,432 @@
-function visVarer() {
-  const prosjektOverlay = document.getElementById("prosjektOverlay");
-  if (prosjektOverlay) prosjektOverlay.style.display = "none";
+console.log("varer.js ENDELIG ren varemodul lastet 7020");
 
-  const prosjektVindu = document.getElementById("prosjektVindu");
-  if (prosjektVindu) prosjektVindu.style.display = "none";
+(function () {
+  "use strict";
 
-  // Varer åpnes fra admin-konsollen. Ikke bruk skjulAlleSider her,
-  // fordi den skjuler adminKonsollSide. Vi skjuler bare arbeidssidene
-  // og lar admin-konsollen stå synlig for admin.
-  if (typeof window.skjulArbeidssider === "function") {
-    window.skjulArbeidssider();
-  } else {
-    ["timerSide", "varerSide", "lonnPanel", "kundeSide", "ansattSide", "firmaSide", "testSide", "backupSide", "fakturaSide", "modulerSide", "adminAnsattRad"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.classList.add("hidden", "skjult");
-        el.style.display = "none";
-      }
-    });
+  let varerListe = [];
+  window.redigerVareId = window.redigerVareId || null;
+
+  function el(id) { return document.getElementById(id); }
+
+  function val(id) {
+    const e = el(id);
+    return e ? String(e.value || "").trim() : "";
   }
 
-  if (window.erAdmin === true && typeof window.visAdminKonsollHvisAdmin === "function") {
-    window.visAdminKonsollHvisAdmin();
+  function setVal(id, verdi) {
+    const e = el(id);
+    if (e) e.value = verdi ?? "";
   }
 
-  const varerSide = document.getElementById("varerSide");
-
-  if (!varerSide) {
-    alert("Finner ikke varerSide i index.html");
-    return;
+  function tall(id, standard = 0) {
+    const v = val(id);
+    if (v === "") return standard;
+    const n = Number(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : standard;
   }
 
-  varerSide.classList.remove("hidden");
-  varerSide.classList.remove("skjult");
-  varerSide.style.display = "";
-
-  if (window.erAdmin === true && typeof window.visAdminKonsollHvisAdmin === "function") {
-    window.visAdminKonsollHvisAdmin();
-  }
-
-  hentVarer();
-  fyllVarevalg();
-  fyllBilvalg();
-  hentBilLager();
-}
-
-function tilbakeFraVarer() {
-  if (typeof window.visTimerSide === "function") {
-    window.visTimerSide();
-    return;
-  }
-
-  const varerSide = document.getElementById("varerSide");
-  if (varerSide) {
-    varerSide.classList.add("skjult");
-    varerSide.style.display = "none";
-  }
-
-  const timerSide = document.getElementById("timerSide");
-  if (timerSide) {
-    timerSide.classList.remove("hidden");
-    timerSide.classList.remove("skjult");
-    timerSide.style.display = "";
-  }
-}
-
-function hentVarePris(v) {
-  return Number(v.pris ?? v.utpris ?? 0);
-}
-
-function hentVareHovedlager(v) {
-  return Number(v.lager_antall ?? v.antall ?? 0);
-}
-
-function hentVareMinimum(v) {
-  return Number(v.minimum_antall ?? 0);
-}
-
-function formaterKr(tall) {
-  return Number(tall || 0).toFixed(2);
-}
-
-function heltallFraVerdi(verdi) {
-  const tall = Number(String(verdi ?? "0").replace(",", "."));
-  if (!Number.isFinite(tall)) return 0;
-  return Math.floor(tall);
-}
-
-function erGyldigHeltall(verdi) {
-  const tekst = String(verdi ?? "").replace(",", ".").trim();
-  if (tekst === "") return false;
-  const tall = Number(tekst);
-  return Number.isInteger(tall) && tall >= 0;
-}
-
-async function hentVarer() {
-  const liste = document.getElementById("vareListe");
-  if (!liste) return;
-
-  liste.innerHTML = "Laster varer...";
-
-  const { data, error } = await supabaseClient
-    .from("varer")
-    .select("*")
-    .order("varenr", { ascending: true });
-
-  if (error) {
-    liste.innerHTML = "Feil ved henting: " + error.message;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    liste.innerHTML = `
-      <div style="
-        padding:15px;
-        border:1px solid #444;
-        border-radius:10px;
-        background:#1e1e1e;
-        color:#fff;
-      ">
-        Ingen varer registrert.<br><br>
-        Legg inn varer i hovedlager først.
-      </div>
-    `;
-    return;
-  }
-
-  liste.innerHTML = data.map(v => {
-    const hovedlager = hentVareHovedlager(v);
-    const minimum = hentVareMinimum(v);
-    const litePaLager = minimum > 0 && hovedlager <= minimum;
-
-    return `
-      <div style="
-        border:1px solid #ccc;
-        padding:10px;
-        margin-bottom:10px;
-        border-radius:8px;
-        background:#fff;
-      ">
-        <b>${v.varenr || ""} ${v.navn || ""}</b><br>
-        ${v.beskrivelse || ""}<br><br>
-        Innpris: ${formaterKr(v.innpris)} kr eks mva<br>
-        Utpris: ${formaterKr(hentVarePris(v))} kr eks mva<br>
-        MVA: ${Number(v.mva_sats || 0)} %<br>
-        Hovedlager: <b>${hovedlager}</b>
-        ${litePaLager ? '<span style="color:#b00020; font-weight:bold;"> ⚠ lavt lager</span>' : ''}<br>
-        Minimum: ${minimum}
-      </div>
-    `;
-  }).join("");
-}
-
-async function fyllVarevalg() {
-  // #vareValg i timeregistrering skal ALDRI fylles fra hovedlager.
-  // Den skal bare fylles av timer.js fra bil_varer for aktiv bil.
-  const lagerVareValg = document.getElementById("lagerVareValg");
-
-  const { data, error } = await supabaseClient
-    .from("varer")
-    .select("*")
-    .order("varenr", { ascending: true });
-
-  if (error) {
-    console.error("Feil ved henting av varer:", error);
-    return;
-  }
-
-  const fyllSelect = (select, tomTekst) => {
-    if (!select) return;
-    select.innerHTML = `<option value="">${tomTekst}</option>`;
-
-    (data || []).forEach(v => {
-      const option = document.createElement("option");
-      option.value = v.id;
-      option.dataset.pris = hentVarePris(v);
-      option.dataset.hovedlager = hentVareHovedlager(v);
-      option.textContent =
-        `${v.varenr || ""} ${v.navn || ""} - ${formaterKr(hentVarePris(v))} kr - hovedlager ${hentVareHovedlager(v)}`;
-
-      select.appendChild(option);
-    });
-  };
-
-  // Kun lager/fyll-bil-listene får hovedlager-varer.
-  fyllSelect(lagerVareValg, "Velg vare");
-  tegnFyllBilListe(data || []);
-
-  // Etterpå fyller vi timeregistreringens vareliste fra aktiv bil igjen.
-  if (typeof window.fyllVarevalgFraAktivBil === "function") {
-    await window.fyllVarevalgFraAktivBil();
-  }
-}
-
-async function fyllBilvalg() {
-  const selects = [
-    document.getElementById("bilValg"),
-    document.getElementById("lagerBilValg"),
-    document.getElementById("ansattStandardBil")
-  ].filter(Boolean);
-
-  if (!selects.length) return;
-
-  const { data, error } = await supabaseClient
-    .from("biler")
-    .select("*")
-    .order("navn", { ascending: true });
-
-  if (error) {
-    console.error("Feil ved henting av biler:", error);
-    return;
-  }
-
-  selects.forEach(select => {
-    const valgt = select.value;
-    select.innerHTML = `<option value="">Velg bil</option>`;
-
-    (data || []).forEach(b => {
-      const option = document.createElement("option");
-      option.value = b.id;
-      option.textContent = `${b.navn || "Bil"}${b.regnr ? " - " + b.regnr : ""}`;
-      select.appendChild(option);
-    });
-
-    if (select.id === "bilValg" && window.aktivBilId) {
-      select.value = String(window.aktivBilId);
-    } else if (valgt) {
-      select.value = valgt;
+  function melding(tekst, feil = false) {
+    let m = el("vareMelding") || el("varerMelding");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "vareMelding";
+      m.className = "melding";
+      const side = el("varerSide") || document.body;
+      side.prepend(m);
     }
-  });
-
-  if (typeof window.oppdaterAktivBilVisning === "function") {
-    window.oppdaterAktivBilVisning();
+    m.textContent = tekst || "";
+    m.style.color = feil ? "#fca5a5" : "#86efac";
+    if (feil) console.error(tekst);
   }
 
-  // Når bil-listene er fylt, må varelisten på timer oppdateres på nytt.
-  // Ellers kan varefeltet bli stående på "Velg aktiv bil først" selv om bil er valgt.
-  if (typeof window.fyllVarevalgFraAktivBil === "function") {
-    await window.fyllVarevalgFraAktivBil();
-  }
-}
-
-async function lagreVare() {
-  const varenr = document.getElementById("varenr").value.trim();
-  const navn = document.getElementById("varenavn").value.trim();
-  const beskrivelse = document.getElementById("varebeskrivelse").value.trim();
-  const innpris = Number(document.getElementById("vareinnpris")?.value || 0);
-  const paslag_faktor = Number(document.getElementById("varepaslag")?.value || 3);
-  const prisFelt = document.getElementById("varepris");
-  const pris = Number(prisFelt?.value || 0) || round(innpris * paslag_faktor);
-  const lager_antall = heltallFraVerdi(document.getElementById("varelagerAntall")?.value || 0);
-  const minimum_antall = heltallFraVerdi(document.getElementById("vareMinimumAntall")?.value || 0);
-  const mva_sats = Number(document.getElementById("varemva").value || 25);
-
-  if (!navn) {
-    alert("Du må skrive varenavn");
-    return;
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
-  const { data, error } = await supabaseClient
-    .from("varer")
-    .insert([
-      {
-        varenr,
-        navn,
-        beskrivelse,
-        innpris,
-        paslag_faktor,
-        pris,
-        lager_antall,
-        minimum_antall,
-        mva_sats,
-        aktiv: true
-      }
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    alert("Feil ved lagring: " + error.message);
-    return;
+  function varenavn(v) {
+    return v?.navn || v?.varenavn || v?.beskrivelse || v?.varenr || "Vare";
   }
 
-  if (lager_antall !== 0 && data?.id) {
-    await registrerLagerBevegelse({
-      vare_id: data.id,
-      fra_type: null,
-      fra_id: null,
-      til_type: "hovedlager",
-      til_id: null,
-      antall: lager_antall,
-      type: "startlager",
-      kommentar: "Startlager ved opprettelse av vare"
-    });
+  function varepris(v) {
+    return Number(v?.pris ?? v?.utpris ?? v?.utsalgspris ?? v?.salgspris ?? 0);
   }
 
-  document.getElementById("varenr").value = "";
-  document.getElementById("varenavn").value = "";
-  document.getElementById("varebeskrivelse").value = "";
-  if (document.getElementById("vareinnpris")) document.getElementById("vareinnpris").value = "0";
-  if (document.getElementById("varepaslag")) document.getElementById("varepaslag").value = "3";
-  document.getElementById("varepris").value = "";
-  if (document.getElementById("varelagerAntall")) document.getElementById("varelagerAntall").value = "0";
-  if (document.getElementById("vareMinimumAntall")) document.getElementById("vareMinimumAntall").value = "0";
-  document.getElementById("varemva").value = "25";
-
-  await hentVarer();
-  await fyllVarevalg();
-}
-
-async function lagreBil() {
-  const navn = document.getElementById("bilNavn")?.value.trim();
-  const regnr = document.getElementById("bilRegnr")?.value.trim();
-
-  if (!navn) {
-    alert("Skriv bilnavn");
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("biler")
-    .insert({ navn, regnr });
-
-  if (error) {
-    alert("Feil ved lagring av bil: " + error.message);
-    return;
-  }
-
-  document.getElementById("bilNavn").value = "";
-  document.getElementById("bilRegnr").value = "";
-
-  await fyllBilvalg();
-  await hentBilLager();
-}
-
-async function registrerLagerBevegelse(bevegelse) {
-  try {
-    await supabaseClient
-      .from("lager_bevegelser")
-      .insert({
-        vare_id: bevegelse.vare_id,
-        bil_id: bevegelse.bil_id || null,
-        fra_type: bevegelse.fra_type || null,
-        fra_id: bevegelse.fra_id || null,
-        til_type: bevegelse.til_type || null,
-        til_id: bevegelse.til_id || null,
-        antall: Number(bevegelse.antall || 0),
-        type: bevegelse.type || "justering",
-        kommentar: bevegelse.kommentar || null,
-        created_at: new Date().toISOString()
-      });
-  } catch (e) {
-    console.warn("Kunne ikke logge lagerbevegelse:", e);
-  }
-}
-
-
-function tegnFyllBilListe(varer) {
-  const liste = document.getElementById("fyllBilListe");
-  if (!liste) return;
-
-  if (!varer || !varer.length) {
-    liste.innerHTML = "Ingen varer å fylle bil med.";
-    return;
-  }
-
-  liste.innerHTML = varer.map(v => {
-    const hovedlager = hentVareHovedlager(v);
-    const pris = hentVarePris(v);
-    return `
-      <div style="display:grid; grid-template-columns: 1fr 100px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #eee;">
-        <div>
-          <b>${v.varenr || ""} ${v.navn || ""}</b><br>
-          <span style="font-size:0.9em;">Hovedlager: ${hovedlager} | Utpris: ${formaterKr(pris)} kr</span>
-        </div>
-        <input class="fyll-bil-antall" data-vare-id="${v.id}" type="number" step="1" min="0" placeholder="0">
-      </div>
-    `;
-  }).join("");
-}
-
-async function flyttVareTilBilData(bilId, vareId, antall, visAlert) {
-  if (!bilId) throw new Error("Velg bil");
-  if (!vareId) throw new Error("Velg vare");
-  antall = heltallFraVerdi(antall);
-  if (!Number.isInteger(antall) || antall <= 0) throw new Error("Antall må være et heltall større enn 0");
-
-  const { data: vare, error: vareFeil } = await supabaseClient
-    .from("varer")
-    .select("*")
-    .eq("id", vareId)
-    .single();
-
-  if (vareFeil || !vare) {
-    throw new Error("Fant ikke vare: " + (vareFeil?.message || "ukjent feil"));
-  }
-
-  const hovedlager = hentVareHovedlager(vare);
-  if (hovedlager < antall) {
-    throw new Error(`Ikke nok på hovedlager for ${vare.navn || "vare"}. Hovedlager har ${hovedlager}, du prøver å flytte ${antall}.`);
-  }
-
-  const { data: eksisterende, error: eksisterendeFeil } = await supabaseClient
-    .from("bil_varer")
-    .select("*")
-    .eq("bil_id", bilId)
-    .eq("vare_id", vareId)
-    .maybeSingle();
-
-  if (eksisterendeFeil) {
-    throw new Error("Feil ved sjekk av bil-lager: " + eksisterendeFeil.message);
-  }
-
-  const nyHovedlager = hovedlager - antall;
-  const { error: hovedlagerFeil } = await supabaseClient
-    .from("varer")
-    .update({ lager_antall: nyHovedlager })
-    .eq("id", vareId);
-
-  if (hovedlagerFeil) {
-    throw new Error("Feil ved trekk fra hovedlager: " + hovedlagerFeil.message);
-  }
-
-  if (eksisterende) {
-    const nyttAntall = heltallFraVerdi(eksisterende.antall || 0) + antall;
-    const { error } = await supabaseClient
-      .from("bil_varer")
-      .update({ antall: nyttAntall })
-      .eq("id", eksisterende.id);
-
-    if (error) throw new Error("Feil ved oppdatering av bil-lager: " + error.message);
-  } else {
-    const { error } = await supabaseClient
-      .from("bil_varer")
-      .insert({ bil_id: bilId, vare_id: vareId, antall });
-
-    if (error) throw new Error("Feil ved innlegging på bil-lager: " + error.message);
-  }
-
-  await registrerLagerBevegelse({
-    vare_id: vareId,
-    bil_id: bilId,
-    fra_type: "hovedlager",
-    fra_id: null,
-    til_type: "bil",
-    til_id: bilId,
-    antall,
-    type: "flytting_til_bil",
-    kommentar: "Flyttet vare fra hovedlager til bil"
-  });
-
-  if (visAlert) alert("Vare flyttet til bil.");
-}
-
-async function fyllBilMedFlereVarer() {
-  const bilSelect = document.getElementById("lagerBilValg");
-  const bilId = bilSelect?.value;
-  const knapp = document.getElementById("fyllBilFlereKnapp");
-
-  if (!bilId) {
-    alert("Velg bil først.");
-    return;
-  }
-
-  const felter = Array.from(document.querySelectorAll("#fyllBilListe input.fyll-bil-antall"));
-
-  const alleValg = felter
-    .map(f => {
-      const verdi = String(f.value || "0").replace(",", ".").trim();
-      const antall = Number(verdi || 0);
-      return {
-        vareId: f.getAttribute("data-vare-id"),
-        antall,
-        gyldigHeltall: verdi === "" || (Number.isInteger(antall) && antall >= 0),
-        felt: f
-      };
-    });
-
-  const ugyldige = alleValg.filter(r => !r.gyldigHeltall);
-  if (ugyldige.length) {
-    alert("Antall må være hele tall. Bruk f.eks. 1, 2 eller 10, ikke 1,5.");
-    return;
-  }
-
-  const valgte = alleValg.filter(r => r.vareId && r.antall > 0);
-
-  if (!valgte.length) {
-    alert("Skriv antall på minst én vare.");
-    return;
-  }
-
-  // Slå sammen samme vare hvis den finnes flere ganger i lista.
-  const summer = new Map();
-  valgte.forEach(r => {
-    summer.set(r.vareId, (summer.get(r.vareId) || 0) + r.antall);
-  });
-
-  const vareIds = Array.from(summer.keys());
-
-  try {
-    if (knapp) {
-      knapp.disabled = true;
-      knapp.textContent = "Flytter varer...";
+  function visKunSide(sideId) {
+    const appSide = el("appSide");
+    if (appSide) {
+      appSide.classList.remove("skjult", "hidden");
+      appSide.style.display = "";
     }
 
-    // Først kontrollerer vi alle varer. Da unngår vi halvveis flytting.
-    const { data: varer, error: varerFeil } = await supabaseClient
-      .from("varer")
-      .select("*")
-      .in("id", vareIds);
+    const sider = [
+      "backupSide", "timerSide", "fakturaSide", "bilerSide", "varerSide",
+      "lonnPanel", "kundeSide", "ansattSide", "firmaSide", "modulerSide", "testSide"
+    ];
 
-    if (varerFeil) throw new Error("Feil ved kontroll av hovedlager: " + varerFeil.message);
-
-    const vareMap = new Map((varer || []).map(v => [String(v.id), v]));
-    const feil = [];
-
-    for (const [vareId, antall] of summer.entries()) {
-      const vare = vareMap.get(String(vareId));
-      if (!vare) {
-        feil.push("Fant ikke vare med id " + vareId);
-        continue;
+    sider.forEach(id => {
+      const s = el(id);
+      if (!s) return;
+      if (id === sideId) {
+        s.classList.remove("skjult", "hidden", "modul-skjult");
+        s.style.display = "";
+      } else {
+        s.classList.add("skjult");
+        s.style.display = "none";
       }
+    });
+  }
 
-      const hovedlager = hentVareHovedlager(vare);
-      if (hovedlager < antall) {
-        feil.push(`${vare.navn || "Vare"}: hovedlager har ${hovedlager}, du prøver å flytte ${antall}`);
-      }
-    }
-
-    if (feil.length) {
-      alert("Kan ikke fylle bilen:\n\n" + feil.join("\n"));
+  async function visVarerSide() {
+    const side = el("varerSide");
+    if (!side) {
+      alert("Fant ikke varerSide i index.html");
       return;
     }
 
-    let flyttet = 0;
-    const feiletUnderFlytting = [];
-
-    for (const [vareId, antall] of summer.entries()) {
-      try {
-        await flyttVareTilBilData(bilId, vareId, antall, false);
-        flyttet++;
-      } catch (e) {
-        feiletUnderFlytting.push(e.message || String(e));
-        break;
-      }
-    }
-
-    // Tøm bare feltene som faktisk var valgt hvis minst én ble flyttet.
-    if (flyttet > 0) {
-      valgte.forEach(r => { r.felt.value = ""; });
-    }
-
-    await hentVarer();
-    await fyllVarevalg();
-    await hentBilLager();
-
-    if (feiletUnderFlytting.length) {
-      alert(`Flyttet ${flyttet} varelinje(r), men stoppet med feil:\n\n${feiletUnderFlytting.join("\n")}`);
-      return;
-    }
-
-    alert(`Flyttet ${flyttet} varelinje(r) til bilen.`);
-  } catch (e) {
-    alert(e.message || e);
-  } finally {
-    if (knapp) {
-      knapp.disabled = false;
-      knapp.textContent = "Overfør alle valgte varer til bil";
-    }
-  }
-}
-
-async function flyttVareTilBil() {
-  const bilId = document.getElementById("lagerBilValg")?.value;
-  const vareId = document.getElementById("lagerVareValg")?.value;
-  const antall = heltallFraVerdi(document.getElementById("lagerFlyttAntall")?.value || 0);
-
-  try {
-    await flyttVareTilBilData(bilId, vareId, antall, false);
-    document.getElementById("lagerFlyttAntall").value = "1";
-    await hentVarer();
-    await fyllVarevalg();
-    await hentBilLager();
-    alert("Vare flyttet til bil.");
-  } catch (e) {
-    alert(e.message || e);
-  }
-}
-
-async function hentBilLager() {
-  const liste = document.getElementById("bilLagerListe");
-  if (!liste) return;
-
-  liste.innerHTML = "Laster bil-lager...";
-
-  const { data, error } = await supabaseClient
-    .from("bil_varer")
-    .select("id, antall, biler(navn, regnr), varer(varenr, navn, pris)")
-    .order("id", { ascending: true });
-
-  if (error) {
-    liste.innerHTML = "Feil ved henting av bil-lager: " + error.message;
-    return;
-  }
-
-  if (!data || !data.length) {
-    liste.innerHTML = "Ingen varer ligger på bil ennå.";
-    return;
-  }
-
-  liste.innerHTML = data.map(rad => `
-    <div style="border:1px solid #ddd; padding:8px; margin-bottom:6px; border-radius:6px; background:#fff;">
-      <b>${rad.biler?.navn || "Bil"}${rad.biler?.regnr ? " - " + rad.biler.regnr : ""}</b><br>
-      ${rad.varer?.varenr || ""} ${rad.varer?.navn || ""}<br>
-      Antall i bil: <b>${Number(rad.antall || 0)}</b>
-    </div>
-  `).join("");
-}
-
-async function importerVarer() {
-  const filInput = document.getElementById("importVarerFil");
-
-  if (!filInput || !filInput.files.length) {
-    alert("Velg Excel- eller CSV-fil");
-    return;
-  }
-
-  const fil = filInput.files[0];
-  const filnavn = (fil.name || "").toLowerCase();
-  const reader = new FileReader();
-
-  reader.onload = async function(e) {
-    let json = [];
+    // Viktig: Vis siden FØR databasekall. Hvis database feiler, skal ikke knappen virke død.
+    visKunSide("varerSide");
+    melding("Laster varer...");
 
     try {
-      if (filnavn.endsWith(".csv")) {
-        const tekst = e.target.result;
-        const workbook = XLSX.read(tekst, { type: "string" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        json = XLSX.utils.sheet_to_json(sheet);
-      } else {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        json = XLSX.utils.sheet_to_json(sheet);
+      await lastVarer();
+      melding("");
+    } catch (e) {
+      console.error("Varer feilet:", e);
+      melding("Varer ble åpnet, men lasting feilet: " + (e.message || String(e)), true);
+    }
+  }
+
+  function tilbakeFraVarer() {
+    if (typeof window.visTimerSide === "function") {
+      window.visTimerSide();
+      return;
+    }
+    visKunSide("timerSide");
+  }
+
+  function settVareSelect(selectId, liste, tomTekst) {
+    const s = el(selectId);
+    if (!s) return;
+
+    const valgt = s.value;
+    s.innerHTML = `<option value="">${tomTekst || "Velg vare"}</option>`;
+
+    liste.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v.id;
+      opt.dataset.pris = varepris(v);
+      opt.textContent = `${v.varenr ? v.varenr + " - " : ""}${varenavn(v)}`;
+      s.appendChild(opt);
+    });
+
+    if (valgt && Array.from(s.options).some(o => String(o.value) === String(valgt))) {
+      s.value = valgt;
+    }
+  }
+
+  async function lastVarer() {
+    const liste = el("vareListe");
+    if (liste) liste.innerHTML = `<p class="info">Laster varer...</p>`;
+
+    if (!window.supabaseClient) {
+      varerListe = [];
+      tegnVarer();
+      melding("Supabase er ikke lastet. Sjekk js/core/config.js.", true);
+      return [];
+    }
+
+    let res = await supabaseClient.from("varer").select("*").limit(1000);
+
+    if (res.error) {
+      varerListe = [];
+      tegnVarer();
+      melding("Feil ved henting av varer: " + res.error.message, true);
+      return [];
+    }
+
+    varerListe = (res.data || []).sort((a, b) =>
+      String(varenavn(a)).localeCompare(String(varenavn(b)), "no")
+    );
+
+    window.varer = varerListe;
+
+    settVareSelect("lagerVareValg", varerListe, "Velg vare");
+    settVareSelect("bilLagerVareValg", varerListe, "Velg vare");
+
+    if (typeof window.fyllVarevalgFraAktivBil === "function") {
+      try {
+        await window.fyllVarevalgFraAktivBil();
+      } catch (e) {
+        console.warn("Kunne ikke fylle varevalg fra bil:", e);
+        settVareSelect("vareValg", varerListe, "Velg vare");
       }
-    } catch (err) {
-      alert("Kunne ikke lese importfilen: " + (err.message || err));
+    } else {
+      settVareSelect("vareValg", varerListe, "Velg vare");
+    }
+
+    tegnVarer();
+    return varerListe;
+  }
+
+  function tegnVarer() {
+    const c = el("vareListe");
+    if (!c) return;
+
+    if (!varerListe.length) {
+      c.innerHTML = `<p class="info">Ingen varer registrert.</p>`;
       return;
     }
 
-    if (!json.length) {
-      alert("Fant ingen varer i filen");
+    c.innerHTML = `
+      <table class="kompakt-tabell vare-enlinje-tabell">
+        <thead>
+          <tr>
+            <th>Varenr</th>
+            <th>Navn</th>
+            <th>Inn</th>
+            <th>Ut</th>
+            <th>Hovedlager</th>
+            <th>Minimum</th>
+            <th>MVA</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${varerListe.map(v => `
+            <tr>
+              <td>${escapeHtml(v.varenr || "")}</td>
+              <td>${escapeHtml(varenavn(v))}</td>
+              <td>${escapeHtml(v.innpris ?? v.vareinnpris ?? 0)}</td>
+              <td>${escapeHtml(varepris(v))}</td>
+              <td>${escapeHtml(v.lager_antall ?? v.antall ?? v.beholdning ?? 0)}</td>
+              <td>${escapeHtml(v.minimum_antall ?? v.min_antall ?? 0)}</td>
+              <td>${escapeHtml(v.mva_prosent ?? v.mva ?? 25)}</td>
+              <td><button type="button" class="secondary liten-knapp" onclick="window.redigerVare('${escapeHtml(v.id)}')">Endre</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function redigerVare(id) {
+    const v = varerListe.find(x => String(x.id) === String(id));
+    if (!v) return;
+
+    setVal("varenr", v.varenr || "");
+    setVal("varenavn", v.navn || v.varenavn || "");
+    setVal("varebeskrivelse", v.beskrivelse || "");
+    setVal("vareinnpris", v.innpris ?? v.vareinnpris ?? 0);
+    setVal("varepris", v.pris ?? v.utpris ?? v.utsalgspris ?? v.salgspris ?? 0);
+    setVal("varelagerAntall", v.lager_antall ?? v.antall ?? v.beholdning ?? 0);
+    setVal("vareMinimumAntall", v.minimum_antall ?? v.min_antall ?? 0);
+    setVal("varemva", v.mva_prosent ?? v.mva ?? 25);
+
+    window.redigerVareId = id;
+    melding("Redigerer vare. Trykk Lagre vare når du er ferdig.");
+  }
+
+  async function lagreVare() {
+    if (!window.supabaseClient) {
+      melding("Supabase er ikke lastet. Sjekk js/core/config.js.", true);
       return;
     }
 
-    const varer = json
-      .map(v => {
-        const innpris = Number(v.innpris || v.innPris || 0);
-        const paslag_faktor = Number(v.paslag_faktor || v.påslag_faktor || v.paslag || 3);
-        const pris = Number(v.pris || v.utpris || 0) || round(innpris * paslag_faktor);
-        return {
-          varenr: String(v.varenr || "").trim(),
-          navn: String(v.navn || "").trim(),
-          beskrivelse: String(v.beskrivelse || "").trim(),
-          innpris,
-          paslag_faktor,
-          pris,
-          lager_antall: heltallFraVerdi(v.lager_antall || v.antall || 0),
-          minimum_antall: heltallFraVerdi(v.minimum_antall || v.minimum || 0),
-          mva_sats: Number(v.mva_sats || v.mva || 25),
-          aktiv: true
-        };
-      })
-      .filter(v => v.navn);
+    const navn = val("varenavn");
+    const varenr = val("varenr");
 
-    if (!varer.length) {
-      alert("Fant ingen varer med navn i filen");
+    if (!navn && !varenr) {
+      melding("Skriv varenavn eller varenr først.", true);
       return;
     }
 
-    const { error } = await supabaseClient
-      .from("varer")
-      .insert(varer);
+    const innpris = tall("vareinnpris", 0);
+    const paslag = tall("varepaslag", 3);
+    const prisFelt = val("varepris");
+    const pris = prisFelt === "" ? innpris * paslag : tall("varepris", 0);
+
+    const rad = {
+      varenr: varenr || null,
+      navn: navn || varenr,
+      beskrivelse: val("varebeskrivelse") || null,
+      innpris,
+      pris,
+      lager_antall: tall("varelagerAntall", 0),
+      minimum_antall: tall("vareMinimumAntall", 0),
+      mva_prosent: tall("varemva", 25)
+    };
+
+    let res;
+    if (window.redigerVareId) {
+      res = await supabaseClient.from("varer").update(rad).eq("id", window.redigerVareId).select();
+    } else {
+      res = await supabaseClient.from("varer").insert([rad]).select();
+    }
+
+    if (res.error) {
+      melding("Kunne ikke lagre vare: " + res.error.message, true);
+      return;
+    }
+
+    ["varenr", "varenavn", "varebeskrivelse", "vareinnpris", "varepris"].forEach(id => setVal(id, ""));
+    setVal("varepaslag", "3");
+    setVal("varelagerAntall", "0");
+    setVal("vareMinimumAntall", "0");
+    setVal("varemva", "25");
+    window.redigerVareId = null;
+
+    melding("Vare lagret.");
+    await lastVarer();
+
+    if (typeof window.fyllBilLagerVareValg === "function") {
+      try { await window.fyllBilLagerVareValg(); } catch (e) { console.warn(e); }
+    }
+  }
+
+  async function importerVarer() {
+    const input = el("importVarerFil");
+    const fil = input?.files?.[0];
+
+    if (!fil) {
+      melding("Velg Excel- eller CSV-fil først.", true);
+      return;
+    }
+
+    if (typeof XLSX === "undefined") {
+      melding("XLSX-biblioteket er ikke lastet.", true);
+      return;
+    }
+
+    const buffer = await fil.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const råRader = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+    const hent = (rad, ...keys) => {
+      for (const k of keys) {
+        if (rad[k] !== undefined && rad[k] !== null && String(rad[k]).trim() !== "") return rad[k];
+      }
+      return "";
+    };
+
+    const rader = råRader.map(rad => {
+      const varenr = String(hent(rad, "varenr", "Varenr", "vare_nr", "VareNr", "Artikkel", "artikkel")).trim();
+      const navn = String(hent(rad, "navn", "Navn", "varenavn", "Varenavn", "vare", "Vare", "beskrivelse", "Beskrivelse")).trim();
+      if (!varenr && !navn) return null;
+
+      return {
+        varenr: varenr || null,
+        navn: navn || varenr,
+        beskrivelse: String(hent(rad, "beskrivelse", "Beskrivelse", "tekst", "Tekst")).trim() || null,
+        innpris: Number(String(hent(rad, "innpris", "Innpris", "kostpris", "Kostpris") || 0).replace(",", ".")) || 0,
+        pris: Number(String(hent(rad, "pris", "Pris", "utpris", "Utpris", "utsalgspris", "Utsalgspris") || 0).replace(",", ".")) || 0,
+        lager_antall: Number(String(hent(rad, "lager_antall", "Antall", "antall", "lager", "Lager") || 0).replace(",", ".")) || 0,
+        minimum_antall: Number(String(hent(rad, "minimum_antall", "Minimum", "minimum", "min") || 0).replace(",", ".")) || 0,
+        mva_prosent: Number(String(hent(rad, "mva_prosent", "MVA", "mva", "Mva") || 25).replace(",", ".")) || 25
+      };
+    }).filter(Boolean);
+
+    if (!rader.length) {
+      melding("Fant ingen varer i importfilen.", true);
+      return;
+    }
+
+    const { error } = await supabaseClient.from("varer").upsert(rader, { onConflict: "varenr" });
 
     if (error) {
-      alert("Importfeil: " + error.message);
+      melding("Import feilet: " + error.message, true);
       return;
     }
 
-    alert("Importerte " + varer.length + " varer");
-
-    await hentVarer();
-    await fyllVarevalg();
-    await hentBilLager();
-  };
-
-  if ((fil.name || "").toLowerCase().endsWith(".csv")) {
-    reader.readAsText(fil, "utf-8");
-  } else {
-    reader.readAsArrayBuffer(fil);
+    melding(`Importerte ${rader.length} varer.`);
+    await lastVarer();
   }
-}
 
-function koblePrisAuto() {
-  const innpris = document.getElementById("vareinnpris");
-  const paslag = document.getElementById("varepaslag");
-  const pris = document.getElementById("varepris");
-
-  const oppdater = () => {
-    if (!innpris || !paslag || !pris) return;
-    const inn = Number(innpris.value || 0);
-    const faktor = Number(paslag.value || 3);
-    if (inn > 0 && (!pris.value || Number(pris.value || 0) === 0)) {
-      pris.value = round(inn * faktor);
+  function kobleKnapper() {
+    const varerKnapp = el("varerKnapp");
+    if (varerKnapp) {
+      varerKnapp.onclick = function (e) {
+        if (e) e.preventDefault();
+        window.visVarerSide();
+      };
     }
-  };
 
-  if (innpris) innpris.addEventListener("change", oppdater);
-  if (paslag) paslag.addEventListener("change", () => {
-    if (pris) pris.value = "";
-    oppdater();
+    const lagreVareKnapp = el("lagreVareKnapp");
+    if (lagreVareKnapp) lagreVareKnapp.onclick = lagreVare;
+
+    const tilbakeFraVarerKnapp = el("tilbakeFraVarerKnapp");
+    if (tilbakeFraVarerKnapp) tilbakeFraVarerKnapp.onclick = tilbakeFraVarer;
+
+    const importVarerKnapp = el("importVarerKnapp");
+    if (importVarerKnapp) importVarerKnapp.onclick = importerVarer;
+
+    const innpris = el("vareinnpris");
+    const paslag = el("varepaslag");
+    const pris = el("varepris");
+
+    function regnUtPris() {
+      if (!innpris || !paslag || !pris) return;
+      pris.value = (tall("vareinnpris", 0) * tall("varepaslag", 3)).toFixed(2);
+    }
+
+    if (innpris && !innpris.dataset.varerKoblet7020) {
+      innpris.dataset.varerKoblet7020 = "1";
+      innpris.addEventListener("input", regnUtPris);
+    }
+
+    if (paslag && !paslag.dataset.varerKoblet7020) {
+      paslag.dataset.varerKoblet7020 = "1";
+      paslag.addEventListener("input", regnUtPris);
+    }
+  }
+
+  function leggTilStil() {
+    if (el("varerStil7020")) return;
+
+    const style = document.createElement("style");
+    style.id = "varerStil7020";
+    style.textContent = `
+      .kompakt-tabell { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+      .kompakt-tabell th, .kompakt-tabell td {
+        border-bottom:1px solid #374151;
+        padding:6px 8px;
+        text-align:left;
+        vertical-align:middle;
+        white-space:nowrap;
+      }
+      .kompakt-tabell th { background:#111827; color:#f3f4f6; }
+      .kompakt-tabell td { color:#f3f4f6; }
+      .vare-enlinje-tabell td:nth-child(2) { white-space:normal; min-width:180px; }
+      .liten-knapp { padding:5px 8px; font-size:12px; margin:0; }
+      #vareListe { overflow-x:auto; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function initVarer() {
+    leggTilStil();
+    kobleKnapper();
+  }
+
+  // Viktig: visVarer skal nå vise siden, ikke bare laste varer.
+  window.visVarerSide = visVarerSide;
+  window.visVarer = visVarerSide;
+  window.lastVarer = lastVarer;
+  window.lagreVare = lagreVare;
+  window.redigerVare = redigerVare;
+  window.importerVarer = importerVarer;
+  window.tegnVarer = tegnVarer;
+  window.visKunSide = visKunSide;
+
+  document.addEventListener("DOMContentLoaded", initVarer);
+  window.addEventListener("load", function () {
+    initVarer();
+    setTimeout(initVarer, 300);
+    setTimeout(initVarer, 1000);
   });
-}
-
-function round(tall) {
-  return Math.round(Number(tall || 0) * 100) / 100;
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const varerKnapp = document.getElementById("varerKnapp");
-  const lagreVareKnapp = document.getElementById("lagreVareKnapp");
-  const tilbakeFraVarerKnapp = document.getElementById("tilbakeFraVarerKnapp");
-  const importVarerKnapp = document.getElementById("importVarerKnapp");
-  const lagreBilKnapp = document.getElementById("lagreBilKnapp");
-  const flyttVareTilBilKnapp = document.getElementById("flyttVareTilBilKnapp");
-  const fyllBilFlereKnapp = document.getElementById("fyllBilFlereKnapp");
-
-  if (varerKnapp) varerKnapp.addEventListener("click", visVarer);
-  if (lagreVareKnapp) lagreVareKnapp.addEventListener("click", lagreVare);
-  if (tilbakeFraVarerKnapp) tilbakeFraVarerKnapp.addEventListener("click", tilbakeFraVarer);
-  if (importVarerKnapp) importVarerKnapp.addEventListener("click", importerVarer);
-  if (lagreBilKnapp) lagreBilKnapp.addEventListener("click", lagreBil);
-  if (flyttVareTilBilKnapp) flyttVareTilBilKnapp.addEventListener("click", flyttVareTilBil);
-  // Fler-vare-knappen bruker onclick i HTML som ekstra robust fallback.
-
-  koblePrisAuto();
-  fyllVarevalg();
-  fyllBilvalg();
-});
-
-window.visVarer = visVarer;
-window.hentVarer = hentVarer;
-window.fyllVarevalg = fyllVarevalg;
-window.fyllBilvalg = fyllBilvalg;
-window.hentBilLager = hentBilLager;
-window.registrerLagerBevegelse = registrerLagerBevegelse;
-window.fyllBilMedFlereVarer = fyllBilMedFlereVarer;
+})();

@@ -1,253 +1,279 @@
-function visElement(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.remove("hidden");
-  el.classList.remove("skjult");
-  el.classList.remove("modul-skjult");
-  el.style.display = "";
-}
+/* Rett i Lomma - stabil navigasjon 7055
+   Én navigasjon. Ingen adminKonsollSide som ikke finnes i HTML.
+*/
+(function () {
+  const ARBEIDSSIDER = [
+    "timerSide", "jobberSide", "backupSide", "fakturaSide", "varerSide", "bilerSide",
+    "kundeSide", "ansattSide", "firmaSide", "testSide", "lonnPanel", "modulerSide"
+  ];
 
-function skjulElement(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add("hidden");
-  el.classList.add("skjult");
-  el.style.display = "none";
-}
+  function hent(id) { return document.getElementById(id); }
 
-function visLogin() {
-  visElement("loginSide");
-  skjulElement("nyttPassordSide");
-  skjulElement("appSide");
-}
-
-function visNyttPassord() {
-  skjulElement("loginSide");
-  visElement("nyttPassordSide");
-  skjulElement("appSide");
-}
-
-async function visApp() {
-  skjulElement("loginSide");
-  skjulElement("nyttPassordSide");
-  visElement("appSide");
-
-  oppdaterAdminVisning();
-
-  if (typeof lastModulerFraDatabase === "function") {
-    await lastModulerFraDatabase();
+  function visElement(id) {
+    const el = hent(id);
+    if (!el) return;
+    el.classList.remove("hidden", "skjult", "modul-skjult");
+    el.style.display = "";
   }
 
-  if (typeof oppdaterModulVisning === "function") {
-    oppdaterModulVisning();
+  function skjulElement(id) {
+    const el = hent(id);
+    if (!el) return;
+    el.classList.add("hidden", "skjult");
+    el.style.display = "none";
   }
 
-  if (typeof lastKunder === "function") await lastKunder();
-  if (typeof lastProsjekter === "function") await lastProsjekter();
-  if (typeof lastAnsatte === "function") await lastAnsatte();
-
-  if (typeof settDagensDato === "function") settDagensDato();
-
-  if (typeof lastTimer === "function") {
-    await lastTimer();
-  } else if (typeof tegnTimer === "function") {
-    tegnTimer();
+  function lukkMenyer() {
+    document.querySelectorAll(".meny-gruppe.apen").forEach(function (gruppe) {
+      gruppe.classList.remove("apen");
+    });
   }
 
-  if (typeof fyllFirmaSkjema === "function") fyllFirmaSkjema();
-  if (typeof tegnFirmaInfo === "function") tegnFirmaInfo();
+  function oppdaterAdminVisning() {
+    const admin = window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja";
 
-  if (window.erAdmin === true) {
-    visAdminKonsollSide();
-  } else {
+    if (document.body) {
+      document.body.classList.toggle("ril-er-admin", admin);
+      document.body.classList.toggle("ril-vanlig-bruker", !admin);
+    }
+
+    document.querySelectorAll(".admin-only").forEach(function (element) {
+      if (admin) {
+        element.classList.remove("hidden", "skjult");
+        element.style.display = "";
+      } else {
+        element.classList.add("hidden", "skjult");
+        element.style.display = "none";
+      }
+    });
+
+    if (!admin) skjulElement("adminAnsattRad");
+
+    if (typeof window.begrensBilLagerForVanligBruker === "function") {
+      setTimeout(window.begrensBilLagerForVanligBruker, 20);
+    }
+  }
+
+  function skjulArbeidssider() {
+    ARBEIDSSIDER.forEach(skjulElement);
+    skjulElement("adminAnsattRad");
+  }
+
+  function skjulAlleSider() { skjulArbeidssider(); }
+
+  function krevAdmin(melding) {
+    if (window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja") return true;
+    alert(melding || "Du har ikke tilgang til denne funksjonen.");
+    return false;
+  }
+
+  function visSide(sideId) {
+    visElement("appSide");
+    skjulArbeidssider();
+    visElement(sideId);
+    lukkMenyer();
+  }
+
+  function visLogin() {
+    visElement("loginSide");
+    skjulElement("nyttPassordSide");
+    skjulElement("appSide");
+  }
+
+  function visNyttPassord() {
+    skjulElement("loginSide");
+    visElement("nyttPassordSide");
+    skjulElement("appSide");
+  }
+
+  async function visApp() {
+    skjulElement("loginSide");
+    skjulElement("nyttPassordSide");
+    visElement("appSide");
+    oppdaterAdminVisning();
+
+    if (typeof window.lastModulerFraDatabase === "function") await window.lastModulerFraDatabase();
+    if (typeof window.oppdaterModulVisning === "function") window.oppdaterModulVisning();
+    oppdaterAdminVisning();
+    if (typeof window.lastKunder === "function") await window.lastKunder();
+    if (typeof window.lastProsjekter === "function") await window.lastProsjekter();
+    if (typeof window.lastAnsatte === "function") await window.lastAnsatte();
+    if (typeof window.settDagensDato === "function") window.settDagensDato();
+    if (typeof window.lastTimer === "function") await window.lastTimer();
+    else if (typeof window.tegnTimer === "function") window.tegnTimer();
+    if (typeof window.fyllFirmaSkjema === "function") window.fyllFirmaSkjema();
+    if (typeof window.tegnFirmaInfo === "function") window.tegnFirmaInfo();
+
     visTimerSide();
   }
-}
 
-function oppdaterAdminVisning() {
-  document.querySelectorAll(".admin-only").forEach(element => {
-    if (window.erAdmin === true) {
-      element.classList.remove("hidden", "skjult");
-      element.style.display = "";
+  function visTimerSide() {
+    oppdaterAdminVisning();
+    visSide("timerSide");
+    if (typeof window.reparerBilvalg === "function") setTimeout(window.reparerBilvalg, 20);
+    if (window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja") {
+      visElement("adminAnsattRad");
+      if (typeof window.fyllAdminAnsattValg === "function") window.fyllAdminAnsattValg();
     } else {
-      element.classList.add("hidden", "skjult");
-      element.style.display = "none";
+      skjulElement("adminAnsattRad");
     }
-  });
-
-  // Denne raden skal bare vises når admin velger "Registrer timer for ansatt".
-  skjulElement("adminAnsattRad");
-}
-
-function skjulArbeidssider() {
-  skjulElement("timerSide");
-  skjulElement("backupSide");
-  skjulElement("fakturaSide");
-  skjulElement("varerSide");
-  skjulElement("kundeSide");
-  skjulElement("ansattSide");
-  skjulElement("firmaSide");
-  skjulElement("testSide");
-  skjulElement("lonnPanel");
-  skjulElement("modulerSide");
-  skjulElement("adminAnsattRad");
-}
-
-function skjulAlleSider() {
-  skjulArbeidssider();
-  skjulElement("adminKonsollSide");
-}
-
-function visAdminKonsollHvisAdmin() {
-  if (window.erAdmin === true) {
-    visElement("adminKonsollSide");
-  }
-}
-
-function krevAdmin(melding) {
-  if (window.erAdmin === true) return true;
-  alert(melding);
-  return false;
-}
-
-function visTimerSide() {
-  // Når admin registrerer egne timer, skal admin-konsollen skjules.
-  skjulAlleSider();
-  visElement("timerSide");
-}
-
-function visTimerForAnsattSide() {
-  if (!krevAdmin("Du har ikke tilgang til å registrere timer for ansatt.")) return;
-
-  // Når admin registrerer timer for ansatt, beholdes admin-konsollen synlig.
-  skjulArbeidssider();
-  visElement("adminKonsollSide");
-  visElement("timerSide");
-  visElement("adminAnsattRad");
-}
-
-function visAdminKonsollSide() {
-  if (!krevAdmin("Du har ikke tilgang til admin-konsoll.")) return;
-
-  skjulArbeidssider();
-  visElement("adminKonsollSide");
-}
-
-function visFakturaSide() {
-  if (!krevAdmin("Du har ikke tilgang til faktura.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("fakturaSide");
-
-  if (typeof fyllOkonomiKundeValg === "function") fyllOkonomiKundeValg();
-}
-
-function visBackupSide() {
-  if (!krevAdmin("Du har ikke tilgang til backup.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("backupSide");
-}
-
-function visVarerSide() {
-  if (!krevAdmin("Du har ikke tilgang til varer.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-
-  if (typeof window.visVarer === "function") {
-    window.visVarer();
-    visAdminKonsollHvisAdmin();
-    return;
   }
 
-  visElement("varerSide");
-}
 
-async function visKundeSide() {
-  if (!krevAdmin("Du har ikke tilgang til kunderegister.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("kundeSide");
-
-  if (typeof lastKunder === "function") await lastKunder();
-}
-
-async function visAnsattSide() {
-  if (!krevAdmin("Du har ikke tilgang til ansattregister.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("ansattSide");
-
-  if (typeof tegnTrekkListe === "function") tegnTrekkListe();
-  if (typeof lastAnsatte === "function") await lastAnsatte();
-}
-
-function visFirmaSide() {
-  if (!krevAdmin("Du har ikke tilgang til firma.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("firmaSide");
-
-  if (typeof fyllFirmaSkjema === "function") fyllFirmaSkjema();
-  if (typeof tegnFirmaInfo === "function") tegnFirmaInfo();
-}
-
-async function visLonnSide() {
-  if (!krevAdmin("Du har ikke tilgang til lønn.")) return;
-
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("lonnPanel");
-
-  if (typeof lastAnsatte === "function") {
-    await lastAnsatte();
-  } else if (typeof fyllLonnAnsattValg === "function") {
-    fyllLonnAnsattValg(window.ansatte || []);
+  function visJobberSide() {
+    oppdaterAdminVisning();
+    visSide("jobberSide");
+    if (typeof window.lastJobber === "function") setTimeout(window.lastJobber, 20);
   }
-}
 
-function visTestSide() {
-  if (!krevAdmin("Du har ikke tilgang til testpanel.")) return;
+  function visTimerForAnsattSide() { visTimerSide(); }
 
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("testSide");
-}
+  function visFakturaSide() {
+    if (!krevAdmin("Du har ikke tilgang til faktura.")) return;
+    visSide("fakturaSide");
+    if (typeof window.fyllOkonomiKundeValg === "function") window.fyllOkonomiKundeValg();
+  }
 
-function visModulerSide() {
-  if (!krevAdmin("Du har ikke tilgang til moduler.")) return;
+  function visBackupSide() {
+    if (!krevAdmin("Du har ikke tilgang til backup.")) return;
+    visSide("backupSide");
+  }
 
-  skjulArbeidssider();
-  visAdminKonsollHvisAdmin();
-  visElement("modulerSide");
+  function visVarerSide() {
+    if (!krevAdmin("Du har ikke tilgang til varer.")) return;
+    visSide("varerSide");
+    if (typeof window.lastVarer === "function") setTimeout(window.lastVarer, 20);
+  }
 
-  if (typeof tegnModulGui === "function") tegnModulGui();
-}
+  function visBilerSide() {
+    // Vanlig bruker skal kunne fylle/vedlikeholde sin egen bil.
+    // Admin ser hele bilregisteret/bil-lageret.
+    oppdaterAdminVisning();
+    visSide("bilerSide");
+    if (typeof window.lastBiler === "function") setTimeout(window.lastBiler, 20);
+    if (typeof window.lastBilLager === "function") setTimeout(window.lastBilLager, 20);
+    if (typeof window.reparerBilvalg === "function") setTimeout(window.reparerBilvalg, 50);
+    if (typeof window.fyllBilvalgTrygt === "function") setTimeout(window.fyllBilvalgTrygt, 100);
+    if (typeof window.begrensBilLagerForVanligBruker === "function") setTimeout(window.begrensBilLagerForVanligBruker, 180);
+  }
 
-window.visLogin = visLogin;
-window.visNyttPassord = visNyttPassord;
-window.visApp = visApp;
-window.visTimerSide = visTimerSide;
-window.rilVisTimerSide = visTimerSide;
-window.visAdminKonsollSide = visAdminKonsollSide;
-window.rilVisAdminKonsollSide = visAdminKonsollSide;
-window.visTimerForAnsattSide = visTimerForAnsattSide;
-window.rilVisTimerForAnsattSide = visTimerForAnsattSide;
-window.visFakturaSide = visFakturaSide;
-window.visBackupSide = visBackupSide;
-window.visVarerSide = visVarerSide;
-window.visKundeSide = visKundeSide;
-window.visAnsattSide = visAnsattSide;
-window.visFirmaSide = visFirmaSide;
-window.visTestSide = visTestSide;
-window.visLonnSide = visLonnSide;
-window.visModulerSide = visModulerSide;
-window.skjulAlleSider = skjulAlleSider;
-window.skjulArbeidssider = skjulArbeidssider;
-window.visAdminKonsollHvisAdmin = visAdminKonsollHvisAdmin;
+  async function visKundeSide() {
+    if (!krevAdmin("Du har ikke tilgang til kunderegister.")) return;
+    visSide("kundeSide");
+    if (typeof window.lastKunder === "function") await window.lastKunder();
+  }
+
+  async function visAnsattSide() {
+    if (!krevAdmin("Du har ikke tilgang til ansattregister.")) return;
+    visSide("ansattSide");
+    if (typeof window.tegnTrekkListe === "function") window.tegnTrekkListe();
+    if (typeof window.lastAnsatte === "function") await window.lastAnsatte();
+  }
+
+  function visFirmaSide() {
+    if (!krevAdmin("Du har ikke tilgang til firma.")) return;
+    visSide("firmaSide");
+    if (typeof window.lastFirma === "function") window.lastFirma();
+    else if (typeof window.fyllFirmaSkjema === "function") window.fyllFirmaSkjema();
+  }
+
+  async function visLonnSide() {
+    if (!krevAdmin("Du har ikke tilgang til lønn.")) return;
+    visSide("lonnPanel");
+    if (typeof window.lastAnsatte === "function") await window.lastAnsatte();
+    else if (typeof window.fyllLonnAnsattValg === "function") window.fyllLonnAnsattValg(window.ansatte || []);
+  }
+
+  function visTestSide() {
+    if (!krevAdmin("Du har ikke tilgang til testpanel.")) return;
+    visSide("testSide");
+  }
+
+  function visModulerSide() {
+    if (!krevAdmin("Du har ikke tilgang til moduler.")) return;
+    visSide("modulerSide");
+    if (typeof window.tegnModulGui === "function") window.tegnModulGui();
+  }
+
+  function bindMeny(knappId) {
+    const knapp = hent(knappId);
+    if (!knapp || knapp.dataset.rilMenyBindet === "1") return;
+    knapp.dataset.rilMenyBindet = "1";
+    knapp.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const gruppe = knapp.closest(".meny-gruppe");
+      if (!gruppe) return;
+      document.querySelectorAll(".meny-gruppe.apen").forEach(function (g) {
+        if (g !== gruppe) g.classList.remove("apen");
+      });
+      gruppe.classList.toggle("apen");
+    });
+  }
+
+  function bindKnapp(id, fn) {
+    const knapp = hent(id);
+    if (!knapp || knapp.dataset.rilNavBindet === "1") return;
+    knapp.dataset.rilNavBindet = "1";
+    knapp.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      fn();
+    });
+  }
+
+  function bindNavigasjon() {
+    bindMeny("adminMenyKnapp");
+    bindMeny("lagerMenyKnapp");
+
+    bindKnapp("visTimerKnapp", visTimerSide);
+    bindKnapp("visJobberKnapp", visJobberSide);
+    bindKnapp("visKundeKnapp", visKundeSide);
+    bindKnapp("visFakturaKnapp", visFakturaSide);
+    bindKnapp("visLonnKnapp", visLonnSide);
+    bindKnapp("varerKnapp", visVarerSide);
+    bindKnapp("visBilerKnapp", visBilerSide);
+    bindKnapp("visAnsattKnapp", visAnsattSide);
+    bindKnapp("visFirmaKnapp", visFirmaSide);
+    bindKnapp("visModulerKnapp", visModulerSide);
+    bindKnapp("visBackupKnapp", visBackupSide);
+    bindKnapp("visTestKnapp", visTestSide);
+
+    document.addEventListener("click", function (event) {
+      if (event.target && event.target.closest && event.target.closest(".meny-gruppe")) return;
+      lukkMenyer();
+    });
+  }
+
+  window.visLogin = visLogin;
+  window.visNyttPassord = visNyttPassord;
+  window.visApp = visApp;
+  window.oppdaterAdminVisning = oppdaterAdminVisning;
+  window.visTimerSide = visTimerSide;
+  window.rilVisTimerSide = visTimerSide;
+  window.visTimerForAnsattSide = visTimerForAnsattSide;
+  window.visJobberSide = visJobberSide;
+  window.rilVisTimerForAnsattSide = visTimerForAnsattSide;
+  window.visAdminKonsollSide = visTimerSide;
+  window.rilVisAdminKonsollSide = visTimerSide;
+  window.visFakturaSide = visFakturaSide;
+  window.visBackupSide = visBackupSide;
+  window.visVarerSide = visVarerSide;
+  window.visBilerSide = visBilerSide;
+  window.visKundeSide = visKundeSide;
+  window.visAnsattSide = visAnsattSide;
+  window.visFirmaSide = visFirmaSide;
+  window.visTestSide = visTestSide;
+  window.visLonnSide = visLonnSide;
+  window.visModulerSide = visModulerSide;
+  window.skjulAlleSider = skjulAlleSider;
+  window.skjulArbeidssider = skjulArbeidssider;
+  window.visAdminKonsollHvisAdmin = function () {};
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindNavigasjon);
+  } else {
+    bindNavigasjon();
+  }
+  window.addEventListener("load", bindNavigasjon);
+})();

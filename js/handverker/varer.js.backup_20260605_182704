@@ -1,0 +1,337 @@
+// Fix for biloppretting, bilvalg på ansatt og kompakt vareliste.
+// Lastes etter varer.js og overstyrer bare det som trengs.
+
+(function () {
+  let varerFixListe = [];
+  let bilerFixListe = [];
+
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function val(id) {
+    const e = el(id);
+    return e ? String(e.value || "").trim() : "";
+  }
+
+  function setVal(id, verdi) {
+    const e = el(id);
+    if (e) e.value = verdi ?? "";
+  }
+
+  function tall(id) {
+    const v = val(id);
+    if (v === "") return null;
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function melding(tekst, feil) {
+    let m = el("vareMelding") || el("varerMelding") || el("timerMelding") || el("ansattMelding");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "vareMelding";
+      m.className = "melding";
+      const side = el("varerSide") || document.body;
+      side.prepend(m);
+    }
+    m.textContent = tekst || "";
+    m.style.color = feil ? "#fca5a5" : "#86efac";
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function settOptions(selectId, liste, tomTekst) {
+    const s = el(selectId);
+    if (!s) return;
+    const valgt = s.value;
+    s.innerHTML = `<option value="">${tomTekst}</option>`;
+    liste.forEach(rad => {
+      const opt = document.createElement("option");
+      opt.value = rad.id;
+      opt.textContent = rad.navn || rad.regnr || rad.varenavn || rad.varenr || rad.id;
+      s.appendChild(opt);
+    });
+    if (valgt && Array.from(s.options).some(o => String(o.value) === String(valgt))) {
+      s.value = valgt;
+    }
+  }
+
+  async function lastBilerFix() {
+    if (!window.supabaseClient) return [];
+
+    const { data, error } = await supabaseClient
+      .from("biler")
+      .select("*")
+      .order("navn", { ascending: true });
+
+    if (error) {
+      console.error("Feil ved henting av biler:", error);
+      melding("Feil ved henting av biler: " + error.message, true);
+      return [];
+    }
+
+    bilerFixListe = data || [];
+    window.biler = bilerFixListe;
+
+    settOptions("lagerBilValg", bilerFixListe, "Velg bil");
+    settOptions("bilValg", bilerFixListe, "Velg bil");
+    settOptions("ansattStandardBil", bilerFixListe, "Ingen fast bil");
+
+    tegnBilListeFix();
+    return bilerFixListe;
+  }
+
+  async function lagreBilFix() {
+    const navn = val("bilNavn");
+    const regnr = val("bilRegnr").toUpperCase();
+
+    if (!navn && !regnr) {
+      melding("Skriv bilnavn eller regnr først.", true);
+      return;
+    }
+
+    let rad = { navn: navn || regnr, regnr: regnr || null, aktiv: true };
+    let res = await supabaseClient.from("biler").insert([rad]).select();
+
+    // Hvis tabellen ikke har aktiv-kolonne, prøv en enklere insert.
+    if (res.error && String(res.error.message || "").includes("aktiv")) {
+      rad = { navn: navn || regnr, regnr: regnr || null };
+      res = await supabaseClient.from("biler").insert([rad]).select();
+    }
+
+    if (res.error) {
+      console.error("Feil ved lagring av bil:", res.error);
+      melding("Kunne ikke lagre bil: " + res.error.message, true);
+      return;
+    }
+
+    setVal("bilNavn", "");
+    setVal("bilRegnr", "");
+    melding("Bil lagret.");
+    await lastBilerFix();
+  }
+
+  function finnBilListeContainer() {
+    let c = el("bilListe");
+    if (c) return c;
+
+    c = document.createElement("div");
+    c.id = "bilListe";
+    c.style.marginTop = "10px";
+
+    const knapp = el("lagreBilKnapp");
+    if (knapp && knapp.parentNode) {
+      knapp.parentNode.insertBefore(c, knapp.nextSibling);
+    } else if (el("varerSide")) {
+      el("varerSide").appendChild(c);
+    }
+    return c;
+  }
+
+  function tegnBilListeFix() {
+    const c = finnBilListeContainer();
+    if (!c) return;
+
+    if (!bilerFixListe.length) {
+      c.innerHTML = `<p class="info">Ingen biler lagt inn.</p>`;
+      return;
+    }
+
+    c.innerHTML = `
+      <table class="kompakt-tabell">
+        <thead><tr><th>Bil</th><th>Regnr</th></tr></thead>
+        <tbody>
+          ${bilerFixListe.map(b => `
+            <tr>
+              <td>${escapeHtml(b.navn || "")}</td>
+              <td>${escapeHtml(b.regnr || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function lastVarerFix() {
+    if (!window.supabaseClient) return [];
+
+    const { data, error } = await supabaseClient
+      .from("varer")
+      .select("*")
+      .order("navn", { ascending: true });
+
+    if (error) {
+      console.error("Feil ved henting av varer:", error);
+      melding("Feil ved henting av varer: " + error.message, true);
+      return [];
+    }
+
+    varerFixListe = data || [];
+    window.varer = varerFixListe;
+
+    settOptions("lagerVareValg", varerFixListe.map(v => ({ ...v, navn: v.navn || v.varenavn || v.beskrivelse || v.varenr })), "Velg vare");
+    settOptions("vareValg", varerFixListe.map(v => ({ ...v, navn: v.navn || v.varenavn || v.beskrivelse || v.varenr })), "Velg vare");
+
+    tegnVarerEnLinje();
+    return varerFixListe;
+  }
+
+  function tegnVarerEnLinje() {
+    const c = el("vareListe");
+    if (!c) return;
+
+    if (!varerFixListe.length) {
+      c.innerHTML = `<p class="info">Ingen varer registrert.</p>`;
+      return;
+    }
+
+    c.innerHTML = `
+      <table class="kompakt-tabell vare-enlinje-tabell">
+        <thead>
+          <tr>
+            <th>Varenr</th>
+            <th>Navn</th>
+            <th>Inn</th>
+            <th>Ut</th>
+            <th>Lager</th>
+            <th>Min</th>
+            <th>MVA</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${varerFixListe.map(v => {
+            const navn = v.navn || v.varenavn || "";
+            const pris = v.pris ?? v.utpris ?? v.utsalgspris ?? v.salgspris ?? "";
+            const innpris = v.innpris ?? v.vareinnpris ?? "";
+            const lager = v.lager_antall ?? v.antall ?? v.beholdning ?? "";
+            const min = v.minimum_antall ?? v.min_antall ?? "";
+            const mva = v.mva_prosent ?? v.mva ?? "";
+            return `
+              <tr>
+                <td>${escapeHtml(v.varenr || "")}</td>
+                <td>${escapeHtml(navn)}</td>
+                <td>${escapeHtml(innpris)}</td>
+                <td>${escapeHtml(pris)}</td>
+                <td>${escapeHtml(lager)}</td>
+                <td>${escapeHtml(min)}</td>
+                <td>${escapeHtml(mva)}</td>
+                <td><button type="button" class="secondary liten-knapp" onclick="window.redigerVareFix('${v.id}')">Endre</button></td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function redigerVareFix(id) {
+    const v = varerFixListe.find(x => String(x.id) === String(id));
+    if (!v) return;
+
+    setVal("varenr", v.varenr || "");
+    setVal("varenavn", v.navn || v.varenavn || "");
+    setVal("varebeskrivelse", v.beskrivelse || "");
+    setVal("vareinnpris", v.innpris ?? "");
+    setVal("varepris", v.pris ?? v.utpris ?? v.utsalgspris ?? "");
+    setVal("varelagerAntall", v.lager_antall ?? v.antall ?? "");
+    setVal("vareMinimumAntall", v.minimum_antall ?? v.min_antall ?? "");
+    setVal("varemva", v.mva_prosent ?? v.mva ?? 25);
+    window.redigerVareId = id;
+    melding("Redigerer vare. Trykk Lagre vare når du er ferdig.");
+  }
+
+  async function lagreVareFix() {
+    const navn = val("varenavn");
+    const varenr = val("varenr");
+
+    if (!navn && !varenr) {
+      melding("Skriv varenavn eller varenr først.", true);
+      return;
+    }
+
+    const rad = {
+      varenr: varenr || null,
+      navn: navn || varenr,
+      beskrivelse: val("varebeskrivelse") || null,
+      innpris: tall("vareinnpris") ?? 0,
+      pris: tall("varepris") ?? 0,
+      lager_antall: tall("varelagerAntall") ?? 0,
+      minimum_antall: tall("vareMinimumAntall") ?? 0,
+      mva_prosent: tall("varemva") ?? 25
+    };
+
+    let res;
+    if (window.redigerVareId) {
+      res = await supabaseClient.from("varer").update(rad).eq("id", window.redigerVareId).select();
+    } else {
+      res = await supabaseClient.from("varer").insert([rad]).select();
+    }
+
+    if (res.error) {
+      console.error("Feil ved lagring av vare:", res.error);
+      melding("Kunne ikke lagre vare: " + res.error.message, true);
+      return;
+    }
+
+    ["varenr", "varenavn", "varebeskrivelse", "vareinnpris", "varepris"].forEach(id => setVal(id, ""));
+    setVal("varepaslag", "3");
+    setVal("varelagerAntall", "0");
+    setVal("vareMinimumAntall", "0");
+    setVal("varemva", "25");
+    window.redigerVareId = null;
+
+    melding("Vare lagret.");
+    await lastVarerFix();
+  }
+
+  async function initBilerVarerFix() {
+    const style = document.createElement("style");
+    style.textContent = `
+      .kompakt-tabell { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+      .kompakt-tabell th, .kompakt-tabell td { border-bottom:1px solid #374151; padding:6px 8px; text-align:left; vertical-align:middle; white-space:nowrap; }
+      .kompakt-tabell th { background:#111827; color:#f3f4f6; }
+      .kompakt-tabell td { color:#f3f4f6; }
+      .vare-enlinje-tabell td:nth-child(2) { white-space:normal; min-width:180px; }
+      .liten-knapp { padding:5px 8px; font-size:12px; margin:0; }
+      #vareListe, #bilListe { overflow-x:auto; }
+    `;
+    document.head.appendChild(style);
+
+    const lagreBilKnapp = el("lagreBilKnapp");
+    if (lagreBilKnapp) lagreBilKnapp.onclick = lagreBilFix;
+
+    const lagreVareKnapp = el("lagreVareKnapp");
+    if (lagreVareKnapp) lagreVareKnapp.onclick = lagreVareFix;
+
+    await lastBilerFix();
+    await lastVarerFix();
+  }
+
+  window.lastBiler = lastBilerFix;
+  window.fyllBilvalg = lastBilerFix;
+  window.lagreBil = lagreBilFix;
+  window.lagreBilFix = lagreBilFix;
+  window.lastVarer = lastVarerFix;
+  window.visVarer = lastVarerFix;
+  window.visVarerSideFix = lastVarerFix;
+  window.lagreVare = lagreVareFix;
+  window.redigerVareFix = redigerVareFix;
+  window.tegnVarerEnLinje = tegnVarerEnLinje;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(initBilerVarerFix, 200);
+  });
+
+  window.addEventListener("load", () => {
+    setTimeout(initBilerVarerFix, 500);
+  });
+})();

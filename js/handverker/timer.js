@@ -40,6 +40,75 @@ function oppdaterAktivBilVisning() {
 }
 
 
+async function settStandardBilForInnloggetAnsatt() {
+  try {
+    if (!window.supabaseClient) return;
+
+    let ansatt = null;
+
+    if (window.innloggetAnsattId) {
+      const { data, error } = await supabaseClient
+        .from("ansatte")
+        .select("id, navn, epost, standard_bil_id")
+        .eq("id", window.innloggetAnsattId)
+        .limit(1);
+
+      if (!error && data && data.length) ansatt = data[0];
+    }
+
+    if (!ansatt && window.innloggetEpost) {
+      const { data, error } = await supabaseClient
+        .from("ansatte")
+        .select("id, navn, epost, standard_bil_id")
+        .eq("epost", String(window.innloggetEpost).toLowerCase())
+        .limit(1);
+
+      if (!error && data && data.length) {
+        ansatt = data[0];
+        window.innloggetAnsattId = ansatt.id || window.innloggetAnsattId;
+      }
+    }
+
+    const standardBilId = ansatt?.standard_bil_id || "";
+    if (!standardBilId) {
+      oppdaterAktivBilVisning();
+      return;
+    }
+
+    window.aktivBilId = String(standardBilId);
+    localStorage.setItem("aktivBilId", String(standardBilId));
+
+    const bilValg = document.getElementById("bilValg");
+
+    if (bilValg) {
+      if (!bilValg.options.length || bilValg.options.length <= 1) {
+        if (typeof window.fyllAlleBilvalg === "function") {
+          await window.fyllAlleBilvalg();
+        } else if (typeof window.fyllBilvalg === "function") {
+          await window.fyllBilvalg();
+        }
+      }
+
+      const finnes = Array.from(bilValg.options).some(o => String(o.value) === String(standardBilId));
+      if (finnes) {
+        bilValg.value = String(standardBilId);
+        const valgtOption = bilValg.options[bilValg.selectedIndex];
+        window.aktivBilNavn = valgtOption ? valgtOption.textContent : "";
+        localStorage.setItem("aktivBilNavn", window.aktivBilNavn || "");
+      }
+    }
+
+    oppdaterAktivBilVisning();
+
+    if (typeof window.fyllVarevalgFraAktivBil === "function") {
+      await window.fyllVarevalgFraAktivBil();
+    }
+  } catch (e) {
+    console.warn("Kunne ikke sette standard bil for innlogget ansatt:", e);
+  }
+}
+
+
 async function fyllVarevalgFraAktivBil() {
   const vareValg = document.getElementById("vareValg");
   const prisFelt = document.getElementById("varePris");
@@ -71,7 +140,7 @@ async function fyllVarevalgFraAktivBil() {
   }
 
   const { data: bilVarer, error: bilFeil } = await supabaseClient
-    .from("bil_varer")
+    .from("bil_lager")
     .select("id, vare_id, antall")
     .eq("bil_id", aktivBilId);
 
@@ -251,6 +320,7 @@ async function lastTimer() {
   }
 
   window.timer = data || [];
+  await hentBildeAntallForTimer();
   tegnTimer();
 }
 
@@ -494,7 +564,16 @@ const { data, error } = await supabaseClient
     return;
   }
 if (data?.id) {
-  await lastOppTimerBilde(data.id);
+  try {
+    await lastOppTimerBilde(data.id);
+  } catch (e) {
+    console.error("Bildefeil:", e);
+    if (melding) {
+      melding.textContent =
+        "Timer lagret, men bilde feilet: " +
+        (e.message || JSON.stringify(e));
+    }
+  }
 }
   await lastTimer();
   nullstillSkjema();
@@ -542,6 +621,255 @@ function kundeInfoForTimer(t) {
   return { kundeNr, kundeNavn };
 }
 
+async function hentBildeAntallForTimer() {
+  if (!Array.isArray(window.timer) || !window.timer.length || !window.supabaseClient) return;
+
+  const ids = window.timer.map(t => t.id).filter(Boolean);
+  if (!ids.length) return;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("timer_bilder")
+      .select("timer_id")
+      .in("timer_id", ids);
+
+    if (error) {
+      console.warn("Kunne ikke hente bildeantall:", error);
+      window.timer.forEach(t => t._bilde_antall = t.bilde_path || t.bilde_url ? 1 : 0);
+      return;
+    }
+
+    const antallMap = new Map();
+    (data || []).forEach(b => {
+      const key = String(b.timer_id || "");
+      antallMap.set(key, (antallMap.get(key) || 0) + 1);
+    });
+
+    window.timer.forEach(t => {
+      const fraTabell = antallMap.get(String(t.id)) || 0;
+      const fraTimerRad = (t.bilde_path || t.bilde_url) ? 1 : 0;
+      t._bilde_antall = Math.max(fraTabell, fraTimerRad);
+    });
+  } catch (e) {
+    console.warn("Hoppet over bildeantall:", e);
+    window.timer.forEach(t => t._bilde_antall = t.bilde_path || t.bilde_url ? 1 : 0);
+  }
+}
+
+function finnTimerFraId(timerId) {
+  return (window.timer || []).find(t => String(t.id) === String(timerId));
+}
+
+async function lagSignertTimerBildeUrl(filsti) {
+  if (!filsti || !window.supabaseClient) return "";
+
+  try {
+    const { data, error } = await supabaseClient
+      .storage
+      .from("timer-bilder")
+      .createSignedUrl(filsti, 60 * 60 * 24 * 7);
+
+    if (!error && data?.signedUrl) return data.signedUrl;
+  } catch (e) {
+    console.warn("Kunne ikke lage signert URL:", e);
+  }
+
+  try {
+    const { data } = supabaseClient
+      .storage
+      .from("timer-bilder")
+      .getPublicUrl(filsti);
+
+    return data?.publicUrl || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+async function hentBilderForTimer(timerId) {
+  const bilder = [];
+  const t = finnTimerFraId(timerId);
+
+  if (t?.bilde_path || t?.filsti || t?.bilde_url) {
+    const sti = t.bilde_path || t.filsti || "";
+    const url = sti ? await lagSignertTimerBildeUrl(sti) : (t.bilde_url || "");
+    if (url) bilder.push({ url, tekst: "" });
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("timer_bilder")
+      .select("filsti, bilde_path, bilde_url, bildetekst")
+      .eq("timer_id", timerId)
+      .order("id", { ascending: false });
+
+    if (error) {
+      console.warn("Kunne ikke hente bilder for jobb:", error);
+      return bilder;
+    }
+
+    for (const b of (data || [])) {
+      const sti = b.filsti || b.bilde_path || "";
+      const url = sti ? await lagSignertTimerBildeUrl(sti) : (b.bilde_url || "");
+      if (url && !bilder.some(x => x.url === url)) {
+        bilder.push({ url, tekst: b.bildetekst || "" });
+      }
+    }
+  } catch (e) {
+    console.warn("Hoppet over bilder for jobb:", e);
+  }
+
+  return bilder;
+}
+
+function lagJobbModalHvisMangler() {
+  let modal = document.getElementById("agkJobbModal");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "agkJobbModal";
+  modal.style.cssText = "display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.45);padding:16px;overflow:auto;";
+  document.body.appendChild(modal);
+  return modal;
+}
+
+async function apneJobbDetalj(timerId) {
+  const t = finnTimerFraId(timerId);
+  if (!t) {
+    alert("Fant ikke jobben.");
+    return;
+  }
+
+  const kundeInfo = kundeInfoForTimer(t);
+  const modal = lagJobbModalHvisMangler();
+  modal.style.display = "block";
+  modal.innerHTML = `
+    <div style="background:#fff;color:#111;max-width:850px;margin:22px auto;padding:18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <h2 style="margin:0;">Jobb ${t.dato || ""}</h2>
+        <button type="button" id="agkLukkJobbModal">Lukk</button>
+      </div>
+
+      <p>
+        <b>Kunde:</b> ${kundeInfo.kundeNr || ""} ${kundeInfo.kundeNavn || ""}<br>
+        <b>Tid:</b> ${t.start || ""} - ${t.slutt || ""}<br>
+        <b>Timer:</b> ${t.timer || 0}<br>
+        <b>Beløp:</b> ${Number(t.sum || 0).toFixed(2)}
+      </p>
+
+      <p><b>Beskrivelse:</b><br>${t.beskrivelse || ""}</p>
+
+      <h3>Bilder</h3>
+      <div id="agkJobbBilder">Laster bilder...</div>
+
+      <hr>
+      <h3>Legg til bilde på denne jobben</h3>
+      <div style="display:grid;gap:8px;max-width:440px;">
+        <input type="file" id="agkJobbBildeFil" accept="image/*">
+        <input type="text" id="agkJobbBildeTekst" placeholder="Bildetekst, valgfritt">
+        <button type="button" id="agkLagreJobbBildeKnapp" style="padding:10px 12px;font-weight:700;">Legg til bilde på denne jobben</button>
+        <div id="agkJobbBildeMelding" style="font-weight:600;"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("agkLukkJobbModal").onclick = function () {
+    modal.style.display = "none";
+  };
+
+  document.getElementById("agkLagreJobbBildeKnapp").onclick = async function () {
+    await lagreBildeFraJobbModal(timerId);
+  };
+
+  await oppdaterJobbModalBilder(timerId);
+}
+
+async function oppdaterJobbModalBilder(timerId) {
+  const boks = document.getElementById("agkJobbBilder");
+  if (!boks) return;
+
+  const bilder = await hentBilderForTimer(timerId);
+  if (!bilder.length) {
+    boks.innerHTML = "Ingen bilder på denne jobben ennå.";
+    return;
+  }
+
+  boks.innerHTML = bilder.map(b => `
+    <a href="${b.url}" target="_blank" style="display:inline-block;margin:0 10px 10px 0;color:inherit;text-decoration:none;">
+      <img src="${b.url}" alt="Bilde" style="width:150px;height:115px;object-fit:cover;border:1px solid #ddd;border-radius:10px;display:block;">
+      <small>${b.tekst || "Åpne bilde"}</small>
+    </a>
+  `).join("");
+}
+
+async function lastOppTimerBildeFraFil(timerId, fil, bildetekst) {
+  if (!timerId || !fil) throw new Error("Mangler jobb eller bilde.");
+
+  const rentFilnavn = String(fil.name || "bilde.jpg")
+    .replaceAll(" ", "_")
+    .replace(/[æøåÆØÅ]/g, function (bokstav) {
+      return { æ: "ae", ø: "o", å: "a", Æ: "Ae", Ø: "O", Å: "A" }[bokstav] || bokstav;
+    })
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  const filsti = timerId + "/" + Date.now() + "_" + rentFilnavn;
+
+  const { error: uploadError } = await supabaseClient
+    .storage
+    .from("timer-bilder")
+    .upload(filsti, fil, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) throw new Error("Opplasting feilet: " + uploadError.message);
+
+  const { error: dbError } = await supabaseClient
+    .from("timer_bilder")
+    .insert({
+      timer_id: timerId,
+      filnavn: fil.name,
+      filsti: filsti,
+      bildetekst: bildetekst || ""
+    });
+
+  if (dbError) throw new Error("Bildet ble lastet opp, men ikke lagret på jobben: " + dbError.message);
+
+  return filsti;
+}
+
+async function lagreBildeFraJobbModal(timerId) {
+  const filInput = document.getElementById("agkJobbBildeFil");
+  const tekstInput = document.getElementById("agkJobbBildeTekst");
+  const melding = document.getElementById("agkJobbBildeMelding");
+  const knapp = document.getElementById("agkLagreJobbBildeKnapp");
+
+  if (melding) melding.textContent = "";
+
+  const fil = filInput?.files?.[0];
+  if (!fil) {
+    if (melding) melding.textContent = "Velg et bilde først.";
+    return;
+  }
+
+  try {
+    if (knapp) knapp.disabled = true;
+    if (melding) melding.textContent = "Lagrer bilde...";
+
+    await lastOppTimerBildeFraFil(timerId, fil, tekstInput?.value || "");
+
+    if (filInput) filInput.value = "";
+    if (tekstInput) tekstInput.value = "";
+
+    await lastTimer();
+    await oppdaterJobbModalBilder(timerId);
+
+    if (melding) melding.textContent = "Bilde er lagret på jobben.";
+  } catch (e) {
+    console.error("Feil ved lagring av bilde på jobb:", e);
+    if (melding) melding.textContent = "Bildet ble ikke lagret: " + (e.message || JSON.stringify(e));
+  } finally {
+    if (knapp) knapp.disabled = false;
+  }
+}
+
 function tegnTimer() {
   const timerTabell = document.getElementById("timerTabell");
   if (!timerTabell) return;
@@ -558,6 +886,7 @@ function tegnTimer() {
   timerData.forEach(t => {
     const tr = document.createElement("tr");
     const kundeInfo = kundeInfoForTimer(t);
+    const bildeAntall = Number(t._bilde_antall || 0);
 
     tr.innerHTML = `
       <td>${t.dato || ""}</td>
@@ -567,9 +896,20 @@ function tegnTimer() {
       <td>${t.timer || 0}</td>
       <td>${Number(t.sum || 0).toFixed(2)}</td>
       <td>${t.fakturerbar ? "Ja" : "Nei"}</td>
+      <td>📷 ${bildeAntall}</td>
+      <td><button type="button" class="agk-apne-jobb-knapp" data-timer-id="${t.id}">Åpne</button></td>
     `;
 
     timerTabell.appendChild(tr);
+
+    const apneKnapp = tr.querySelector(".agk-apne-jobb-knapp");
+    if (apneKnapp) {
+      apneKnapp.addEventListener("click", async function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        await apneJobbDetalj(t.id);
+      });
+    }
   });
 }
 
@@ -826,7 +1166,7 @@ async function lagreVarelinjeTilFaktura() {
   }
 
   const { data: bilVare, error: bilVareFeil } = await supabaseClient
-    .from("bil_varer")
+    .from("bil_lager")
     .select("*")
     .eq("bil_id", aktivBilId)
     .eq("vare_id", vareValg.value)
@@ -870,7 +1210,7 @@ async function lagreVarelinjeTilFaktura() {
 
   const nyttBilAntall = antallIBil - antall;
   const { error: trekkFeil } = await supabaseClient
-    .from("bil_varer")
+    .from("bil_lager")
     .update({ antall: nyttBilAntall })
     .eq("id", bilVare.id);
 
@@ -1181,75 +1521,228 @@ window.lastTimer = lastTimer;
 window.lagreTimer = lagreTimer;
 window.settDagensDato = settDagensDato;
 window.tegnTimer = tegnTimer;
+window.apneJobbDetalj = apneJobbDetalj;
+window.lagreBildeFraJobbModal = lagreBildeFraJobbModal;
 async function lastOppTimerBilde(timerId) {
+  const filInputGalleri = document.getElementById("timerBildeGalleri");
+  const filInputKamera = document.getElementById("timerBildeKamera");
+  const tekstInput = document.getElementById("timerBildeTekst");
 
- const filInputGalleri =
-  document.getElementById(
-    "timerBildeGalleri"
-  );
+  const filInput =
+    filInputKamera && filInputKamera.files && filInputKamera.files.length > 0
+      ? filInputKamera
+      : filInputGalleri;
 
-const filInputKamera =
-  document.getElementById(
-    "timerBildeKamera"
-  );
+  const fil = filInput?.files?.[0];
+  if (!fil) return;
 
-const filInput =
-  (
-    filInputKamera &&
-    filInputKamera.files &&
-    filInputKamera.files.length > 0
-  )
-    ? filInputKamera
-    : filInputGalleri;
+  await lastOppTimerBildeFraFil(timerId, fil, tekstInput?.value || "");
 
-  const tekstInput =
-    document.getElementById(
-      "timerBildeTekst"
-    );
-
-  if (
-    !filInput ||
-    !filInput.files ||
-    filInput.files.length === 0
-  ) {
-    return;
-  }
-
-  const fil =
-    filInput.files[0];
-
-  const filnavn =
-    timerId +
-    "/" +
-    Date.now() +
-    "_" +
-    fil.name.replaceAll(" ", "_");
-
-  const { error: uploadError } =
-    await supabaseClient
-      .storage
-      .from("timer-bilder")
-      .upload(
-        filnavn,
-        fil
-      );
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  const { error: dbError } =
-    await supabaseClient
-      .from("timer_bilder")
-      .insert({
-        timer_id: timerId,
-        filnavn: fil.name,
-        filsti: filnavn,
-        bildetekst:
-          tekstInput?.value || ""
-      });
-
-  if (dbError) {
-    throw dbError;
-  }
+  if (filInputKamera) filInputKamera.value = "";
+  if (filInputGalleri) filInputGalleri.value = "";
+  if (tekstInput) tekstInput.value = "";
 }
+
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    if (!window.standardBilInitKoblet7035) {
+      window.standardBilInitKoblet7035 = true;
+      settStandardBilForInnloggetAnsatt();
+    }
+  }, 700);
+
+  setTimeout(function () {
+    settStandardBilForInnloggetAnsatt();
+  }, 1800);
+});
+
+window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
+
+/* AGK HARD FIX 2026-06-05:
+   Fast bildepanel som dukker opp når en jobb åpnes.
+   Dette er med vilje uavhengig av selve jobbdetaljvisningen,
+   fordi detaljvisningen kan bli tegnet av annen kode. */
+(function () {
+  function agkTimerListe() {
+    return Array.isArray(window.timer) ? window.timer : [];
+  }
+
+  function agkJobbTekst(t, i) {
+    const kunde = (typeof kundeInfoForTimer === "function") ? kundeInfoForTimer(t) : { kundeNavn: t.kunde_navn || "" };
+    return `${i + 1}: ${t.dato || ""} ${kunde.kundeNavn || t.kunde_navn || ""} ${t.start || ""}-${t.slutt || ""}`.trim();
+  }
+
+  function agkFinnTimerIdFraElement(el) {
+    if (!el) return "";
+    const direkte = el.dataset?.timerId || el.getAttribute?.("data-timer-id") || "";
+    if (direkte) return direkte;
+
+    const rad = el.closest?.("tr");
+    const tabell = rad?.closest?.("table");
+    if (rad && tabell) {
+      const rader = Array.from(tabell.querySelectorAll("tbody tr"));
+      let index = rader.indexOf(rad);
+      if (index < 0) {
+        index = Array.from(tabell.rows || []).indexOf(rad) - 1;
+      }
+      const t = agkTimerListe()[index];
+      if (t?.id) return String(t.id);
+    }
+
+    return window.agkApenTimerId || "";
+  }
+
+  function agkLagPanelHvisMangler() {
+    let panel = document.getElementById("agkFastBildePanel");
+    if (panel) return panel;
+
+    panel = document.createElement("div");
+    panel.id = "agkFastBildePanel";
+    panel.style.cssText = [
+      "display:none",
+      "position:fixed",
+      "left:12px",
+      "right:12px",
+      "bottom:12px",
+      "z-index:2147483647",
+      "background:#ffffff",
+      "color:#111111",
+      "border:3px solid #111111",
+      "border-radius:14px",
+      "box-shadow:0 8px 30px rgba(0,0,0,.35)",
+      "padding:14px",
+      "max-width:760px",
+      "margin:0 auto",
+      "font-family:Arial,sans-serif"
+    ].join(";");
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+        <strong style="font-size:18px;">Legg til bilde på denne jobben</strong>
+        <button type="button" id="agkFastBildeLukk" style="padding:6px 10px;">Lukk</button>
+      </div>
+      <div style="display:grid;gap:8px;">
+        <select id="agkFastBildeJobbValg" style="padding:8px;"></select>
+        <input type="file" id="agkFastBildeFil" accept="image/*" style="padding:8px;border:1px solid #aaa;border-radius:8px;">
+        <input type="text" id="agkFastBildeTekst" placeholder="Bildetekst, valgfritt" style="padding:8px;border:1px solid #aaa;border-radius:8px;">
+        <button type="button" id="agkFastBildeLagre" style="padding:12px;font-weight:700;font-size:16px;background:#111;color:#fff;border-radius:8px;">Lagre bilde på jobben</button>
+        <div id="agkFastBildeMelding" style="font-weight:700;"></div>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+
+    document.getElementById("agkFastBildeLukk").onclick = function () {
+      panel.style.display = "none";
+    };
+
+    document.getElementById("agkFastBildeLagre").onclick = async function () {
+      await agkFastLagreBilde();
+    };
+
+    return panel;
+  }
+
+  function agkFyllJobbValg(valgtTimerId) {
+    const select = document.getElementById("agkFastBildeJobbValg");
+    if (!select) return;
+
+    const liste = agkTimerListe();
+    select.innerHTML = "";
+
+    if (!liste.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "Ingen jobber er lastet";
+      select.appendChild(opt);
+      return;
+    }
+
+    liste.forEach((t, i) => {
+      const opt = document.createElement("option");
+      opt.value = t.id || "";
+      opt.textContent = agkJobbTekst(t, i);
+      select.appendChild(opt);
+    });
+
+    if (valgtTimerId && Array.from(select.options).some(o => String(o.value) === String(valgtTimerId))) {
+      select.value = String(valgtTimerId);
+    }
+  }
+
+  function agkVisFastBildePanel(timerId) {
+    const panel = agkLagPanelHvisMangler();
+    window.agkApenTimerId = timerId || window.agkApenTimerId || "";
+    agkFyllJobbValg(window.agkApenTimerId);
+    panel.style.display = "block";
+  }
+
+  async function agkFastLagreBilde() {
+    const select = document.getElementById("agkFastBildeJobbValg");
+    const filInput = document.getElementById("agkFastBildeFil");
+    const tekstInput = document.getElementById("agkFastBildeTekst");
+    const melding = document.getElementById("agkFastBildeMelding");
+    const knapp = document.getElementById("agkFastBildeLagre");
+
+    const timerId = select?.value || window.agkApenTimerId || "";
+    const fil = filInput?.files?.[0];
+
+    if (melding) melding.textContent = "";
+
+    if (!timerId) {
+      if (melding) melding.textContent = "Fant ikke hvilken jobb bildet skal legges på.";
+      return;
+    }
+
+    if (!fil) {
+      if (melding) melding.textContent = "Velg et bilde først.";
+      return;
+    }
+
+    try {
+      if (knapp) knapp.disabled = true;
+      if (melding) melding.textContent = "Lagrer bilde...";
+
+      if (typeof lastOppTimerBildeFraFil === "function") {
+        await lastOppTimerBildeFraFil(timerId, fil, tekstInput?.value || "");
+      } else {
+        const rentFilnavn = String(fil.name || "bilde.jpg").replaceAll(" ", "_").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filsti = timerId + "/" + Date.now() + "_" + rentFilnavn;
+        const { error: uploadError } = await supabaseClient.storage.from("timer-bilder").upload(filsti, fil, { cacheControl: "3600", upsert: false });
+        if (uploadError) throw new Error("Opplasting feilet: " + uploadError.message);
+        const { error: dbError } = await supabaseClient.from("timer_bilder").insert({ timer_id: timerId, filnavn: fil.name, filsti: filsti, bildetekst: tekstInput?.value || "" });
+        if (dbError) throw new Error("Bildet ble lastet opp, men ikke lagret på jobben: " + dbError.message);
+      }
+
+      if (filInput) filInput.value = "";
+      if (tekstInput) tekstInput.value = "";
+
+      if (typeof window.lastTimer === "function") await window.lastTimer();
+      if (melding) melding.textContent = "Bilde er lagret på jobben.";
+    } catch (e) {
+      console.error("Feil ved fast bildepanel:", e);
+      if (melding) melding.textContent = "Bildet ble ikke lagret: " + (e.message || JSON.stringify(e));
+    } finally {
+      if (knapp) knapp.disabled = false;
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    const knapp = e.target?.closest?.("button, a, [role='button']");
+    if (!knapp) return;
+
+    const tekst = (knapp.textContent || knapp.value || "").trim().toLowerCase();
+    const erApne = tekst === "åpne" || tekst === "apne" || tekst.includes("åpne jobb") || tekst.includes("apne jobb");
+    if (!erApne) return;
+
+    const timerId = agkFinnTimerIdFraElement(knapp);
+    window.agkApenTimerId = timerId || window.agkApenTimerId || "";
+
+    setTimeout(function () {
+      agkVisFastBildePanel(window.agkApenTimerId);
+    }, 150);
+  }, true);
+
+  window.agkVisFastBildePanel = agkVisFastBildePanel;
+  window.agkFastLagreBilde = agkFastLagreBilde;
+})();

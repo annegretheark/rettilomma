@@ -1,3 +1,28 @@
+async function hentFirmaData() {
+  if (!window.supabaseClient) return window.firmaData || {};
+
+  const { data, error } = await supabaseClient
+    .from("firma")
+    .select("*")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Feil ved henting av firma til PDF:", error);
+    return window.firmaData || {};
+  }
+
+  window.firmaData = data || {};
+  window.firma = window.firmaData;
+  return window.firmaData;
+}
+
+function settFirmaFeltHvisFinnes(id, verdi) {
+  const el = document.getElementById(id);
+  if (el) el.value = verdi || "";
+}
+
 async function lastFirma() {
   const { data, error } = await supabaseClient
     .from("firma")
@@ -13,18 +38,22 @@ async function lastFirma() {
   }
 
   const firma = data || {};
+  window.firmaData = firma;
+  window.firma = firma;
 
-  document.getElementById("firmaNavn").value = firma.navn || "";
-  document.getElementById("firmaAdresse").value = firma.adresse || "";
-  document.getElementById("firmaOrgnr").value = firma.orgnr || firma.org_nr || "";
+  settFirmaFeltHvisFinnes("firmaNavn", firma.navn);
+  settFirmaFeltHvisFinnes("firmaAdresse", firma.adresse);
+  settFirmaFeltHvisFinnes("firmaOrgnr", firma.orgnr || firma.org_nr);
   const mvaFelt = document.getElementById("firmaMvanr");
   if (mvaFelt) mvaFelt.value = firma.mva_nr || firma.mvanr || "";
-  document.getElementById("firmaTelefon").value = firma.telefon || "";
-  document.getElementById("firmaEpost").value = firma.epost || firma.email || "";
+  settFirmaFeltHvisFinnes("firmaTelefon", firma.telefon);
+  settFirmaFeltHvisFinnes("firmaEpost", firma.epost || firma.email);
   const kontonrFelt = document.getElementById("firmaKontonr");
   if (kontonrFelt) kontonrFelt.value = firma.kontonr || firma.konto_nr || "";
-  document.getElementById("firmaKontaktperson").value = firma.kontaktperson || "";
-  document.getElementById("firmaAndreOpplysninger").value = firma.andre_opplysninger || "";
+  settFirmaFeltHvisFinnes("firmaVippsNummer", firma.vipps_nummer);
+  settFirmaFeltHvisFinnes("firmaVippsMottaker", firma.vipps_mottaker);
+  settFirmaFeltHvisFinnes("firmaKontaktperson", firma.kontaktperson);
+  settFirmaFeltHvisFinnes("firmaAndreOpplysninger", firma.andre_opplysninger);
 
   const preview = document.getElementById("firmaLogoPreview");
   if (preview) {
@@ -118,6 +147,8 @@ async function lagreFirma() {
   leggTilHvisUtfylt(firma, "telefon", "firmaTelefon");
   leggTilHvisUtfylt(firma, "epost", "firmaEpost");
   leggTilHvisUtfylt(firma, "kontonr", "firmaKontonr");
+  leggTilHvisUtfylt(firma, "vipps_nummer", "firmaVippsNummer");
+  leggTilHvisUtfylt(firma, "vipps_mottaker", "firmaVippsMottaker");
   leggTilHvisUtfylt(firma, "kontaktperson", "firmaKontaktperson");
   leggTilHvisUtfylt(firma, "andre_opplysninger", "firmaAndreOpplysninger");
 
@@ -198,6 +229,8 @@ function visFirma(firma) {
     Telefon: ${firma.telefon || ""}<br>
     E-post: ${firma.epost || firma.email || ""}<br>
     Konto: ${firma.kontonr || firma.konto_nr || ""}<br>
+    Vippsnummer: ${firma.vipps_nummer || ""}<br>
+    Vipps mottaker: ${firma.vipps_mottaker || ""}<br>
     Kontaktperson: ${firma.kontaktperson || ""}<br>
     Logo: ${firma.logo_url ? "Lagret i Storage" : (firma.logo ? "Lagret i database" : "Ikke valgt")}<br>
     ${firma.andre_opplysninger || ""}
@@ -217,3 +250,7 @@ window.lagreFirma = lagreFirma;
 window.lastInnLogo = lastInnLogo;
 window.fyllFirmaSkjema = fyllFirmaSkjema;
 window.tegnFirmaInfo = tegnFirmaInfo;
+
+window.hentFirmaData = hentFirmaData;
+window.firmaData = window.firmaData || {};
+window.firma = window.firma || window.firmaData;

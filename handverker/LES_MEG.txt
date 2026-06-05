@@ -1,7 +1,0 @@
-Legg index.html i håndverker-mappen.
-Legg js/navigation.js i /rettilomma/js/navigation.js.
-Legg js/core/moduler.js i /rettilomma/js/core/moduler.js.
-
-Denne versjonen har ekstra direkte knappelogikk nederst i index.html.
-Timer-knappen skal derfor virke selv om gammel app.js ikke kobler knappen riktig.
-Admin logger inn til Admin-konsoll. Timer gir vanlig timer. Registrer timer for ansatt gir timer med ansattvalg.
