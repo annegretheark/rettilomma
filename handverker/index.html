@@ -31,18 +31,20 @@
 
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f8;
+      background: #151819;
+      color: #f3f4f6;
       margin: 0;
       padding: 20px;
     }
 
     .kort {
-      background: #ffffff;
+      background: #171a1b;
+      color: #f3f4f6;
       max-width: 900px;
       margin: 0 auto 18px auto;
       padding: 18px;
       border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     }
 
     h1, h2 {
@@ -189,7 +191,26 @@
       margin: 0 8px 0 0;
     }
 
-  </style>
+  
+    .info {
+      color: #cbd5e1;
+    }
+
+    input,
+    select,
+    textarea {
+      background: #f8fafc;
+      color: #111827;
+    }
+
+    h1,
+    h2,
+    h3,
+    label {
+      color: #f3f4f6;
+    }
+
+</style>
 </head>
 
 <body>
@@ -871,26 +892,26 @@
 <script src="../js/core/config.js?v=5001"></script>
 <script src="../js/core/state.js?v=999"></script>
 <script src="../js/core/moduler.js?v=999"></script>
-<script src="../js/navigation.js?v=5001"></script>
-<script src="../js/auth.js?v=5001"></script>
-<script src="../js/kunder.js?v=32"></script>
-<script src="../js/prosjekter.js?v=31"></script>
-<script src="../js/ansatte.js?v=33"></script>
-<script src="../js/core/brevhode.js"></script>
-<script src="../js/firma.js?v=31"></script>
-<script src="../js/timer.js?v=48"></script>
-<script src="../js/utils.js?v=31"></script>
-<script src="../js/fakturaData.js?v=32"></script>
-<script src="../js/pdfLayout.js?v=31"></script>
-<script src="../js/fakturaPdf.js?v=31"></script>
-<script src="../js/faktura.js?v=32"></script>
-<script src="../js/okonomi.js?v=1"></script>
-<script src="../js/fakturaValg.js?v=31"></script>
-<script src="../js/backup.js?v=33"></script>
-<script src="../js/lonn.js?v=32"></script>
-<script src="../js/tester.js?v=31"></script>
-<script src="../js/varer.js?v=49"></script>
-<script src="../js/app.js?v=5001"></script>
+<script src="../js/handverker/navigation.js?v=5003"></script>
+<script src="../js/handverker/auth.js?v=5003"></script>
+<script src="../js/handverker/kunder.js?v=5003"></script>
+<script src="../js/handverker/prosjekter.js?v=5003"></script>
+<script src="../js/handverker/ansatte.js?v=5003"></script>
+<script src="../js/core/brevhode.js?v=5003"></script>
+<script src="../js/handverker/firma.js?v=5003"></script>
+<script src="../js/handverker/timer.js?v=5003"></script>
+<script src="../js/handverker/utils.js?v=5003"></script>
+<script src="../js/handverker/fakturaData.js?v=5003"></script>
+<script src="../js/handverker/pdfLayout.js?v=5003"></script>
+<script src="../js/handverker/fakturaPdf.js?v=5003"></script>
+<script src="../js/handverker/faktura.js?v=5003"></script>
+<script src="../js/handverker/okonomi.js?v=5003"></script>
+<script src="../js/handverker/fakturaValg.js?v=5003"></script>
+<script src="../js/handverker/backup.js?v=5003"></script>
+<script src="../js/handverker/lonn.js?v=5003"></script>
+<script src="../js/handverker/tester.js?v=5003"></script>
+<script src="../js/handverker/varer.js?v=5003"></script>
+<script src="../js/handverker/app.js?v=5003"></script>
 
 <script>
 window.addEventListener("load", function () {
@@ -942,10 +963,8 @@ window.addEventListener("load", function () {
       console.warn("Kunne ikke hente ansattdata i nødinnlogging:", e);
     }
 
-    if (vilAdmin) {
-      const rolle = String(ansattData?.rolle || "").toLowerCase();
-      window.erAdmin = rolle === "admin" || email === "greknuts@online.no";
-    }
+    const rolle = String(ansattData?.rolle || "").toLowerCase();
+    window.erAdmin = ["admin", "systemadmin", "sysadmin"].includes(rolle);
 
     if (typeof window.visApp === "function") {
       await window.visApp();
