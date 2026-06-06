@@ -58,8 +58,17 @@ function visVetSide(id) {
     side.classList.remove("skjult");
     side.style.display = "";
   }
-  if (id === "dyrSide") fyllDyreeierValg();
-  if (id === "lagerSide") { fyllLagerValg(); tegnAltLager(); oppdaterLagerSideRollevisning(); }
+  if (id === "eierSide") {
+    fyllDyreeierVelgForDyr();
+    fyllDyreeierDyrValg(vetTekst("dyreeierId"));
+    tegnDyreeiere();
+  }
+  if (id === "dyrSide") {
+    fyllDyreeierValg();
+    fyllDyreeierVelgForDyr();
+    tegnDyr();
+  }
+  if (id === "lagerSide") { oppdaterVetLagerTekster(); fyllLagerValg(); tegnAltLager(); oppdaterLagerSideRollevisning(); }
   if (id === "journalSide") { fyllJournalDyreeierValg(); fyllDyrValg(); fyllPrisValg(); fyllJournalBilValg(); fyllJournalBilVareValg(); settStandardKmPrisFraKlinikk(); oppdaterJournalSum(); }
   if (id === "fakturaSide") { fyllFakturaDyreeierValg(); settStandardFakturaDatoer(); fyllKreditnotaFakturaValg(); tegnFakturaGrunnlag(); }
   if (id === "okonomiSide") { tegnAdminOkonomiOversikt(); tegnAdminMvaOversikt(); }
@@ -182,8 +191,59 @@ function oppdaterVetToppInfo() {
   if (rolleEl) rolleEl.textContent = vetRolleVisningsnavn();
 }
 
+
+function opprettVetPasientKnapper() {
+  if (document.getElementById("vetPasientHurtigKnapper")) return;
+
+  const nav =
+    document.getElementById("vetMeny") ||
+    document.querySelector(".vet-meny") ||
+    document.querySelector("nav") ||
+    document.querySelector("header") ||
+    document.body;
+
+  if (!nav) return;
+
+  const wrap = document.createElement("div");
+  wrap.id = "vetPasientHurtigKnapper";
+  wrap.style.display = "flex";
+  wrap.style.flexWrap = "wrap";
+  wrap.style.gap = "8px";
+  wrap.style.margin = "8px 0";
+
+  const lagKnapp = (tekst, sideId) => {
+    const knapp = document.createElement("button");
+    knapp.type = "button";
+    knapp.textContent = tekst;
+    knapp.className = "vet-bruker-nav secondary";
+    knapp.onclick = () => sideId === "eierSide" ? nyDyreeier() : nyPasient();
+    knapp.style.display = "inline-block";
+    return knapp;
+  };
+
+  wrap.appendChild(lagKnapp("Ny dyreeier", "eierSide"));
+  wrap.appendChild(lagKnapp("Ny pasient", "dyrSide"));
+
+  if (nav === document.body) {
+    document.body.insertBefore(wrap, document.body.firstChild);
+  } else {
+    nav.appendChild(wrap);
+  }
+}
+
+
+function visVetPasientKnapperAlltid() {
+  const wrap = document.getElementById("vetPasientHurtigKnapper");
+  if (!wrap) return;
+  wrap.style.display = "flex";
+  wrap.querySelectorAll("button").forEach(knapp => {
+    knapp.style.display = "inline-block";
+  });
+}
+
 function oppdaterVetMenySynlighet() {
   oppdaterVetToppInfo();
+  opprettVetPasientKnapper();
 
   const vanligVisning = erVetVisningVanlig();
   const systemAdminModus = vetErSystemAdmin && !vanligVisning;
@@ -220,11 +280,16 @@ function oppdaterVetMenySynlighet() {
   const info = document.getElementById("vetVisningInfo");
   if (info) info.style.display = (erKlinikkAdmin() && vetVisSomVeterinaer) ? "" : "none";
 
+  visVetPasientKnapperAlltid();
+
   const undermeny = document.getElementById("vetOppsettMeny");
   if (undermeny && !adminModus) {
     undermeny.classList.add("skjult");
     undermeny.style.display = "none";
   }
+
+  if (typeof vetInstallerToppLayoutFiks === "function") vetInstallerToppLayoutFiks();
+  if (typeof flyttVetBackupKnappTilBunn === "function") flyttVetBackupKnappTilBunn();
 }
 
 function toggleVetOppsettMeny() {
@@ -369,6 +434,7 @@ async function lastVetData() {
   fyllDyrValg();
   fyllDyreeierDyrValg(vetTekst("dyreeierId"));
   skjulAdminKnapperForVanligVet();
+  opprettVetPasientKnapper();
 }
 
 async function lastKlinikker() {
@@ -727,7 +793,7 @@ function tegnJournalVareListe() {
     const sum = Number(v.antall || 0) * Number(v.pris || 0);
     return `
       <div class="listekort">
-        <strong>${String(v.varenavn || "").replaceAll("<", "&lt;")}</strong><br>
+        <span>${String(v.varenavn || "").replaceAll("<", "&lt;")}<span><br>
         <span class="lite">${formaterKr(v.antall)} x ${formaterKr(v.pris)} kr = ${formaterKr(sum)} kr eks. mva${v.bil_id ? " | Fra bil: " + bilNavn(v.bil_id) : ""}</span><br>
         <button type="button" class="danger" onclick="fjernJournalVare(${index})">Fjern</button>
       </div>
@@ -844,17 +910,55 @@ function nullstillPris() {
 function tegnPriser() {
   const liste = document.getElementById("prisListe");
   if (!liste) return;
+
   if (!vetPriser.length) {
     liste.innerHTML = '<p class="lite">Ingen priser registrert ennå.</p>';
     return;
   }
-  liste.innerHTML = vetPriser.map(p => `
-    <div class="listekort">
-      <strong>${p.navn || ""}</strong><br>
-      <span class="lite">${p.type || "fastpris"}: ${formaterKr(p.pris)} kr eks. mva${p.beskrivelse ? " | " + p.beskrivelse : ""}</span><br>
-      <button type="button" class="secondary" onclick="redigerPris('${p.id}')">Rediger</button>
+
+  const esc = txt => String(txt || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+  liste.innerHTML = `
+    <div class="vet-pris-linjeliste" style="display:grid;gap:1px;margin-top:8px;font-size:14px;font-weight:400;">
+      ${vetPriser.map(p => `
+        <button
+          type="button"
+          class="vet-pris-linje"
+          onclick="redigerPris('${esc(p.id)}')"
+          title="Klikk for detaljer/redigering"
+          style="
+            width:100%;
+            display:grid;
+            grid-template-columns:minmax(220px,2fr) minmax(100px,.8fr) minmax(150px,1fr) minmax(160px,1.2fr);
+            gap:10px;
+            align-items:center;
+            text-align:left;
+            padding:3px 8px;
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:0;
+            background:rgba(255,255,255,.02);
+            color:inherit;
+            cursor:pointer;
+            font-family:inherit;
+            font-size:14px !important;
+            font-weight:400 !important;
+            line-height:1.15;
+            margin:0;
+          "
+        >
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.navn)}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type || "fastpris")}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formaterKr(p.pris)} kr eks. mva</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.beskrivelse || "")}</span>
+        </button>
+      `).join("")}
     </div>
-  `).join("");
+  `;
 }
 
 function redigerPris(id) {
@@ -1056,6 +1160,13 @@ function fyllJournalBilVareValg() {
   }).join("");
 }
 
+
+function oppdaterVetLagerTekster() {
+  const prisInput = document.getElementById("vetVarePris");
+  const label = prisInput ? document.querySelector('label[for="vetVarePris"]') : null;
+  if (label) label.textContent = "Utpris eks. mva";
+}
+
 function tegnAltLager() {
   tegnVetVarer();
   tegnVetBiler();
@@ -1066,14 +1177,56 @@ function tegnAltLager() {
 function tegnVetVarer() {
   const liste = document.getElementById("vetVareListe");
   if (!liste) return;
-  if (!vetVarer.length) { liste.innerHTML = '<p class="lite">Ingen medisiner/varer registrert.</p>'; return; }
-  liste.innerHTML = vetVarer.map(v => `
-    <div class="listekort">
-      <strong>${String(v.navn || "").replaceAll("<", "&lt;")}</strong><br>
-      <span class="lite">${v.kategori || "medisin"} | ${v.enhet || "stk"} | Pris: ${formaterKr(v.utsalgspris)} kr eks. mva | Minimum: ${formaterKr(v.minimum_antall)}</span><br>
-      <button type="button" class="secondary" onclick="redigerVetVare('${v.id}')">Rediger</button>
+
+  if (!vetVarer.length) {
+    liste.innerHTML = '<p class="lite">Ingen medisiner/varer registrert.</p>';
+    return;
+  }
+
+  const esc = verdi => String(verdi || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+  liste.innerHTML = `
+    <div class="vet-vare-linjeliste" style="display:grid;gap:1px;margin-top:8px;font-size:14px;font-weight:400;">
+      ${vetVarer.map(v => `
+        <button
+          type="button"
+          class="vet-vare-linje"
+          onclick="redigerVetVare('${esc(v.id)}')"
+          title="Klikk for detaljer/redigering"
+          style="
+            width:100%;
+            display:grid;
+            grid-template-columns:minmax(220px,2fr) minmax(90px,.9fr) minmax(70px,.7fr) minmax(150px,1fr) minmax(100px,.8fr);
+            gap:10px;
+            align-items:center;
+            text-align:left;
+            padding:3px 8px;
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:0;
+            background:rgba(255,255,255,.02);
+            color:inherit;
+            cursor:pointer;
+            font-family:inherit;
+            font-size:14px !important;
+            font-weight:400 !important;
+            line-height:1.15;
+            margin:0;
+          "
+        >
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v.navn)}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v.kategori || "medisin")}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v.enhet || "stk")}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formaterKr(v.utsalgspris)} kr eks. mva</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Min: ${formaterKr(v.minimum_antall)}</span>
+        </button>
+      `).join("")}
     </div>
-  `).join("");
+  `;
 }
 
 function tegnVetBiler() {
@@ -1082,7 +1235,7 @@ function tegnVetBiler() {
   if (!vetBiler.length) { liste.innerHTML = '<p class="lite">Ingen biler registrert.</p>'; return; }
   liste.innerHTML = vetBiler.map(b => `
     <div class="listekort">
-      <strong>${String(b.navn || "").replaceAll("<", "&lt;")}</strong><br>
+      <span>${String(b.navn || "").replaceAll("<", "&lt;")}</span><br>
       <span class="lite">Regnr: ${b.regnr || ""}${b.veterinaer_navn ? " | Veterinær: " + b.veterinaer_navn : ""}</span><br>
       <button type="button" class="secondary" onclick="redigerVetBil('${b.id}')">Rediger</button>
     </div>
@@ -1648,6 +1801,19 @@ async function lastDyreeiere() {
   fyllJournalDyreeierValg();
 }
 
+function nyDyreeier() {
+  ["dyreeierId","dyreeierNavn","dyreeierTelefon","dyreeierEpost","dyreeierAdresse"].forEach(id => vetSett(id, ""));
+  vetSett("dyreeierVelgForDyr", "");
+  fyllDyreeierDyrValg("");
+  visVetSide("eierSide");
+}
+
+function nyPasient() {
+  ["dyrId","dyrNavn","dyrArt","dyrRase","dyrFodselsdato","dyrKjonn","dyrChip","dyrNotater"].forEach(id => vetSett(id, ""));
+  fyllDyreeierValg();
+  visVetSide("dyrSide");
+}
+
 async function lagreDyreeier() {
   vetMelding("dyreeierMelding", "");
   const rad = leggTilKlinikkHvisVanligBruker({ navn: vetTekst("dyreeierNavn"), telefon: vetTekst("dyreeierTelefon") || null, epost: vetTekst("dyreeierEpost") || null, adresse: vetTekst("dyreeierAdresse") || null });
@@ -1960,7 +2126,7 @@ function tegnJournal() {
     const bilder = (j.vet_journal_bilder || []).map(b => `
       <div style="display:inline-block; margin:6px 8px 6px 0; vertical-align:top; max-width:150px;">
         <a href="${b.bilde_url || "#"}" target="_blank">
-          <img src="${b.bilde_url || ""}" alt="${String(b.bildetekst || b.filnavn || "Journalbilde").replaceAll("<", "&lt;")}" style="width:140px; height:100px; object-fit:cover; border-radius:8px; border:1px solid #ddd;">
+          <img src="${b.bilde_url || ""}" alt="${String(b.bildetekst || b.filnavn || "Journalbilde").replaceAll("<", "&lt;")}" style="width:140px; height:100px; object-fit:cover; border-radius:0; border:1px solid #ddd;">
         </a>
         <div class="lite">${String(b.bildetekst || b.filnavn || "").replaceAll("<", "&lt;")}</div>
       </div>
@@ -2615,7 +2781,7 @@ async function skrivUtVetFaktura() {
   .logo { margin-bottom:10px; }
   h1 { margin:0; font-size:30px; letter-spacing:1px; }
   .boks { margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-  .kort-print { border:1px solid #ddd; border-radius:8px; padding:14px; }
+  .kort-print { border:1px solid #ddd; border-radius:0; padding:14px; }
   table { width:100%; border-collapse:collapse; margin-top:24px; font-size:14px; }
   th, td { padding:8px; border-bottom:1px solid #ddd; vertical-align:top; }
   th { text-align:left; background:#f4f6f8; }
@@ -3251,7 +3417,101 @@ async function opprettKlinikkBruker() {
   await lastKlinikkBrukere();
 }
 
+
+
+function vetInstallerToppLayoutFiks() {
+  if (document.getElementById("vetToppLayoutFiksStyle")) return;
+  const style = document.createElement("style");
+  style.id = "vetToppLayoutFiksStyle";
+  style.textContent = `
+    #vetMeny,
+    .vet-meny,
+    header nav,
+    .vet-topp nav {
+      display:flex !important;
+      flex-wrap:wrap !important;
+      align-items:center !important;
+      gap:10px !important;
+    }
+
+    #vetMeny > button,
+    .vet-meny > button,
+    header nav > button,
+    .vet-topp nav > button,
+    #vetPasientHurtigKnapper > button {
+      margin:0 !important;
+      white-space:nowrap !important;
+      height:52px;
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+    }
+
+    #vetPasientHurtigKnapper {
+      display:inline-flex !important;
+      flex-wrap:nowrap !important;
+      gap:10px !important;
+      margin:0 !important;
+      align-items:center !important;
+      width:auto !important;
+    }
+
+    #vetBackupBunnMeny {
+      margin:46px auto 24px auto;
+      padding:16px 22px;
+      max-width:1280px;
+      border-radius:14px;
+      background:rgba(255,255,255,.035);
+      border:1px solid rgba(255,255,255,.08);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    #vetBackupBunnMeny .lite {
+      margin-right:8px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function flyttVetBackupKnappTilBunn() {
+  const allerede = document.getElementById("vetBackupBunnMeny");
+  let bunn = allerede;
+
+  if (!bunn) {
+    bunn = document.createElement("div");
+    bunn.id = "vetBackupBunnMeny";
+    bunn.innerHTML = '<span class="lite">Backup og restore:</span>';
+    document.body.appendChild(bunn);
+  }
+
+  const erFunksjonsKnapp = el => [
+    "vetBackupKnapp",
+    "vetRestoreKnapp",
+    "vetImportPriserKnapp",
+    "vetImportVarerKnapp"
+  ].includes(el.id);
+
+  const knapp = Array.from(document.querySelectorAll("button, a"))
+    .find(el =>
+      !erFunksjonsKnapp(el) &&
+      /backup|import/i.test(String(el.textContent || "")) &&
+      !el.closest("#vetBackupBunnMeny")
+    );
+
+  if (!knapp) return;
+
+  knapp.classList.add("secondary");
+  knapp.style.display = "inline-flex";
+  knapp.style.margin = "0";
+  bunn.appendChild(knapp);
+}
+
 function kobleVet() {
+  vetInstallerToppLayoutFiks();
+  flyttVetBackupKnappTilBunn();
   document.getElementById("vetOppsettKnapp")?.addEventListener("click", toggleVetOppsettMeny);
   document.getElementById("vetVisSomVeterinaerKnapp")?.addEventListener("click", byttVetRollevisning);
   document.getElementById("vetBackupKnapp")?.addEventListener("click", vetLagBackup);
