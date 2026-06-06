@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rett i Lomma - Systematisk adminveiledning</title>
+<style>
+:root{--bg:#f4f7fb;--ink:#142033;--muted:#667085;--card:#fff;--line:#d8e1ec;--blue:#1f6feb;--navy:#0f172a;--soft:#eef6ff;--green:#0f766e;--orange:#f97316;--shadow:0 18px 45px rgba(15,23,42,.10)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;line-height:1.58}
+.hero{background:linear-gradient(135deg,#0f172a,#1f6feb);color:white;padding:58px 20px}.wrap,main{max-width:1180px;margin:0 auto}
+.hero h1{font-size:clamp(34px,5vw,60px);line-height:1.02;margin:10px 0}.eyebrow{font-size:13px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;opacity:.85}.lead{font-size:19px;max-width:850px;opacity:.95}
+.badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.badge{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);padding:8px 12px;border-radius:999px;font-size:14px}
+main{padding:26px 18px 70px}.toc{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;margin-top:-46px;box-shadow:var(--shadow);position:relative}.toc h2{margin-top:0}.toc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}.toc a{display:block;text-decoration:none;color:#0f3d73;background:var(--soft);border:1px solid #d9eaff;padding:10px 12px;border-radius:12px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin-top:24px;box-shadow:var(--shadow)}.card h2{margin-top:0;color:#0f3d73;font-size:28px}.card h3{color:#0f3d73}
+.goal{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}.goal strong{color:#0f3d73}
+.note{background:#ecfdf5;border:1px solid #b7ead9;border-left:6px solid var(--green);padding:16px;border-radius:14px;margin:14px 0}.warning{background:#fff7ed;border:1px solid #fed7aa;border-left:6px solid var(--orange);padding:16px;border-radius:14px;margin:14px 0}
+.module-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.module{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px}.module h3{margin:.2rem 0;color:#0f3d73}
+.shot{margin:28px 0;background:white;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}.shot-head{background:#0f172a;color:white;padding:16px 18px}.shot-head h3{margin:0;color:white}.shot img{display:block;width:100%;height:auto;background:#f8fafc}.caption{padding:16px 18px;color:#344054;background:#fff}.caption p{margin:0 0 8px}.caption .why{color:var(--muted);font-size:14px}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.check{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px}
+footer{text-align:center;color:var(--muted);font-size:14px;padding:30px 18px 55px}@media print{.hero{padding:28px 18px}.toc,.card,.shot{box-shadow:none}.shot{break-inside:avoid}.toc{margin-top:20px}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+<div class="eyebrow">Systematisk adminveiledning</div>
+<h1>Rett i Lomma</h1>
+<p class="lead">Oppsett og drift i riktig rekkefølge: moduler først, deretter adminoppsett, ansatte, kunder, timer, lager, faktura, økonomi og backup.</p>
+<div class="badges"><span class="badge">Modulbasert</span><span class="badge">Admin først</span><span class="badge">ENK-vennlig</span><span class="badge">Min bil</span><span class="badge">Automatisk skybackup</span></div>
+</div></header>
+<main>
+<nav class="toc"><h2>Innhold</h2><div class="toc-grid">
+
+<a href="#moduler">1. Start med moduler</a>
+<a href="#admin-innlogging">2. Logg inn som administrator</a>
+<a href="#firma">3. Sett opp firmaet</a>
+<a href="#ansatte">4. Opprett ansatte og roller</a>
+<a href="#lonn">5. Sett opp lønn ved behov</a>
+<a href="#kunder">6. Kunder og prosjekter</a>
+<a href="#timer">7. Timer og jobber</a>
+<a href="#lager">8. Varer, lager og Min bil</a>
+<a href="#faktura">9. Faktura og økonomi</a>
+<a href="#backup">10. Backup og sikkerhet</a>
+<a href="#vanlig-bruker">11. Hva ser vanlig bruker?</a>
+</div></nav>
+<section class="card" id="moduler"><h2>1. Start med moduler</h2><p>Rett i Lomma er modulbasert. Kunden skal bare få de modulene de faktisk trenger. En liten ENK kan starte enkelt, mens en håndverkerbedrift kan legge til biler, varer, lager og lønn når behovet kommer.</p>
+<div class="note"><strong>Viktig:</strong> Dette bør stå først i dokumentasjonen, slik at små kunder forstår at de ikke må bruke hele systemet.</div>
+<div class="module-list">
+<div class="module"><h3>Solo / ENK</h3><p>Timer, kunder og enkel faktura.</p></div>
+<div class="module"><h3>Håndverker</h3><p>Timer, jobber, varer, biler, Min bil, lager og faktura.</p></div>
+<div class="module"><h3>Konsulent</h3><p>Timer, prosjekter og faktura uten bil-lager.</p></div>
+<div class="module"><h3>Hovslager</h3><p>Kunder, hester, besøk, bilder og faktura.</p></div>
+<div class="module"><h3>Veterinær</h3><p>Dyreeiere, dyr, journal, varer, bil og faktura.</p></div>
+<div class="module"><h3>Pro / Admin</h3><p>Full pakke med lønn, lager, økonomi og backup.</p></div>
+</div>
+</section>
+<section class="card" id="admin-innlogging"><h2>2. Logg inn som administrator</h2><p>Administrator logger inn for å åpne admin-konsollen. Admin-konsollen er hovedinngangen til oppsett, moduler, firma, ansatte, kunder, faktura, lager, lønn og backup.</p>
+<article class="shot">
+<div class="shot-head"><h3>Innlogging</h3></div>
+<img src="assets/login.png" alt="Innlogging">
+<div class="caption"><p>Brukeren logger inn med e-post og passord. Vanlige brukere sendes til en enkel arbeidsflate.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Logg inn som admin</h3></div>
+<img src="assets/loginnsomadmin.png" alt="Logg inn som admin">
+<div class="caption"><p>Administrator kan velge adminmodus ved innlogging. Dette åpner funksjoner som vanlige brukere ikke skal se.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Admin-konsoll</h3></div>
+<img src="assets/adminknsoll.png" alt="Admin-konsoll">
+<div class="caption"><p>Admin-konsollen er navet for oppsett og vedlikehold. Herfra kan administrator gå videre til moduler, firma, ansatte, kunder, faktura, lager, lønn, backup og testpanel.</p><p class="why"><strong>Kommentar:</strong> Dette bør vises tidlig i dokumentasjonen, fordi administrator først må forstå hvor hovedstyringen ligger.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Adminvalg</h3></div>
+<img src="assets/adminvalg.png" alt="Adminvalg">
+<div class="caption"><p>Adminvalg brukes for å skille mellom vanlig bruk og administrasjon. En administrator kan jobbe som vanlig bruker, eller åpne adminmodus når systemet skal settes opp eller vedlikeholdes.</p><p class="why"><strong>Kommentar:</strong> Dette bildet forklarer rolleforskjellen mellom enkel daglig bruk og administrasjon.</p></div>
+</article>
+</section>
+<section class="card" id="firma"><h2>3. Sett opp firmaet</h2><p>Firmaoppsettet bør gjøres tidlig. Informasjonen brukes på fakturaer, dokumenter og betalingsinformasjon.</p>
+<article class="shot">
+<div class="shot-head"><h3>Firmaoppsett</h3></div>
+<img src="assets/firma.png" alt="Firmaoppsett">
+<div class="caption"><p>Legg inn firmanavn, adresse, organisasjonsnummer, kontonummer, Vipps og logo.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="ansatte"><h2>4. Opprett ansatte og roller</h2><p>Ansatte får tilgang etter rolle. Vanlige brukere får en enklere visning, mens administrator kan åpne administrasjonsfunksjonene.</p>
+<article class="shot">
+<div class="shot-head"><h3>Ansattregister</h3></div>
+<img src="assets/ansatte.png" alt="Ansattregister">
+<div class="caption"><p>Her registreres ansatte med navn, e-post, rolle og lønnsinformasjon.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Endre ansatt</h3></div>
+<img src="assets/endreansatt.png" alt="Endre ansatt">
+<div class="caption"><p>Brukes for å korrigere eller oppdatere opplysninger på en ansatt.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Flere ansattinnstillinger</h3></div>
+<img src="assets/endreansatt2.png" alt="Flere ansattinnstillinger">
+<div class="caption"><p>Flere felt for lønn, trekk og administrasjon kan settes her.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Standard bil</h3></div>
+<img src="assets/ansattbil.png" alt="Standard bil">
+<div class="caption"><p>En ansatt kan kobles til fast bil. Da vet systemet hvilken bil varer skal trekkes fra.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="lonn"><h2>5. Sett opp lønn ved behov</h2><p>Lønn er en modul. Kunder som ikke trenger lønn skal ikke forstyrres av disse valgene.</p>
+<article class="shot">
+<div class="shot-head"><h3>Lønn</h3></div>
+<img src="assets/loenn.png" alt="Lønn">
+<div class="caption"><p>Lønn hentes fra registrerte timer og ansattoppsett.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Lønnstyper</h3></div>
+<img src="assets/loenstyper.png" alt="Lønnstyper">
+<div class="caption"><p>Velg fastlønn, timelønn eller andre lønnstyper etter behov.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Provisjon</h3></div>
+<img src="assets/provisjonstype.png" alt="Provisjon">
+<div class="caption"><p>Provisjon kan brukes for ansatte som skal ha prosent eller bonus etter avtalt grunnlag.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Trekktyper</h3></div>
+<img src="assets/trekktyper.png" alt="Trekktyper">
+<div class="caption"><p>Trekk kan brukes til skatt, ekstra trekk, lønnstrekk eller andre faste trekk.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="kunder"><h2>6. Kunder og prosjekter</h2><p>Kunder og prosjekter er grunnlaget for timer, jobber og faktura.</p>
+<article class="shot">
+<div class="shot-head"><h3>Kunder og prosjekter</h3></div>
+<img src="assets/kundeprosjekt.png" alt="Kunder og prosjekter">
+<div class="caption"><p>Koble prosjekter til kunder slik at timer og faktura havner riktig.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="timer"><h2>7. Timer og jobber</h2><p>Timer og jobber er den daglige arbeidsflaten. Her registreres arbeid, tid, kunde, prosjekt, utlegg, bilder og eventuelle varer.</p>
+<article class="shot">
+<div class="shot-head"><h3>Timer som administrator</h3></div>
+<img src="assets/timeradmin.png" alt="Timer som administrator">
+<div class="caption"><p>Administrator kan se og registrere timer bredere enn en vanlig bruker.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Jobb- og timeoversikt</h3></div>
+<img src="assets/oversikt2.png" alt="Jobb- og timeoversikt">
+<div class="caption"><p>Oversikten gjør det enklere å følge opp hva som er gjort og hva som skal faktureres.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="lager"><h2>8. Varer, lager og Min bil</h2><p>Lager og biler er mest relevant for håndverkere. Vanlige brukere bør normalt bare se Min bil, mens administrator styrer hovedlager, vareregister og fylling av biler.</p>
+<article class="shot">
+<div class="shot-head"><h3>Vareregister</h3></div>
+<img src="assets/vareregister.png" alt="Vareregister">
+<div class="caption"><p>Hovedregister for varer, varenummer, pris, MVA og beholdning.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Ny vare</h3></div>
+<img src="assets/nyvare.png" alt="Ny vare">
+<div class="caption"><p>Administrator kan legge inn nye varer eller redigere eksisterende varer.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Vareregister og biler</h3></div>
+<img src="assets/vareregisterogbiler.png" alt="Vareregister og biler">
+<div class="caption"><p>Viser sammenhengen mellom hovedlager og bil-lager.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Bilregister</h3></div>
+<img src="assets/biler.png" alt="Bilregister">
+<div class="caption"><p>Her opprettes og vedlikeholdes firmabiler.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Min bil / til biler</h3></div>
+<img src="assets/tilbiler.png" alt="Min bil / til biler">
+<div class="caption"><p>Brukes for å velge hvilken bil som skal kontrolleres eller fylles.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Fyll bil fra lager</h3></div>
+<img src="assets/fyllbil.png" alt="Fyll bil fra lager">
+<div class="caption"><p>Administrator kan fylle bil fra vareregister. Bevegelsen kan logges med ansatt, bil, vare, antall og tidspunkt.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+
+<article class="shot">
+<div class="shot-head"><h3>Hvem har hvilke varer på bil</h3></div>
+<img src="assets/hvemharvarer.png" alt="Hvem har hvilke varer på bil">
+<div class="caption">
+<p>Dette bildet viser bil-lageret med bil, ansatt/bruker, vare, antall og minimum på bil. Administrator kan dermed se hvem som har hvilken bil, og hvilke varer som ligger på bilen.</p>
+<p class="why"><strong>Kommentar:</strong> Denne oversikten er nyttig ved lagerkontroll, fylling av biler og oppfølging av materiell. Den viser også hvorfor det er viktig å koble ansatt til standard bil.</p>
+</div>
+</article>
+
+</section>
+<section class="card" id="faktura"><h2>9. Faktura og økonomi</h2><p>Når timer, varer og utlegg er registrert, kan administrator lage faktura og følge opp økonomien.</p>
+<article class="shot">
+<div class="shot-head"><h3>Faktura</h3></div>
+<img src="assets/faktura.png" alt="Faktura">
+<div class="caption"><p>Lag faktura, fakturakopi, kreditnota og purring fra registrert grunnlag.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+<article class="shot">
+<div class="shot-head"><h3>Økonomioversikt</h3></div>
+<img src="assets/okonomioverikt1.png" alt="Økonomioversikt">
+<div class="caption"><p>Se hva som er fakturert, ikke fakturert, ubetalt eller forfalt.</p><p class="why"><strong>Kommentar:</strong> Dette bildet hører til kapittelet over og viser hva administrator eller bruker faktisk skal gjøre.</p></div>
+</article>
+</section>
+<section class="card" id="backup"><h2>10. Backup og sikkerhet</h2><p>Backup skal være trygg uten å bli en daglig bekymring. Systemet kan settes opp med automatisk backup i skyen.</p>
+<div class="note"><strong>Automatisk backup i skyen:</strong> Backup kan kjøres automatisk etter fast oppsett, for eksempel hver natt. Kunden trenger ikke huske dette selv.</div>
+<div class="warning"><strong>Manuell backup:</strong> Administrator kan ta ekstra backup før import, større endringer eller vedlikehold.</div>
+<div class="checks">
+<div class="check"><strong>Hva sikres?</strong><br>Data som kunder, timer, varer, lager, faktura og oppsett.</div>
+<div class="check"><strong>Hvorfor?</strong><br>For å kunne gjenopprette etter feil, sletting eller uhell.</div>
+<div class="check"><strong>Hvem gjør det?</strong><br>Automatisk jobb i skyen. Administrator kan i tillegg ta manuell backup.</div>
+</div>
+</section>
+<section class="card" id="vanlig-bruker"><h2>11. Hva ser vanlig bruker?</h2><p>Vanlig bruker skal ha en enkel arbeidsflate. De skal normalt se Timer, Jobber og Min bil. De skal ikke se lønn, faktura, ansatte, firma, backup eller adminfunksjoner.</p>
+<div class="checks">
+<div class="check"><strong>Vanlig bruker ser:</strong><br>Timer, Jobber og Min bil.</div>
+<div class="check"><strong>Vanlig bruker ser ikke:</strong><br>Lønn, faktura, firma, ansatte, backup og adminfunksjoner.</div>
+<div class="check"><strong>Hvorfor?</strong><br>Færre valg gjør systemet tryggere og enklere i daglig bruk.</div>
+</div>
+</section>
+</main><footer>Rett i Lomma · Systematisk adminveiledning · Webdokumentasjon</footer></body></html>
