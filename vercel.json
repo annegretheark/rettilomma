@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/handverker",
+      "destination": "/handverker-login.html"
+    },
+    {
+      "source": "/konsulent",
+      "destination": "/konsulent-login.html"
+    },
+    {
+      "source": "/hovslager",
+      "destination": "/hovslager-login.html"
+    }
+  ]
+}
