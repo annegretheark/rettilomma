@@ -210,6 +210,135 @@
       color: #f3f4f6;
     }
 
+
+    .bil-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .bil-tabell th,
+    .bil-tabell td {
+      border-bottom: 1px solid #374151;
+      padding: 6px;
+      text-align: left;
+      vertical-align: middle;
+      color: #f3f4f6;
+    }
+    .bil-tabell th { background: #111827; }
+
+
+    /* Kompakt bil-lager: treffer inputfeltene i varelisten */
+    #bilLagerFyllListe .bil-tabell {
+      font-size: 12px;
+    }
+
+    #bilLagerFyllListe .bil-tabell th,
+    #bilLagerFyllListe .bil-tabell td {
+      padding: 2px 4px !important;
+      line-height: 1.1 !important;
+      vertical-align: middle;
+    }
+
+    #bilLagerFyllListe .bil-tabell input[type="number"] {
+      width: 70px !important;
+      min-width: 70px !important;
+      max-width: 80px !important;
+      height: 24px !important;
+      min-height: 24px !important;
+      padding: 2px 4px !important;
+      margin: 0 !important;
+      border-radius: 4px !important;
+      font-size: 12px !important;
+      line-height: 1.1 !important;
+    }
+
+    #bilLagerFyllListe .bil-tabell td:nth-child(1),
+    #bilLagerFyllListe .bil-tabell th:nth-child(1) {
+      min-width: 70px;
+      max-width: 100px;
+    }
+
+
+    .klikkbar-bilrad {
+      cursor: pointer;
+    }
+
+    .klikkbar-bilrad:hover {
+      background: #1f2937;
+    }
+
+
+    .topplinje {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .meny-gruppe {
+      position: relative;
+      display: inline-block;
+    }
+
+    .meny-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 190px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 6px;
+      z-index: 10000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    .meny-gruppe:hover .meny-panel,
+    .meny-gruppe:focus-within .meny-panel {
+      display: block;
+    }
+
+    .meny-panel button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 3px 0;
+      background: #374151;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    .meny-panel button:hover {
+      background: #4b5563;
+    }
+
+
+    .meny-gruppe.apen .meny-panel {
+      display: block;
+    }
+
+
+    #varerSide #vareListe {
+      max-height: 420px;
+      overflow: auto;
+      margin-bottom: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+
+    .meny-panel {
+      pointer-events: auto;
+    }
+
+    .meny-panel button {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
 </style>
 </head>
 
@@ -259,19 +388,35 @@
     <div class="kort">
       <h1>Timeregistrering</h1>
 
-      <button id="visTimerKnapp" type="button">Timer</button>
-      <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
-      <button id="varerKnapp" class="admin-only" data-modul="varer" type="button" onclick="window.visVarerSide && window.visVarerSide()">Varer</button>
-      <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">Lønn</button>
-      <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
-      <button id="visAnsattKnapp" class="admin-only" type="button">Ansatte</button>
-      <button id="visFirmaKnapp" class="admin-only" type="button">Firma</button>
-      <button id="visBackupKnapp" class="admin-only" type="button">Backup/Restore</button>
-      <button id="visTestKnapp" class="admin-only" type="button">Testpanel</button>
-      <button id="visModulerKnapp" class="admin-only" type="button">⚙️ Moduler</button>
-      <button id="visHovslagerKnapp" class="admin-only" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
-      <button id="visVeterinaerKnapp" class="admin-only" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterinær</button>
-      <button id="loggUtKnapp" type="button" class="danger" onclick="
+      <div class="topplinje">
+        <button id="visTimerKnapp" type="button">Timer</button>
+        <button id="visJobberKnapp" type="button">Jobber</button>
+        <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
+        <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
+        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">Lønn</button>
+
+        <div class="meny-gruppe" data-modul="varer">
+          <button id="lagerMenyKnapp" type="button">Min bil ▼</button>
+          <div class="meny-panel">
+            <button id="varerKnapp" class="admin-only" data-modul="varer" type="button">Vareregister</button>
+            <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
+          </div>
+        </div>
+
+        <div class="meny-gruppe admin-only">
+          <button id="adminMenyKnapp" type="button">Admin ▼</button>
+          <div class="meny-panel">
+            <button id="visAnsattKnapp" type="button">Ansatte</button>
+            <button id="visFirmaKnapp" type="button">Firma</button>
+            <button id="visModulerKnapp" type="button">⚙️ Moduler</button>
+            <button id="visBackupKnapp" type="button">Backup/Restore</button>
+            <button id="visTestKnapp" type="button">Testpanel</button>
+            <button id="visHovslagerKnapp" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
+            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterinær</button>
+          </div>
+        </div>
+
+        <button id="loggUtKnapp" type="button" class="danger" onclick="
   localStorage.removeItem('rettilommaValgtModul');
   localStorage.removeItem('aktivBilId');
   localStorage.removeItem('aktivBilNavn');
@@ -283,6 +428,7 @@
     window.location.href = '../index.html';
   }
 ">Logg ut</button>
+      </div>
     </div>
 
 
@@ -302,6 +448,15 @@
       <input id="importFil" type="file" accept=".json">
 
       <div id="backupMelding" class="melding"></div>
+    </section>
+
+    <!-- JOBBER -->
+    <section id="jobberSide" class="kort skjult">
+      <h2>Jobber</h2>
+      <p id="jobberForklaring" class="info">Vanlig bruker ser egne jobber. Admin ser alle jobber.</p>
+      <button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button>
+      <div id="jobberMelding" class="melding"></div>
+      <div id="jobberListe"></div>
     </section>
 
     <!-- TIMER -->
@@ -335,6 +490,15 @@
           </select>
         </div>
       </div>
+      <div id="adminAnsattRad" class="rad admin-only skjult" style="display:none;">
+        <div>
+          <label for="adminAnsattValg">Registrer timer for ansatt</label>
+          <select id="adminAnsattValg">
+            <option value="">Meg selv / innlogget bruker</option>
+          </select>
+          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare når admin logger inn som admin.</div>
+        </div>
+      </div>
   <div class="rad">
   <div>
     <label for="start">Start</label>
@@ -353,12 +517,12 @@
 </div>
   <div class="rad" data-modul="biler">
   <div>
-    <label for="bilValg">Aktiv bil / lager</label>
+    <label for="bilValg">Standard/aktiv bil</label>
     <select id="bilValg">
       <option value="">Velg bil</option>
     </select>
     <div id="aktivBilInfo" class="melding" style="font-size:0.9em; margin-top:4px;"></div>
-    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil</button>
+    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil denne gangen</button>
   </div>
 
   <div data-modul="varer">
@@ -541,9 +705,63 @@
 
 </section>
 
+
+    <!-- BILER -->
+    <section id="bilerSide" class="kort skjult admin-only" data-modul="varer">
+      <h2>Biler</h2>
+      <p>Opprett biler her. Etterpå kan bilen velges på ansatt under Standard bil.</p>
+
+      <div class="rad">
+        <div>
+          <label for="bilNavn">Bilnavn</label>
+          <input id="bilNavn" placeholder="Servicebil 1">
+        </div>
+        <div>
+          <label for="bilRegnr">Regnr</label>
+          <input id="bilRegnr" placeholder="AB12345">
+        </div>
+      </div>
+
+      <button id="lagreBilKnapp" type="button" onclick="window.lagreBil && window.lagreBil()">Lagre bil</button>
+      <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake</button>
+      <div id="bilMelding" class="melding"></div>
+      <div id="bilListe"></div>
+
+      <hr>
+      <h3>Bil-lager</h3>
+      <p>Velg bil én gang. Skriv antall på flere varer i listen og lagre alt samtidig.</p>
+      <div class="rad">
+        <div>
+          <label for="bilLagerBilValg">Bil som skal fylles</label>
+          <select id="bilLagerBilValg"><option value="">Velg bil</option></select>
+        </div>
+      </div>
+
+      <h4>Fyll bilen fra vareregister</h4>
+      <p class="info">Listen viser varenr, varenavn, innpris, utpris, hovedlager, minimum og MVA.</p>
+      <div id="bilLagerFyllListe"></div>
+      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer på bilen</button>
+
+      <h4>Varer som ligger på bil</h4>
+      <div id="bilLagerListe"></div>
+    </section>
+
     <!-- VARER -->
     <section id="varerSide" class="kort skjult" data-modul="varer">
       <h2>Vareregister</h2>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <h3 style="margin:0;">Vareliste</h3>
+        <button type="button" class="secondary" onclick="document.getElementById('varenr')?.scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('varenr')?.focus();">
+          Ny vare
+        </button>
+      </div>
+
+      <div id="vareListe"></div>
+
+      <hr>
+
+      <h3>Ny / rediger vare</h3>
 
       <label for="varenr">Varenr</label>
       <input id="varenr">
@@ -609,45 +827,18 @@
 
       <hr>
 
-      <h3>Biler og bil-lager</h3>
-      <div class="rad">
-        <div>
-          <label for="bilNavn">Bilnavn</label>
-          <input id="bilNavn" placeholder="Servicebil 1">
-        </div>
-        <div>
-          <label for="bilRegnr">Regnr</label>
-          <input id="bilRegnr" placeholder="TEST123">
-        </div>
-      </div>
-      <button id="lagreBilKnapp" type="button">Lagre bil</button>
-
-      <div class="rad">
-        <div>
-          <label for="lagerBilValg">Bil</label>
-          <select id="lagerBilValg"><option value="">Velg bil</option></select>
-        </div>
-        <div>
-          <label for="lagerVareValg">Vare fra hovedlager</label>
-          <select id="lagerVareValg"><option value="">Velg vare</option></select>
-        </div>
-        <div>
-          <label for="lagerFlyttAntall">Antall til bil</label>
-          <input id="lagerFlyttAntall" type="number" step="1" min="1" step="0.01" value="1">
-        </div>
-      </div>
-      <button id="flyttVareTilBilKnapp" type="button" class="btn btn-primary" style="margin-top:10px;">Flytt fra hovedlager til bil</button>
-
-      <h4>Fyll bil med flere varer</h4>
-      <p style="margin-top:0;">Skriv antall på de varene som skal legges i valgt bil. Tomme felt blir ignorert.</p>
-      <div id="fyllBilListe" style="margin-top:10px;"></div>
-      <button id="fyllBilFlereKnapp" type="button" onclick="window.fyllBilMedFlereVarer && window.fyllBilMedFlereVarer()">Overfør alle valgte varer til bil</button>
-
-      <div id="bilLagerListe" style="margin-top:10px;"></div>
-
       <hr>
 
-      <div id="vareListe"></div>
+      <h3>Bil-lager</h3>
+      <p>
+        Biler opprettes og vedlikeholdes på egen side under knappen <strong>Biler</strong>.
+        Varer beholdes her i vareregisteret.
+      </p>
+      <button type="button" class="secondary" onclick="window.visBilerSide && window.visBilerSide()">
+        Åpne bilregister
+      </button>
+      <hr>
+
     </section>
 
     <!-- LØNN -->
@@ -778,66 +969,8 @@
         <option value="">Ingen fast bil</option>
       </select>
 
-      <h3>Lønn</h3>
-
-      <div class="rad">
-        <div>
-          <label for="avlonningstype">Lønnstype</label>
-          <select id="avlonningstype">
-            <option value="time">Timelønn</option>
-            <option value="fast">Fastlønn</option>
-            <option value="provisjon">Kun provisjon</option>
-            <option value="time_provisjon">Timelønn + provisjon</option>
-            <option value="fast_provisjon">Fastlønn + provisjon</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="timelonn">Timelønn</label>
-          <input id="timelonn" type="number" step="0.01" placeholder="F.eks. 250">
-        </div>
-
-        <div>
-          <label for="fastlonn">Fastlønn pr måned</label>
-          <input id="fastlonn" type="number" step="0.01" placeholder="F.eks. 45000">
-        </div>
-      </div>
-
-      <div class="rad">
-        <div>
-          <label for="provisjonProsent">Provisjon %</label>
-          <input id="provisjonProsent" type="number" step="0.01" placeholder="F.eks. 10">
-        </div>
-
-        <div>
-          <label for="provisjonGrunnlag">Provisjonsgrunnlag</label>
-          <select id="provisjonGrunnlag">
-            <option value="egne_fakturerte_timer">Egne fakturerte timer</option>
-            <option value="fakturert">Fakturert beløp</option>
-            <option value="omsetning">Omsetning</option>
-            <option value="dekningsbidrag">Dekningsbidrag</option>
-            <option value="manuell">Manuell omsetning</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="provisjonOmsetningManuell">Manuell omsetning/provisjonsgrunnlag</label>
-          <input id="provisjonOmsetningManuell" type="number" step="0.01" placeholder="Beregnes fra timer eller skrives manuelt">
-          <button id="beregnProvisjonsgrunnlagKnapp" type="button" class="secondary">Beregn grunnlag fra timer</button>
-        </div>
-      </div>
-
-      <div class="rad">
-        <div>
-          <label for="bonus">Bonus</label>
-          <input id="bonus" type="number" step="0.01" placeholder="F.eks. 5000">
-        </div>
-
-        <div>
-          <label for="bonusBeskrivelse">Bonusbeskrivelse</label>
-          <input id="bonusBeskrivelse" placeholder="F.eks. månedens bonus">
-        </div>
-      </div>
+      <label for="ansattTimepris">Timepris</label>
+      <input id="ansattTimepris" type="number" value="1100">
 
       <h3>Trekk</h3>
 
@@ -861,7 +994,6 @@
       <button id="tilbakeFraAnsattKnapp" type="button" class="secondary">Tilbake</button>
 
       <div id="trekkListe"></div>
-      <div id="ansattMelding" class="melding"></div>
       <div id="ansattListe"></div>
     </section>
 
@@ -880,6 +1012,12 @@
 
       <label for="firmaKontonr">Kontonr</label>
       <input id="firmaKontonr">
+
+      <label for="firmaVippsNummer">Vippsnummer</label>
+      <input id="firmaVippsNummer">
+
+      <label for="firmaVippsMottaker">Vipps mottaker</label>
+      <input id="firmaVippsMottaker">
 
       <label for="firmaOrgNr">Org nr</label>
       <input id="firmaOrgNr">
@@ -951,14 +1089,15 @@
 <script src="../js/core/config.js?v=5001"></script>
 <script src="../js/core/state.js?v=999"></script>
 <script src="../js/core/moduler.js?v=999"></script>
-<script src="../js/handverker/navigation.js?v=5003"></script>
+<script src="../js/handverker/navigation.js?v=7058"></script>
 <script src="../js/handverker/auth.js?v=5003"></script>
-<script src="../js/handverker/kunder.js?v=5003"></script>
+<script src="../js/handverker/kunder.js?v=7044"></script>
 <script src="../js/handverker/prosjekter.js?v=5003"></script>
-<script src="../js/handverker/ansatte.js?v=5003"></script>
+<script src="../js/handverker/ansatte.js?v=7044"></script>
 <script src="../js/core/brevhode.js?v=5003"></script>
-<script src="../js/handverker/firma.js?v=5003"></script>
-<script src="../js/handverker/timer.js?v=5003"></script>
+<script src="../js/handverker/firma.js?v=7058"></script>
+<script src="../js/handverker/timer.js?v=7044"></script>
+<script src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
 <script src="../js/handverker/utils.js?v=5003"></script>
 <script src="../js/handverker/fakturaData.js?v=5003"></script>
 <script src="../js/handverker/pdfLayout.js?v=5003"></script>
@@ -967,10 +1106,15 @@
 <script src="../js/handverker/okonomi.js?v=5003"></script>
 <script src="../js/handverker/fakturaValg.js?v=5003"></script>
 <script src="../js/handverker/backup.js?v=5003"></script>
-<script src="../js/handverker/lonn.js?v=5003"></script>
+<script src="../js/handverker/lonn.js?v=7044"></script>
 <script src="../js/handverker/tester.js?v=5003"></script>
-<script src="../js/handverker/varer.js?v=5003"></script>
-<script src="../js/handverker/app.js?v=5003"></script>
+<script src="../js/handverker/app.js?v=7021"></script>
+<script src="../js/handverker/varer.js?v=7044"></script>
+<script src="../js/handverker/biler.js?v=7044"></script>
+<script src="../js/handverker/jobber-rolle.js?v=7055"></script>
+<script src="../js/handverker/bruker-billager.js?v=7055"></script>
+<script src="../js/handverker/bilvalg-repair.js?v=7059"></script>
+
 
 <script>
 window.addEventListener("load", function () {
@@ -1023,7 +1167,9 @@ window.addEventListener("load", function () {
     }
 
     const rolle = String(ansattData?.rolle || "").toLowerCase();
-    window.erAdmin = ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    window.erAdmin = harAdminRolle && vilAdmin;
+    localStorage.setItem("rilAdminModus", window.erAdmin ? "ja" : "nei");
 
     if (typeof window.visApp === "function") {
       await window.visApp();
@@ -1103,40 +1249,7 @@ window.addEventListener("load", function () {
 
 
 
-<script>
-window.addEventListener("load", function () {
-  var varerKnapp = document.getElementById("varerKnapp");
 
-  if (varerKnapp) {
-    varerKnapp.onclick = function () {
-      console.log("Varer-knapp trykket");
-
-      if (typeof window.visVarer === "function") {
-        window.visVarer();
-        return;
-      }
-
-      if (typeof window.visVarerSide === "function") {
-        window.visVarerSide();
-        return;
-      }
-
-      if (typeof window.skjulAlleSider === "function") {
-        window.skjulAlleSider();
-      }
-
-      var varerSide = document.getElementById("varerSide");
-      if (varerSide) {
-        varerSide.classList.remove("hidden");
-        varerSide.classList.remove("skjult");
-        varerSide.style.display = "";
-      } else {
-        alert("Fant ikke varerSide i index.html");
-      }
-    };
-  }
-});
-</script>
 
 
 <script>
@@ -1202,6 +1315,16 @@ window.addEventListener("load", function () {
   }
 });
 </script>
+
+
+
+
+
+
+
+
+
+
 
 </body>
 </html>

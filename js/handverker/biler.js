@@ -88,6 +88,22 @@ function hentBilFraId(id) {
   return (biler || []).find(b => String(b.id) === String(id));
 }
 
+
+function hentAnsattForBil(bilId) {
+  try {
+    const liste = Array.isArray(window.ansatte) ? window.ansatte : [];
+    const treff = liste
+      .filter(a => String(a.standard_bil_id || "") === String(bilId || ""))
+      .map(a => a.navn || a.epost || "Uten navn");
+
+    return treff.length ? treff.join(", ") : "Ikke tildelt";
+  } catch (e) {
+    console.warn("Kunne ikke finne ansatt for bil:", e);
+    return "Ikke tildelt";
+  }
+}
+
+
 function valgtBilOverskrift() {
   const bilId = hentValgtBilIdForBilLager();
   const bil = hentBilFraId(bilId);
@@ -344,13 +360,14 @@ function tegnBiler() {
   e.innerHTML = `
     <table class="bil-tabell">
       <thead>
-        <tr><th>Bil</th><th>Regnr</th><th>Status</th><th></th></tr>
+        <tr><th>Bil</th><th>Regnr</th><th>Ansatt / bruker</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
         ${biler.map(bil => `
           <tr class="klikkbar-bilrad" onclick="window.apneBilForFylling('${bil.id}')">
             <td>${bil.navn || bil.name || bil.bilnavn || ""}</td>
             <td>${bil.regnr || bil.registreringsnummer || ""}</td>
+            <td>${hentAnsattForBil(bil.id)}</td>
             <td>${bil.aktiv === false ? "Inaktiv" : "Aktiv"}</td>
             <td>
               <button type="button" class="secondary" onclick="event.stopPropagation(); slettBil('${bil.id}')">Slett</button>
@@ -640,6 +657,7 @@ function tegnBilLager() {
       <thead>
         <tr>
           ${valgtBilId ? '' : '<th>Bil</th>'}
+          ${valgtBilId ? '' : '<th>Ansatt / bruker</th>'}
           <th>Varenr</th>
           <th>Vare</th>
           <th>Utpris</th>
@@ -651,6 +669,7 @@ function tegnBilLager() {
         ${rader.map(rad => `
           <tr>
             ${valgtBilId ? '' : `<td>${bilNavn(rad.biler)}</td>`}
+            ${valgtBilId ? '' : `<td>${hentAnsattForBil(rad.bil_id)}</td>`}
             <td>${rad.varer?.varenr || ""}</td>
             <td>${vareNavn(rad.varer)}</td>
             <td>${formatKr(varePris(rad.varer))}</td>
@@ -828,3 +847,5 @@ window.tegnFyllBilListe = tegnFyllBilListe;
 window.fyllVarevalgFraAktivBil = fyllVarevalgFraAktivBil;
 window.oppdaterAktivBilVisning = oppdaterAktivBilVisning;
 window.lastBilerOgBilLager = lastBilerOgBilLager;
+
+window.hentAnsattForBil = hentAnsattForBil;
