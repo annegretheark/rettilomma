@@ -206,7 +206,14 @@
   </style>
 </head>
 <body>
-<script>localStorage.setItem("rettilommaValgtModul", "hovslager");</script>
+<script>
+localStorage.setItem("rettilommaValgtModul", "hovslager");
+// Start alltid på Jobber / timer etter innlogging eller refresh.
+// Menyknappene virker fortsatt etter at siden er lastet.
+if (window.location.hash !== "#jobbSide") {
+  history.replaceState(null, "", window.location.pathname + window.location.search + "#jobbSide");
+}
+</script>
 <section id="appSide">
 <div class="kort">
 <div class="system-header">
@@ -236,14 +243,6 @@
     Skodde Quen 20 kilometer
 
   </div>
-<label for="jobbBildeKamera">
-  Ta bilde
-</label>
-<input accept="image/*" capture="environment" id="jobbBildeKamera" type="file"/>
-<label for="jobbBildeGalleri">
-  Velg bilde
-</label>
-<input accept="image/*" id="jobbBildeGalleri" type="file"/>
 <hr/>
 <button class="secondary" onclick="
             document
@@ -321,14 +320,6 @@
       Beskrivelse
     </label>
 <textarea id="jobbBeskrivelse"></textarea>
-<label for="jobbBildeKamera">
-      Ta bilde
-    </label>
-<input accept="image/*" capture="environment" id="jobbBildeKamera" type="file"/>
-<label for="jobbBildeGalleri">
-      Velg bilde
-    </label>
-<input accept="image/*" id="jobbBildeGalleri" type="file"/>
 <div class="rad">
 <div>
 <label for="arbeidBelop">
@@ -357,11 +348,21 @@
 </div>
 <button id="lagreJobbKnapp" type="button">
 
-      Lagre jobb manuelt
+      Lagre jobb
 
     </button>
 <div class="melding" id="jobbMelding"></div>
 </div>
+<hr/>
+<h3>Jobbliste</h3>
+<div class="rad">
+  <div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div>
+  <div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div>
+  <div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div>
+</div>
+<button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button>
+<div id="jobbListe"></div>
+
 </section>
 <section class="kort skjult" id="hesterSide">
 <h2>Hester</h2>
@@ -527,6 +528,5 @@
 <script src="../js/hovslager/hov-fakturaoversikt.js?v=5001"></script>
 <script src="../js/hovslager/hov-prisliste.js?v=5001"></script>
 <script src="../js/hovslager/hov-app.js?v=5001"></script>
-<script scr="js/hovslager/hovslager-login-tekst.js"s
 </body>
 </html>

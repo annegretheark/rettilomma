@@ -1,4 +1,7 @@
-console.log("hov-jobber.js lastet");
+console.log("hov-jobber.js lastet - klikkbar jobbliste med bilder");
+
+let hovJobberSiste = [];
+let hovJobbValgt = null;
 
 function jobbMelding(tekst, feil = false) {
   const el = document.getElementById("jobbMelding");
@@ -13,56 +16,184 @@ function tall(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function hovEsc(v) {
+  return String(v ?? "").replace(/[&<>'"]/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+  }[c]));
+}
+
+function hovDatoNo(v) {
+  if (!v) return "";
+  const s = String(v).slice(0, 10);
+  const d = s.split("-");
+  return d.length === 3 ? `${d[2]}.${d[1]}.${d[0]}` : String(v);
+}
+
+function hentValgtHovBildeFil() {
+  const kamera = document.getElementById("jobbBildeKamera");
+  const galleri = document.getElementById("jobbBildeGalleri");
+  const filInput = kamera?.files?.length ? kamera : galleri;
+  return filInput?.files?.[0] || null;
+}
+
+function tomHovBildeFelter() {
+  const kamera = document.getElementById("jobbBildeKamera");
+  const galleri = document.getElementById("jobbBildeGalleri");
+  if (kamera) kamera.value = "";
+  if (galleri) galleri.value = "";
+}
+
+function rentFilnavn(navn) {
+  return String(navn || "bilde.jpg")
+    .replaceAll(" ", "_")
+    .replace(/[æøåÆØÅ]/g, b => ({ æ: "ae", ø: "o", å: "a", Æ: "Ae", Ø: "O", Å: "A" }[b] || b))
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+async function lagBildeUrlFraSti(filsti) {
+  if (!filsti || !window.supabaseClient) return "";
+
+  try {
+    const { data, error } = await supabaseClient
+      .storage
+      .from("bilder")
+      .createSignedUrl(filsti, 60 * 60 * 24 * 7);
+
+    if (!error && data?.signedUrl) return data.signedUrl;
+  } catch (e) {
+    console.warn("Kunne ikke lage signert bilde-url:", e);
+  }
+
+  try {
+    const { data } = supabaseClient.storage.from("bilder").getPublicUrl(filsti);
+    return data?.publicUrl || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+async function lastOppHovJobbBilde(jobbId, fil, bildetekst = "") {
+  if (!jobbId) throw new Error("Mangler jobb-id.");
+  if (!fil) throw new Error("Velg et bilde først.");
+
+  const filsti = `hov-jobber/${jobbId}/${Date.now()}_${rentFilnavn(fil.name)}`;
+
+  const { error: uploadError } = await supabaseClient
+    .storage
+    .from("bilder")
+    .upload(filsti, fil, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) throw new Error("Opplasting feilet: " + uploadError.message);
+
+  const bildeUrl = await lagBildeUrlFraSti(filsti);
+
+  const { error: dbError } = await supabaseClient
+    .from("hov_jobb_bilder")
+    .insert({
+      jobb_id: jobbId,
+      filnavn: fil.name,
+      filsti,
+      bilde_url: bildeUrl || null,
+      bildetekst: bildetekst || ""
+    });
+
+  if (dbError) throw new Error("Bildet ble lastet opp, men ikke koblet til jobben: " + dbError.message);
+
+  return { filsti, bilde_url: bildeUrl };
+}
+
+async function hentBilderForHovJobb(jobbId) {
+  if (!jobbId || !window.supabaseClient) return [];
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("hov_jobb_bilder")
+      .select("id, filsti, bilde_url, bildetekst, created_at")
+      .eq("jobb_id", jobbId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Kunne ikke hente jobb-bilder:", error);
+      return [];
+    }
+
+    const bilder = [];
+    for (const b of data || []) {
+      const url = b.filsti ? await lagBildeUrlFraSti(b.filsti) : (b.bilde_url || "");
+      if (url) bilder.push({ ...b, url });
+    }
+    return bilder;
+  } catch (e) {
+    console.warn("Hoppet over bilder for jobb:", e);
+    return [];
+  }
+}
+
+async function hentBildeAntallForJobber(jobber) {
+  if (!Array.isArray(jobber) || !jobber.length || !window.supabaseClient) return;
+
+  const ids = jobber.map(j => j.id).filter(Boolean);
+  if (!ids.length) return;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("hov_jobb_bilder")
+      .select("jobb_id")
+      .in("jobb_id", ids);
+
+    if (error) {
+      console.warn("Kunne ikke hente bildeantall:", error);
+      jobber.forEach(j => j._bilde_antall = 0);
+      return;
+    }
+
+    const map = new Map();
+    (data || []).forEach(b => {
+      const key = String(b.jobb_id || "");
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+
+    jobber.forEach(j => j._bilde_antall = map.get(String(j.id)) || 0);
+  } catch (e) {
+    console.warn("Hoppet over bildeantall:", e);
+    jobber.forEach(j => j._bilde_antall = 0);
+  }
+}
+
 async function lagreJobb() {
-  const kundeId = document.getElementById("jobbKunde").value;
-  const hestId = document.getElementById("jobbHest").value;
-  if (!kundeId) {
-  jobbMelding("Velg kunde først", true);
-  return;
-}
-
-if (!hestId) {
-  jobbMelding("Velg hest først", true);
-  return;
-}
-
-const sjekkHest = await supabaseClient
-  .from("hester")
-  .select("id, kunde_id, navn")
-  .eq("id", hestId)
-  .single();
-
-if (sjekkHest.error) {
-  jobbMelding("Fant ikke valgt hest", true);
-  return;
-}
-
-if (String(sjekkHest.data.kunde_id) !== String(kundeId)) {
-  jobbMelding(
-    "Feil hest/eier: " + sjekkHest.data.navn + " tilhører ikke valgt kunde.",
-    true
-  );
-  return;
-}
-  if (!kundeId) {
-  jobbMelding("Velg kunde først", true);
-  return;
-}
-
-if (!hestId) {
-  jobbMelding("Velg hest først", true);
-  return;
-}
+  const kundeId = document.getElementById("jobbKunde")?.value || "";
+  const hestId = document.getElementById("jobbHest")?.value || "";
 
   if (!kundeId) {
-    jobbMelding("Velg kunde", true);
+    jobbMelding("Velg kunde først", true);
     return;
   }
 
-  const km = tall(document.getElementById("jobbKm").value);
-  const kmPris = tall(document.getElementById("jobbKmPris").value);
-  const arbeid = tall(document.getElementById("arbeidBelop").value);
-  const varer = tall(document.getElementById("varerBelop").value);
+  if (!hestId) {
+    jobbMelding("Velg hest først", true);
+    return;
+  }
+
+  const sjekkHest = await supabaseClient
+    .from("hester")
+    .select("id, kunde_id, navn")
+    .eq("id", hestId)
+    .single();
+
+  if (sjekkHest.error) {
+    jobbMelding("Fant ikke valgt hest", true);
+    return;
+  }
+
+  if (String(sjekkHest.data.kunde_id) !== String(kundeId)) {
+    jobbMelding("Feil hest/eier: " + sjekkHest.data.navn + " tilhører ikke valgt kunde.", true);
+    return;
+  }
+
+  const km = tall(document.getElementById("jobbKm")?.value);
+  const kmPris = tall(document.getElementById("jobbKmPris")?.value);
+  const arbeid = tall(document.getElementById("arbeidBelop")?.value);
+  const varer = tall(document.getElementById("varerBelop")?.value);
 
   const eksMva = arbeid + varer + (km * kmPris);
   const mva = eksMva * 0.25;
@@ -71,9 +202,9 @@ if (!hestId) {
   const jobb = {
     kunde_id: kundeId,
     hest_id: hestId || null,
-    dato: document.getElementById("jobbDato").value || new Date().toISOString().slice(0, 10),
-    jobbtype: document.getElementById("jobbType").value,
-    beskrivelse: document.getElementById("jobbBeskrivelse").value.trim(),
+    dato: document.getElementById("jobbDato")?.value || new Date().toISOString().slice(0, 10),
+    jobbtype: document.getElementById("jobbType")?.value || "",
+    beskrivelse: document.getElementById("jobbBeskrivelse")?.value.trim() || "",
     km,
     km_pris: kmPris,
     arbeid_belop: arbeid,
@@ -85,7 +216,9 @@ if (!hestId) {
 
   const res = await supabaseClient
     .from("hov_jobber")
-    .insert([jobb]);
+    .insert([jobb])
+    .select("*")
+    .single();
 
   if (res.error) {
     console.error(res.error);
@@ -93,58 +226,188 @@ if (!hestId) {
     return;
   }
 
-  // Når jobb lagres på en hest, oppdater hestens sist_skodd automatisk
+  const nyJobb = res.data;
+  const valgtBilde = hentValgtHovBildeFil();
+
+  if (valgtBilde && nyJobb?.id) {
+    try {
+      await lastOppHovJobbBilde(nyJobb.id, valgtBilde, "Bilde fra registrering");
+      tomHovBildeFelter();
+    } catch (e) {
+      console.error("Bildefeil:", e);
+      jobbMelding("Jobb lagret, men bilde feilet: " + (e.message || e), true);
+      await hentJobber();
+      return;
+    }
+  }
+
   if (hestId && jobb.dato) {
     const hestOppdaterRes = await supabaseClient
       .from("hester")
-      .update({
-        sist_skodd: jobb.dato
-      })
+      .update({ sist_skodd: jobb.dato })
       .eq("id", hestId);
 
     if (hestOppdaterRes.error) {
       console.error(hestOppdaterRes.error);
-      jobbMelding(
-        "Jobb lagret, men klarte ikke å oppdatere sist skodd: " +
-        hestOppdaterRes.error.message,
-        true
-      );
+      jobbMelding("Jobb lagret, men klarte ikke å oppdatere sist skodd: " + hestOppdaterRes.error.message, true);
       return;
     }
 
-    if (typeof window.hentAlleHesterFraBase === "function") {
-      await window.hentAlleHesterFraBase();
-    }
+    if (typeof window.hentAlleHesterFraBase === "function") await window.hentAlleHesterFraBase();
+    if (typeof window.hentHester === "function") await window.hentHester();
+  }
 
-    if (typeof window.hentHester === "function") {
-      await window.hentHester();
+  jobbMelding(valgtBilde ? "Jobb og bilde lagret" : "Jobb lagret");
+
+  const jobbDato = document.getElementById("jobbDato");
+  if (jobbDato) jobbDato.value = new Date().toISOString().slice(0, 10);
+
+  const jobbKunde = document.getElementById("jobbKunde");
+  if (jobbKunde) jobbKunde.value = "";
+
+  const jobbHest = document.getElementById("jobbHest");
+  if (jobbHest) jobbHest.innerHTML = `<option value="">Velg hest</option>`;
+
+  const jobbType = document.getElementById("jobbType");
+  if (jobbType) jobbType.value = "";
+
+  const jobbBeskrivelse = document.getElementById("jobbBeskrivelse");
+  if (jobbBeskrivelse) jobbBeskrivelse.value = "";
+
+  const jobbKm = document.getElementById("jobbKm");
+  if (jobbKm) jobbKm.value = "0";
+
+  const jobbKmPris = document.getElementById("jobbKmPris");
+  if (jobbKmPris) jobbKmPris.value = "5.30";
+
+  const arbeidBelop = document.getElementById("arbeidBelop");
+  if (arbeidBelop) arbeidBelop.value = "0";
+
+  const varerBelop = document.getElementById("varerBelop");
+  if (varerBelop) varerBelop.value = "0";
+
+  await hentJobber();
+}
+
+function sikreJobbDetalj() {
+  let detalj = document.getElementById("hovJobbDetalj");
+  const liste = document.getElementById("jobbListe");
+
+  if (!detalj) {
+    detalj = document.createElement("div");
+    detalj.id = "hovJobbDetalj";
+    detalj.className = "listekort";
+    detalj.style.display = "none";
+    detalj.style.marginBottom = "12px";
+
+    if (liste?.parentNode) {
+      liste.parentNode.insertBefore(detalj, liste);
+    } else {
+      document.getElementById("jobbSide")?.appendChild(detalj);
     }
   }
 
-  jobbMelding("Jobb lagret");
-  document.getElementById("jobbDato").value =
-  new Date().toISOString().slice(0, 10);
+  return detalj;
+}
 
-document.getElementById("jobbKunde").value = "";
+async function visHovJobbDetalj(jobbId) {
+  const jobb = hovJobberSiste.find(j => String(j.id) === String(jobbId));
+  if (!jobb) return;
 
-document.getElementById("jobbHest").innerHTML =
-  `<option value="">Velg hest</option>`;
+  hovJobbValgt = jobb;
+  const detalj = sikreJobbDetalj();
+  const bilder = await hentBilderForHovJobb(jobb.id);
 
-document.getElementById("jobbType").value = "";
-document.getElementById("jobbBeskrivelse").value = "";
+  detalj.style.display = "block";
+  detalj.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+      <h3 style="margin:0;">Jobb #${hovEsc(jobb.id)}</h3>
+      <button type="button" class="secondary" id="lukkHovJobbDetaljKnapp">Lukk</button>
+    </div>
 
-document.getElementById("jobbKm").value = "0";
+    <div class="rad" style="margin-top:12px;">
+      <div><strong>Dato:</strong><br>${hovEsc(hovDatoNo(jobb.dato))}</div>
+      <div><strong>Kunde:</strong><br>${hovEsc(jobb.kunder?.navn || "")}</div>
+      <div><strong>Hest:</strong><br>${hovEsc(jobb.hester?.navn || "Uten hest")}</div>
+      <div><strong>Jobb:</strong><br>${hovEsc(jobb.jobbtype || "")}</div>
+      <div><strong>Kjøring:</strong><br>${hovEsc(jobb.km || 0)} km x ${hovEsc(jobb.km_pris || 0)}</div>
+      <div><strong>Total inkl. mva:</strong><br>${Number(jobb.total || 0).toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr</div>
+      <div><strong>Status:</strong><br>${jobb.fakturert ? "Fakturert" : "Ikke fakturert"}</div>
+    </div>
 
-document.getElementById("jobbKmPris").value = "5.30";
+    ${jobb.beskrivelse ? `<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${hovEsc(jobb.beskrivelse)}</div>` : ""}
 
-document.getElementById("arbeidBelop").value = "0";
+    <h4>Bilder (${bilder.length})</h4>
+    <div id="hovJobbBildeGalleri" style="display:flex;gap:10px;flex-wrap:wrap;">
+      ${bilder.length ? bilder.map(b => `
+        <a href="${hovEsc(b.url)}" target="_blank" style="color:inherit;text-decoration:none;">
+          <img src="${hovEsc(b.url)}" alt="Bilde" style="width:150px;height:115px;object-fit:cover;border-radius:10px;border:1px solid #374151;display:block;">
+          <small>${hovEsc(b.bildetekst || "Åpne bilde")}</small>
+        </a>
+      `).join("") : `<div class="info">Ingen bilder på denne jobben ennå.</div>`}
+    </div>
 
-document.getElementById("varerBelop").value = "0";
+    <h4>Legg til bilde på denne jobben</h4>
+    <div style="display:grid;gap:8px;max-width:440px;">
+      <input type="file" id="hovDetaljBildeFil" accept="image/*">
+      <input type="text" id="hovDetaljBildeTekst" placeholder="Bildetekst, valgfritt">
+      <button type="button" id="lagreHovDetaljBildeKnapp">Lagre bilde på jobben</button>
+      <div id="hovDetaljBildeMelding" class="melding"></div>
+    </div>
+  `;
 
-document.getElementById("jobbDato").value =
-  new Date().toISOString().slice(0, 10);
+  const lukk = document.getElementById("lukkHovJobbDetaljKnapp");
+  if (lukk) {
+    lukk.onclick = () => {
+      detalj.style.display = "none";
+      detalj.innerHTML = "";
+    };
+  }
 
-await hentJobber();}
+  const lagreKnapp = document.getElementById("lagreHovDetaljBildeKnapp");
+  if (lagreKnapp) {
+    lagreKnapp.onclick = async () => {
+      await lagreBildePaValgtHovJobb(jobb.id);
+    };
+  }
+
+  detalj.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function lagreBildePaValgtHovJobb(jobbId) {
+  const filInput = document.getElementById("hovDetaljBildeFil");
+  const tekstInput = document.getElementById("hovDetaljBildeTekst");
+  const melding = document.getElementById("hovDetaljBildeMelding");
+  const knapp = document.getElementById("lagreHovDetaljBildeKnapp");
+  const fil = filInput?.files?.[0];
+
+  if (melding) melding.textContent = "";
+
+  if (!fil) {
+    if (melding) melding.textContent = "Velg et bilde først.";
+    return;
+  }
+
+  try {
+    if (knapp) knapp.disabled = true;
+    if (melding) melding.textContent = "Lagrer bilde...";
+
+    await lastOppHovJobbBilde(jobbId, fil, tekstInput?.value || "");
+
+    if (filInput) filInput.value = "";
+    if (tekstInput) tekstInput.value = "";
+
+    await hentJobber();
+    await visHovJobbDetalj(jobbId);
+
+    if (melding) melding.textContent = "Bilde lagret.";
+  } catch (e) {
+    console.error("Feil ved lagring av bilde:", e);
+    if (melding) melding.textContent = "Bildet ble ikke lagret: " + (e.message || e);
+  } finally {
+    if (knapp) knapp.disabled = false;
+  }
+}
 
 async function hentJobber() {
   const res = await supabaseClient
@@ -160,58 +423,107 @@ async function hentJobber() {
 
   const liste = document.getElementById("jobbListe");
   if (!liste) return;
-  const ikkeFakturert =
-  (res.data || []).filter(j => !j.fakturert);
 
-const fakturert =
-  (res.data || []).filter(j => j.fakturert);
+  const data = res.data || [];
+  await hentBildeAntallForJobber(data);
+  hovJobberSiste = data;
 
-const omsetning =
-  (res.data || []).reduce((sum, j) => {
-    return sum + Number(j.total || 0);
-  }, 0);
+  const ikkeFakturert = data.filter(j => !j.fakturert);
+  const fakturert = data.filter(j => j.fakturert);
+  const omsetning = data.reduce((sum, j) => sum + Number(j.total || 0), 0);
 
-document.getElementById(
-  "antallUfatturerte"
-).textContent =
-  ikkeFakturert.length;
+  const antallUfatturerte = document.getElementById("antallUfatturerte");
+  if (antallUfatturerte) antallUfatturerte.textContent = ikkeFakturert.length;
 
-document.getElementById(
-  "antallFakturerte"
-).textContent =
-  fakturert.length;
+  const antallFakturerte = document.getElementById("antallFakturerte");
+  if (antallFakturerte) antallFakturerte.textContent = fakturert.length;
 
-document.getElementById(
-  "jobbOmsetning"
-).textContent =
-  omsetning.toLocaleString(
-    "no-NO",
-    {
+  const jobbOmsetning = document.getElementById("jobbOmsetning");
+  if (jobbOmsetning) {
+    jobbOmsetning.textContent = omsetning.toLocaleString("no-NO", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }
-  ) + " kr";
+    }) + " kr";
+  }
 
+  sikreJobbDetalj();
   liste.innerHTML = "";
 
-  for (const j of res.data || []) {
-    const div = document.createElement("div");
-    div.className = "listekort";
+  if (!data.length) {
+    liste.innerHTML = `<div class="info">Ingen jobber registrert.</div>`;
+    return;
+  }
 
-    div.innerHTML = `
-      <b>${j.dato || ""} - ${j.hester?.navn || "Uten hest"}</b><br>
-      Kunde: ${j.kunder?.navn || ""}<br>
-      Jobb: ${j.jobbtype || ""}<br>
-      Kjøring: ${j.km || 0} km x ${j.km_pris || 0}<br>
-      Total inkl. mva: ${Number(j.total || 0).toLocaleString("no-NO", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })} kr
+  const table = document.createElement("table");
+  table.className = "bil-tabell";
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Dato</th>
+        <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Hest</th>
+        <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Kunde</th>
+        <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Jobb</th>
+        <th style="text-align:right;padding:8px;border-bottom:1px solid #374151;">Beløp</th>
+        <th style="text-align:center;padding:8px;border-bottom:1px solid #374151;">Bilder</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+
+  for (const j of data) {
+    const tr = document.createElement("tr");
+    tr.dataset.jobbId = j.id;
+    tr.style.cursor = "pointer";
+    tr.title = "Klikk for detaljer og bilder";
+
+    tr.innerHTML = `
+      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(hovDatoNo(j.dato))}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j.hester?.navn || "Uten hest")}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j.kunder?.navn || "")}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;">${hovEsc(j.jobbtype || "")}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${Number(j.total || 0).toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;text-align:center;white-space:nowrap;">📷 ${Number(j._bilde_antall || 0)}</td>
     `;
 
-    liste.appendChild(div);
+    tr.addEventListener("click", function () {
+      visHovJobbDetalj(j.id);
+    });
+
+    tbody.appendChild(tr);
   }
+
+  liste.appendChild(table);
 }
 
 window.lagreJobb = lagreJobb;
 window.hentJobber = hentJobber;
+window.visHovJobbDetalj = visHovJobbDetalj;
+window.lagreBildePaValgtHovJobb = lagreBildePaValgtHovJobb;
+
+
+// Sikker kobling: Oppdater jobber-knappen skal alltid vise jobblista.
+function bindHovJobblisteKnapp() {
+  const knapp = document.getElementById("oppdaterJobberKnapp");
+  if (knapp && knapp.dataset.hovJobberBindet !== "1") {
+    knapp.dataset.hovJobberBindet = "1";
+    knapp.addEventListener("click", function () {
+      hentJobber();
+    });
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    bindHovJobblisteKnapp();
+    setTimeout(hentJobber, 500);
+  });
+} else {
+  bindHovJobblisteKnapp();
+  setTimeout(hentJobber, 500);
+}
+
+window.bindHovJobblisteKnapp = bindHovJobblisteKnapp;
