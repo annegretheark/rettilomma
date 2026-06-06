@@ -1128,13 +1128,26 @@ async function lagreVarelinjeTilFaktura() {
   }
 
   const valgtVareOption = vareValg.options[vareValg.selectedIndex];
-  if (!valgtVareOption || !["bil", "mangler"].includes(valgtVareOption.dataset.kilde || "")) {
-    alert("Velg en gyldig vare.");
-    await fyllVarevalgFraAktivBil();
+
+  // Ikke stol på dataset fra <option>. På mobil/Vercel kan denne mangle selv om varen vises.
+  // Sjekk heller bil_lager direkte mot valgt bil og valgt vare.
+  let antallPaValgtBil = 0;
+  let bilVareFraSjekk = null;
+
+  const { data: bilVareSjekk, error: bilVareSjekkFeil } = await supabaseClient
+    .from("bil_lager")
+    .select("*")
+    .eq("bil_id", aktivBilId)
+    .eq("vare_id", vareValg.value)
+    .maybeSingle();
+
+  if (bilVareSjekkFeil) {
+    alert("Feil ved sjekk av bil-lager: " + bilVareSjekkFeil.message);
     return;
   }
 
-  const antallPaValgtBil = Number(valgtVareOption.dataset.antallBil || 0);
+  bilVareFraSjekk = bilVareSjekk || null;
+  antallPaValgtBil = Number(bilVareFraSjekk?.antall || 0);
 
   const antall = heltallFraFelt("vareAntall", 1);
   if (!Number.isInteger(antall) || antall <= 0) {
@@ -1165,18 +1178,7 @@ async function lagreVarelinjeTilFaktura() {
     return;
   }
 
-  const { data: bilVare, error: bilVareFeil } = await supabaseClient
-    .from("bil_lager")
-    .select("*")
-    .eq("bil_id", aktivBilId)
-    .eq("vare_id", vareValg.value)
-    .maybeSingle();
-
-  if (bilVareFeil) {
-    alert("Feil ved sjekk av bil-lager: " + bilVareFeil.message);
-    return;
-  }
-
+  const bilVare = bilVareFraSjekk;
   const antallIBil = Number(bilVare?.antall || 0);
   if (!bilVare || antallIBil < antall) {
     await handterManglendeVareTilBil({
@@ -1264,8 +1266,13 @@ function kobleVarelinjeKnapp() {
   const knapp = document.getElementById("leggTilVarelinjeKnapp");
   if (!knapp) return;
 
-  knapp.onclick = async function () {
+  knapp.onclick = async function (event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     await lagreVarelinjeTilFaktura();
+    return false;
   };
 }
 
