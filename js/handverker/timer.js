@@ -265,6 +265,15 @@ function settDagensDato() {
   }
 }
 
+function settStandardTidHvisTom() {
+  const startTid = document.getElementById("startTid");
+  const sluttTid = document.getElementById("sluttTid");
+
+  // Standard ved ny registrering, men brukeren kan fortsatt endre feltene.
+  if (startTid && !startTid.value) startTid.value = "08:00";
+  if (sluttTid && !sluttTid.value) sluttTid.value = "16:00";
+}
+
 function hentManedStart(dato) {
   return dato.substring(0, 7) + "-01";
 }
@@ -699,7 +708,7 @@ async function hentBilderForTimer(timerId) {
   try {
     const { data, error } = await supabaseClient
       .from("timer_bilder")
-      .select("filsti, bilde_path, bilde_url, bildetekst")
+      .select("filsti, bildetekst")
       .eq("timer_id", timerId)
       .order("id", { ascending: false });
 
@@ -709,8 +718,8 @@ async function hentBilderForTimer(timerId) {
     }
 
     for (const b of (data || [])) {
-      const sti = b.filsti || b.bilde_path || "";
-      const url = sti ? await lagSignertTimerBildeUrl(sti) : (b.bilde_url || "");
+      const sti = b.filsti || "";
+      const url = sti ? await lagSignertTimerBildeUrl(sti) : "";
       if (url && !bilder.some(x => x.url === url)) {
         bilder.push({ url, tekst: b.bildetekst || "" });
       }
@@ -804,6 +813,7 @@ async function oppdaterJobbModalBilder(timerId) {
 
 async function lastOppTimerBildeFraFil(timerId, fil, bildetekst) {
   if (!timerId || !fil) throw new Error("Mangler jobb eller bilde.");
+  if (!window.supabaseClient) throw new Error("Supabase er ikke lastet.");
 
   const rentFilnavn = String(fil.name || "bilde.jpg")
     .replaceAll(" ", "_")
@@ -812,25 +822,43 @@ async function lastOppTimerBildeFraFil(timerId, fil, bildetekst) {
     })
     .replace(/[^a-zA-Z0-9._-]/g, "_");
 
-  const filsti = timerId + "/" + Date.now() + "_" + rentFilnavn;
+  const filsti = String(timerId) + "/" + Date.now() + "_" + rentFilnavn;
 
   const { error: uploadError } = await supabaseClient
     .storage
     .from("timer-bilder")
-    .upload(filsti, fil, { cacheControl: "3600", upsert: false });
+    .upload(filsti, fil, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: fil.type || "image/jpeg"
+    });
 
-  if (uploadError) throw new Error("Opplasting feilet: " + uploadError.message);
+  if (uploadError) {
+    throw new Error("Opplasting til Storage feilet: " + uploadError.message);
+  }
+
+  // Viktig: bruk bare kolonner som timer_bilder faktisk har brukt hos deg tidligere.
+  const bildeRad = {
+    timer_id: timerId,
+    filnavn: fil.name || rentFilnavn,
+    filsti: filsti,
+    bildetekst: bildetekst || ""
+  };
 
   const { error: dbError } = await supabaseClient
     .from("timer_bilder")
-    .insert({
-      timer_id: timerId,
-      filnavn: fil.name,
-      filsti: filsti,
-      bildetekst: bildetekst || ""
-    });
+    .insert([bildeRad]);
 
-  if (dbError) throw new Error("Bildet ble lastet opp, men ikke lagret på jobben: " + dbError.message);
+  if (dbError) {
+    // Prøv å rydde opp lagret fil hvis databaseinnslag feilet.
+    try {
+      await supabaseClient.storage.from("timer-bilder").remove([filsti]);
+    } catch (e) {
+      console.warn("Kunne ikke rydde opp bilde etter db-feil:", e);
+    }
+
+    throw new Error("Bildet ble lastet opp, men ikke lagret i timer_bilder: " + dbError.message);
+  }
 
   return filsti;
 }
@@ -914,8 +942,8 @@ function tegnTimer() {
 }
 
 function nullstillSkjema() {
-  settFeltHvisFinnes("startTid", "");
-  settFeltHvisFinnes("sluttTid", "");
+  settFeltHvisFinnes("startTid", "08:00");
+  settFeltHvisFinnes("sluttTid", "16:00");
   settFeltHvisFinnes("beskrivelse", "");
 
   settFeltHvisFinnes("kundeNrVisning", "");
@@ -1294,6 +1322,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (byttBilKnapp) byttBilKnapp.addEventListener("click", byttAktivBil);
   oppdaterAktivBilVisning();
   fyllVarevalgFraAktivBil();
+  settDagensDato();
+  settStandardTidHvisTom();
 });
 
 window.oppdaterAktivBilVisning = oppdaterAktivBilVisning;
@@ -1517,6 +1547,8 @@ window.addEventListener("load", function () {
   kobleUtleggKnapp();
   kobleKjoringBeregning();
   skjulAdminForVanligBruker();
+  settDagensDato();
+  settStandardTidHvisTom();
 
   const excelKnapp = document.getElementById("excelKnapp");
   if (excelKnapp) {
@@ -1527,6 +1559,7 @@ window.addEventListener("load", function () {
 window.lastTimer = lastTimer;
 window.lagreTimer = lagreTimer;
 window.settDagensDato = settDagensDato;
+window.settStandardTidHvisTom = settStandardTidHvisTom;
 window.tegnTimer = tegnTimer;
 window.apneJobbDetalj = apneJobbDetalj;
 window.lagreBildeFraJobbModal = lagreBildeFraJobbModal;
@@ -1753,3 +1786,6 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
   window.agkVisFastBildePanel = agkVisFastBildePanel;
   window.agkFastLagreBilde = agkFastLagreBilde;
 })();
+
+
+window.lastOppTimerBildeFraFil = lastOppTimerBildeFraFil;

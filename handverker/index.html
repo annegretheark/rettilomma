@@ -539,6 +539,11 @@
 
 </div>
 
+<button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
+  Legg til vare på faktura
+</button>
+<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
+
       <div class="rad">
   <div>
     <label for="utgiftType">Utgiftstype</label>
@@ -578,13 +583,16 @@
   
         </div>
       </div>
+<button id="leggTilUtleggKnapp" type="button">
+  Legg til utlegg på faktura
+</button>
+
+<div id="utleggListe" style="margin-top:10px;">
+  Utlegg som legges her kommer med på neste faktura.
+</div>
       <label for="beskrivelse">Beskrivelse</label>
       <textarea id="beskrivelse"></textarea>
-      <button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
-  Legg til vare på faktura
-</button>
-<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
-<label for="timerBildeGalleri">
+      <label for="timerBildeGalleri">
   Velg bilde
 </label>
 
@@ -611,13 +619,7 @@
   id="timerBildeTekst"
   type="text"
   placeholder="F.eks. før arbeid">
-<button id="leggTilUtleggKnapp" type="button">
-  Legg til utlegg på faktura
-</button>
 
-<div id="utleggListe" style="margin-top:10px;">
-  Utlegg som legges her kommer med på neste faktura.
-</div>
       <button id="lagreTimerKnapp" type="button">Lagre timer</button>
 
       <div id="timerMelding" class="melding"></div>
