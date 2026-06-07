@@ -1100,6 +1100,46 @@ function fyllLagerValg() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = bilOptions;
   });
+
+  tegnFyllBilFyllListe();
+}
+
+function tegnFyllBilFyllListe() {
+  const liste = document.getElementById("fyllBilFyllListe");
+  if (!liste) return;
+
+  const rader = vetHovedlager
+    .filter(r => Number(r.antall || 0) > 0)
+    .map(r => {
+      const v = r.vet_varer || vetVarer.find(x => String(x.id) === String(r.vare_id)) || {};
+      return { ...r, vare: v };
+    })
+    .filter(r => r.vare?.navn);
+
+  if (!rader.length) {
+    liste.innerHTML = '<p class="lite">Ingen varer på hovedlager.</p>';
+    return;
+  }
+
+  liste.innerHTML = `
+    <div class="vet-linje-liste">
+      ${rader.map(r => {
+        const v = r.vare;
+        const navn = htmlEscape(v.navn || "Vare");
+        const enhet = htmlEscape(v.enhet || "stk");
+        const maks = Math.floor(Number(r.antall || 0));
+        const id = htmlEscape(r.vare_id);
+        return `
+          <label class="vet-linje-kort" for="fyllbil_velg_${id}" style="grid-template-columns:36px minmax(180px,1.5fr) minmax(110px,.8fr) 120px; cursor:pointer;">
+            <input id="fyllbil_velg_${id}" class="fyllbil-velg" data-vare-id="${id}" type="checkbox" style="width:auto;margin:0;">
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">${navn}</span>
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${formaterKr(r.antall)} ${enhet}</span>
+            <input id="fyllbil_antall_${id}" class="fyllbil-antall" data-vare-id="${id}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" value="" onclick="event.stopPropagation();" style="margin:0;font-weight:400 !important;">
+          </label>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 
@@ -1393,25 +1433,58 @@ async function flyttTilBil() {
   vetMelding("billagerMelding", "");
   const klinikkId = hentKlinikkIdForLager();
   const bilId = vetTekst("fyllBilValg");
-  const vareId = vetTekst("fyllBilVareValg");
-  const antall = vetTall("fyllBilAntall");
-  if (!klinikkId || !bilId || !vareId) { vetMelding("billagerMelding", "Velg klinikk, bil og vare."); return; }
-  if (antall <= 0) { vetMelding("billagerMelding", "Antall må være større enn 0."); return; }
 
-  const hoved = vetHovedlager.find(r => String(r.vare_id) === String(vareId));
-  const hovedAntall = Number(hoved?.antall || 0);
-  if (hovedAntall < antall) { vetMelding("billagerMelding", `Ikke nok på hovedlager. Tilgjengelig: ${formaterKr(hovedAntall)}.`); return; }
-  const bilRad = vetBilLager.find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(vareId));
-  const bilNytt = Number(bilRad?.antall || 0) + antall;
+  if (!klinikkId || !bilId) {
+    vetMelding("billagerMelding", "Velg bil først.");
+    return;
+  }
+
+  const inputs = Array.from(document.querySelectorAll(".fyllbil-antall"));
+  const valgte = new Set(Array.from(document.querySelectorAll(".fyllbil-velg:checked")).map(cb => String(cb.dataset.vareId || "")));
+  const linjer = inputs
+    .map(input => ({ vareId: input.dataset.vareId, antall: Number(String(input.value || "").replace(",", ".")) }))
+    .filter(l => l.vareId && (valgte.has(String(l.vareId)) || l.antall > 0));
+
+  if (!linjer.length) {
+    vetMelding("billagerMelding", "Velg minst én vare fra listen og skriv antall.");
+    return;
+  }
+
+  if (linjer.some(l => !(l.antall > 0))) {
+    vetMelding("billagerMelding", "Skriv antall på alle varene du har valgt.");
+    return;
+  }
+
+  for (const linje of linjer) {
+    if (!Number.isInteger(linje.antall)) {
+      vetMelding("billagerMelding", "Antall må være heltall.");
+      return;
+    }
+
+    const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
+    const hovedAntall = Number(hoved?.antall || 0);
+    if (hovedAntall < linje.antall) {
+      vetMelding("billagerMelding", `${vareNavn(linje.vareId)}: ikke nok på hovedlager. Tilgjengelig: ${formaterKr(hovedAntall)}.`);
+      return;
+    }
+  }
 
   try {
-    await settLagerAntall("vet_lager", { klinikk_id: klinikkId, vare_id: vareId }, hovedAntall - antall);
-    await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: vareId }, bilNytt);
-    vetSett("fyllBilAntall", "1");
-    vetMelding("billagerMelding", "Vare flyttet fra hovedlager til bil.");
+    for (const linje of linjer) {
+      const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
+      const hovedAntall = Number(hoved?.antall || 0);
+      const bilRad = vetBilLager.find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(linje.vareId));
+      const bilNytt = Number(bilRad?.antall || 0) + linje.antall;
+
+      await settLagerAntall("vet_lager", { klinikk_id: klinikkId, vare_id: linje.vareId }, hovedAntall - linje.antall);
+      await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: linje.vareId }, bilNytt);
+    }
+
+    vetMelding("billagerMelding", `La ${linjer.length} varelinje(r) på bilen.`);
     await lastVetLagerAlt();
+    tegnFyllBilFyllListe();
   } catch (e) {
-    vetMelding("billagerMelding", "Feil ved flytting til bil: " + e.message);
+    vetMelding("billagerMelding", "Feil ved flytting til bil: " + (e.message || e));
   }
 }
 
@@ -1488,24 +1561,25 @@ function tegnMinBilFyllListe() {
     return;
   }
 
-  liste.innerHTML = rader.map(r => {
-    const v = r.vare;
-    const navn = htmlEscape(v.navn || "Vare");
-    const enhet = htmlEscape(v.enhet || "stk");
-    const maks = Math.floor(Number(r.antall || 0));
-    return `
-      <div class="minbil-varelinje">
-        <div>
-          <strong>${navn}</strong><br>
-          <span class="lite">På hovedlager: ${formaterKr(r.antall)} ${enhet}</span>
-        </div>
-        <div>
-          <label for="minbil_antall_${r.vare_id}">Antall</label>
-          <input id="minbil_antall_${r.vare_id}" class="minbil-antall" data-vare-id="${r.vare_id}" type="number" step="1" min="1" max="${maks}" placeholder="Tom" value="">
-        </div>
-      </div>
-    `;
-  }).join("");
+  liste.innerHTML = `
+    <div class="vet-linje-liste">
+      ${rader.map(r => {
+        const v = r.vare;
+        const navn = htmlEscape(v.navn || "Vare");
+        const enhet = htmlEscape(v.enhet || "stk");
+        const maks = Math.floor(Number(r.antall || 0));
+        const id = htmlEscape(r.vare_id);
+        return `
+          <label class="vet-linje-kort" for="minbil_velg_${id}" style="grid-template-columns:36px minmax(180px,1.5fr) minmax(110px,.8fr) 120px; cursor:pointer;">
+            <input id="minbil_velg_${id}" class="minbil-velg" data-vare-id="${id}" type="checkbox" style="width:auto;margin:0;">
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">${navn}</span>
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${formaterKr(r.antall)} ${enhet}</span>
+            <input id="minbil_antall_${id}" class="minbil-antall" data-vare-id="${id}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" value="" onclick="event.stopPropagation();" style="margin:0;font-weight:400 !important;">
+          </label>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function tegnMinBilInnhold() {
@@ -1541,12 +1615,18 @@ async function fyllMinBilMedFlereVarer() {
   }
 
   const inputs = Array.from(document.querySelectorAll(".minbil-antall"));
+  const valgte = new Set(Array.from(document.querySelectorAll(".minbil-velg:checked")).map(cb => String(cb.dataset.vareId || "")));
   const linjer = inputs
     .map(input => ({ vareId: input.dataset.vareId, antall: Number(String(input.value || "").replace(",", ".")) }))
-    .filter(l => l.vareId && l.antall > 0);
+    .filter(l => l.vareId && (valgte.has(String(l.vareId)) || l.antall > 0));
 
   if (!linjer.length) {
-    vetMelding("minBilMelding", "Skriv antall på minst én vare.");
+    vetMelding("minBilMelding", "Velg minst én vare fra listen og skriv antall.");
+    return;
+  }
+
+  if (linjer.some(l => !(l.antall > 0))) {
+    vetMelding("minBilMelding", "Skriv antall på alle varene du har valgt.");
     return;
   }
 
@@ -2155,26 +2235,56 @@ async function lagreJournal() {
 function tegnJournal() {
   const liste = document.getElementById("journalListe");
   if (!liste) return;
+
+  const esc = verdi => String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
   liste.innerHTML = vetJournal.map(j => {
     const sum = Number(j.belop_eks_mva || 0);
     const prislinje = sum > 0 ? `<p><strong>Pris:</strong> ${formaterKr(sum)} kr eks. mva<br><span class="lite">Fastpris: ${formaterKr(j.fastpris)} | Time: ${formaterKr(j.timepris)} x ${j.timer || 0} | Km: ${j.km || 0} x ${formaterKr(j.km_pris)}</span></p>` : "";
     const bilder = (j.vet_journal_bilder || []).map(b => `
       <div style="display:inline-block; margin:6px 8px 6px 0; vertical-align:top; max-width:150px;">
         <a href="${b.bilde_url || "#"}" target="_blank">
-          <img src="${b.bilde_url || ""}" alt="${String(b.bildetekst || b.filnavn || "Journalbilde").replaceAll("<", "&lt;")}" style="width:140px; height:100px; object-fit:cover; border-radius:0; border:1px solid #ddd;">
+          <img src="${b.bilde_url || ""}" alt="${esc(b.bildetekst || b.filnavn || "Journalbilde")}" style="width:140px; height:100px; object-fit:cover; border-radius:0; border:1px solid #ddd;">
         </a>
-        <div class="lite">${String(b.bildetekst || b.filnavn || "").replaceAll("<", "&lt;")}</div>
+        <div class="lite">${esc(b.bildetekst || b.filnavn || "")}</div>
       </div>
     `).join("");
     const bildeblokk = bilder ? `<p><strong>Bilder:</strong></p><div>${bilder}</div>` : "";
     const varer = (j.vet_journal_varer || []).map(v => {
       const vareSum = Number(v.sum_eks_mva || (Number(v.antall || 0) * Number(v.pris || 0)));
-      return `<li>${String(v.varenavn || "").replaceAll("<", "&lt;")} - ${formaterKr(v.antall)} x ${formaterKr(v.pris)} kr = ${formaterKr(vareSum)} kr</li>`;
+      return `<li>${esc(v.varenavn || "")} - ${formaterKr(v.antall)} x ${formaterKr(v.pris)} kr = ${formaterKr(vareSum)} kr</li>`;
     }).join("");
     const vareblokk = varer ? `<p><strong>Varer/medisiner:</strong></p><ul>${varer}</ul>` : "";
-    return `<div class="listekort"><strong>${j.dato || ""} - ${j.vet_dyr?.navn || ""}</strong><br><span class="lite">Eier: ${j.vet_dyr?.vet_dyreeiere?.navn || ""} ${j.type ? " | " + j.type : ""}</span><p>${String(j.notat || "").replaceAll("<", "&lt;")}</p>${prislinje}${j.medisin_kladd ? `<p><strong>Medisin/reseptkladd:</strong><br>${String(j.medisin_kladd).replaceAll("<", "&lt;")}</p>` : ""}${vareblokk}${bildeblokk}</div>`;
+    const bildeTekst = (j.vet_journal_bilder || []).length ? ` | ${(j.vet_journal_bilder || []).length} bilde(r)` : "";
+    const vareTekst = (j.vet_journal_varer || []).length ? ` | ${(j.vet_journal_varer || []).length} vare(r)` : "";
+    const id = esc(j.id || "");
+    return `
+      <div class="listekort vet-journal-kort" id="journalKort_${id}">
+        <button type="button" class="vet-journal-linje" onclick="toggleJournalDetaljer('${id}')" title="Klikk for detaljer">
+          <strong>${esc(j.dato || "")} - ${esc(j.vet_dyr?.navn || "")}</strong><br>
+          <span class="lite">Eier: ${esc(j.vet_dyr?.vet_dyreeiere?.navn || "")}${j.type ? " | " + esc(j.type) : ""}${vareTekst}${bildeTekst}</span>
+        </button>
+        <div class="vet-journal-detaljer">
+          <p>${esc(j.notat || "")}</p>
+          ${prislinje}
+          ${j.medisin_kladd ? `<p><strong>Medisin/reseptkladd:</strong><br>${esc(j.medisin_kladd)}</p>` : ""}
+          ${vareblokk}
+          ${bildeblokk}
+        </div>
+      </div>`;
   }).join("") || '<p class="lite">Ingen journalnotater ennå.</p>';
 }
+
+function toggleJournalDetaljer(id) {
+  const kort = document.getElementById("journalKort_" + id);
+  if (kort) kort.classList.toggle("apen");
+}
+
+window.toggleJournalDetaljer = toggleJournalDetaljer;
 
 
 
@@ -3823,7 +3933,7 @@ async function lagreDyr() {
   vetMelding("dyrMelding", "");
 
   const rad = leggTilKlinikkHvisVanligBruker({
-    eier_id: vetTekst("dyrEierValg"),
+    dyreeier_id: vetTekst("dyrEierValg"),
     navn: vetTekst("dyrNavn"),
     art: vetTekst("dyrArt") || null,
     rase: vetTekst("dyrRase") || null,
@@ -3832,7 +3942,7 @@ async function lagreDyr() {
     idmerking: vetTekst("dyrIdmerking") || null
   });
 
-  if (!rad.eier_id) {
+  if (!rad.dyreeier_id) {
     vetMelding("dyrMelding", "Velg dyreeier først.");
     return;
   }
@@ -3860,12 +3970,12 @@ async function lagreDyr() {
 
   vetMelding("dyrMelding", "Dyr/pasient lagret.");
   vetSett("dyrId", lagretDyrId || "");
-  vetSett("dyrEierValg", rad.eier_id);
+  vetSett("dyrEierValg", rad.dyreeier_id);
 
   // Oppdater dyreeier-siden og journalvalg også
-  vetSett("dyreeierId", rad.eier_id);
-  vetSett("dyreeierVelgForDyr", rad.eier_id);
-  fyllDyreeierDyrValg(rad.eier_id);
+  vetSett("dyreeierId", rad.dyreeier_id);
+  vetSett("dyreeierVelgForDyr", rad.dyreeier_id);
+  fyllDyreeierDyrValg(rad.dyreeier_id);
 
   fyllDyrValg();
   fyllJournalDyreeierValg();
@@ -4042,7 +4152,7 @@ function tegnDyr() {
     const navn = vetEsc(d.navn || "Uten navn");
     const art = vetEsc(d.art || "");
     const rase = vetEsc(d.rase || "");
-    const eier = (vetDyreeiere || []).find(e => String(e.id) === String(d.eier_id));
+    const eier = (vetDyreeiere || []).find(e => String(e.id) === String(d.dyreeier_id));
     const eierNavn = vetEsc(eier?.navn || "");
     return `
       <div class="vet-linje-kort">
@@ -4058,3 +4168,1063 @@ function tegnDyr() {
 window.tegnDyreeiere = tegnDyreeiere;
 window.tegnDyr = tegnDyr;
 /* ===== SLUTT EN LINJE LISTE FIX ===== */
+
+/* ===== KOMPAKT LINJEVISNING 07.06 - KUN LISTER ===== */
+function vetLinjeEsc(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function vetLinjeWrap(inner) {
+  return `<div style="display:grid;gap:1px;margin-top:8px;font-size:14px;font-weight:400;">${inner}</div>`;
+}
+
+function vetLinjeKnapp(onClick, cols, inner, title = "Klikk for detaljer/redigering") {
+  return `
+    <button
+      type="button"
+      onclick="${onClick}"
+      title="${vetLinjeEsc(title)}"
+      style="
+        width:100%;
+        display:grid;
+        grid-template-columns:${cols};
+        gap:10px;
+        align-items:center;
+        text-align:left;
+        padding:4px 8px;
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:0;
+        background:rgba(255,255,255,.02);
+        color:inherit;
+        cursor:pointer;
+        font-family:inherit;
+        font-size:14px !important;
+        font-weight:400 !important;
+        line-height:1.15;
+        margin:0;
+      "
+    >${inner}</button>`;
+}
+
+function vetLinjeSpan(verdi) {
+  return `<span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${verdi || "&nbsp;"}</span>`;
+}
+
+function tegnVetBiler() {
+  const liste = document.getElementById("vetBilListe");
+  if (!liste) return;
+
+  if (!vetBiler || !vetBiler.length) {
+    liste.innerHTML = '<p class="lite">Ingen biler registrert.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetBiler.map(b => {
+    const id = vetLinjeEsc(b.id);
+    const navn = vetLinjeEsc(b.navn || "Uten navn");
+    const regnr = vetLinjeEsc(b.regnr || "");
+    const vet = vetLinjeEsc(b.veterinaer_navn || "");
+    return vetLinjeKnapp(
+      `redigerVetBil('${id}')`,
+      "minmax(180px,1.5fr) minmax(110px,.8fr) minmax(180px,1.3fr)",
+      `${vetLinjeSpan(navn)}${vetLinjeSpan(regnr)}${vetLinjeSpan(vet)}`
+    );
+  }).join(""));
+}
+
+function tegnDyreeiere() {
+  const liste = document.getElementById("dyreeierListe");
+  if (!liste) return;
+
+  if (!vetDyreeiere || !vetDyreeiere.length) {
+    liste.innerHTML = '<p class="lite">Ingen dyreeiere registrert ennå.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetDyreeiere.map(e => {
+    const id = vetLinjeEsc(e.id);
+    const navn = vetLinjeEsc(e.navn || "Uten navn");
+    const telefon = vetLinjeEsc(e.telefon || "");
+    const epost = vetLinjeEsc(e.epost || "");
+    return vetLinjeKnapp(
+      `redigerDyreeier('${id}')`,
+      "minmax(180px,1.4fr) minmax(120px,.8fr) minmax(200px,1.4fr)",
+      `${vetLinjeSpan(navn)}${vetLinjeSpan(telefon)}${vetLinjeSpan(epost)}`
+    );
+  }).join(""));
+}
+
+function tegnDyr() {
+  const liste = document.getElementById("dyrListe");
+  if (!liste) return;
+
+  if (!vetDyr || !vetDyr.length) {
+    liste.innerHTML = '<p class="lite">Ingen dyr registrert ennå.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetDyr.map(d => {
+    const id = vetLinjeEsc(d.id);
+    const navn = vetLinjeEsc(d.navn || "Uten navn");
+    const artRase = vetLinjeEsc([d.art, d.rase].filter(Boolean).join(" / "));
+    const eierNavn = vetLinjeEsc(d.vet_dyreeiere?.navn || (vetDyreeiere || []).find(e => String(e.id) === String(d.dyreeier_id))?.navn || "");
+    const idmerking = vetLinjeEsc(d.idmerking || "");
+    return vetLinjeKnapp(
+      `redigerDyr('${id}')`,
+      "minmax(160px,1.3fr) minmax(160px,1.2fr) minmax(180px,1.3fr) minmax(120px,.8fr)",
+      `${vetLinjeSpan(navn)}${vetLinjeSpan(artRase)}${vetLinjeSpan(eierNavn)}${vetLinjeSpan(idmerking)}`
+    );
+  }).join(""));
+}
+
+function tegnHovedlager() {
+  const liste = document.getElementById("hovedlagerListe");
+  if (!liste) return;
+
+  if (!vetHovedlager || !vetHovedlager.length) {
+    liste.innerHTML = '<p class="lite">Hovedlager er tomt.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetHovedlager.map(r => {
+    const v = r.vet_varer || {};
+    const navn = vetLinjeEsc(v.navn || vareNavn(r.vare_id));
+    const antall = `${formaterKr(r.antall)} ${vetLinjeEsc(v.enhet || "stk")}`;
+    const lavt = Number(v.minimum_antall || 0) > 0 && Number(r.antall || 0) <= Number(v.minimum_antall || 0);
+    const varsel = lavt ? "⚠ lav beholdning" : "";
+    return vetLinjeKnapp(
+      `redigerVetVare('${vetLinjeEsc(r.vare_id || v.id || "")}')`,
+      "minmax(220px,2fr) minmax(120px,.9fr) minmax(150px,1fr)",
+      `${vetLinjeSpan(navn)}${vetLinjeSpan(antall)}${vetLinjeSpan(varsel)}`
+    );
+  }).join(""));
+}
+
+function tegnBilLager() {
+  const liste = document.getElementById("billagerListe");
+  if (!liste) return;
+
+  if (!vetBilLager || !vetBilLager.length) {
+    liste.innerHTML = '<p class="lite">Ingen varer i biler.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetBilLager.map(r => {
+    const v = r.vet_varer || {};
+    const bil = vetLinjeEsc(r.vet_biler ? [r.vet_biler.navn, r.vet_biler.regnr].filter(Boolean).join(" - ") : bilNavn(r.bil_id));
+    const vare = vetLinjeEsc(v.navn || vareNavn(r.vare_id));
+    const antall = `${formaterKr(r.antall)} ${vetLinjeEsc(v.enhet || "stk")}`;
+    return vetLinjeKnapp(
+      `redigerVetBil('${vetLinjeEsc(r.bil_id || "")}')`,
+      "minmax(180px,1.4fr) minmax(220px,1.6fr) minmax(120px,.8fr)",
+      `${vetLinjeSpan(bil)}${vetLinjeSpan(vare)}${vetLinjeSpan(antall)}`,
+      "Klikk for bil-detaljer"
+    );
+  }).join(""));
+}
+
+function tegnMinBilInnhold() {
+  const liste = document.getElementById("minBilInnholdListe");
+  if (!liste) return;
+
+  const bilId = valgtMinBilId();
+  if (!bilId) {
+    liste.innerHTML = '<p class="lite">Ingen bil valgt.</p>';
+    return;
+  }
+
+  const rader = vetBilLager.filter(r => String(r.bil_id) === String(bilId) && Number(r.antall || 0) > 0);
+  if (!rader.length) {
+    liste.innerHTML = '<p class="lite">Bilen er tom.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(rader.map(r => {
+    const v = r.vet_varer || vetVarer.find(x => String(x.id) === String(r.vare_id)) || {};
+    const navn = vetLinjeEsc(v.navn || vareNavn(r.vare_id));
+    const antall = `${formaterKr(r.antall)} ${vetLinjeEsc(v.enhet || "stk")}`;
+    return vetLinjeKnapp(
+      `fyllJournalBilVareValg()`,
+      "minmax(220px,2fr) minmax(120px,.8fr)",
+      `${vetLinjeSpan(navn)}${vetLinjeSpan(antall)}`,
+      "Vare i bilen"
+    );
+  }).join(""));
+}
+
+window.tegnVetBiler = tegnVetBiler;
+window.tegnDyreeiere = tegnDyreeiere;
+window.tegnDyr = tegnDyr;
+window.tegnHovedlager = tegnHovedlager;
+window.tegnBilLager = tegnBilLager;
+window.tegnMinBilInnhold = tegnMinBilInnhold;
+/* ===== SLUTT KOMPAKT LINJEVISNING 07.06 ===== */
+
+/* ===== DYREBILDE / PROFILBILDE 07.06 ===== */
+function vetDyrBildeEsc(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function vetSettDyrBildePreview(url) {
+  const img = document.getElementById("dyrBildePreview");
+  if (!img) return;
+
+  if (url) {
+    img.src = url;
+    img.style.display = "block";
+    img.classList.remove("skjult");
+  } else {
+    img.removeAttribute("src");
+    img.style.display = "none";
+    img.classList.add("skjult");
+  }
+}
+
+function vetNullstillDyrBildeInput() {
+  const fil = document.getElementById("dyrBildeFil");
+  if (fil) fil.value = "";
+  vetSettDyrBildePreview("");
+}
+
+function vetInitDyrBildeUI() {
+  const dyrSide = document.getElementById("dyrSide");
+  if (!dyrSide || document.getElementById("dyrBildeOmrade")) return;
+
+  const lagreKnapp = document.getElementById("lagreDyrKnapp");
+  const omrade = document.createElement("div");
+  omrade.id = "dyrBildeOmrade";
+  omrade.innerHTML = `
+    <h3 style="margin-top:14px;margin-bottom:6px;">Bilde av dyret</h3>
+    <div class="rad" style="align-items:end;">
+      <div>
+        <label for="dyrBildeFil">Velg bilde / ta bilde</label>
+        <input id="dyrBildeFil" type="file" accept="image/*" capture="environment">
+        <button id="taBildeDyrKnapp" type="button" class="secondary" style="margin-top:8px;">Ta bilde</button>
+      </div>
+      <div>
+        <img id="dyrBildePreview" alt="Bilde av dyr" class="skjult" style="display:none;width:90px;height:70px;object-fit:cover;border:1px solid #ddd;border-radius:8px;background:#fafafa;">
+      </div>
+    </div>
+    <p class="lite" style="margin-top:4px;">Bildet lagres på dyret/pasienten og vises i pasientlisten.</p>
+  `;
+
+  if (lagreKnapp && lagreKnapp.parentNode) {
+    lagreKnapp.parentNode.insertBefore(omrade, lagreKnapp);
+  } else {
+    dyrSide.appendChild(omrade);
+  }
+
+  const fil = document.getElementById("dyrBildeFil");
+  if (fil && !fil.dataset.previewKoblet) {
+    fil.dataset.previewKoblet = "1";
+    fil.addEventListener("change", () => {
+      const valgt = fil.files && fil.files[0];
+      if (!valgt) {
+        const dyr = (vetDyr || []).find(d => String(d.id) === String(vetTekst("dyrId")));
+        vetSettDyrBildePreview(dyr?.bilde_url || "");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => vetSettDyrBildePreview(e.target.result);
+      reader.readAsDataURL(valgt);
+    });
+  }
+
+  const taBilde = document.getElementById("taBildeDyrKnapp");
+  if (taBilde && fil && !taBilde.dataset.koblet) {
+    taBilde.dataset.koblet = "1";
+    taBilde.addEventListener("click", (e) => {
+      e.preventDefault();
+      fil.click();
+    });
+  }
+}
+
+async function vetLastOppDyrBilde(dyrId) {
+  const fil = document.getElementById("dyrBildeFil")?.files?.[0];
+  if (!dyrId || !fil) return null;
+
+  const ext = String((fil.name || "dyr.jpg").split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const filnavn = vetTryggFilnavn(fil.name || `dyr.${ext}`);
+  const sti = `dyr/${dyrId}/${Date.now()}_${filnavn}`;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from(VET_BILDE_BUCKET)
+    .upload(sti, fil, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: fil.type || "image/jpeg"
+    });
+
+  if (uploadError) {
+    vetMelding("dyrMelding", "Dyr lagret, men bilde kunne ikke lastes opp: " + uploadError.message);
+    return null;
+  }
+
+  const { data } = supabaseClient.storage
+    .from(VET_BILDE_BUCKET)
+    .getPublicUrl(sti);
+
+  const url = data?.publicUrl || null;
+  if (!url) return null;
+
+  const { error: updateError } = await supabaseClient
+    .from("vet_dyr")
+    .update({ bilde_url: url })
+    .eq("id", dyrId);
+
+  if (updateError) {
+    vetMelding("dyrMelding", "Dyr lagret, men bilde-url kunne ikke lagres: " + updateError.message);
+    return null;
+  }
+
+  return url;
+}
+
+const vetGammelVisVetSideDyrBilde = typeof visVetSide === "function" ? visVetSide : null;
+if (vetGammelVisVetSideDyrBilde) {
+  visVetSide = function(id) {
+    const r = vetGammelVisVetSideDyrBilde(id);
+    if (id === "dyrSide") setTimeout(vetInitDyrBildeUI, 0);
+    return r;
+  };
+}
+
+const vetGammelRedigerDyrDyrBilde = typeof redigerDyr === "function" ? redigerDyr : null;
+function redigerDyr(id) {
+  if (vetGammelRedigerDyrDyrBilde) vetGammelRedigerDyrDyrBilde(id);
+  vetInitDyrBildeUI();
+  const d = (vetDyr || []).find(x => String(x.id) === String(id));
+  vetSettDyrBildePreview(d?.bilde_url || "");
+  const fil = document.getElementById("dyrBildeFil");
+  if (fil) fil.value = "";
+}
+
+const vetGammelNyPasientDyrBilde = typeof nyPasient === "function" ? nyPasient : null;
+function nyPasient() {
+  if (vetGammelNyPasientDyrBilde) vetGammelNyPasientDyrBilde();
+  vetInitDyrBildeUI();
+  vetNullstillDyrBildeInput();
+}
+
+async function lagreDyr() {
+  vetMelding("dyrMelding", "");
+  vetInitDyrBildeUI();
+
+  const rad = leggTilKlinikkHvisVanligBruker({
+    dyreeier_id: vetTekst("dyrEierValg") || null,
+    navn: vetTekst("dyrNavn"),
+    art: vetTekst("dyrArt") || null,
+    rase: vetTekst("dyrRase") || null,
+    fodselsdato: vetTekst("dyrFodselsdato") || null,
+    kjonn: vetTekst("dyrKjonn") || null,
+    idmerking: vetTekst("dyrIdmerking") || null
+  });
+
+  if (!rad.dyreeier_id) {
+    vetMelding("dyrMelding", "Velg dyreeier først.");
+    return;
+  }
+
+  if (!rad.navn) {
+    vetMelding("dyrMelding", "Skriv navn på dyr/pasient.");
+    return;
+  }
+
+  const id = vetTekst("dyrId");
+  const query = id
+    ? supabaseClient.from("vet_dyr").update(rad).eq("id", id).select("id").single()
+    : supabaseClient.from("vet_dyr").insert(rad).select("id").single();
+
+  const { data, error } = await query;
+
+  if (error) {
+    vetMelding("dyrMelding", "Feil ved lagring av dyr: " + error.message);
+    return;
+  }
+
+  const lagretDyrId = data?.id || id;
+  const bildeUrl = await vetLastOppDyrBilde(lagretDyrId);
+
+  await lastDyr();
+
+  vetMelding("dyrMelding", bildeUrl ? "Dyr/pasient og bilde lagret." : "Dyr/pasient lagret.");
+  vetSett("dyrId", lagretDyrId || "");
+  vetSett("dyrEierValg", rad.dyreeier_id);
+  if (bildeUrl) vetSettDyrBildePreview(bildeUrl);
+  else {
+    const dyr = (vetDyr || []).find(d => String(d.id) === String(lagretDyrId));
+    vetSettDyrBildePreview(dyr?.bilde_url || "");
+  }
+  const fil = document.getElementById("dyrBildeFil");
+  if (fil) fil.value = "";
+
+  vetSett("dyreeierId", rad.dyreeier_id);
+  vetSett("dyreeierVelgForDyr", rad.dyreeier_id);
+  fyllDyreeierDyrValg(rad.dyreeier_id, lagretDyrId || "");
+  fyllDyrValg();
+  fyllJournalDyreeierValg();
+
+  // Etter lagring skal brukeren tilbake til eierkortet med oppdatert dyreliste.
+  if (typeof window.vetStackSafeOpenEier === "function") {
+    window.vetStackSafeOpenEier(rad.dyreeier_id);
+  } else {
+    visVetSide("eierSide");
+    vetSett("dyreeierId", rad.dyreeier_id);
+    vetSett("dyreeierVelgForDyr", rad.dyreeier_id);
+    fyllDyreeierDyrValg(rad.dyreeier_id, lagretDyrId || "");
+  }
+  vetMelding("dyreeierMelding", bildeUrl ? "Dyr/pasient og bilde lagret." : "Dyr/pasient lagret.");
+}
+
+function tegnDyr() {
+  const liste = document.getElementById("dyrListe");
+  if (!liste) return;
+
+  if (!vetDyr || !vetDyr.length) {
+    liste.innerHTML = '<p class="lite">Ingen dyr registrert ennå.</p>';
+    return;
+  }
+
+  liste.innerHTML = vetLinjeWrap(vetDyr.map(d => {
+    const id = vetLinjeEsc(d.id);
+    const navn = vetLinjeEsc(d.navn || "Uten navn");
+    const artRase = vetLinjeEsc([d.art, d.rase].filter(Boolean).join(" / "));
+    const eierNavn = vetLinjeEsc(d.vet_dyreeiere?.navn || (vetDyreeiere || []).find(e => String(e.id) === String(d.dyreeier_id))?.navn || "");
+    const idmerking = vetLinjeEsc(d.idmerking || "");
+    const bilde = d.bilde_url
+      ? `<img src="${vetLinjeEsc(d.bilde_url)}" alt="${navn}" style="width:34px;height:28px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">`
+      : `<span class="lite" style="font-size:12px !important;font-weight:400 !important;line-height:1;">📷</span>`;
+    return vetLinjeKnapp(
+      `redigerDyr('${id}')`,
+      "42px minmax(140px,1.3fr) minmax(150px,1.2fr) minmax(160px,1.3fr) minmax(110px,.8fr)",
+      `${bilde}${vetLinjeSpan(navn)}${vetLinjeSpan(artRase)}${vetLinjeSpan(eierNavn)}${vetLinjeSpan(idmerking)}`
+    );
+  }).join(""));
+}
+
+(function vetKobleDyrBilde() {
+  const start = () => {
+    vetInitDyrBildeUI();
+    const lagre = document.getElementById("lagreDyrKnapp");
+    if (lagre) lagre.onclick = lagreDyr;
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
+})();
+
+window.redigerDyr = redigerDyr;
+window.nyPasient = nyPasient;
+window.lagreDyr = lagreDyr;
+window.tegnDyr = tegnDyr;
+/* ===== SLUTT DYREBILDE / PROFILBILDE 07.06 ===== */
+
+
+/* ===== KLIKKBAR DYREEIERLISTE + DYRELISTE UNDER EIER 07.06 FINAL ===== */
+function vetKlikkEsc(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function vetSørgForDyreListeUnderEier() {
+  const gammelSelect = document.getElementById("dyreeierDyrValg");
+  if (gammelSelect && gammelSelect.tagName === "SELECT") {
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.id = "dyreeierDyrValg";
+    gammelSelect.parentNode.replaceChild(hidden, gammelSelect);
+  }
+
+  let liste = document.getElementById("dyreeierDyrListe");
+  if (!liste) {
+    liste = document.createElement("div");
+    liste.id = "dyreeierDyrListe";
+    const info = document.getElementById("dyreeierDyrInfo");
+    const hidden = document.getElementById("dyreeierDyrValg");
+    if (hidden && hidden.parentNode) hidden.parentNode.insertBefore(liste, hidden.nextSibling);
+    else if (info && info.parentNode) info.parentNode.insertBefore(liste, info);
+  }
+  return liste;
+}
+
+function vetMiniDyrBilde(dyr) {
+  if (dyr && dyr.bilde_url) {
+    return `<img src="${vetKlikkEsc(dyr.bilde_url)}" alt="${vetKlikkEsc(dyr.navn || "Dyr")}" class="vet-dyr-mini-bilde">`;
+  }
+  return `<span style="font-size:13px !important;font-weight:400 !important;line-height:1.1;">📷</span>`;
+}
+
+function tegnDyreeiere() {
+  const liste = document.getElementById("dyreeierListe");
+  if (!liste) return;
+
+  if (!vetDyreeiere || !vetDyreeiere.length) {
+    liste.innerHTML = '<p class="lite">Ingen dyreeiere registrert ennå.</p>';
+    return;
+  }
+
+  liste.innerHTML = `
+    <div class="vet-klikk-liste">
+      ${vetDyreeiere.map(e => {
+        const id = vetKlikkEsc(e.id);
+        const navn = vetKlikkEsc(e.navn || "Uten navn");
+        const telefon = vetKlikkEsc(e.telefon || "");
+        const epost = vetKlikkEsc(e.epost || "");
+        return `
+          <button type="button"
+            class="vet-klikk-rad"
+            onclick="redigerDyreeier('${id}')"
+            title="Klikk for detaljer og dyreliste"
+            style="grid-template-columns:minmax(170px,1.4fr) minmax(100px,.8fr) minmax(190px,1.4fr) 70px;">
+            <span>${navn}</span>
+            <span>${telefon}</span>
+            <span>${epost}</span>
+            <span>Åpne</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function redigerDyreeier(id) {
+  const e = (vetDyreeiere || []).find(x => String(x.id) === String(id));
+  if (!e) return;
+
+  vetSett("dyreeierId", e.id);
+  vetSett("dyreeierVelgForDyr", e.id);
+  vetSett("dyreeierNavn", e.navn || "");
+  vetSett("dyreeierTelefon", e.telefon || "");
+  vetSett("dyreeierEpost", e.epost || "");
+  vetSett("dyreeierAdresse", e.adresse || "");
+
+  visVetSide("eierSide");
+  setTimeout(() => fyllDyreeierDyrValg(e.id), 0);
+}
+
+function fyllDyreeierDyrValg(dyreeierId = "", valgtDyrId = "") {
+  const liste = vetSørgForDyreListeUnderEier();
+  const info = document.getElementById("dyreeierDyrInfo");
+  const hidden = document.getElementById("dyreeierDyrValg");
+  if (hidden) hidden.value = valgtDyrId || "";
+  if (!liste) return;
+
+  if (!dyreeierId) {
+    liste.innerHTML = '<p class="lite">Velg eller klikk en dyreeier først.</p>';
+    if (info) info.textContent = "";
+    return;
+  }
+
+  const dyrHosEier = (vetDyr || [])
+    .filter(d => String(d.dyreeier_id || d.eier_id || "") === String(dyreeierId))
+    .sort((a, b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+
+  if (!dyrHosEier.length) {
+    liste.innerHTML = '<p class="lite">Ingen dyr registrert på denne dyreeieren ennå.</p>';
+    if (info) info.textContent = "Ingen dyr funnet på valgt dyreeier.";
+    return;
+  }
+
+  liste.innerHTML = `
+    <div class="vet-klikk-liste">
+      ${dyrHosEier.map(d => {
+        const id = vetKlikkEsc(d.id);
+        const valgt = valgtDyrId && String(valgtDyrId) === String(d.id);
+        const navn = vetKlikkEsc(d.navn || "Uten navn");
+        const artRase = vetKlikkEsc([d.art, d.rase].filter(Boolean).join(" / "));
+        const idmerking = vetKlikkEsc(d.idmerking || "");
+        return `
+          <button type="button"
+            class="vet-klikk-rad"
+            onclick="vetVelgDyrFraEierListe('${id}')"
+            title="Klikk for detaljer på dyret"
+            style="grid-template-columns:42px minmax(140px,1.3fr) minmax(150px,1.2fr) minmax(110px,.8fr) 70px;${valgt ? 'outline:1px solid #1f6feb;' : ''}">
+            ${vetMiniDyrBilde(d)}
+            <span>${navn}</span>
+            <span>${artRase}</span>
+            <span>${idmerking}</span>
+            <span>Åpne</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  if (info) info.textContent = `${dyrHosEier.length} dyr registrert på valgt dyreeier.`;
+}
+
+function vetVelgDyrFraEierListe(dyrId) {
+  const hidden = document.getElementById("dyreeierDyrValg");
+  if (hidden) hidden.value = dyrId || "";
+  if (dyrId) redigerDyr(dyrId);
+}
+
+function brukValgtDyreeierForDyr() {
+  const dyreeierId = vetTekst("dyreeierVelgForDyr");
+  if (!dyreeierId) {
+    ["dyreeierId", "dyreeierNavn", "dyreeierTelefon", "dyreeierEpost", "dyreeierAdresse"].forEach(id => vetSett(id, ""));
+    fyllDyreeierDyrValg("");
+    return;
+  }
+  redigerDyreeier(dyreeierId);
+}
+
+function brukValgtDyrFraDyreeier() {
+  const dyrId = vetTekst("dyreeierDyrValg");
+  if (dyrId) redigerDyr(dyrId);
+}
+
+(function vetStartKlikkbarDyreeierDyreliste() {
+  const start = () => {
+    vetSørgForDyreListeUnderEier();
+    const velg = document.getElementById("dyreeierVelgForDyr");
+    if (velg) velg.onchange = brukValgtDyreeierForDyr;
+    tegnDyreeiere();
+    fyllDyreeierDyrValg(vetTekst("dyreeierId"));
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once:true });
+  else start();
+})();
+
+window.tegnDyreeiere = tegnDyreeiere;
+window.redigerDyreeier = redigerDyreeier;
+window.fyllDyreeierDyrValg = fyllDyreeierDyrValg;
+window.vetVelgDyrFraEierListe = vetVelgDyrFraEierListe;
+window.brukValgtDyreeierForDyr = brukValgtDyreeierForDyr;
+window.brukValgtDyrFraDyreeier = brukValgtDyrFraDyreeier;
+/* ===== SLUTT KLIKKBAR DYREEIERLISTE + DYRELISTE UNDER EIER ===== */
+
+/* ===== ENDELIG FIX: DYREEIER/DYR-KLIKK + BILDE 07.06 ===== */
+(function(){
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
+  function safeCall(fn, arg){
+    try {
+      if (typeof window[fn] === "function") return window[fn](arg);
+      if (typeof globalThis[fn] === "function") return globalThis[fn](arg);
+    } catch(e) {
+      console.error(fn + " feilet:", e);
+      alert("Knappen feilet: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  function sørgForDyrBildeUI(){
+    if (typeof vetInitDyrBildeUI === "function") vetInitDyrBildeUI();
+    const dyrSide = document.getElementById("dyrSide");
+    const lagre = document.getElementById("lagreDyrKnapp");
+    if (dyrSide && lagre && !document.getElementById("dyrBildeOmrade")) {
+      const div = document.createElement("div");
+      div.id = "dyrBildeOmrade";
+      div.innerHTML = `
+        <h3 style="margin-top:14px;margin-bottom:6px;">Bilde av dyret</h3>
+        <div class="rad">
+          <div>
+            <label for="dyrBildeFil">Velg bilde</label>
+            <input id="dyrBildeFil" type="file" accept="image/*" capture="environment">
+          </div>
+          <div>
+            <img id="dyrBildePreview" alt="Bilde av dyr" class="skjult" style="display:none;width:90px;height:70px;object-fit:cover;border:1px solid #ddd;border-radius:8px;background:#fafafa;">
+          </div>
+        </div>
+        <p class="lite" style="margin-top:4px;">Velg bilde og trykk Lagre dyr / bilde.</p>
+      `;
+      lagre.parentNode.insertBefore(div, lagre);
+    }
+  }
+
+  window.vetFIXAapneEier = function(id){
+    if (!id) return false;
+    safeCall("redigerDyreeier", id);
+    return false;
+  };
+
+  window.vetFIXAapneDyr = function(id){
+    if (!id) return false;
+    safeCall("redigerDyr", id);
+    setTimeout(() => {
+      sørgForDyrBildeUI();
+      const side = document.getElementById("dyrSide");
+      if (side) side.scrollIntoView({behavior:"smooth", block:"start"});
+    }, 20);
+    return false;
+  };
+
+  window.vetFIXBildeDyr = function(id){
+    if (!id) return false;
+    window.vetFIXAapneDyr(id);
+    setTimeout(() => {
+      sørgForDyrBildeUI();
+      const fil = document.getElementById("dyrBildeFil");
+      const omr = document.getElementById("dyrBildeOmrade");
+      if (omr) omr.scrollIntoView({behavior:"smooth", block:"center"});
+      if (fil) {
+        try { fil.focus(); fil.click(); } catch(e) { console.warn(e); }
+      }
+    }, 80);
+    return false;
+  };
+
+  function miniBilde(d){
+    if (d && d.bilde_url) return `<img src="${esc(d.bilde_url)}" alt="${esc(d.navn || 'Dyr')}" class="vet-dyr-mini-bilde">`;
+    return `<span style="font-size:13px;font-weight:400;line-height:1.1;">📷</span>`;
+  }
+
+  window.tegnDyreeiere = function(){
+    const liste = document.getElementById("dyreeierListe");
+    if (!liste) return;
+    if (!vetDyreeiere || !vetDyreeiere.length) {
+      liste.innerHTML = '<p class="lite">Ingen dyreeiere registrert ennå.</p>';
+      return;
+    }
+    liste.innerHTML = `<div class="vet-klikk-liste">${vetDyreeiere.map(e => {
+      const id = esc(e.id);
+      return `
+        <div class="vet-klikk-rad" onclick="return window.vetFIXAapneEier('${id}')" style="grid-template-columns:minmax(170px,1.4fr) minmax(100px,.8fr) minmax(190px,1.4fr) 90px;">
+          <span>${esc(e.navn || "Uten navn")}</span>
+          <span>${esc(e.telefon || "")}</span>
+          <span>${esc(e.epost || "")}</span>
+          <a href="#" onclick="event.preventDefault(); event.stopPropagation(); return window.vetFIXAapneEier('${id}')" class="secondary" style="display:inline-block;text-align:center;text-decoration:none;color:white;background:#555;border-radius:8px;padding:5px 10px;font-size:13px;">Åpne</a>
+        </div>`;
+    }).join("")}</div>`;
+  };
+
+  window.fyllDyreeierDyrValg = function(dyreeierId = "", valgtDyrId = ""){
+    const gammelSelect = document.getElementById("dyreeierDyrValg");
+    if (gammelSelect && gammelSelect.tagName === "SELECT") {
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.id = "dyreeierDyrValg";
+      gammelSelect.parentNode.replaceChild(hidden, gammelSelect);
+    }
+    let liste = document.getElementById("dyreeierDyrListe");
+    if (!liste) {
+      liste = document.createElement("div");
+      liste.id = "dyreeierDyrListe";
+      const info = document.getElementById("dyreeierDyrInfo");
+      if (info && info.parentNode) info.parentNode.insertBefore(liste, info);
+    }
+    const info = document.getElementById("dyreeierDyrInfo");
+    const hidden = document.getElementById("dyreeierDyrValg");
+    if (hidden) hidden.value = valgtDyrId || "";
+    if (!liste) return;
+    if (!dyreeierId) {
+      liste.innerHTML = '<p class="lite">Velg eller klikk en dyreeier først.</p>';
+      if (info) info.textContent = "";
+      return;
+    }
+    const dyrHosEier = (vetDyr || [])
+      .filter(d => String(d.dyreeier_id || d.eier_id || "") === String(dyreeierId))
+      .sort((a,b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+    if (!dyrHosEier.length) {
+      liste.innerHTML = '<p class="lite">Ingen dyr registrert på denne dyreeieren ennå.</p>';
+      if (info) info.textContent = "Ingen dyr funnet på valgt dyreeier.";
+      return;
+    }
+    liste.innerHTML = `<div class="vet-klikk-liste">${dyrHosEier.map(d => {
+      const id = esc(d.id);
+      const valgt = valgtDyrId && String(valgtDyrId) === String(d.id);
+      return `
+        <div class="vet-klikk-rad" onclick="return window.vetFIXAapneDyr('${id}')" style="grid-template-columns:42px minmax(140px,1.3fr) minmax(150px,1.2fr) minmax(110px,.8fr) 90px 90px;${valgt ? 'outline:1px solid #1f6feb;' : ''}">
+          ${miniBilde(d)}
+          <span>${esc(d.navn || "Uten navn")}</span>
+          <span>${esc([d.art, d.rase].filter(Boolean).join(" / "))}</span>
+          <span>${esc(d.idmerking || "")}</span>
+          <a href="#" onclick="event.preventDefault(); event.stopPropagation(); return window.vetFIXAapneDyr('${id}')" class="secondary" style="display:inline-block;text-align:center;text-decoration:none;color:white;background:#555;border-radius:8px;padding:5px 10px;font-size:13px;">Åpne</a>
+          <a href="#" onclick="event.preventDefault(); event.stopPropagation(); return window.vetFIXBildeDyr('${id}')" class="secondary" style="display:inline-block;text-align:center;text-decoration:none;color:white;background:#555;border-radius:8px;padding:5px 10px;font-size:13px;">Bilde</a>
+        </div>`;
+    }).join("")}</div>`;
+    if (info) info.textContent = `${dyrHosEier.length} dyr registrert på valgt dyreeier.`;
+  };
+
+  document.addEventListener("click", function(e){
+    const openDyr = e.target.closest("[data-open-dyr-fix]");
+    if (openDyr) { e.preventDefault(); e.stopPropagation(); return window.vetFIXAapneDyr(openDyr.dataset.openDyrFix); }
+  }, true);
+
+  const start = () => {
+    sørgForDyrBildeUI();
+    try { window.tegnDyreeiere(); } catch(e) { console.warn(e); }
+    try { window.fyllDyreeierDyrValg(vetTekst("dyreeierId")); } catch(e) { console.warn(e); }
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(start, 100), {once:true});
+  else setTimeout(start, 100);
+})();
+/* ===== SLUTT ENDELIG FIX ===== */
+
+
+/* ===== STACKSAFE FIX: ÅPNE/BILDE UTEN REKURSJON 07.06 ===== */
+(function(){
+  function esc(v){
+    return String(v ?? '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
+
+  function sett(id, verdi){
+    const el = document.getElementById(id);
+    if (el) el.value = verdi ?? '';
+  }
+
+  function visSideTrygt(sideId){
+    if (typeof visVetSide === 'function') {
+      try { visVetSide(sideId); return; } catch(e) { console.warn('visVetSide feilet, bruker fallback', e); }
+    }
+    document.querySelectorAll('#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide').forEach(el => {
+      el.classList.add('skjult');
+      el.style.display = 'none';
+    });
+    const side = document.getElementById(sideId);
+    if (side) {
+      side.classList.remove('skjult');
+      side.style.display = '';
+    }
+  }
+
+  function sørgForDyrBildeUI(){
+    if (typeof vetInitDyrBildeUI === 'function') {
+      try { vetInitDyrBildeUI(); } catch(e) { console.warn(e); }
+    }
+    const dyrSide = document.getElementById('dyrSide');
+    const lagre = document.getElementById('lagreDyrKnapp');
+    if (!dyrSide || !lagre || document.getElementById('dyrBildeOmrade')) return;
+    const div = document.createElement('div');
+    div.id = 'dyrBildeOmrade';
+    div.innerHTML = `
+      <h3 style="margin-top:14px;margin-bottom:6px;">Bilde av dyret</h3>
+      <div class="rad" style="align-items:end;">
+        <div>
+          <label for="dyrBildeFil">Velg bilde / ta bilde</label>
+          <input id="dyrBildeFil" type="file" accept="image/*" capture="environment">
+          <button id="taBildeDyrKnapp" type="button" class="secondary" style="margin-top:8px;">Ta bilde</button>
+        </div>
+        <div>
+          <img id="dyrBildePreview" alt="Bilde av dyr" class="skjult" style="display:none;width:90px;height:70px;object-fit:cover;border:1px solid #ddd;border-radius:8px;background:#fafafa;">
+        </div>
+      </div>
+      <p class="lite" style="margin-top:4px;">Velg bilde og trykk Lagre dyr / bilde.</p>
+    `;
+    lagre.parentNode.insertBefore(div, lagre);
+    const fil = document.getElementById('dyrBildeFil');
+    if (fil && !fil.dataset.previewKoblet) {
+      fil.dataset.previewKoblet = '1';
+      fil.addEventListener('change', () => {
+        const valgt = fil.files && fil.files[0];
+        if (!valgt) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.getElementById('dyrBildePreview');
+          if (img) {
+            img.src = e.target.result;
+            img.classList.remove('skjult');
+            img.style.display = '';
+          }
+        };
+        reader.readAsDataURL(valgt);
+      });
+    }
+    const taBilde = document.getElementById('taBildeDyrKnapp');
+    if (taBilde && fil && !taBilde.dataset.koblet) {
+      taBilde.dataset.koblet = '1';
+      taBilde.addEventListener('click', (e) => {
+        e.preventDefault();
+        fil.click();
+      });
+    }
+  }
+
+  window.vetStackSafeOpenEier = function(id){
+    const e = (window.vetDyreeiere || vetDyreeiere || []).find(x => String(x.id) === String(id));
+    if (!e) return false;
+    sett('dyreeierId', e.id);
+    sett('dyreeierVelgForDyr', e.id);
+    sett('dyreeierNavn', e.navn || '');
+    sett('dyreeierTelefon', e.telefon || '');
+    sett('dyreeierEpost', e.epost || '');
+    sett('dyreeierAdresse', e.adresse || '');
+    visSideTrygt('eierSide');
+    sett('dyreeierId', e.id);
+    sett('dyreeierVelgForDyr', e.id);
+    setTimeout(() => window.vetStackSafeTegnDyrHosEier(e.id), 0);
+    return false;
+  };
+
+  window.vetStackSafeOpenDyr = function(id){
+    const d = (window.vetDyr || vetDyr || []).find(x => String(x.id) === String(id));
+    if (!d) return false;
+    visSideTrygt('dyrSide');
+    if (typeof fyllDyreeierValg === 'function') {
+      try { fyllDyreeierValg(d.dyreeier_id || ''); } catch(e) { console.warn(e); }
+    }
+    sett('dyrId', d.id);
+    sett('dyrEierValg', d.dyreeier_id || '');
+    sett('dyrNavn', d.navn || '');
+    sett('dyrArt', d.art || '');
+    sett('dyrRase', d.rase || '');
+    sett('dyrFodselsdato', d.fodselsdato || '');
+    sett('dyrKjonn', d.kjonn || '');
+    sett('dyrIdmerking', d.idmerking || '');
+    sørgForDyrBildeUI();
+    const fil = document.getElementById('dyrBildeFil');
+    if (fil) fil.value = '';
+    const img = document.getElementById('dyrBildePreview');
+    if (img) {
+      if (d.bilde_url) {
+        img.src = d.bilde_url;
+        img.classList.remove('skjult');
+        img.style.display = '';
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('skjult');
+        img.style.display = 'none';
+      }
+    }
+    const side = document.getElementById('dyrSide');
+    if (side) side.scrollIntoView({ behavior:'smooth', block:'start' });
+    return false;
+  };
+
+  window.vetStackSafeBildeDyr = function(id){
+    window.vetStackSafeOpenDyr(id);
+    const omr = document.getElementById('dyrBildeOmrade');
+    const fil = document.getElementById('dyrBildeFil');
+    if (omr) omr.scrollIntoView({ behavior:'smooth', block:'center' });
+    if (fil) {
+      try { fil.focus(); fil.click(); } catch(e) { console.warn(e); }
+    }
+    setTimeout(() => {
+      const fil2 = document.getElementById('dyrBildeFil');
+      if (fil2 && !fil2.files.length) {
+        try { fil2.focus(); } catch(e) { console.warn(e); }
+      }
+    }, 80);
+    return false;
+  };
+
+  function miniBilde(d){
+    if (d && d.bilde_url) return `<img src="${esc(d.bilde_url)}" alt="${esc(d.navn || 'Dyr')}" class="vet-dyr-mini-bilde">`;
+    return `<span style="font-size:13px;font-weight:400;line-height:1.1;">📷</span>`;
+  }
+
+  window.vetStackSafeTegnDyrHosEier = function(dyreeierId){
+    const gammel = document.getElementById('dyreeierDyrValg');
+    if (gammel && gammel.tagName === 'SELECT') {
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'dyreeierDyrValg';
+      gammel.parentNode.replaceChild(hidden, gammel);
+    }
+    let liste = document.getElementById('dyreeierDyrListe');
+    if (!liste) {
+      liste = document.createElement('div');
+      liste.id = 'dyreeierDyrListe';
+      const info = document.getElementById('dyreeierDyrInfo');
+      if (info && info.parentNode) info.parentNode.insertBefore(liste, info);
+    }
+    const info = document.getElementById('dyreeierDyrInfo');
+    if (!dyreeierId) {
+      if (liste) liste.innerHTML = '<p class="lite">Velg eller klikk en dyreeier først.</p>';
+      if (info) info.textContent = '';
+      return;
+    }
+    const dyrHosEier = (window.vetDyr || vetDyr || [])
+      .filter(d => String(d.dyreeier_id || d.eier_id || '') === String(dyreeierId))
+      .sort((a,b) => String(a.navn || '').localeCompare(String(b.navn || ''), 'nb'));
+    if (!dyrHosEier.length) {
+      liste.innerHTML = '<p class="lite">Ingen dyr registrert på denne dyreeieren ennå.</p>';
+      if (info) info.textContent = 'Ingen dyr funnet på valgt dyreeier.';
+      return;
+    }
+    liste.innerHTML = `<div class="vet-klikk-liste">${dyrHosEier.map(d => {
+      const id = esc(d.id);
+      return `
+        <div class="vet-klikk-rad" style="grid-template-columns:42px minmax(140px,1.3fr) minmax(150px,1.2fr) minmax(110px,.8fr) 90px 90px;">
+          ${miniBilde(d)}
+          <span>${esc(d.navn || 'Uten navn')}</span>
+          <span>${esc([d.art, d.rase].filter(Boolean).join(' / '))}</span>
+          <span>${esc(d.idmerking || '')}</span>
+          <button type="button" class="secondary" data-vet-stacksafe-open-dyr="${id}" style="margin:0;padding:5px 10px;font-size:13px;">Åpne</button>
+          <button type="button" class="secondary" data-vet-stacksafe-bilde-dyr="${id}" style="margin:0;padding:5px 10px;font-size:13px;">Bilde</button>
+        </div>`;
+    }).join('')}</div>`;
+    if (info) info.textContent = `${dyrHosEier.length} dyr registrert på valgt dyreeier.`;
+  };
+
+  window.fyllDyreeierDyrValg = function(dyreeierId = '', valgtDyrId = ''){
+    const hidden = document.getElementById('dyreeierDyrValg');
+    if (hidden) hidden.value = valgtDyrId || '';
+    window.vetStackSafeTegnDyrHosEier(dyreeierId);
+  };
+
+  window.tegnDyreeiere = function(){
+    const liste = document.getElementById('dyreeierListe');
+    if (!liste) return;
+    if (!(window.vetDyreeiere || vetDyreeiere || []).length) {
+      liste.innerHTML = '<p class="lite">Ingen dyreeiere registrert ennå.</p>';
+      return;
+    }
+    liste.innerHTML = `<div class="vet-klikk-liste">${(window.vetDyreeiere || vetDyreeiere || []).map(e => {
+      const id = esc(e.id);
+      return `
+        <button type="button" class="vet-klikk-rad" data-vet-stacksafe-open-eier="${id}" style="grid-template-columns:minmax(170px,1.4fr) minmax(100px,.8fr) minmax(190px,1.4fr) 90px;">
+          <span>${esc(e.navn || 'Uten navn')}</span>
+          <span>${esc(e.telefon || '')}</span>
+          <span>${esc(e.epost || '')}</span>
+          <span>Åpne</span>
+        </button>`;
+    }).join('')}</div>`;
+  };
+
+  document.addEventListener('click', function(e){
+    const bilde = e.target.closest('[data-vet-stacksafe-bilde-dyr]');
+    if (bilde) {
+      e.preventDefault();
+      e.stopPropagation();
+      return window.vetStackSafeBildeDyr(bilde.dataset.vetStacksafeBildeDyr);
+    }
+    const dyr = e.target.closest('[data-vet-stacksafe-open-dyr]');
+    if (dyr) {
+      e.preventDefault();
+      e.stopPropagation();
+      return window.vetStackSafeOpenDyr(dyr.dataset.vetStacksafeOpenDyr);
+    }
+    const eier = e.target.closest('[data-vet-stacksafe-open-eier]');
+    if (eier) {
+      e.preventDefault();
+      e.stopPropagation();
+      return window.vetStackSafeOpenEier(eier.dataset.vetStacksafeOpenEier);
+    }
+  }, true);
+
+  const start = () => {
+    try { window.tegnDyreeiere(); } catch(e) { console.warn(e); }
+    try { window.vetStackSafeTegnDyrHosEier(vetTekst('dyreeierId')); } catch(e) { console.warn(e); }
+    sørgForDyrBildeUI();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 350), { once:true });
+  else setTimeout(start, 350);
+})();
+/* ===== SLUTT STACKSAFE FIX ===== */

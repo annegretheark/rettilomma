@@ -52,12 +52,33 @@
     .vet-linje-kort strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .vet-linje-kort span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#ccc; }
     .vet-linje-kort button { margin:0; padding:8px 10px; }
+
+    .vet-journal-vare-bilde-rad { display:grid; grid-template-columns:1fr; gap:18px; align-items:start; }
+    .vet-journal-mini-rad { display:grid; grid-template-columns:1fr 90px auto; gap:8px; align-items:end; }
+    .vet-journal-bilde-rad { display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end; }
+    .vet-journal-linje { width:100%; text-align:left; background:#fafafa; color:#111; border:1px solid #ddd; padding:10px; border-radius:8px; cursor:pointer; }
+    .vet-journal-detaljer { display:none; margin-top:8px; }
+    .vet-journal-kort.apen .vet-journal-detaljer { display:block; }
+    @media (max-width:800px) { .vet-journal-vare-bilde-rad, .vet-journal-mini-rad, .vet-journal-bilde-rad { grid-template-columns:1fr; } }
+
     @media (max-width:700px) {
       .vet-linje-kort {
         grid-template-columns: 1fr auto;
       }
       .vet-linje-kort span.vet-skjul-mobil { display:none; }
     }
+
+
+    .vet-klikk-liste { display:grid; gap:2px; margin-top:8px; }
+    .vet-klikk-rad {
+      width:100%; display:grid; gap:8px; align-items:center; text-align:left;
+      padding:4px 8px; border:1px solid rgba(255,255,255,.14); border-radius:5px;
+      background:rgba(255,255,255,.03); color:inherit; cursor:pointer; font-family:inherit;
+      font-size:13px !important; font-weight:400 !important; line-height:1.12; margin:0;
+    }
+    .vet-klikk-rad span { font-size:13px !important; font-weight:400 !important; line-height:1.12; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .vet-klikk-rad:hover { outline:1px solid #1f6feb; }
+    .vet-dyr-mini-bilde { width:34px; height:28px; object-fit:cover; border-radius:4px; border:1px solid #555; }
 
   </style>
 </head>
@@ -191,9 +212,8 @@
 
     <h3>Dyr hos valgt dyreeier</h3>
     <p class="lite">Når du redigerer en dyreeier, vises bare dyrene som tilhører denne eieren her.</p>
-    <select id="dyreeierDyrValg">
-      <option value="">Velg/rediger dyreeier først</option>
-    </select>
+    <input id="dyreeierDyrValg" type="hidden">
+    <div id="dyreeierDyrListe"></div>
     <p id="dyreeierDyrInfo" class="lite"></p>
     <button id="nyttDyrForEierFastKnapp" type="button" class="secondary">Legg til dyr</button>
 
@@ -332,7 +352,8 @@
         <div><label for="fyllBilVareValg">Medisin/vare</label><select id="fyllBilVareValg"><option value="">Velg vare</option></select></div>
         <div><label for="fyllBilAntall">Antall til bil</label><input id="fyllBilAntall" type="number" step="1" min="1" value="1"></div>
       </div>
-      <button id="flyttTilBilKnapp" type="button">Flytt fra hovedlager til bil</button>
+      <div id="fyllBilFyllListe" style="margin-top:8px;"></div>
+      <button id="flyttTilBilKnapp" type="button">Legg valgte varer på bil</button>
       <div id="billagerMelding" class="melding"></div>
       <div id="billagerListe"></div>
     </div>
@@ -392,35 +413,43 @@
     <label for="journalMedisin">Medisin / reseptkladd</label>
     <textarea id="journalMedisin" placeholder="Kun kladd/notat. Ikke e-resept."></textarea>
 
-    <h3>Varer / medisiner til faktura</h3>
-    <p class="lite">Velg helst fra bil-lager. Da trekkes beholdningen fra bilen når journalen lagres. Manuell varelinje kan fortsatt brukes ved behov.</p>
+    <div class="vet-journal-vare-bilde-rad">
+      <div>
+        <h3>Journalbilder</h3>
+        <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
+        <div class="vet-journal-bilde-rad">
+          <div><label for="journalBildeGalleri">Velg bilde</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
+          <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+        </div>
+        <label for="journalBildeTekst">Bildetekst</label>
+        <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
+        <p id="journalBildeInfo" class="lite">Ingen bilder valgt.</p>
+      </div>
 
-    <h4>Fra bil-lager</h4>
-    <div class="rad">
-      <div><label for="journalBilValg">Bil</label><select id="journalBilValg"><option value="">Velg bil</option></select></div>
-      <div><label for="journalBilVareValg">Medisin/vare i bil</label><select id="journalBilVareValg"><option value="">Velg bil først</option></select></div>
-      <div><label for="journalBilVareAntall">Antall</label><input id="journalBilVareAntall" type="number" step="1" min="1" value="1"></div>
-    </div>
-    <button id="leggTilJournalVareFraBilKnapp" type="button" class="secondary">Legg til fra bil-lager</button>
+      <div>
+        <h3>Varer / medisiner til faktura</h3>
+        <p class="lite">Velg helst fra bil-lager. Da trekkes beholdningen fra bilen når journalen lagres. Manuell varelinje kan fortsatt brukes ved behov.</p>
 
-    <h4>Manuell varelinje</h4>
-    <div class="rad">
-      <div><label for="journalVareNavn">Vare / medisin</label><input id="journalVareNavn" placeholder="F.eks. ormekur, vaksine, bandasjemateriell"></div>
-      <div><label for="journalVareAntall">Antall</label><input id="journalVareAntall" type="number" step="1" min="1" value="1"></div>
-      <div><label for="journalVarePris">Pris per stk eks. mva</label><input id="journalVarePris" type="number" step="0.01" min="0" placeholder="0"></div>
-    </div>
-    <button id="leggTilJournalVareKnapp" type="button" class="secondary">Legg til manuell vare</button>
-    <div id="journalVareListe" class="lite">Ingen varer lagt til.</div>
+        <h4>Fra bil-lager</h4>
+        <div class="vet-journal-mini-rad">
+          <div><label for="journalBilVareValg">Medisin/vare i bil</label><select id="journalBilVareValg"><option value="">Velg bil først</option></select></div>
+          <div><label for="journalBilVareAntall">Antall</label><input id="journalBilVareAntall" type="number" step="1" min="1" value="1"></div>
+          <button id="leggTilJournalVareFraBilKnapp" type="button" class="secondary">Legg til</button>
+        </div>
+        <label for="journalBilValg">Bil</label>
+        <select id="journalBilValg"><option value="">Velg bil</option></select>
 
-    <h3>Journalbilder</h3>
-    <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
-    <div class="rad">
-      <div><label for="journalBildeGalleri">Velg bilde fra galleri</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
-      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+        <h4>Manuell varelinje</h4>
+        <div class="vet-journal-mini-rad">
+          <div><label for="journalVareNavn">Vare / medisin</label><input id="journalVareNavn" placeholder="F.eks. ormekur, vaksine, bandasjemateriell"></div>
+          <div><label for="journalVareAntall">Antall</label><input id="journalVareAntall" type="number" step="1" min="1" value="1"></div>
+          <button id="leggTilJournalVareKnapp" type="button" class="secondary">Legg til</button>
+        </div>
+        <label for="journalVarePris">Pris per stk eks. mva</label>
+        <input id="journalVarePris" type="number" step="0.01" min="0" placeholder="0">
+        <div id="journalVareListe" class="lite">Ingen varer lagt til.</div>
+      </div>
     </div>
-    <label for="journalBildeTekst">Bildetekst</label>
-    <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
-    <p id="journalBildeInfo" class="lite">Ingen bilder valgt.</p>
 
     <button id="lagreJournalKnapp" type="button">Lagre journal</button>
     <div id="journalMelding" class="melding"></div>
@@ -524,7 +553,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/core/config.js"></script>
-<script src="../js/veterinaer/vet-app.js?v=1003"></script>
+<script src="../js/veterinaer/vet-app.js?v=20260607_1527"></script>
 <script>
 async function loggUtVeterinaer() {
   try {
