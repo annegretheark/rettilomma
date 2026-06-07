@@ -37,28 +37,6 @@
     .okonomi-tabell th { background:#f1f5f9; }
     .okonomi-advarsel { color:#b42318; font-weight:bold; }
 
-  
-    .vet-linje-liste { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-    .vet-linje-kort {
-      display:grid;
-      grid-template-columns: minmax(160px, 1.4fr) minmax(110px, .8fr) minmax(160px, 1.2fr) auto;
-      gap:10px;
-      align-items:center;
-      border:1px solid #333;
-      border-radius:8px;
-      padding:8px 10px;
-      background:#1b1f22;
-    }
-    .vet-linje-kort strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .vet-linje-kort span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#ccc; }
-    .vet-linje-kort button { margin:0; padding:8px 10px; }
-    @media (max-width:700px) {
-      .vet-linje-kort {
-        grid-template-columns: 1fr auto;
-      }
-      .vet-linje-kort span.vet-skjul-mobil { display:none; }
-    }
-
   </style>
 </head>
 <body>
@@ -195,7 +173,6 @@
       <option value="">Velg/rediger dyreeier først</option>
     </select>
     <p id="dyreeierDyrInfo" class="lite"></p>
-    <button id="nyttDyrForEierFastKnapp" type="button" class="secondary">Legg til dyr</button>
 
     <button id="lagreDyreeierKnapp" type="button">Lagre dyreeier</button>
     <div id="dyreeierMelding" class="melding"></div>
@@ -524,7 +501,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/core/config.js"></script>
-<script src="../js/veterinaer/vet-app.js?v=1003"></script>
+<script src="../js/veterinaer/vet-app.js?v=1000"></script>
 <script>
 async function loggUtVeterinaer() {
   try {

@@ -1,0 +1,27 @@
+console.log("vet-app.js er lastet");
+
+let vetKlinikker = [];
+let vetDyreeiere = [];
+let vetDyr = [];
+let vetJournal = [];
+let vetPriser = [];
+let vetVarer = [];
+let vetBiler = [];
+let vetHovedlager = [];
+let vetBilLager = [];
+let vetFakturaer = [];
+let vetAktivKlinikkId = null;
+let vetAktivKlinikk = null;
+let vetInnloggetEpost = "";
+let vetInnloggetAuthUserId = "";
+let vetInnloggetKlinikkBrukerId = "";
+let vetErSystemAdmin = false;
+let vetKlinikkRolle = "";
+let vetInnloggetBrukerNavn = "";
+let vetVisSomVeterinaer = false;
+let vetAdminCache = null;
+const VET_BILDE_BUCKET = "vet-bilder";
+const VET_LOGO_BUCKET = "vet-logoer";
+let vetJournalVarerTemp = [];
+let vetJournalBehandlingerTemp = [];
+let vetAlleKlinikkBrukere = [];

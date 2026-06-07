@@ -243,58 +243,53 @@ function visVetPasientKnapperAlltid() {
 
 function oppdaterVetMenySynlighet() {
   oppdaterVetToppInfo();
+  opprettVetPasientKnapper();
 
-  const admin = erKlinikkAdmin();
+  const vanligVisning = erVetVisningVanlig();
+  const systemAdminModus = vetErSystemAdmin && !vanligVisning;
+  const adminModus = erKlinikkAdmin() && !vanligVisning;
 
-  const arbeidKnapp = document.getElementById("vetArbeidKnapp");
-  const adminKnapp = document.getElementById("vetAdminKnapp");
-  const visInfo = document.getElementById("vetVisningInfo");
-
-  if (arbeidKnapp) arbeidKnapp.style.display = "inline-block";
-  if (adminKnapp) adminKnapp.style.display = admin ? "inline-block" : "none";
-  if (visInfo) visInfo.style.display = "none";
-
-  document.querySelectorAll(".vet-admin-nav,.vet-systemadmin-nav,.vet-oppsett-nav,.vet-admin-toggle").forEach(el => {
-    el.style.display = "none";
+  // Admin/systemadmin skal ikke ha daglige veterinærknapper i admin-modus.
+  // Når admin trykker "Vis som vanlig veterinær" vises veterinærknappene igjen.
+  document.querySelectorAll(".vet-bruker-nav").forEach(el => {
+    el.style.display = vanligVisning ? "inline-block" : "none";
   });
 
-  ["vetArbeidMeny", "vetAdminMeny", "vetOppsettMeny"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.classList.add("skjult");
-      el.style.display = "none";
-    }
+  document.querySelectorAll(".vet-oppsett-nav").forEach(el => {
+    el.style.display = adminModus ? "inline-block" : "none";
   });
-}
 
-function toggleVetArbeidMeny() {
-  const meny = document.getElementById("vetArbeidMeny");
-  const adminMeny = document.getElementById("vetAdminMeny");
-  if (!meny) return;
+  document.querySelectorAll(".vet-admin-nav").forEach(el => {
+    el.style.display = adminModus ? "inline-block" : "none";
+  });
 
-  if (adminMeny) {
-    adminMeny.classList.add("skjult");
-    adminMeny.style.display = "none";
+  document.querySelectorAll(".vet-systemadmin-nav").forEach(el => {
+    el.style.display = systemAdminModus ? "inline-block" : "none";
+  });
+
+  document.querySelectorAll(".vet-faktura-nav").forEach(el => {
+    el.style.display = "inline-block";
+  });
+
+  const toggle = document.getElementById("vetVisSomVeterinaerKnapp");
+  if (toggle) {
+    toggle.style.display = erKlinikkAdmin() ? "inline-block" : "none";
+    toggle.textContent = vetVisSomVeterinaer ? "Vis som admin" : "Vis som vanlig veterinær";
   }
 
-  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
-  meny.classList.toggle("skjult", !skalVises);
-  meny.style.display = skalVises ? "block" : "none";
-}
+  const info = document.getElementById("vetVisningInfo");
+  if (info) info.style.display = (erKlinikkAdmin() && vetVisSomVeterinaer) ? "" : "none";
 
-function toggleVetAdminMeny() {
-  const meny = document.getElementById("vetAdminMeny");
-  const arbeidMeny = document.getElementById("vetArbeidMeny");
-  if (!meny) return;
+  visVetPasientKnapperAlltid();
 
-  if (arbeidMeny) {
-    arbeidMeny.classList.add("skjult");
-    arbeidMeny.style.display = "none";
+  const undermeny = document.getElementById("vetOppsettMeny");
+  if (undermeny && !adminModus) {
+    undermeny.classList.add("skjult");
+    undermeny.style.display = "none";
   }
 
-  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
-  meny.classList.toggle("skjult", !skalVises);
-  meny.style.display = skalVises ? "block" : "none";
+  if (typeof vetInstallerToppLayoutFiks === "function") vetInstallerToppLayoutFiks();
+  if (typeof flyttVetBackupKnappTilBunn === "function") flyttVetBackupKnappTilBunn();
 }
 
 function toggleVetOppsettMeny() {
@@ -1821,48 +1816,18 @@ function nyPasient() {
 
 async function lagreDyreeier() {
   vetMelding("dyreeierMelding", "");
-
-  const rad = leggTilKlinikkHvisVanligBruker({
-    navn: vetTekst("dyreeierNavn"),
-    telefon: vetTekst("dyreeierTelefon") || null,
-    epost: vetTekst("dyreeierEpost") || null,
-    adresse: vetTekst("dyreeierAdresse") || null
-  });
-
-  if (!rad.navn) {
-    vetMelding("dyreeierMelding", "Skriv navn på dyreeier.");
-    return;
-  }
-
+  const rad = leggTilKlinikkHvisVanligBruker({ navn: vetTekst("dyreeierNavn"), telefon: vetTekst("dyreeierTelefon") || null, epost: vetTekst("dyreeierEpost") || null, adresse: vetTekst("dyreeierAdresse") || null });
+  if (!rad.navn) { vetMelding("dyreeierMelding", "Skriv navn på dyreeier."); return; }
   const id = vetTekst("dyreeierId");
-  const query = id
-    ? supabaseClient.from("vet_dyreeiere").update(rad).eq("id", id).select("id").single()
-    : supabaseClient.from("vet_dyreeiere").insert(rad).select("id").single();
-
-  const { data, error } = await query;
-
-  if (error) {
-    vetMelding("dyreeierMelding", "Feil ved lagring av dyreeier: " + error.message);
-    return;
-  }
-
-  const lagretId = data?.id || id;
-
+  const query = id ? supabaseClient.from("vet_dyreeiere").update(rad).eq("id", id) : supabaseClient.from("vet_dyreeiere").insert(rad);
+  const { error } = await query;
+  if (error) { vetMelding("dyreeierMelding", "Feil ved lagring av dyreeier: " + error.message); return; }
+  ["dyreeierId","dyreeierNavn","dyreeierTelefon","dyreeierEpost","dyreeierAdresse"].forEach(id => vetSett(id,""));
+  vetSett("dyreeierVelgForDyr", "");
+  fyllDyreeierDyrValg("");
   vetMelding("dyreeierMelding", "Dyreeier lagret.");
   await lastDyreeiere();
-
-  vetSett("dyreeierId", lagretId || "");
-  fyllDyreeierVelgForDyr();
-  vetSett("dyreeierVelgForDyr", lagretId || "");
-  fyllDyreeierDyrValg(lagretId || "");
-
-  const eier = (vetDyreeiere || []).find(e => String(e.id) === String(lagretId));
-  if (eier) {
-    vetSett("dyreeierNavn", eier.navn || "");
-    vetSett("dyreeierTelefon", eier.telefon || "");
-    vetSett("dyreeierEpost", eier.epost || "");
-    vetSett("dyreeierAdresse", eier.adresse || "");
-  }
+  fyllDyreeierValg();
 }
 
 function tegnDyreeiere() {
@@ -3452,26 +3417,101 @@ async function opprettKlinikkBruker() {
   await lastKlinikkBrukere();
 }
 
+
+
+function vetInstallerToppLayoutFiks() {
+  if (document.getElementById("vetToppLayoutFiksStyle")) return;
+  const style = document.createElement("style");
+  style.id = "vetToppLayoutFiksStyle";
+  style.textContent = `
+    #vetMeny,
+    .vet-meny,
+    header nav,
+    .vet-topp nav {
+      display:flex !important;
+      flex-wrap:wrap !important;
+      align-items:center !important;
+      gap:10px !important;
+    }
+
+    #vetMeny > button,
+    .vet-meny > button,
+    header nav > button,
+    .vet-topp nav > button,
+    #vetPasientHurtigKnapper > button {
+      margin:0 !important;
+      white-space:nowrap !important;
+      height:52px;
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+    }
+
+    #vetPasientHurtigKnapper {
+      display:inline-flex !important;
+      flex-wrap:nowrap !important;
+      gap:10px !important;
+      margin:0 !important;
+      align-items:center !important;
+      width:auto !important;
+    }
+
+    #vetBackupBunnMeny {
+      margin:46px auto 24px auto;
+      padding:16px 22px;
+      max-width:1280px;
+      border-radius:14px;
+      background:rgba(255,255,255,.035);
+      border:1px solid rgba(255,255,255,.08);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    #vetBackupBunnMeny .lite {
+      margin-right:8px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function flyttVetBackupKnappTilBunn() {
+  const allerede = document.getElementById("vetBackupBunnMeny");
+  let bunn = allerede;
+
+  if (!bunn) {
+    bunn = document.createElement("div");
+    bunn.id = "vetBackupBunnMeny";
+    bunn.innerHTML = '<span class="lite">Backup og restore:</span>';
+    document.body.appendChild(bunn);
+  }
+
+  const erFunksjonsKnapp = el => [
+    "vetBackupKnapp",
+    "vetRestoreKnapp",
+    "vetImportPriserKnapp",
+    "vetImportVarerKnapp"
+  ].includes(el.id);
+
+  const knapp = Array.from(document.querySelectorAll("button, a"))
+    .find(el =>
+      !erFunksjonsKnapp(el) &&
+      /backup|import/i.test(String(el.textContent || "")) &&
+      !el.closest("#vetBackupBunnMeny")
+    );
+
+  if (!knapp) return;
+
+  knapp.classList.add("secondary");
+  knapp.style.display = "inline-flex";
+  knapp.style.margin = "0";
+  bunn.appendChild(knapp);
+}
+
 function kobleVet() {
-  document.getElementById("vetArbeidKnapp")?.addEventListener("click", toggleVetArbeidMeny);
-  document.getElementById("vetAdminKnapp")?.addEventListener("click", toggleVetAdminMeny);
-
-  document.getElementById("vetMenyDyreeiereKnapp")?.addEventListener("click", () => visVetSide("eierSide"));
-  document.getElementById("vetMenyNyDyreeierKnapp")?.addEventListener("click", nyDyreeier);
-  document.getElementById("vetMenyNyPasientKnapp")?.addEventListener("click", nyPasient);
-  document.getElementById("vetMenyJournalKnapp")?.addEventListener("click", () => visVetSide("journalSide"));
-  document.getElementById("vetMenyMinBilKnapp")?.addEventListener("click", () => visVetSide("lagerSide"));
-  document.getElementById("vetMenyFakturaKnapp")?.addEventListener("click", () => visVetSide("fakturaSide"));
-
-  document.getElementById("vetAdminKlinikkKnapp")?.addEventListener("click", () => visVetSide("klinikkSide"));
-  document.getElementById("vetAdminPrislisteKnapp")?.addEventListener("click", () => visVetSide("prisSide"));
-  document.getElementById("vetAdminOversiktKnapp")?.addEventListener("click", () => visVetSide("okonomiSide"));
-  document.getElementById("vetAdminLagerKnapp")?.addEventListener("click", () => visVetSide("lagerSide"));
-  document.getElementById("vetAdminBackupKnapp")?.addEventListener("click", () => visVetSide("backupSide"));
-
-  document.getElementById("nyDyreeierFastKnapp")?.addEventListener("click", nyDyreeier);
-  document.getElementById("nyPasientFastKnapp")?.addEventListener("click", nyPasient);
-
+  vetInstallerToppLayoutFiks();
+  flyttVetBackupKnappTilBunn();
   document.getElementById("vetOppsettKnapp")?.addEventListener("click", toggleVetOppsettMeny);
   document.getElementById("vetVisSomVeterinaerKnapp")?.addEventListener("click", byttVetRollevisning);
   document.getElementById("vetBackupKnapp")?.addEventListener("click", vetLagBackup);
@@ -3604,457 +3644,3 @@ window.lagVetKreditnota = lagVetKreditnota;
 window.fyllKreditnotaFakturaValg = fyllKreditnotaFakturaValg;
 
 window.leggTilJournalKjoring = leggTilJournalKjoring;
-
-window.nyDyreeier = nyDyreeier;
-window.nyPasient = nyPasient;
-window.toggleVetArbeidMeny = toggleVetArbeidMeny;
-window.toggleVetAdminMeny = toggleVetAdminMeny;
-
-/* ===== FINAL MENY/DYREEIER FIX ===== */
-function vetSkjulGamleHurtigknapper() {
-  const wrap = document.getElementById("vetPasientHurtigKnapper");
-  if (wrap) {
-    wrap.remove();
-  }
-}
-
-function nyDyreeier() {
-  ["dyreeierId","dyreeierNavn","dyreeierTelefon","dyreeierEpost","dyreeierAdresse"].forEach(id => vetSett(id, ""));
-  vetSett("dyreeierVelgForDyr", "");
-  fyllDyreeierDyrValg("");
-  visVetSide("eierSide");
-  const navn = document.getElementById("dyreeierNavn");
-  if (navn) navn.focus();
-}
-
-function nyPasient() {
-  ["dyrId","dyrNavn","dyrArt","dyrRase","dyrFodselsdato","dyrKjonn","dyrIdmerking"].forEach(id => vetSett(id, ""));
-  fyllDyreeierValg();
-  visVetSide("dyrSide");
-  const navn = document.getElementById("dyrNavn");
-  if (navn) navn.focus();
-}
-
-async function lagreDyreeier() {
-  vetMelding("dyreeierMelding", "");
-
-  const rad = leggTilKlinikkHvisVanligBruker({
-    navn: vetTekst("dyreeierNavn"),
-    telefon: vetTekst("dyreeierTelefon") || null,
-    epost: vetTekst("dyreeierEpost") || null,
-    adresse: vetTekst("dyreeierAdresse") || null
-  });
-
-  if (!rad.navn) {
-    vetMelding("dyreeierMelding", "Skriv navn på dyreeier.");
-    return;
-  }
-
-  const id = vetTekst("dyreeierId");
-  const query = id
-    ? supabaseClient.from("vet_dyreeiere").update(rad).eq("id", id).select("id").single()
-    : supabaseClient.from("vet_dyreeiere").insert(rad).select("id").single();
-
-  const { data, error } = await query;
-
-  if (error) {
-    vetMelding("dyreeierMelding", "Feil ved lagring av dyreeier: " + error.message);
-    return;
-  }
-
-  const lagretId = data?.id || id;
-
-  await lastDyreeiere();
-
-  vetSett("dyreeierId", lagretId || "");
-  fyllDyreeierVelgForDyr();
-  vetSett("dyreeierVelgForDyr", lagretId || "");
-  fyllDyreeierDyrValg(lagretId || "");
-
-  const eier = (vetDyreeiere || []).find(e => String(e.id) === String(lagretId));
-  if (eier) {
-    vetSett("dyreeierNavn", eier.navn || "");
-    vetSett("dyreeierTelefon", eier.telefon || "");
-    vetSett("dyreeierEpost", eier.epost || "");
-    vetSett("dyreeierAdresse", eier.adresse || "");
-  }
-
-  vetMelding("dyreeierMelding", "Dyreeier lagret.");
-}
-
-function toggleVetArbeidMeny() {
-  vetSkjulGamleHurtigknapper();
-  const meny = document.getElementById("vetArbeidMeny");
-  const adminMeny = document.getElementById("vetAdminMeny");
-  if (!meny) return;
-
-  if (adminMeny) {
-    adminMeny.classList.add("skjult");
-    adminMeny.style.display = "none";
-  }
-
-  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
-  meny.classList.toggle("skjult", !skalVises);
-  meny.style.display = skalVises ? "block" : "none";
-}
-
-function toggleVetAdminMeny() {
-  vetSkjulGamleHurtigknapper();
-  const meny = document.getElementById("vetAdminMeny");
-  const arbeidMeny = document.getElementById("vetArbeidMeny");
-  if (!meny) return;
-
-  if (arbeidMeny) {
-    arbeidMeny.classList.add("skjult");
-    arbeidMeny.style.display = "none";
-  }
-
-  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
-  meny.classList.toggle("skjult", !skalVises);
-  meny.style.display = skalVises ? "block" : "none";
-}
-
-function oppdaterVetMenySynlighet() {
-  oppdaterVetToppInfo();
-  vetSkjulGamleHurtigknapper();
-
-  const admin = erKlinikkAdmin();
-  const adminKnapp = document.getElementById("vetAdminKnapp");
-
-  if (adminKnapp) adminKnapp.style.display = admin ? "inline-block" : "none";
-
-  ["vetArbeidMeny","vetAdminMeny"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.classList.add("skjult");
-      el.style.display = "none";
-    }
-  });
-}
-
-function vetKobleFinaleKnapper() {
-  vetSkjulGamleHurtigknapper();
-
-  const koble = (id, fn) => {
-    const el = document.getElementById(id);
-    if (!el || el.dataset.finalKoblet === "1") return;
-    el.dataset.finalKoblet = "1";
-    el.addEventListener("click", fn);
-  };
-
-  koble("vetArbeidKnapp", toggleVetArbeidMeny);
-  koble("vetAdminKnapp", toggleVetAdminMeny);
-
-  koble("vetMenyDyreeiereKnapp", () => visVetSide("eierSide"));
-  koble("vetMenyNyDyreeierKnapp", nyDyreeier);
-  koble("vetMenyNyPasientKnapp", nyPasient);
-  koble("vetMenyJournalKnapp", () => visVetSide("journalSide"));
-  koble("vetMenyMinBilKnapp", () => visVetSide("lagerSide"));
-  koble("vetMenyFakturaKnapp", () => visVetSide("fakturaSide"));
-
-  koble("vetAdminKlinikkKnapp", () => visVetSide("klinikkSide"));
-  koble("vetAdminPrislisteKnapp", () => visVetSide("prisSide"));
-  koble("vetAdminOversiktKnapp", () => visVetSide("okonomiSide"));
-  koble("vetAdminLagerKnapp", () => visVetSide("lagerSide"));
-  koble("vetAdminBackupKnapp", () => visVetSide("backupSide"));
-
-  koble("nyDyreeierFastKnapp", nyDyreeier);
-  koble("nyPasientFastKnapp", nyPasient);
-}
-
-const gammelKobleVet = kobleVet;
-kobleVet = function() {
-  gammelKobleVet();
-  vetKobleFinaleKnapper();
-};
-
-window.nyDyreeier = nyDyreeier;
-window.nyPasient = nyPasient;
-window.lagreDyreeier = lagreDyreeier;
-window.toggleVetArbeidMeny = toggleVetArbeidMeny;
-window.toggleVetAdminMeny = toggleVetAdminMeny;
-/* ===== SLUTT FINAL FIX ===== */
-
-
-/* ===== FINAL DYR/PASIENT FIX ===== */
-function finnValgtDyreeierIdTilDyr() {
-  return vetTekst("dyreeierId") ||
-         vetTekst("dyreeierVelgForDyr") ||
-         vetTekst("dyrEierValg") ||
-         vetTekst("journalDyreeierValg") ||
-         "";
-}
-
-function nyPasient() {
-  const eierId = finnValgtDyreeierIdTilDyr();
-
-  ["dyrId","dyrNavn","dyrArt","dyrRase","dyrFodselsdato","dyrKjonn","dyrIdmerking"].forEach(id => vetSett(id, ""));
-
-  fyllDyreeierValg(eierId || "");
-  if (eierId) vetSett("dyrEierValg", eierId);
-
-  visVetSide("dyrSide");
-
-  const navn = document.getElementById("dyrNavn");
-  if (navn) navn.focus();
-}
-
-function leggTilNyttDyrForValgtDyreeier() {
-  const eierId = finnValgtDyreeierIdTilDyr();
-
-  if (!eierId) {
-    vetMelding("dyreeierMelding", "Velg eller lagre dyreeier først.");
-    visVetSide("eierSide");
-    return;
-  }
-
-  ["dyrId","dyrNavn","dyrArt","dyrRase","dyrFodselsdato","dyrKjonn","dyrIdmerking"].forEach(id => vetSett(id, ""));
-
-  fyllDyreeierValg(eierId);
-  vetSett("dyrEierValg", eierId);
-
-  visVetSide("dyrSide");
-
-  const navn = document.getElementById("dyrNavn");
-  if (navn) navn.focus();
-}
-
-async function lagreDyr() {
-  vetMelding("dyrMelding", "");
-
-  const rad = leggTilKlinikkHvisVanligBruker({
-    eier_id: vetTekst("dyrEierValg"),
-    navn: vetTekst("dyrNavn"),
-    art: vetTekst("dyrArt") || null,
-    rase: vetTekst("dyrRase") || null,
-    fodselsdato: vetTekst("dyrFodselsdato") || null,
-    kjonn: vetTekst("dyrKjonn") || null,
-    idmerking: vetTekst("dyrIdmerking") || null
-  });
-
-  if (!rad.eier_id) {
-    vetMelding("dyrMelding", "Velg dyreeier først.");
-    return;
-  }
-
-  if (!rad.navn) {
-    vetMelding("dyrMelding", "Skriv navn på dyr/pasient.");
-    return;
-  }
-
-  const id = vetTekst("dyrId");
-  const query = id
-    ? supabaseClient.from("vet_dyr").update(rad).eq("id", id).select("id").single()
-    : supabaseClient.from("vet_dyr").insert(rad).select("id").single();
-
-  const { data, error } = await query;
-
-  if (error) {
-    vetMelding("dyrMelding", "Feil ved lagring av dyr: " + error.message);
-    return;
-  }
-
-  const lagretDyrId = data?.id || id;
-
-  await lastDyr();
-
-  vetMelding("dyrMelding", "Dyr/pasient lagret.");
-  vetSett("dyrId", lagretDyrId || "");
-  vetSett("dyrEierValg", rad.eier_id);
-
-  // Oppdater dyreeier-siden og journalvalg også
-  vetSett("dyreeierId", rad.eier_id);
-  vetSett("dyreeierVelgForDyr", rad.eier_id);
-  fyllDyreeierDyrValg(rad.eier_id);
-
-  fyllDyrValg();
-  fyllJournalDyreeierValg();
-}
-
-(function kobleDyrFix() {
-  const koble = (id, fn) => {
-    const el = document.getElementById(id);
-    if (!el || el.dataset.dyrFixKoblet === "1") return;
-    el.dataset.dyrFixKoblet = "1";
-    el.addEventListener("click", fn);
-  };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", kobleDyrFix, { once: true });
-    return;
-  }
-
-  koble("vetMenyNyPasientKnapp", nyPasient);
-  koble("nyPasientFastKnapp", nyPasient);
-  koble("nyttDyrForEierFastKnapp", leggTilNyttDyrForValgtDyreeier);
-  koble("lagreDyrKnapp", lagreDyr);
-})();
-
-window.nyPasient = nyPasient;
-window.leggTilNyttDyrForValgtDyreeier = leggTilNyttDyrForValgtDyreeier;
-window.lagreDyr = lagreDyr;
-/* ===== SLUTT FINAL DYR/PASIENT FIX ===== */
-
-
-/* ===== LEGG TIL DYR FIX ===== */
-function vetFinnValgtDyreeierForDyr() {
-  const kandidater = [
-    vetTekst("dyreeierId"),
-    vetTekst("dyreeierVelgForDyr"),
-    vetTekst("dyrEierValg"),
-    vetTekst("journalDyreeierValg")
-  ].filter(Boolean);
-
-  if (kandidater.length) return kandidater[0];
-
-  const valgt = document.getElementById("dyreeierVelgForDyr");
-  if (valgt && valgt.value) return valgt.value;
-
-  return "";
-}
-
-function vetAapneNyttDyrForEier() {
-  const eierId = vetFinnValgtDyreeierForDyr();
-
-  if (!eierId) {
-    vetMelding("dyreeierMelding", "Velg eller lagre dyreeier først.");
-    visVetSide("eierSide");
-    return;
-  }
-
-  // Gå til pasientskjema og nullstill bare dyrefeltene.
-  visVetSide("dyrSide");
-
-  vetSett("dyrId", "");
-  vetSett("dyrNavn", "");
-  vetSett("dyrArt", "");
-  vetSett("dyrRase", "");
-  vetSett("dyrFodselsdato", "");
-  vetSett("dyrKjonn", "");
-  vetSett("dyrIdmerking", "");
-
-  fyllDyreeierValg(eierId);
-  vetSett("dyrEierValg", eierId);
-
-  const navn = document.getElementById("dyrNavn");
-  if (navn) navn.focus();
-}
-
-function nyPasient() {
-  vetAapneNyttDyrForEier();
-}
-
-function vetKobleLeggTilDyrKnapp() {
-  const ids = [
-    "nyttDyrForEierFastKnapp",
-    "nyttDyrForEierKnapp",
-    "vetMenyNyPasientKnapp",
-    "nyPasientFastKnapp"
-  ];
-
-  ids.forEach(id => {
-    const knapp = document.getElementById(id);
-    if (!knapp || knapp.dataset.leggTilDyrFix === "1") return;
-
-    knapp.dataset.leggTilDyrFix = "1";
-    knapp.onclick = function(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      vetAapneNyttDyrForEier();
-      return false;
-    };
-  });
-}
-
-// Koble etter at appen har startet og hver gang menyen/siden kan ha blitt tegnet.
-const gammelVisVetSideForDyrFix = typeof visVetSide === "function" ? visVetSide : null;
-if (gammelVisVetSideForDyrFix) {
-  visVetSide = function(sideId) {
-    const r = gammelVisVetSideForDyrFix(sideId);
-    setTimeout(vetKobleLeggTilDyrKnapp, 0);
-    return r;
-  };
-}
-
-const gammelKobleVetForDyrFix = typeof kobleVet === "function" ? kobleVet : null;
-if (gammelKobleVetForDyrFix) {
-  kobleVet = function() {
-    const r = gammelKobleVetForDyrFix();
-    vetKobleLeggTilDyrKnapp();
-    setTimeout(vetKobleLeggTilDyrKnapp, 100);
-    return r;
-  };
-}
-
-window.nyPasient = nyPasient;
-window.leggTilNyttDyrForValgtDyreeier = vetAapneNyttDyrForEier;
-window.vetAapneNyttDyrForEier = vetAapneNyttDyrForEier;
-/* ===== SLUTT LEGG TIL DYR FIX ===== */
-
-
-/* ===== EN LINJE LISTE FIX ===== */
-function vetEsc(verdi) {
-  return String(verdi ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-function tegnDyreeiere() {
-  const el = document.getElementById("dyreeierListe");
-  if (!el) return;
-
-  if (!vetDyreeiere || vetDyreeiere.length === 0) {
-    el.innerHTML = '<p class="lite">Ingen dyreeiere registrert.</p>';
-    return;
-  }
-
-  el.innerHTML = '<div class="vet-linje-liste">' + vetDyreeiere.map(e => {
-    const id = vetEsc(e.id);
-    const navn = vetEsc(e.navn || "Uten navn");
-    const telefon = vetEsc(e.telefon || "");
-    const epost = vetEsc(e.epost || "");
-    return `
-      <div class="vet-linje-kort">
-        <strong title="${navn}">${navn}</strong>
-        <span class="vet-skjul-mobil">${telefon || "&nbsp;"}</span>
-        <span class="vet-skjul-mobil">${epost || "&nbsp;"}</span>
-        <button type="button" class="secondary" onclick="redigerDyreeier('${id}')">Åpne</button>
-      </div>
-    `;
-  }).join("") + '</div>';
-}
-
-function tegnDyr() {
-  const el = document.getElementById("dyrListe");
-  if (!el) return;
-
-  if (!vetDyr || vetDyr.length === 0) {
-    el.innerHTML = '<p class="lite">Ingen dyr/pasienter registrert.</p>';
-    return;
-  }
-
-  el.innerHTML = '<div class="vet-linje-liste">' + vetDyr.map(d => {
-    const id = vetEsc(d.id);
-    const navn = vetEsc(d.navn || "Uten navn");
-    const art = vetEsc(d.art || "");
-    const rase = vetEsc(d.rase || "");
-    const eier = (vetDyreeiere || []).find(e => String(e.id) === String(d.eier_id));
-    const eierNavn = vetEsc(eier?.navn || "");
-    return `
-      <div class="vet-linje-kort">
-        <strong title="${navn}">${navn}</strong>
-        <span class="vet-skjul-mobil">${art || "&nbsp;"}${rase ? " / " + rase : ""}</span>
-        <span class="vet-skjul-mobil">${eierNavn || "&nbsp;"}</span>
-        <button type="button" class="secondary" onclick="redigerDyr('${id}')">Åpne</button>
-      </div>
-    `;
-  }).join("") + '</div>';
-}
-
-window.tegnDyreeiere = tegnDyreeiere;
-window.tegnDyr = tegnDyr;
-/* ===== SLUTT EN LINJE LISTE FIX ===== */
