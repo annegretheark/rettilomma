@@ -409,9 +409,13 @@ if (window.location.hash !== "#jobbSide") {
 <select id="fakturaKunde">
 <option value="">Velg kunde</option>
 </select>
+<button id="oppdaterFakturaKunderKnapp" class="secondary" onclick="fyllFakturaKunder()" type="button">Oppdater kundeliste</button>
 <button id="lagFakturaKnapp" type="button">
       Lag faktura PDF
     </button>
+<p class="info">
+  Lag faktura henter kun <strong>ufakturerte jobber</strong>. Ubetalte fakturaer i oversikten er allerede fakturert.
+</p>
 <hr/>
 <h3>Kreditnota</h3>
 <label for="kreditFakturaValg">Velg faktura å kreditere</label>
@@ -482,6 +486,16 @@ if (window.location.hash !== "#jobbSide") {
 <input id="firmaKontonr"/>
 </div>
 </div>
+<div class="rad">
+<div>
+<label for="firmaVippsNummer">Vipps nummer</label>
+<input id="firmaVippsNummer" placeholder="F.eks. 123456"/>
+</div>
+<div>
+<label for="firmaVippsMottaker">Vipps mottaker</label>
+<input id="firmaVippsMottaker" placeholder="F.eks. firmanavn"/>
+</div>
+</div>
 <label for="firmaLogoUrl">Logo URL</label>
 <input id="firmaLogoUrl" placeholder="Supabase URL eller bilder/logo.png"/>
 <label for="firmaLogoFil">Last opp logo til Supabase</label>
@@ -519,14 +533,14 @@ if (window.location.hash !== "#jobbSide") {
 <script src="../js/hovslager/backup.js?v=5001"></script>
 <script src="../js/hovslager/state.js?v=5001"></script>
 <script src="../js/hovslager/hov-navigation.js?v=5001"></script>
-<script src="../js/hovslager/hov-kunder.js?v=5001"></script>
-<script src="../js/hovslager/hov-oppsett.js?v=5001"></script>
+<script src="../js/hovslager/hov-kunder.js?v=20260608_firma_trygg"></script>
+<script src="../js/hovslager/hov-oppsett.js?v=20260608_firma_trygg"></script>
 <script src="../js/hovslager/hester.js?v=5001"></script>
 <script src="../js/hovslager/hov-jobber.js?v=5001"></script>
 <script src="../js/hovslager/hov-faktura.js?v=5001"></script>
 <script src="../js/hovslager/hov-kreditnota.js?v=5001"></script>
-<script src="../js/hovslager/hov-fakturaoversikt.js?v=5001"></script>
+<script src="../js/hovslager/hov-fakturaoversikt.js?v=20260607_betalingsstatus"></script>
 <script src="../js/hovslager/hov-prisliste.js?v=5001"></script>
-<script src="../js/hovslager/hov-app.js?v=5001"></script>
+<script src="../js/hovslager/hov-app.js?v=20260608_firma_trygg"></script>
 </body>
 </html>

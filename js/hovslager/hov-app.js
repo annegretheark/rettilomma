@@ -30,9 +30,47 @@ function kobleHovMenyOgLogout() {
 }
 
 
+
+// NØDSTART: Denne skal ikke vente på firma/oppsett/auth.
+// Dato og kunder må komme opp uansett, ellers stopper hele arbeidsflyten.
+function hovSettDatoHvisTom() {
+  const felt = document.getElementById("jobbDato");
+  if (!felt) return;
+  if (!felt.value) settDagensDato();
+}
+
+async function hovTryggLastKunderOgDato() {
+  try { hovSettDatoHvisTom(); } catch (e) { console.warn("Dato kunne ikke settes:", e); }
+
+  try {
+    if (typeof window.hentKunder === "function") {
+      await window.hentKunder();
+    }
+  } catch (e) {
+    console.warn("Kunne ikke hente kunder nå, prøver igjen senere:", e);
+  }
+
+  try {
+    if (typeof window.fyllFakturaKunder === "function") {
+      await window.fyllFakturaKunder();
+    }
+  } catch (e) {
+    console.warn("Kunne ikke fylle fakturakunder nå:", e);
+  }
+}
+
+function hovStartKunderMedRetry() {
+  hovSettDatoHvisTom();
+  [100, 400, 1000, 2000, 4000].forEach(ms => {
+    setTimeout(() => { hovTryggLastKunderOgDato(); }, ms);
+  });
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
 
   kobleHovMenyOgLogout();
+  hovStartKunderMedRetry();
 
   kobleKnapp("leggTilKundeKnapp", "lagreKunde");
   kobleKnapp("lagreHestKnapp", "lagreHest");
@@ -97,9 +135,20 @@ async function startHovslager() {
 
   try {
 
+    hovSettDatoHvisTom();
+
+    if (typeof hentKunder === "function") {
+      try { await hentKunder(); } catch (e) { console.warn("Tidlig henting av kunder feilet, fortsetter:", e); }
+    }
+
+    // Firma/oppsett skal aldri stoppe resten av appen.
+    // Hvis firma-tabellen eller logo/Vipps feiler, skal kunder, hester og jobber likevel lastes.
     if (typeof sjekkHovOppsett === "function") {
-      const oppsettOk = await sjekkHovOppsett();
-      if (!oppsettOk) return;
+      try {
+        await sjekkHovOppsett();
+      } catch (e) {
+        console.warn("Firmaoppsett feilet, fortsetter oppstart:", e);
+      }
     }
 
     if (typeof hentKunder === "function") {
@@ -131,11 +180,16 @@ async function startHovslager() {
 
     hovslagerStartet = false;
     console.error(e);
-    alert("Feil ved oppstart av hovslager-systemet.");
+    hovStartKunderMedRetry();
+    // Ikke vis stoppende alert her. Appen skal fortsatt kunne brukes delvis.
+    const el = document.getElementById("jobbMelding");
+    if (el) el.textContent = "Noe feilet ved oppstart, men kunder/dato prøves lastet på nytt.";
   }
 }
 
 window.startHovslager = startHovslager;
+window.hovTryggLastKunderOgDato = hovTryggLastKunderOgDato;
+window.hovStartKunderMedRetry = hovStartKunderMedRetry;
 
 function settDagensDato() {
 
@@ -627,3 +681,25 @@ if (
 
 window.hentAlleHesterFraBase = hentAlleHesterFraBase;
 window.fyllJobbHesterForValgtKunde = fyllJobbHesterForValgtKunde;
+
+
+function hovBindFakturaKnappDirekte() {
+  const knapp = document.getElementById("lagFakturaKnapp");
+  if (!knapp) return;
+
+  knapp.onclick = async function () {
+    if (typeof window.lagHovFaktura !== "function") {
+      alert("Programfeil: lagHovFaktura er ikke lastet. Sjekk at hov-faktura.js ligger i js/hovslager.");
+      return;
+    }
+    await window.lagHovFaktura();
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(hovBindFakturaKnappDirekte, 100);
+  setTimeout(hovBindFakturaKnappDirekte, 800);
+  setTimeout(hovBindFakturaKnappDirekte, 1800);
+});
+
+window.hovBindFakturaKnappDirekte = hovBindFakturaKnappDirekte;

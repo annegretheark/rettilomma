@@ -1,364 +1,259 @@
-console.log("hov-oppsett.js lastet");
+console.log("hov-oppsett.js lastet - firma kan vises og redigeres");
 
-let sisteHovFirma = null;
-
-function hovOppsettEl(id) {
-  return document.getElementById(id);
-}
-
-function hovOppsettTekst(id) {
-  return String(hovOppsettEl(id)?.value || "").trim();
-}
-
-function hovOppsettSett(id, verdi) {
-  const el = hovOppsettEl(id);
-  if (el) el.value = verdi ?? "";
-}
+let hovFirmaTabell = null;
+let hovFirmaRad = null;
 
 function hovOppsettMelding(tekst, feil = false) {
-  const el = hovOppsettEl("firmaMelding");
-  if (!el) return;
-  el.textContent = tekst || "";
-  el.style.color = feil ? "#b42318" : "#116329";
+  const el = document.getElementById("firmaMelding");
+  if (el) {
+    el.textContent = tekst || "";
+    el.style.color = feil ? "#fca5a5" : "#86efac";
+  }
 }
 
-function normaliserLogoUrl(url) {
-  const verdi = String(url || "").trim();
-  return verdi || "bilder/logo.png";
+function hovOppsettVerdi(id) {
+  return (document.getElementById(id)?.value || "").trim();
 }
 
-function oppdaterLogoForhandsvisning() {
-  const img = hovOppsettEl("firmaLogoForhandsvisning");
+function hovSettOppsettVerdi(id, verdi) {
+  const el = document.getElementById(id);
+  if (el) el.value = verdi || "";
+}
+
+function hovOppsettLogoPreview(url) {
+  const img = document.getElementById("firmaLogoForhandsvisning");
   if (!img) return;
+  if (url) {
+    img.src = url;
+    img.style.display = "block";
+  } else {
+    img.removeAttribute("src");
+    img.style.display = "none";
+  }
+}
 
-  const url = normaliserLogoUrl(hovOppsettTekst("firmaLogoUrl"));
-  img.src = url;
-  img.style.display = "block";
+function hovFirmaFraSkjema() {
+  return {
+    navn: hovOppsettVerdi("firmaNavn"),
+    firmanavn: hovOppsettVerdi("firmaNavn"),
+    adresse: hovOppsettVerdi("firmaAdresse"),
+    telefon: hovOppsettVerdi("firmaTelefon"),
+    epost: hovOppsettVerdi("firmaEpost"),
+    orgnr: hovOppsettVerdi("firmaOrgnr"),
+    org_nr: hovOppsettVerdi("firmaOrgnr"),
+    mva_nr: hovOppsettVerdi("firmaMvaNr"),
+    kontonr: hovOppsettVerdi("firmaKontonr"),
+    kontonummer: hovOppsettVerdi("firmaKontonr"),
+    vipps_nummer: hovOppsettVerdi("firmaVippsNummer"),
+    vipps_mottaker: hovOppsettVerdi("firmaVippsMottaker"),
+    logo_url: hovOppsettVerdi("firmaLogoUrl"),
+    brevhode_tekst: hovOppsettVerdi("firmaBrevhodeTekst"),
+    brevfot_tekst: hovOppsettVerdi("firmaBrevfotTekst")
+  };
+}
+
+function hovFirmaTilSkjema(firma) {
+  firma = firma || {};
+  hovFirmaRad = firma;
+  hovSettOppsettVerdi("firmaId", firma.id || "");
+  hovSettOppsettVerdi("firmaNavn", firma.navn || firma.firmanavn || firma.firma_navn || "");
+  hovSettOppsettVerdi("firmaAdresse", firma.adresse || "");
+  hovSettOppsettVerdi("firmaTelefon", firma.telefon || "");
+  hovSettOppsettVerdi("firmaEpost", firma.epost || firma.email || "");
+  hovSettOppsettVerdi("firmaOrgnr", firma.orgnr || firma.org_nr || firma.organisasjonsnummer || "");
+  hovSettOppsettVerdi("firmaMvaNr", firma.mva_nr || firma.mvanr || "");
+  hovSettOppsettVerdi("firmaKontonr", firma.kontonr || firma.kontonummer || "");
+  hovSettOppsettVerdi("firmaVippsNummer", firma.vipps_nummer || firma.vippsnummer || firma.vipps_nr || firma.vipps || "");
+  hovSettOppsettVerdi("firmaVippsMottaker", firma.vipps_mottaker || firma.vipps_navn || firma.vippsNavn || "");
+  hovSettOppsettVerdi("firmaLogoUrl", firma.logo_url || firma.logo || "");
+  hovSettOppsettVerdi("firmaBrevhodeTekst", firma.brevhode_tekst || firma.brevhode || "");
+  hovSettOppsettVerdi("firmaBrevfotTekst", firma.brevfot_tekst || firma.brevfot || "");
+  hovOppsettLogoPreview(firma.logo_url || firma.logo || "");
+}
+
+function hovFiltrerPayloadMotRad(payload, rad) {
+  if (!rad || !Object.keys(rad).length) return payload;
+  const tillatte = new Set(Object.keys(rad));
+  const ut = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (tillatte.has(k)) ut[k] = v;
+  }
+  return ut;
+}
+
+function hovFjernManglendeKolonne(payload, error) {
+  const msg = String(error?.message || "");
+  const treff = msg.match(/'([^']+)' column/) || msg.match(/column "([^"]+)"/i);
+  if (treff && treff[1] && Object.prototype.hasOwnProperty.call(payload, treff[1])) {
+    delete payload[treff[1]];
+    return true;
+  }
+  return false;
+}
+
+async function hovVelgFirmaTabell() {
+  if (!window.supabaseClient) throw new Error("Mangler Supabase-klient.");
+  if (hovFirmaTabell) return hovFirmaTabell;
+
+  for (const tabell of ["hov_firma", "firma"]) {
+    try {
+      const { data, error } = await supabaseClient.from(tabell).select("*").limit(1).maybeSingle();
+      if (!error) {
+        hovFirmaTabell = tabell;
+        hovFirmaRad = data || null;
+        return tabell;
+      }
+    } catch (e) {
+      console.warn("Firma-tabell ikke klar:", tabell, e);
+    }
+  }
+
+  throw new Error("Fant ikke tabellen hov_firma eller firma.");
 }
 
 async function hentFirmaData() {
-  if (!window.supabaseClient) return {};
-
-  const { data, error } = await window.supabaseClient
-    .from("firma")
-    .select("*")
-    .limit(1);
-
-  if (error) {
-    console.error("Feil ved henting av firma:", error);
-    return {};
-  }
-
-  sisteHovFirma = (data && data.length) ? data[0] : {};
-  return sisteHovFirma;
-}
-
-function fyllHovOppsettSkjema(firma) {
-  firma = firma || {};
-
-  hovOppsettSett("firmaId", firma.id || "");
-  hovOppsettSett("firmaNavn", firma.navn || "");
-  hovOppsettSett("firmaAdresse", firma.adresse || "");
-  hovOppsettSett("firmaTelefon", firma.telefon || "");
-  hovOppsettSett("firmaEpost", firma.epost || "");
-  hovOppsettSett("firmaOrgnr", firma.orgnr || firma.org_nr || "");
-  hovOppsettSett("firmaMvaNr", firma.mva_nr || "");
-  hovOppsettSett("firmaKontonr", firma.kontonr || "");
-  hovOppsettSett("firmaLogoUrl", normaliserLogoUrl(firma.logo_url));
-  hovOppsettSett("firmaBrevhodeTekst", firma.brevhode_tekst || "");
-  hovOppsettSett("firmaBrevfotTekst", firma.brevfot_tekst || "");
-
-  oppdaterLogoForhandsvisning();
+  const tabell = await hovVelgFirmaTabell();
+  const { data, error } = await supabaseClient.from(tabell).select("*").limit(1).maybeSingle();
+  if (error) throw error;
+  hovFirmaTabell = tabell;
+  hovFirmaRad = data || null;
+  return data || {};
 }
 
 async function lastHovOppsett() {
-  const firma = await hentFirmaData();
-  fyllHovOppsettSkjema(firma);
-  return firma;
+  try {
+    hovOppsettMelding("Henter firmaoppsett...");
+    const firma = await hentFirmaData();
+    hovFirmaTilSkjema(firma);
+    hovOppsettMelding(Object.keys(firma).length ? "Firmaoppsett hentet." : "Ingen firmaoppsett lagret ennå. Fyll ut og lagre.");
+    return true;
+  } catch (e) {
+    console.error("Kunne ikke hente firmaoppsett:", e);
+    hovOppsettMelding("Kunne ikke hente firmaoppsett: " + (e.message || e), true);
+    return false;
+  }
+}
+
+async function lastOppHovLogoHvisValgt() {
+  const fil = document.getElementById("firmaLogoFil")?.files?.[0];
+  if (!fil || !window.supabaseClient) return "";
+
+  const rentNavn = String(fil.name || "logo.png")
+    .replaceAll(" ", "_")
+    .replace(/[æøåÆØÅ]/g, b => ({ æ: "ae", ø: "o", å: "a", Æ: "Ae", Ø: "O", Å: "A" }[b] || b))
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  const filsti = `hov-logo/${Date.now()}_${rentNavn}`;
+
+  const { error: uploadError } = await supabaseClient.storage.from("bilder").upload(filsti, fil, { upsert: true });
+  if (uploadError) throw new Error("Logo ble ikke lastet opp: " + uploadError.message);
+
+  const { data } = supabaseClient.storage.from("bilder").getPublicUrl(filsti);
+  return data?.publicUrl || "";
 }
 
 async function lagreHovOppsett() {
-  hovOppsettMelding("");
+  try {
+    hovOppsettMelding("Lagrer firmaoppsett...");
+    const tabell = await hovVelgFirmaTabell();
 
-  const rad = {
-    navn: hovOppsettTekst("firmaNavn"),
-    adresse: hovOppsettTekst("firmaAdresse") || null,
-    telefon: hovOppsettTekst("firmaTelefon") || null,
-    epost: hovOppsettTekst("firmaEpost") || null,
-    orgnr: hovOppsettTekst("firmaOrgnr") || null,
-    mva_nr: hovOppsettTekst("firmaMvaNr") || null,
-    kontonr: hovOppsettTekst("firmaKontonr") || null,
-    logo_url: normaliserLogoUrl(hovOppsettTekst("firmaLogoUrl")),
-    brevhode_tekst: hovOppsettTekst("firmaBrevhodeTekst") || null,
-    brevfot_tekst: hovOppsettTekst("firmaBrevfotTekst") || null
-  };
+    const logoUrl = await lastOppHovLogoHvisValgt();
+    if (logoUrl) hovSettOppsettVerdi("firmaLogoUrl", logoUrl);
 
-  if (!rad.navn) {
-    hovOppsettMelding("Skriv firmanavn før du lagrer.", true);
+    let payload = hovFirmaFraSkjema();
+    payload = hovFiltrerPayloadMotRad(payload, hovFirmaRad);
+
+    let res;
+    const id = hovOppsettVerdi("firmaId") || hovFirmaRad?.id || "";
+
+    for (let forsok = 0; forsok < 8; forsok++) {
+      if (id) {
+        res = await supabaseClient.from(tabell).update(payload).eq("id", id).select("*").maybeSingle();
+      } else if (hovFirmaRad?.id) {
+        res = await supabaseClient.from(tabell).update(payload).eq("id", hovFirmaRad.id).select("*").maybeSingle();
+      } else {
+        res = await supabaseClient.from(tabell).insert([payload]).select("*").maybeSingle();
+      }
+
+      if (!res.error) break;
+      if (!hovFjernManglendeKolonne(payload, res.error)) throw res.error;
+    }
+
+    if (res.error) throw res.error;
+
+    hovFirmaRad = res.data || { ...(hovFirmaRad || {}), ...payload };
+    hovFirmaTilSkjema(hovFirmaRad);
+    hovOppsettMelding("Firmaoppsett lagret.");
+    return true;
+  } catch (e) {
+    console.error("Kunne ikke lagre firmaoppsett:", e);
+    hovOppsettMelding("Kunne ikke lagre firmaoppsett: " + (e.message || e), true);
     return false;
   }
+}
 
-  const id = hovOppsettTekst("firmaId");
-
-  const res = id
-    ? await window.supabaseClient.from("firma").update(rad).eq("id", id).select().single()
-    : await window.supabaseClient.from("firma").insert(rad).select().single();
-
-  if (res.error) {
-    console.error("Feil ved lagring av firmaoppsett:", res.error);
-    hovOppsettMelding("Feil ved lagring: " + res.error.message, true);
-    return false;
+function kobleHovOppsett() {
+  const knapp = document.getElementById("lagreHovOppsettKnapp");
+  if (knapp && knapp.dataset.koblet !== "1") {
+    knapp.dataset.koblet = "1";
+    knapp.addEventListener("click", lagreHovOppsett);
   }
 
-  sisteHovFirma = res.data || rad;
-  fyllHovOppsettSkjema(sisteHovFirma);
-  hovOppsettMelding("Oppsett lagret.");
-  return true;
+  const logoFelt = document.getElementById("firmaLogoUrl");
+  if (logoFelt && logoFelt.dataset.koblet !== "1") {
+    logoFelt.dataset.koblet = "1";
+    logoFelt.addEventListener("input", () => hovOppsettLogoPreview(logoFelt.value));
+  }
+
+  setTimeout(lastHovOppsett, 200);
 }
 
 async function sjekkHovOppsett() {
-  const firma = await lastHovOppsett();
-
-  if (!firma || !firma.navn) {
-    if (typeof visSide === "function") {
-      visSide("firmaSide");
-    }
-
-    hovOppsettMelding(
-      "Fyll inn firmaoppsett første gang. Dette lagres og brukes på faktura/kreditnota.",
-      true
-    );
-
-    return false;
-  }
-
+  if (typeof kobleHovOppsett === "function") kobleHovOppsett();
+  await lastHovOppsett();
   return true;
 }
 
-async function lastBildeSomDataUrl(url) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-
-    const blob = await res.blob();
-
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    console.warn("Kunne ikke laste logo:", url, e);
-    return null;
-  }
-}
-
-function hentLogoDimensjoner(dataUrl) {
-  return new Promise(resolve => {
-    const img = new Image();
-
-    img.onload = () => {
-      resolve({
-        bredde: img.naturalWidth || img.width || 1,
-        hoyde: img.naturalHeight || img.height || 1
-      });
-    };
-
-    img.onerror = () => resolve(null);
-    img.src = dataUrl;
-  });
-}
-
-function finnBildeFormat(dataUrl) {
-  if (dataUrl.startsWith("data:image/png")) return "PNG";
-  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
-  return "JPEG";
-}
-
-async function leggTilLogo(doc, firma, x = 14, y = 10, maxW = 42, maxH = 24) {
-  firma = firma || sisteHovFirma || {};
-  const logoUrl = normaliserLogoUrl(firma.logo_url);
-  const dataUrl = await lastBildeSomDataUrl(logoUrl);
-
-  if (!dataUrl) return false;
-
-  const dimensjoner = await hentLogoDimensjoner(dataUrl);
-  const format = finnBildeFormat(dataUrl);
-
-  try {
-    let tegnW = maxW;
-    let tegnH = maxH;
-
-    if (dimensjoner) {
-      const scale = Math.min(
-        maxW / dimensjoner.bredde,
-        maxH / dimensjoner.hoyde
-      );
-
-      tegnW = dimensjoner.bredde * scale;
-      tegnH = dimensjoner.hoyde * scale;
-    }
-
-    const sentrertY = y + ((maxH - tegnH) / 2);
-
-    doc.addImage(
-      dataUrl,
-      format,
-      x,
-      sentrertY,
-      tegnW,
-      tegnH,
-      undefined,
-      "FAST"
-    );
-
-    return true;
-  } catch (e) {
-    console.warn("Kunne ikke legge logo i PDF:", e);
-    return false;
-  }
+function pdfFirmaNavn(firma) {
+  return firma?.navn || firma?.firmanavn || firma?.firma_navn || "";
 }
 
 async function tegnBrevhodePdf(doc, firma) {
   firma = firma || await hentFirmaData();
-
-  await leggTilLogo(doc, firma, 14, 10, 38, 22);
-
+  let y = 16;
   doc.setFontSize(14);
-  doc.text(String(firma.navn || ""), 60, 16);
-
+  const navn = pdfFirmaNavn(firma);
+  if (navn) doc.text(String(navn), 20, y);
+  y += 6;
   doc.setFontSize(9);
-
-  let y = 22;
-  const linjer = [];
-
-  if (firma.adresse) linjer.push(firma.adresse);
-  if (firma.telefon) linjer.push("Tlf: " + firma.telefon);
-  if (firma.epost) linjer.push("E-post: " + firma.epost);
-  if (firma.orgnr || firma.org_nr) linjer.push("Org.nr: " + (firma.orgnr || firma.org_nr));
-  if (firma.mva_nr) linjer.push("MVA: " + firma.mva_nr);
-  if (firma.brevhode_tekst) linjer.push(firma.brevhode_tekst);
-
-  linjer.forEach(linje => {
-    doc.text(String(linje), 60, y);
+  const linjer = [firma.adresse, firma.telefon, firma.epost || firma.email, firma.orgnr || firma.org_nr, firma.brevhode_tekst].filter(Boolean);
+  for (const l of linjer) {
+    doc.text(String(l), 20, y);
     y += 5;
-  });
-
-  doc.line(14, 42, 195, 42);
+  }
 }
 
 function tegnBrevfotAlleSiderPdf(doc, firma) {
-  firma = firma || sisteHovFirma || {};
-
-  const sideAntall = doc.getNumberOfPages();
-
-  for (let i = 1; i <= sideAntall; i++) {
+  firma = firma || {};
+  const tekst = firma.brevfot_tekst || firma.brevfot || "";
+  const sider = doc.getNumberOfPages ? doc.getNumberOfPages() : 1;
+  for (let i = 1; i <= sider; i++) {
     doc.setPage(i);
-
     doc.setFontSize(8);
-    doc.line(14, 280, 195, 280);
-
-    const deler = [];
-    if (firma.navn) deler.push(firma.navn);
-    if (firma.kontonr) deler.push("Kontonr: " + firma.kontonr);
-    if (firma.epost) deler.push(firma.epost);
-    if (firma.telefon) deler.push("Tlf: " + firma.telefon);
-
-    let tekst = deler.join(" | ");
-    if (firma.brevfot_tekst) {
-      tekst = tekst ? tekst + " | " + firma.brevfot_tekst : firma.brevfot_tekst;
-    }
-
-    doc.text(String(tekst || ""), 14, 286);
-    doc.text("Side " + i + " av " + sideAntall, 178, 286);
+    if (tekst) doc.text(String(tekst).slice(0, 110), 20, 286);
+    doc.text("Side " + i + " av " + sider, 170, 286);
   }
 }
 
-function tegnSkilleLinjePdf(doc, y, x1 = 14, x2 = 195) {
-  doc.line(x1, y, x2, y);
-}
-
-
-async function lastOppHovLogoTilSupabase(event) {
-  const fil = event?.target?.files?.[0];
-  if (!fil) return;
-
-  if (!window.supabaseClient || !supabaseClient.storage) {
-    hovOppsettMelding("Supabase Storage er ikke tilgjengelig.", true);
-    return;
-  }
-
-  const tillatteTyper = ["image/png", "image/jpeg", "image/webp"];
-  if (!tillatteTyper.includes(fil.type)) {
-    hovOppsettMelding("Logo må være PNG, JPG eller WEBP.", true);
-    return;
-  }
-
-  if (fil.size > 2 * 1024 * 1024) {
-    hovOppsettMelding("Logoen er for stor. Maks 2 MB.", true);
-    return;
-  }
-
-  const endelse = fil.type === "image/png" ? "png" : fil.type === "image/webp" ? "webp" : "jpg";
-  const filnavn = "hovslager/logo_" + Date.now() + "_" + Math.random().toString(36).slice(2) + "." + endelse;
-
-  hovOppsettMelding("Laster opp logo...");
-
-  const { error } = await supabaseClient.storage
-    .from("bilder")
-    .upload(filnavn, fil, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType: fil.type
-    });
-
-  if (error) {
-    console.error("Feil ved opplasting av logo:", error);
-    hovOppsettMelding("Feil ved opplasting av logo: " + error.message, true);
-    return;
-  }
-
-  const { data } = supabaseClient.storage
-    .from("bilder")
-    .getPublicUrl(filnavn);
-
-  const publicUrl = data?.publicUrl || "";
-  if (!publicUrl) {
-    hovOppsettMelding("Logo ble lastet opp, men kunne ikke hente offentlig URL.", true);
-    return;
-  }
-
-  hovOppsettSett("firmaLogoUrl", publicUrl);
-  oppdaterLogoForhandsvisning();
-  hovOppsettMelding("Logo lastet opp. Trykk Lagre oppsett for å lagre den.");
-}
-
-function kobleHovOppsett() {
-  const knapp = hovOppsettEl("lagreHovOppsettKnapp");
-  if (knapp) {
-    knapp.addEventListener("click", lagreHovOppsett);
-  }
-
-  const logoFelt = hovOppsettEl("firmaLogoUrl");
-  if (logoFelt) {
-    logoFelt.addEventListener("change", oppdaterLogoForhandsvisning);
-    logoFelt.addEventListener("input", oppdaterLogoForhandsvisning);
-  }
-
-  const logoFil = hovOppsettEl("firmaLogoFil");
-  if (logoFil) {
-    logoFil.addEventListener("change", lastOppHovLogoTilSupabase);
-  }
-}
-
+window.kobleHovOppsett = kobleHovOppsett;
+window.sjekkHovOppsett = sjekkHovOppsett;
 window.hentFirmaData = hentFirmaData;
 window.lastHovOppsett = lastHovOppsett;
 window.lagreHovOppsett = lagreHovOppsett;
-window.sjekkHovOppsett = sjekkHovOppsett;
-window.tegnBrevhodePdf = tegnBrevhodePdf;
-window.tegnBrevfotAlleSiderPdf = tegnBrevfotAlleSiderPdf;
-window.tegnSkilleLinjePdf = tegnSkilleLinjePdf;
-window.leggTilLogo = leggTilLogo;
-window.kobleHovOppsett = kobleHovOppsett;
-window.lastOppHovLogoTilSupabase = lastOppHovLogoTilSupabase;
+window.tegnBrevhodePdf = window.tegnBrevhodePdf || tegnBrevhodePdf;
+window.tegnBrevfotAlleSiderPdf = window.tegnBrevfotAlleSiderPdf || tegnBrevfotAlleSiderPdf;
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", kobleHovOppsett);
+} else {
+  kobleHovOppsett();
+}
