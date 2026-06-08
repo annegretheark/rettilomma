@@ -1,4 +1,4 @@
-console.log("varer.js ENDELIG ren varemodul lastet 7020");
+console.log("varer.js ren varemodul lastet 7062");
 
 (function () {
   "use strict";
@@ -88,7 +88,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
       return;
     }
 
-    // Viktig: Vis siden FØR databasekall. Hvis database feiler, skal ikke knappen virke død.
+    // Viktig: Vis siden F\u00D8R databasekall. Hvis database feiler, skal ikke knappen virke d\u00F8d.
     visKunSide("varerSide");
     melding("Laster varer...");
 
@@ -97,7 +97,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
       melding("");
     } catch (e) {
       console.error("Varer feilet:", e);
-      melding("Varer ble åpnet, men lasting feilet: " + (e.message || String(e)), true);
+      melding("Varer ble \u00E5pnet, men lasting feilet: " + (e.message || String(e)), true);
     }
   }
 
@@ -193,12 +193,12 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
             <th>Hovedlager</th>
             <th>Minimum</th>
             <th>MVA</th>
-            <th></th>
+            <th>Endre</th>
           </tr>
         </thead>
         <tbody>
           ${varerListe.map(v => `
-            <tr>
+            <tr class="klikkbar-vare-rad" onclick="window.redigerVare('${escapeHtml(v.id)}')" title="Klikk for å redigere varen">
               <td>${escapeHtml(v.varenr || "")}</td>
               <td>${escapeHtml(varenavn(v))}</td>
               <td>${escapeHtml(v.innpris ?? v.vareinnpris ?? 0)}</td>
@@ -206,7 +206,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
               <td>${escapeHtml(v.lager_antall ?? v.antall ?? v.beholdning ?? 0)}</td>
               <td>${escapeHtml(v.minimum_antall ?? v.min_antall ?? 0)}</td>
               <td>${escapeHtml(v.mva_prosent ?? v.mva ?? 25)}</td>
-              <td><button type="button" class="secondary liten-knapp" onclick="window.redigerVare('${escapeHtml(v.id)}')">Endre</button></td>
+              <td><button type="button" class="secondary liten-knapp" onclick="event.stopPropagation(); window.redigerVare('${escapeHtml(v.id)}')">Endre</button></td>
             </tr>
           `).join("")}
         </tbody>
@@ -228,7 +228,13 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     setVal("varemva", v.mva_prosent ?? v.mva ?? 25);
 
     window.redigerVareId = id;
-    melding("Redigerer vare. Trykk Lagre vare når du er ferdig.");
+    melding("Redigerer vare. Trykk Lagre vare n\u00E5r du er ferdig.");
+
+    const felt = el("varenr") || el("varenavn");
+    if (felt) {
+      felt.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => felt.focus(), 150);
+    }
   }
 
   async function lagreVare() {
@@ -241,7 +247,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     const varenr = val("varenr");
 
     if (!navn && !varenr) {
-      melding("Skriv varenavn eller varenr først.", true);
+      melding("Skriv varenavn eller varenr f\u00F8rst.", true);
       return;
     }
 
@@ -288,12 +294,12 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     }
   }
 
-  async function importerVarer() {
-    const input = el("importVarerFil");
+  async function importerVarer(inputId = "importVarerFil") {
+    const input = el(inputId) || el("importVarerFil");
     const fil = input?.files?.[0];
 
     if (!fil) {
-      melding("Velg Excel- eller CSV-fil først.", true);
+      melding("Velg CSV- eller Excel-fil f\u00F8rst.", true);
       return;
     }
 
@@ -305,7 +311,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     const buffer = await fil.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const råRader = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const r\u00E5Rader = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
     const hent = (rad, ...keys) => {
       for (const k of keys) {
@@ -314,7 +320,7 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
       return "";
     };
 
-    const rader = råRader.map(rad => {
+    const rader = r\u00E5Rader.map(rad => {
       const varenr = String(hent(rad, "varenr", "Varenr", "vare_nr", "VareNr", "Artikkel", "artikkel")).trim();
       const navn = String(hent(rad, "navn", "Navn", "varenavn", "Varenavn", "vare", "Vare", "beskrivelse", "Beskrivelse")).trim();
       if (!varenr && !navn) return null;
@@ -343,8 +349,15 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
       return;
     }
 
-    melding(`Importerte ${rader.length} varer.`);
+    melding(`Importerte ${rader.length} varer til hovedlager.`);
     await lastVarer();
+
+    if (typeof window.fyllBilLagerVareValg === "function") {
+      try { await window.fyllBilLagerVareValg(); } catch (e) { console.warn(e); }
+    }
+    if (typeof window.lastBilerOgBilLager === "function") {
+      try { await window.lastBilerOgBilLager(); } catch (e) { console.warn(e); }
+    }
   }
 
   function kobleKnapper() {
@@ -363,7 +376,14 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     if (tilbakeFraVarerKnapp) tilbakeFraVarerKnapp.onclick = tilbakeFraVarer;
 
     const importVarerKnapp = el("importVarerKnapp");
-    if (importVarerKnapp) importVarerKnapp.onclick = importerVarer;
+    if (importVarerKnapp) importVarerKnapp.onclick = function () { importerVarer("importVarerFil"); };
+
+    const importBilLagerKnapp = el("importBilLagerKnapp");
+    if (importBilLagerKnapp) {
+      importBilLagerKnapp.onclick = async function () {
+        await importerVarer("importBilLagerFil");
+      };
+    }
 
     const innpris = el("vareinnpris");
     const paslag = el("varepaslag");
@@ -404,6 +424,16 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
       .vare-enlinje-tabell td:nth-child(2) { white-space:normal; min-width:180px; }
       .liten-knapp { padding:5px 8px; font-size:12px; margin:0; }
       #vareListe { overflow-x:auto; }
+      .klikkbar-vare-rad { cursor:pointer; }
+      .klikkbar-vare-rad:hover td { background:#1f2937; }
+      .vare-enlinje-tabell th:last-child,
+      .vare-enlinje-tabell td:last-child {
+        position:sticky;
+        right:0;
+        background:#111827;
+        z-index:3;
+      }
+      .vare-enlinje-tabell td:last-child { min-width:72px; }
     `;
     document.head.appendChild(style);
   }
@@ -413,13 +443,14 @@ console.log("varer.js ENDELIG ren varemodul lastet 7020");
     kobleKnapper();
   }
 
-  // Viktig: visVarer skal nå vise siden, ikke bare laste varer.
+  // Viktig: visVarer skal n\u00E5 vise siden, ikke bare laste varer.
   window.visVarerSide = visVarerSide;
   window.visVarer = visVarerSide;
   window.lastVarer = lastVarer;
   window.lagreVare = lagreVare;
   window.redigerVare = redigerVare;
   window.importerVarer = importerVarer;
+  window.importerVarerTilHovedlager = importerVarer;
   window.tegnVarer = tegnVarer;
   window.visKunSide = visKunSide;
 

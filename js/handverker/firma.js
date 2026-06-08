@@ -1,29 +1,14 @@
-async function hentFirmaData() {
+// firma.js - håndverker
+// Fikset: bruker aktivt firma-id, retter Org.nr/MVA-feltnavn og eksponerer firma-id til timer/faktura.
+
+async function hentAktivFirmaRad() {
   if (!window.supabaseClient) return window.firmaData || {};
 
-  const { data, error } = await supabaseClient
-    .from("firma")
-    .select("*")
-    .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Feil ved henting av firma til PDF:", error);
-    return window.firmaData || {};
-  }
-
-  window.firmaData = data || {};
-  window.firma = window.firmaData;
-  return window.firmaData;
-}
-
-function settFirmaFeltHvisFinnes(id, verdi) {
-  const el = document.getElementById(id);
-  if (el) el.value = verdi || "";
-}
-
-async function lastFirma() {
+  /*
+    Viktig:
+    Denne versjonen bruker fortsatt første firma hvis du bare har ett firma i databasen.
+    Når du senere har flere firma/kunder i samme Supabase, bør firma_id hentes fra innlogget ansatt/tenant.
+  */
   const { data, error } = await supabaseClient
     .from("firma")
     .select("*")
@@ -33,23 +18,62 @@ async function lastFirma() {
 
   if (error) {
     console.error("Feil ved henting av firma:", error);
-    alert("Feil ved henting av firma: " + error.message);
-    return;
+    return window.firmaData || {};
   }
 
   const firma = data || {};
   window.firmaData = firma;
   window.firma = firma;
+  window.aktivFirmaId = firma.id || null;
+
+  return firma;
+}
+
+async function hentFirmaData() {
+  return await hentAktivFirmaRad();
+}
+
+function settFirmaFeltHvisFinnes(id, verdi) {
+  const el = document.getElementById(id);
+  if (el) el.value = verdi || "";
+}
+
+function hentFirmaFeltVerdi(...ider) {
+  for (const id of ider) {
+    const element = document.getElementById(id);
+    if (!element) continue;
+
+    const verdi = String(element.value || "").trim();
+    if (verdi !== "") return verdi;
+  }
+
+  return "";
+}
+
+function leggTilHvisUtfylt(objekt, feltnavn, ...elementIder) {
+  const verdi = hentFirmaFeltVerdi(...elementIder);
+  if (verdi !== "") objekt[feltnavn] = verdi;
+}
+
+async function lastFirma() {
+  const firma = await hentAktivFirmaRad();
 
   settFirmaFeltHvisFinnes("firmaNavn", firma.navn);
   settFirmaFeltHvisFinnes("firmaAdresse", firma.adresse);
+
+  // Støtter begge varianter av id-navn i HTML.
   settFirmaFeltHvisFinnes("firmaOrgnr", firma.orgnr || firma.org_nr);
-  const mvaFelt = document.getElementById("firmaMvanr");
-  if (mvaFelt) mvaFelt.value = firma.mva_nr || firma.mvanr || "";
+  settFirmaFeltHvisFinnes("firmaOrgNr", firma.orgnr || firma.org_nr);
+
+  settFirmaFeltHvisFinnes("firmaMvanr", firma.mva_nr || firma.mvanr);
+  settFirmaFeltHvisFinnes("firmaMvaNr", firma.mva_nr || firma.mvanr);
+
   settFirmaFeltHvisFinnes("firmaTelefon", firma.telefon);
   settFirmaFeltHvisFinnes("firmaEpost", firma.epost || firma.email);
-  const kontonrFelt = document.getElementById("firmaKontonr");
-  if (kontonrFelt) kontonrFelt.value = firma.kontonr || firma.konto_nr || "";
+
+  settFirmaFeltHvisFinnes("firmaKontonr", firma.kontonr || firma.konto_nr);
+  settFirmaFeltHvisFinnes("firmaKontoNr", firma.kontonr || firma.konto_nr);
+
   settFirmaFeltHvisFinnes("firmaVippsNummer", firma.vipps_nummer);
   settFirmaFeltHvisFinnes("firmaVippsMottaker", firma.vipps_mottaker);
   settFirmaFeltHvisFinnes("firmaBrevhode", firma.brevhode_tekst);
@@ -62,7 +86,7 @@ async function lastFirma() {
     const logoSrc = firma.logo_url || firma.logo || "";
     if (logoSrc) {
       preview.src = logoSrc;
-      preview.classList.remove("hidden");
+      preview.classList.remove("hidden", "skjult");
     } else {
       preview.removeAttribute("src");
       preview.classList.add("hidden");
@@ -70,15 +94,8 @@ async function lastFirma() {
   }
 
   visFirma(firma);
+  return firma;
 }
-
-function leggTilHvisUtfylt(objekt, feltnavn, elementId) {
-  const element = document.getElementById(elementId);
-  if (!element) return;
-  const verdi = element.value.trim();
-  if (verdi !== "") objekt[feltnavn] = verdi;
-}
-
 
 function tryggLogoFilnavn(filnavn) {
   const navn = String(filnavn || "logo.png")
@@ -93,7 +110,6 @@ function tryggLogoFilnavn(filnavn) {
 
 async function lastOppFirmaLogoHvisValgt() {
   const fil = window.firmaLogoFil;
-
   if (!fil) return null;
 
   const filnavn = tryggLogoFilnavn(fil.name);
@@ -119,7 +135,6 @@ async function lastOppFirmaLogoHvisValgt() {
   return data?.publicUrl || null;
 }
 
-
 async function lagreFirma() {
   const melding = document.getElementById("firmaMelding");
   if (melding) melding.textContent = "";
@@ -140,15 +155,14 @@ async function lagreFirma() {
 
   const firma = {};
 
-  // Viktig: tomme felt overskriver ikke eksisterende opplysninger.
-  // Dette hindrer at firma-info blir borte hvis skjemaet ikke er ferdig utfylt.
+  // Tomme felt overskriver ikke eksisterende opplysninger.
   leggTilHvisUtfylt(firma, "navn", "firmaNavn");
   leggTilHvisUtfylt(firma, "adresse", "firmaAdresse");
-  leggTilHvisUtfylt(firma, "orgnr", "firmaOrgnr");
-  leggTilHvisUtfylt(firma, "mva_nr", "firmaMvanr");
+  leggTilHvisUtfylt(firma, "orgnr", "firmaOrgnr", "firmaOrgNr");
+  leggTilHvisUtfylt(firma, "mva_nr", "firmaMvanr", "firmaMvaNr");
   leggTilHvisUtfylt(firma, "telefon", "firmaTelefon");
   leggTilHvisUtfylt(firma, "epost", "firmaEpost");
-  leggTilHvisUtfylt(firma, "kontonr", "firmaKontonr");
+  leggTilHvisUtfylt(firma, "kontonr", "firmaKontonr", "firmaKontoNr");
   leggTilHvisUtfylt(firma, "vipps_nummer", "firmaVippsNummer");
   leggTilHvisUtfylt(firma, "vipps_mottaker", "firmaVippsMottaker");
   leggTilHvisUtfylt(firma, "brevhode_tekst", "firmaBrevhode");
@@ -160,8 +174,6 @@ async function lagreFirma() {
     const logoUrl = await lastOppFirmaLogoHvisValgt();
     if (logoUrl) {
       firma.logo_url = logoUrl;
-
-      // Ikke lagre store base64-bilder i databasen når Storage brukes.
       firma.logo = null;
     }
   } catch (e) {
@@ -183,12 +195,14 @@ async function lagreFirma() {
       .from("firma")
       .update(firma)
       .eq("id", eksisterende.id)
-      .select();
+      .select()
+      .single();
   } else {
     result = await supabaseClient
       .from("firma")
       .insert([firma])
-      .select();
+      .select()
+      .single();
   }
 
   if (result.error) {
@@ -199,17 +213,22 @@ async function lagreFirma() {
   }
 
   window.firmaLogoFil = null;
+  window.firmaData = result.data || {};
+  window.firma = window.firmaData;
+  window.aktivFirmaId = window.firmaData.id || null;
+
   if (typeof window.nullstillPdfLogoCache === "function") {
     window.nullstillPdfLogoCache();
   }
 
   if (melding) melding.textContent = "Firma lagret i databasen";
   else alert("Firma lagret i databasen");
+
   await lastFirma();
 }
 
 function lastInnLogo(event) {
-  const fil = event.target.files[0];
+  const fil = event?.target?.files?.[0];
   if (!fil) return;
 
   window.firmaLogoFil = fil;
@@ -217,7 +236,7 @@ function lastInnLogo(event) {
   const preview = document.getElementById("firmaLogoPreview");
   if (preview) {
     preview.src = URL.createObjectURL(fil);
-    preview.classList.remove("hidden");
+    preview.classList.remove("hidden", "skjult");
   }
 }
 
@@ -236,9 +255,14 @@ function visFirma(firma) {
     Vippsnummer: ${firma.vipps_nummer || ""}<br>
     Vipps mottaker: ${firma.vipps_mottaker || ""}<br>
     Kontaktperson: ${firma.kontaktperson || ""}<br>
+    Firma-id: ${firma.id || ""}<br>
     Logo: ${firma.logo_url ? "Lagret i Storage" : (firma.logo ? "Lagret i database" : "Ikke valgt")}<br>
     ${firma.andre_opplysninger || ""}
   `;
+}
+
+function hentAktivFirmaId() {
+  return window.aktivFirmaId || window.firmaData?.id || window.firma?.id || null;
 }
 
 async function fyllFirmaSkjema() {
@@ -254,7 +278,23 @@ window.lagreFirma = lagreFirma;
 window.lastInnLogo = lastInnLogo;
 window.fyllFirmaSkjema = fyllFirmaSkjema;
 window.tegnFirmaInfo = tegnFirmaInfo;
-
 window.hentFirmaData = hentFirmaData;
+window.hentAktivFirmaId = hentAktivFirmaId;
+
 window.firmaData = window.firmaData || {};
 window.firma = window.firma || window.firmaData;
+window.aktivFirmaId = window.aktivFirmaId || window.firmaData?.id || null;
+
+window.addEventListener("load", function () {
+  const lagreKnapp = document.getElementById("lagreFirmaKnapp");
+  if (lagreKnapp) {
+    lagreKnapp.onclick = function () {
+      window.lagreFirma();
+    };
+  }
+
+  const logoInput = document.getElementById("firmaLogo");
+  if (logoInput) {
+    logoInput.onchange = window.lastInnLogo;
+  }
+});

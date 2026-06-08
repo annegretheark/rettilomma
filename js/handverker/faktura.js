@@ -142,6 +142,116 @@ async function hentDirekteFakturaUtlegg(valgtKunde) {
   );
 }
 
+function fakturaTekst(verdi) {
+  // jsPDF kan få rare utslag hvis undefined/null eller veldig lange tekster dyttes rett inn.
+  return String(verdi ?? "");
+}
+
+function fakturaUtleggTypeTekst(type) {
+  const t = String(type || "").toLowerCase().trim();
+  const map = {
+    kjoring: "kjøring",
+    kjoering: "kjøring",
+    bompenger: "bompenger",
+    parkering: "parkering",
+    ferge: "ferge",
+    diett: "diett",
+    billetter: "billetter",
+    annet: "annet"
+  };
+  return map[t] || String(type || "utlegg");
+}
+
+function fjernDuplikatUtlegg(utleggListe) {
+  const sett = new Set();
+  const rader = [];
+
+  (utleggListe || []).forEach(u => {
+    const key = [
+      String(u.kunde_id || ""),
+      String(u.type || u.utgift_type || "").toLowerCase().trim(),
+      Number(u.belop || 0).toFixed(2),
+      String(u.created_at || "").slice(0, 10),
+      String(u.beskrivelse || "").toLowerCase().trim()
+    ].join("|");
+
+    if (sett.has(key)) return;
+    sett.add(key);
+    rader.push(u);
+  });
+
+  return rader;
+}
+
+function byggDirekteUtleggLinjer(direkteUtlegg) {
+  return fjernDuplikatUtlegg(direkteUtlegg).map(u => {
+    const typeTekst = fakturaUtleggTypeTekst(u.type || u.utgift_type || u.beskrivelse || "utlegg");
+    return {
+      dato: String(u.created_at || u.dato || "").slice(0, 10),
+      beskrivelse: "Utlegg: " + typeTekst,
+      utforer: "",
+      antall: 1,
+      sumEksMva: Number(u.belop || 0),
+      mva: 0,
+      _utleggId: u.id || null
+    };
+  });
+}
+
+function samleKjoringLinjer(utleggLinjer) {
+  const linjer = utleggLinjer || [];
+  const kjoring = linjer.filter(l =>
+    String(l.beskrivelse || "").toLowerCase().includes("kjøring") ||
+    String(l.beskrivelse || "").toLowerCase().includes("kjoring")
+  );
+  const andre = linjer.filter(l => !kjoring.includes(l));
+
+  const sumKjoring = kjoring.reduce((sum, l) => sum + Number(l.sumEksMva || 0), 0);
+  if (sumKjoring <= 0) return linjer;
+
+  const dato = kjoring[0]?.dato || "";
+  return [{
+    dato,
+    beskrivelse: "Utlegg: kjøring",
+    utforer: "",
+    antall: 1,
+    sumEksMva: sumKjoring,
+    mva: 0
+  }].concat(andre);
+}
+
+async function sperrDirekteFakturaUtlegg(direkteUtlegg, fakturanr) {
+  const ider = fjernDuplikatUtlegg(direkteUtlegg)
+    .map(u => u.id)
+    .filter(Boolean);
+
+  if (!ider.length) return;
+
+  const { error } = await supabaseClient
+    .from("faktura_utlegg")
+    .update({
+      fakturert: true,
+      fakturanr
+    })
+    .in("id", ider);
+
+  if (error) {
+    console.error("Feil ved sperring av direkte utlegg:", error);
+    alert("Faktura ble laget, men utlegg ble ikke sperret: " + error.message);
+  }
+}
+
+function forkortPdfTekst(doc, tekst, maksBredde) {
+  tekst = fakturaTekst(tekst);
+  if (!tekst) return "";
+  if (doc.getTextWidth(tekst) <= maksBredde) return tekst;
+  let t = tekst;
+  while (t.length > 1 && doc.getTextWidth(t + "…") > maksBredde) {
+    t = t.slice(0, -1);
+  }
+  return t + "…";
+}
+
 function byggDirekteVareLinjer(direkteVarer) {
   return (direkteVarer || []).map(v => {
     const antall = Number(v.antall || 1);
@@ -157,6 +267,7 @@ function byggDirekteVareLinjer(direkteVarer) {
     return {
       dato: String(v.created_at || "").slice(0, 10),
       beskrivelse: tekst.slice(0, 40),
+      utforer: "",
       antall,
       sumEksMva,
       mva
@@ -252,16 +363,9 @@ async function lagEnFakturaPdf(
   const vareMap = await hentVareMapForTimer(fakturaTimer);
   const timeLinjer = byggFakturaLinjer(fakturaTimer, vareMap);
   const direkteVareLinjer = byggDirekteVareLinjer(direkteVarer);
-  const direkteUtleggLinjer = (direkteUtlegg || []).map(u => ({
-  dato: String(u.created_at || "").slice(0, 10),
-  beskrivelse: "Utlegg: " + (u.beskrivelse || u.type || ""),
-  antall: 1,
-  sumEksMva: Number(u.belop || 0),
-  mva: 0
-}));
+  const direkteUtleggLinjer = samleKjoringLinjer(byggDirekteUtleggLinjer(direkteUtlegg));
 
- const fakturaLinjer =
-  timeLinjer.concat(direkteVareLinjer, direkteUtleggLinjer);
+  const fakturaLinjer = timeLinjer.concat(direkteVareLinjer, direkteUtleggLinjer);
 
   const summer = summerFakturaLinjer(fakturaLinjer);
 
@@ -349,11 +453,11 @@ async function lagEnFakturaPdf(
 
   doc.setFontSize(10);
   doc.text("Dato", 14, y);
-  doc.text("Beskrivelse", 45, y);
-  doc.text("Utfører", 104, y);
-  doc.text("Antall", 132, y);
-  doc.text("Eks mva", 152, y);
-  doc.text("MVA", 176, y);
+  doc.text("Beskrivelse", 38, y);
+  doc.text("Utfører", 100, y);
+  doc.text("Antall", 142, y);
+  doc.text("Eks mva", 158, y);
+  doc.text("MVA", 181, y);
 
   y += 4;
 
@@ -380,11 +484,11 @@ async function lagEnFakturaPdf(
 
       doc.setFontSize(10);
       doc.text("Dato", 14, y);
-      doc.text("Beskrivelse", 45, y);
-      doc.text("Utfører", 104, y);
-      doc.text("Antall", 132, y);
-      doc.text("Eks mva", 152, y);
-      doc.text("MVA", 176, y);
+      doc.text("Beskrivelse", 38, y);
+      doc.text("Utfører", 100, y);
+      doc.text("Antall", 142, y);
+      doc.text("Eks mva", 158, y);
+      doc.text("MVA", 181, y);
 
       y += 4;
 
@@ -397,12 +501,13 @@ async function lagEnFakturaPdf(
       y += 7;
     }
 
-    doc.text(String(linje.dato || ""), 14, y);
-    doc.text(String(linje.beskrivelse || "").slice(0, 28), 45, y);
-    doc.text(String(linje.utforer || "").slice(0, 20), 104, y);
-    doc.text(String(linje.antall || 0), 132, y);
-    doc.text(formatBelop(linje.sumEksMva), 152, y);
-    doc.text(formatBelop(linje.mva), 176, y);
+    doc.setFontSize(9);
+    doc.text(forkortPdfTekst(doc, linje.dato || "", 22), 14, y);
+    doc.text(forkortPdfTekst(doc, linje.beskrivelse || "", 58), 38, y);
+    doc.text(forkortPdfTekst(doc, linje.utforer || "", 38), 100, y);
+    doc.text(fakturaTekst(linje.antall || 0), 142, y);
+    doc.text(formatBelop(linje.sumEksMva), 158, y);
+    doc.text(formatBelop(linje.mva), 181, y);
 
     y += 6;
   }
@@ -461,15 +566,28 @@ async function lagEnFakturaPdf(
   if (!erKopi) {
 
     if (fakturaTimer.length) {
-      await sperrFakturerteTimer(
+      const timerSperret = await sperrFakturerteTimer(
         fakturaTimer,
         fakturanr
       );
+
+      if (!timerSperret) {
+        // PDF og fakturapost er laget, men vi stopper her slik at bruker ikke tror
+        // samme jobb trygt kan faktureres på nytt.
+        return;
+      }
     }
 
     if (direkteVarer.length) {
       await sperrDirekteFakturaVarer(
         direkteVarer,
+        fakturanr
+      );
+    }
+
+    if (direkteUtlegg.length) {
+      await sperrDirekteFakturaUtlegg(
+        direkteUtlegg,
         fakturanr
       );
     }
@@ -522,7 +640,7 @@ async function lagFakturaPdf() {
         .filter(t => erSammeKunde(t, valgtKunde));
 
   const direkteVarer = await hentDirekteFakturaVarer(valgtKunde);
-  const direkteUtlegg = await hentDirekteFakturaUtlegg(valgtKunde);
+  const direkteUtlegg = fjernDuplikatUtlegg(await hentDirekteFakturaUtlegg(valgtKunde));
 
     if (!timerForMaaned.length && !direkteVarer.length && !direkteUtlegg.length) {
       if (melding) {
@@ -540,6 +658,11 @@ async function lagFakturaPdf() {
 
     timerGrupper.forEach(g => alleNokler.add(g.key));
     Object.keys(vareGrupper).forEach(key => alleNokler.add(key));
+    if (direkteUtlegg.length && alleNokler.size === 0) {
+      alleNokler.add(String(valgtKunde.id || valgtKunde.kundenr || "kunde") + "_utenprosjekt");
+    }
+
+    let utleggBrukt = false;
 
     for (const key of alleNokler) {
       const gruppeTimer =
@@ -553,20 +676,27 @@ async function lagFakturaPdf() {
         (gruppeVarer.length ? finnKundeForDirekteVare(gruppeVarer[0]) : null) ||
         null;
 
+      const gruppeUtlegg = utleggBrukt ? [] : direkteUtlegg;
+      utleggBrukt = true;
+
       await lagEnFakturaPdf(
-  kunde,
-  gruppeTimer,
-  maaned,
-  firma,
-  false,
-  null,
-  gruppeVarer,
-  direkteUtlegg
-);
+        kunde,
+        gruppeTimer,
+        maaned,
+        firma,
+        false,
+        null,
+        gruppeVarer,
+        gruppeUtlegg
+      );
   }
+    if (typeof window.lastTimer === "function") {
+      try { await window.lastTimer(); } catch (e) { console.warn("Kunne ikke laste timer på nytt etter faktura:", e); }
+    }
+
     if (melding) {
       melding.textContent =
-        "Faktura PDF laget for valgt kunde. Timer, varelinjer og utlegg er sperret mot ny fakturering.";
+        "Faktura PDF laget for valgt kunde. Jobber, varelinjer og utlegg er sperret mot ny fakturering.";
     }
 
     if (typeof fyllKreditnotaFakturaValg === "function") {
@@ -743,39 +873,46 @@ function fyllKreditnotaFakturaValg() {
 }
 
 async function lagKreditnotaPdf() {
-  const select =
-    document.getElementById("kreditnotaFakturaValg");
+  const select = document.getElementById("kreditnotaFakturaValg");
 
   if (!select || !select.value) {
     alert("Velg faktura først.");
     return;
   }
 
-  const fakturanr = select.value;
-
-  const kreditTimer =
-    (window.timer || []).filter(t =>
-      String(t.fakturanr || t.faktura_nr || "") === fakturanr
-    );
-
-  if (!kreditTimer.length) {
-    alert("Fant ingen timer.");
-    return;
-  }
+  const fakturanr = String(select.value || "").trim();
 
   const jspdfObj = window.jspdf;
-
   if (!jspdfObj || !jspdfObj.jsPDF) {
     alert("PDF-biblioteket er ikke lastet.");
     return;
   }
 
+  if (!window.supabaseClient) {
+    alert("Supabase er ikke lastet.");
+    return;
+  }
+
+  const { data: fakturaData, error: fakturaError } = await supabaseClient
+    .from("fakturaer")
+    .select("*")
+    .eq("fakturanr", fakturanr)
+    .limit(1);
+
+  if (fakturaError) {
+    alert("Kunne ikke hente faktura: " + fakturaError.message);
+    return;
+  }
+
+  const faktura = Array.isArray(fakturaData) ? fakturaData[0] : null;
+
+  if (!faktura) {
+    alert("Fant ikke valgt faktura i fakturaer-tabellen.");
+    return;
+  }
+
   const firma = await hentFirmaData();
   const doc = new jspdfObj.jsPDF();
-
-  const vareMap = await hentVareMapForTimer(kreditTimer);
-  const kreditLinjer = byggFakturaLinjer(kreditTimer, vareMap);
-  const summer = summerFakturaLinjer(kreditLinjer);
 
   if (typeof tegnBrevhodePdf === "function") {
     await tegnBrevhodePdf(doc, firma);
@@ -783,8 +920,31 @@ async function lagKreditnotaPdf() {
     await leggTilLogo(doc);
   }
 
-  const kunde = finnKundeForTime(kreditTimer[0]) || null;
+  let kunde = null;
+  const kundeId = faktura.kunden_id || faktura.kunde_id || "";
+
+  if (kundeId) {
+    kunde = (window.kunder || []).find(k => String(k.id || "") === String(kundeId)) || null;
+
+    if (!kunde) {
+      try {
+        const { data: kundeData } = await supabaseClient
+          .from("kunder")
+          .select("*")
+          .eq("id", kundeId)
+          .limit(1);
+
+        kunde = Array.isArray(kundeData) ? kundeData[0] : null;
+      } catch (e) {
+        console.warn("Kunne ikke hente kunde til kreditnota:", e);
+      }
+    }
+  }
+
   const kreditnotaNr = "KREDIT-" + fakturanr;
+  const eksMva = Number(faktura.eks_mva || faktura.sum_eks_mva || 0);
+  const mva = Number(faktura.mva || 0);
+  const inklMva = Number(faktura.inkl_mva || faktura.total || (eksMva + mva));
 
   let y = 70;
 
@@ -792,16 +952,16 @@ async function lagKreditnotaPdf() {
   doc.text("KREDITNOTA", 14, y);
 
   doc.setFontSize(10);
-  doc.text("Kreditnota nr", 140, y);
-  doc.text(kreditnotaNr, 175, y);
+  doc.text("Kreditnota nr", 118, y);
+  doc.text(forkortPdfTekst(doc, kreditnotaNr, 48), 195, y, { align: "right" });
 
   y += 6;
-  doc.text("Krediterer faktura", 140, y);
-  doc.text(String(fakturanr || ""), 175, y);
+  doc.text("Krediterer faktura", 118, y);
+  doc.text(forkortPdfTekst(doc, fakturanr, 48), 195, y, { align: "right" });
 
   y += 6;
-  doc.text("Dato", 140, y);
-  doc.text(formatDatoISO(new Date()), 175, y);
+  doc.text("Dato", 118, y);
+  doc.text(formatDatoISO(new Date()), 195, y, { align: "right" });
 
   y = 95;
 
@@ -810,19 +970,25 @@ async function lagKreditnotaPdf() {
   y += 6;
 
   doc.setFontSize(10);
-  doc.text(hentKundeNavn(kunde, kreditTimer[0]), 14, y);
+  const kundeNavn =
+    kunde?.navn ||
+    faktura.kunde_navn ||
+    faktura.kundenavn ||
+    "Kunde";
+
+  doc.text(String(kundeNavn), 14, y);
   y += 6;
 
-  const kundeAdresse = kunde?.adresse || kreditTimer[0]?.kunde_adresse || "";
-  const kundePostadresse = kunde?.postadresse || kreditTimer[0]?.kunde_postadresse || "";
+  const kundeAdresse = kunde?.adresse || faktura.kunde_adresse || "";
+  const kundePostadresse = kunde?.postadresse || faktura.kunde_postadresse || "";
 
   if (kundeAdresse) {
-    doc.text(kundeAdresse, 14, y);
+    doc.text(String(kundeAdresse), 14, y);
     y += 6;
   }
 
   if (kundePostadresse) {
-    doc.text(kundePostadresse, 14, y);
+    doc.text(String(kundePostadresse), 14, y);
     y += 6;
   }
 
@@ -830,7 +996,7 @@ async function lagKreditnotaPdf() {
 
   doc.setFontSize(10);
   doc.text("Beskrivelse", 14, y);
-  doc.text("Beløp eks. mva", 145, y);
+  doc.text("Beløp eks. mva", 195, y, { align: "right" });
 
   if (typeof tegnSkilleLinjePdf === "function") {
     tegnSkilleLinjePdf(doc, y + 2);
@@ -840,23 +1006,23 @@ async function lagKreditnotaPdf() {
 
   y += 10;
 
-  doc.text("Kreditering av faktura " + String(fakturanr || ""), 14, y);
-  doc.text("-" + formatBelop(summer.sumEksMva) + " kr", 145, y);
+  doc.text(forkortPdfTekst(doc, "Kreditering av faktura " + fakturanr, 115), 14, y);
+  doc.text("-" + formatBelop(eksMva) + " kr", 195, y, { align: "right" });
 
   y += 20;
 
   doc.setFontSize(11);
   doc.text("Sum eks. mva", 120, y);
-  doc.text("-" + formatBelop(summer.sumEksMva) + " kr", 165, y);
+  doc.text("-" + formatBelop(eksMva) + " kr", 195, y, { align: "right" });
 
   y += 7;
   doc.text("MVA", 120, y);
-  doc.text("-" + formatBelop(summer.mva) + " kr", 165, y);
+  doc.text("-" + formatBelop(mva) + " kr", 195, y, { align: "right" });
 
   y += 7;
   doc.setFontSize(12);
   doc.text("Sum inkl. mva", 120, y);
-  doc.text("-" + formatBelop(summer.sumInkMva) + " kr", 165, y);
+  doc.text("-" + formatBelop(inklMva) + " kr", 195, y, { align: "right" });
 
   if (typeof tegnBrevfotAlleSiderPdf === "function") {
     tegnBrevfotAlleSiderPdf(doc, firma);
@@ -864,12 +1030,24 @@ async function lagKreditnotaPdf() {
 
   doc.save("kreditnota_" + tryggFilnavn(fakturanr) + ".pdf");
 
+  try {
+    await supabaseClient
+      .from("fakturaer")
+      .update({ status: "kreditert" })
+      .eq("fakturanr", fakturanr);
+  } catch (e) {
+    console.warn("Kreditnota ble laget, men faktura kunne ikke merkes kreditert:", e);
+  }
+
   const kreditOmrade = document.getElementById("kreditnotaOmrade");
   if (kreditOmrade) kreditOmrade.style.display = "none";
 
+  if (typeof fyllKreditnotaFakturaValg === "function") {
+    fyllKreditnotaFakturaValg();
+  }
+
   alert("Kreditnota laget.");
 }
-
 function kobleKreditnotaKnapp() {
   const knapp =
     document.getElementById("skrivUtKreditnotaKnapp");
@@ -882,20 +1060,76 @@ function kobleKreditnotaKnapp() {
     await lagKreditnotaPdf();
   };
 }
-async function skrivUtPurringerPdf() {
+function purringErUbetalt(f) {
+  const status = String(f?.status || f?.betalingsstatus || "").toLowerCase();
+  const inkl = Number(f?.inkl_mva || f?.total || 0);
+  const betalt = Number(f?.betalt_belop || 0);
+
+  if (status === "betalt" || status === "kreditert" || status === "kreditnota") return false;
+  if (inkl > 0 && betalt >= inkl) return false;
+
+  return true;
+}
+
+function purringErForfalt(f) {
+  const forfall = String(f?.forfallsdato || "").slice(0, 10);
+  const iDag = new Date().toISOString().slice(0, 10);
+  return !forfall || forfall < iDag;
+}
+
+async function hentPurrbareFakturaer() {
   const { data, error } = await supabaseClient
     .from("fakturaer")
     .select("*")
-    .eq("status", "Purret")
-    .gte("siste_purring_dato", new Date().toISOString().slice(0, 10));
+    .order("forfallsdato", { ascending: true });
 
   if (error) {
-    alert("Feil ved henting av purringer: " + error.message);
-    return;
+    alert("Feil ved henting av fakturaer til purring: " + error.message);
+    return [];
   }
 
+  return (data || [])
+    .filter(purringErUbetalt)
+    .filter(purringErForfalt);
+}
+
+async function merkFakturaerPurret(fakturaer) {
+  const fakturanr = (fakturaer || [])
+    .map(f => f.fakturanr)
+    .filter(Boolean);
+
+  if (!fakturanr.length) return;
+
+  const iDag = new Date().toISOString().slice(0, 10);
+
+  // Først prøver vi alle purringkolonner. Hvis databasen mangler noen av dem,
+  // faller vi pent tilbake uten å stoppe utskriften.
+  let res = await supabaseClient
+    .from("fakturaer")
+    .update({
+      status: "Purret",
+      betalingsstatus: "purret",
+      siste_purring_dato: iDag
+    })
+    .in("fakturanr", fakturanr);
+
+  if (res.error) {
+    res = await supabaseClient
+      .from("fakturaer")
+      .update({ status: "Purret" })
+      .in("fakturanr", fakturanr);
+  }
+
+  if (res.error) {
+    console.warn("Purring ble skrevet ut, men fakturaene ble ikke merket purret:", res.error);
+  }
+}
+
+async function skrivUtPurringerPdf(fakturaer = null) {
+  const data = fakturaer || await hentPurrbareFakturaer();
+
   if (!data || !data.length) {
-    alert("Ingen purringer å skrive ut i dag.");
+    alert("Ingen ubetalte/forfalte fakturaer å purre.");
     return;
   }
 
@@ -929,19 +1163,19 @@ async function skrivUtPurringerPdf() {
 
     doc.setFontSize(10);
     doc.text("Fakturanr", 140, hoyreY);
-    doc.text(String(f.fakturanr || ""), 175, hoyreY);
+    doc.text(String(f.fakturanr || ""), 195, hoyreY, { align: "right" });
 
     hoyreY += 6;
     doc.text("Dato", 140, hoyreY);
-    doc.text(formatDatoISO(new Date()), 175, hoyreY);
+    doc.text(formatDatoISO(new Date()), 195, hoyreY, { align: "right" });
 
     hoyreY += 6;
     doc.text("Oppr. forfall", 140, hoyreY);
-    doc.text(String(f.forfallsdato || "").slice(0, 10), 175, hoyreY);
+    doc.text(String(f.forfallsdato || "").slice(0, 10), 195, hoyreY, { align: "right" });
 
     hoyreY += 6;
     doc.text("Ny frist", 140, hoyreY);
-    doc.text(formatDatoISO(leggTilDager(new Date(), 14)), 175, hoyreY);
+    doc.text(formatDatoISO(leggTilDager(new Date(), 14)), 195, hoyreY, { align: "right" });
 
     y += 35;
 
@@ -953,10 +1187,10 @@ async function skrivUtPurringerPdf() {
     doc.text("Fakturanr: " + String(f.fakturanr || ""), 14, y);
 
     y += 8;
-    doc.text("Beløp inkl. mva: " + formatBelop(f.inkl_mva) + " kr", 14, y);
+    doc.text("Beløp inkl. mva: " + formatBelop(f.inkl_mva || f.total || 0) + " kr", 14, y);
 
     y += 8;
-    doc.text("Purring nr: " + String(f.purret_antall || 1), 14, y);
+    doc.text("Purring nr: " + String(Number(f.purret_antall || 0) + 1), 14, y);
 
     y += 14;
     doc.setFontSize(10);
@@ -968,18 +1202,56 @@ async function skrivUtPurringerPdf() {
   }
 
   doc.save("purringer_" + new Date().toISOString().slice(0, 10) + ".pdf");
+  await merkFakturaerPurret(data);
 }
 
 async function kjorPurring() {
-  const { error } = await supabaseClient.rpc("kjor_purring");
+  const fakturaer = await hentPurrbareFakturaer();
+  if (!fakturaer.length) {
+    alert("Ingen ubetalte/forfalte fakturaer å purre.");
+    return;
+  }
+  await skrivUtPurringerPdf(fakturaer);
+}
 
-  if (error) {
-    console.error("Purring FEIL:", error);
-    alert("Purring feilet: " + error.message);
+
+async function lagPurringFraOkonomi(fakturanr) {
+  fakturanr = String(fakturanr || "").trim();
+
+  if (!fakturanr) {
+    alert("Mangler fakturanr.");
     return;
   }
 
-  await skrivUtPurringerPdf();
+  if (!window.supabaseClient) {
+    alert("Supabase er ikke lastet.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("fakturaer")
+    .select("*")
+    .eq("fakturanr", fakturanr)
+    .limit(1);
+
+  if (error) {
+    alert("Kunne ikke hente faktura for purring: " + error.message);
+    return;
+  }
+
+  const faktura = (data || [])[0];
+
+  if (!faktura) {
+    alert("Fant ikke faktura " + fakturanr + ".");
+    return;
+  }
+
+  if (!purringErUbetalt(faktura)) {
+    alert("Denne fakturaen er betalt eller kreditert og kan ikke purres.");
+    return;
+  }
+
+  await skrivUtPurringerPdf([faktura]);
 }
 
 function koblePurringKnapp() {
@@ -995,8 +1267,70 @@ function koblePurringKnapp() {
   };
 }
 
+window.lagKreditnotaPdf = lagKreditnotaPdf;
+window.lagPurringFraOkonomi = lagPurringFraOkonomi;
 kobleFakturaKnapp();
 kobleFakturaKopiKnapp();
 kobleKreditnotaVisning();
 kobleKreditnotaKnapp();
 koblePurringKnapp();
+/* AGK FIX 7074: PDF-finjustering uten å bytte pdfLayout.js, så skjermdesign ikke påvirkes. */
+(function () {
+  function trygg(verdi) {
+    return String(verdi || "");
+  }
+
+  async function agkLitenLogoPdf(doc, firma) {
+    try {
+      if (typeof window.hentPdfLogo !== "function") return false;
+      const logo = await window.hentPdfLogo(firma || {});
+      if (!logo || !logo.data) return false;
+
+      const bredde = 25;
+      const ratio = logo.width && logo.height ? logo.width / logo.height : 3;
+      const hoyde = bredde / ratio;
+      doc.addImage(logo.data, logo.type || "JPEG", 14, 5, bredde, hoyde);
+      return true;
+    } catch (e) {
+      console.warn("Kunne ikke tegne liten logo:", e);
+      return false;
+    }
+  }
+
+  window.tegnLogoPdf = agkLitenLogoPdf;
+
+  window.tegnBrevfotPdf = function (doc, firma, sideNr, antallSider) {
+    firma = firma || {};
+    doc.setDrawColor(180);
+    doc.line(14, 276, 195, 276);
+    doc.setFontSize(8);
+
+    const firmanavn = trygg(firma.navn || firma.firmanavn);
+    const adresse = [firma.adresse, firma.postadresse].filter(Boolean).join(", ");
+    const orgnr = trygg(firma.org_nr || firma.orgnr || firma.organisasjonsnummer);
+    const mva = trygg(firma.mva_nr || firma.mvanr);
+    const konto = trygg(firma.kontonr || firma.konto);
+
+    const linje1 = [firmanavn, adresse].filter(Boolean).join(" | ");
+    const linje2 = [
+      orgnr ? "Org.nr: " + orgnr : "",
+      mva ? "MVA: " + mva : "",
+      konto ? "Konto: " + konto : ""
+    ].filter(Boolean).join(" | ");
+
+    doc.text(linje1, 14, 284);
+    doc.text(linje2, 14, 289);
+
+    if (sideNr != null && antallSider != null) {
+      doc.text("Side " + sideNr + " av " + antallSider, 170, 289);
+    }
+  };
+
+  window.tegnBrevfotAlleSiderPdf = function (doc, firma) {
+    const antall = doc.getNumberOfPages();
+    for (let i = 1; i <= antall; i++) {
+      doc.setPage(i);
+      window.tegnBrevfotPdf(doc, firma || {}, i, antall);
+    }
+  };
+})();

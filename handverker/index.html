@@ -133,8 +133,9 @@
     }
 
     .okonomi-boks {
-      background: #f8fafc;
-      border: 1px solid #d0d7de;
+      background: #22272a;
+      color: #f3f4f6;
+      border: 1px solid #374151;
       border-radius: 10px;
       padding: 12px;
     }
@@ -154,14 +155,16 @@
 
     .okonomi-tabell th,
     .okonomi-tabell td {
-      border-bottom: 1px solid #d0d7de;
+      border-bottom: 1px solid #374151;
       padding: 6px;
       text-align: left;
       vertical-align: top;
+      color: #f3f4f6;
     }
 
     .okonomi-tabell th {
-      background: #f1f5f9;
+      background: #111827;
+      color: #f3f4f6;
     }
 
     .okonomi-advarsel {
@@ -370,6 +373,33 @@
       pointer-events: auto;
     }
 
+
+
+    /* AGK FIX 7086: behold mørkt tema også etter økonomi/purring-fiks */
+    #fakturaSide,
+    #okonomiOversikt,
+    #okonomiDetalj {
+      color: #f3f4f6;
+    }
+
+    #okonomiOversikt .okonomi-boks,
+    #okonomiDetalj.okonomi-detalj {
+      background: #22272a !important;
+      color: #f3f4f6 !important;
+      border-color: #374151 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell th {
+      background: #111827 !important;
+      color: #f3f4f6 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell td {
+      background: transparent !important;
+      color: #f3f4f6 !important;
+      border-bottom-color: #374151 !important;
+    }
+
 </style>
 </head>
 
@@ -424,20 +454,20 @@
         <button id="visJobberKnapp" type="button">Jobber</button>
         <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
         <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
-        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">Lønn</button>
+        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
 
         <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
 
         <div class="meny-gruppe admin-only">
-          <button id="adminMenyKnapp" type="button">Admin ▼</button>
+          <button id="adminMenyKnapp" type="button">Admin &#9660;</button>
           <div class="meny-panel">
             <button id="visAnsattKnapp" type="button">Ansatte</button>
             <button id="visFirmaKnapp" type="button">Firma</button>
-            <button id="visModulerKnapp" type="button">⚙️ Moduler</button>
+            <button id="visModulerKnapp" class="systemadmin-only" type="button">&#9881;&#65039; Moduler</button>
             <button id="visBackupKnapp" type="button">Backup/Restore</button>
             <button id="visTestKnapp" type="button">Testpanel</button>
             <button id="visHovslagerKnapp" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
-            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterinær</button>
+            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterin&#230;r</button>
           </div>
         </div>
 
@@ -460,7 +490,7 @@
     <section id="backupSide" class="kort admin-only skjult">
       <h2>Admin-konsoll</h2>
       <h3>Backup / Restore</h3>
-      <p>Ta full backup før større endringer, og bruk restore hvis noe må rulles tilbake.</p>
+      <p>Ta full backup f&#248;r st&#248;rre endringer, og bruk restore hvis noe m&#229; rulles tilbake.</p>
 
       <button id="backupKnapp" type="button">
         Ta backup
@@ -511,7 +541,7 @@
         <div>
           <label for="prosjektValg">Prosjekt</label>
           <select id="prosjektValg">
-            <option value="">Velg kunde først</option>
+            <option value="">Velg kunde f&#248;rst</option>
           </select>
         </div>
       </div>
@@ -521,7 +551,7 @@
           <select id="adminAnsattValg">
             <option value="">Meg selv / innlogget bruker</option>
           </select>
-          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare når admin logger inn som admin.</div>
+          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare n&#229;r admin logger inn som admin.</div>
         </div>
       </div>
   <div class="rad">
@@ -571,7 +601,7 @@
 </div>
 
 <button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
-  Legg til vare på faktura
+  Legg til vare p&#229; faktura
 </button>
 <div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
 
@@ -580,7 +610,7 @@
     <label for="utgiftType">Utgiftstype</label>
     <select id="utgiftType">
       <option value="">Ingen utgift</option>
-      <option value="kjoring">Kjøring</option>
+      <option value="kjoring">Kj&#248;ring</option>
       <option value="bompenger">Bompenger</option>
       <option value="parkering">Parkering</option>
       <option value="ferge">Ferge</option>
@@ -591,7 +621,7 @@
   </div>
 
   <div>
-    <label for="utgiftBelop">Beløp</label>
+    <label for="utgiftBelop">Bel&#248;p</label>
     <input id="utgiftBelop" type="number" value="0" step="0.01">
   </div>
 
@@ -615,11 +645,11 @@
         </div>
       </div>
 <button id="leggTilUtleggKnapp" type="button">
-  Legg til utlegg på faktura
+  Legg til utlegg p&#229; faktura
 </button>
 
 <div id="utleggListe" style="margin-top:10px;">
-  Utlegg som legges her kommer med på neste faktura.
+  Utlegg som legges her kommer med p&#229; neste faktura.
 </div>
       <label for="beskrivelse">Beskrivelse</label>
       <textarea id="beskrivelse"></textarea>
@@ -649,7 +679,7 @@
 <input
   id="timerBildeTekst"
   type="text"
-  placeholder="F.eks. før arbeid">
+  placeholder="F.eks. f&#248;r arbeid">
 
       <button id="lagreTimerKnapp" type="button">Lagre timer</button>
 
@@ -670,7 +700,7 @@
 
       <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
       <button id="excelKnapp" type="button">MVA Excel</button>
-      <button id="purringKnapp" type="button">Kjør purring</button>
+      <button id="purringKnapp" type="button">Kj&#248;r purring</button>
       <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
       <button id="kreditnotaKnapp" type="button">Kreditnota</button>
 
@@ -704,7 +734,7 @@
     
       <hr>
 
-      <h3>Økonomioversikt</h3>
+      <h3>&#216;konomioversikt</h3>
       <p>Se hva som ikke er fakturert, hva som er fakturert, og hva som er ubetalt eller forfalt.</p>
 
       <div class="rad">
@@ -726,7 +756,7 @@
         </div>
       </div>
 
-      <button id="okonomiOversiktKnapp" type="button">Vis økonomioversikt</button>
+      <button id="okonomiOversiktKnapp" type="button">Vis &#248;konomioversikt</button>
 
       <div id="okonomiMelding" class="melding"></div>
       <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
@@ -736,42 +766,54 @@
 
 
     <!-- BILER -->
-    <section id="bilerSide" class="kort skjult admin-only" data-modul="varer">
-      <h2>Biler</h2>
-      <p>Opprett biler her. Etterpå kan bilen velges på ansatt under Standard bil.</p>
+    <section id="bilerSide" class="kort skjult" data-modul="biler">
+      <h2>Min bil / lager</h2>
+      <p>Opprett biler her. Etterp&#229; kan bilen velges p&#229; ansatt under Standard bil.</p>
 
-      <div class="rad">
-        <div>
-          <label for="bilNavn">Bilnavn</label>
-          <input id="bilNavn" placeholder="Servicebil 1">
+      <button id="nyBilKnapp" type="button" onclick="window.nyBilSkjema && window.nyBilSkjema()">Registrer ny bil</button>
+
+      <div id="bilSkjemaOmrade" style="display:block; margin-top:18px; padding-top:4px;">
+        <h3 id="nyBilTittel">Registrer ny bil</h3>
+        <input id="bilId" type="hidden">
+
+        <div class="rad" id="bilSkjemaRad" style="display:grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+          <div>
+            <label for="bilNavn">Bilnavn</label>
+            <input id="bilNavn" type="text" placeholder="Servicebil 1" autocomplete="off">
+          </div>
+          <div>
+            <label for="bilRegnr">Regnr</label>
+            <input id="bilRegnr" type="text" placeholder="AB12345" autocomplete="off">
+          </div>
         </div>
-        <div>
-          <label for="bilRegnr">Regnr</label>
-          <input id="bilRegnr" placeholder="AB12345">
-        </div>
+
+        <button id="lagreBilKnapp" type="button" style="background:#16a34a !important; font-weight:bold; font-size:16px; display:inline-block !important;" onclick="window.lagreBil && window.lagreBil()">&#128190; Lagre bil</button>
+        <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake til timer</button>
       </div>
 
-      <button id="lagreBilKnapp" type="button" onclick="window.lagreBil && window.lagreBil()">Lagre bil</button>
-      <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake</button>
       <div id="bilMelding" class="melding"></div>
       <div id="bilListe"></div>
 
       <hr>
       <h3>Bil-lager</h3>
-      <p>Velg bil én gang. Skriv antall på flere varer i listen og lagre alt samtidig.</p>
+      <p>Velg bil &#233;n gang. Skriv antall p&#229; flere varer i listen og lagre alt samtidig.</p>
       <div class="rad">
         <div>
           <label for="bilLagerBilValg">Bil som skal fylles</label>
           <select id="bilLagerBilValg"><option value="">Velg bil</option></select>
+        </div>
+        <div>
+          <label for="bilLagerHentetAv">Hvem henter varene</label>
+          <input id="bilLagerHentetAv" type="text" placeholder="Navn p&#229; den som henter" autocomplete="off">
         </div>
       </div>
 
       <h4>Fyll bilen fra vareregister</h4>
       <p class="info">Listen viser varenr, varenavn, innpris, utpris, hovedlager, minimum og MVA.</p>
       <div id="bilLagerFyllListe"></div>
-      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer på bilen</button>
+      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer p&#229; bilen</button>
 
-      <h4>Varer som ligger på bil</h4>
+      <h4>Varer som ligger p&#229; bil</h4>
       <div id="bilLagerListe"></div>
     </section>
 
@@ -808,7 +850,7 @@
         </div>
 
         <div>
-          <label for="varepaslag">Påslag faktor</label>
+          <label for="varepaslag">P&#229;slag faktor</label>
           <input id="varepaslag" type="number" step="0.01" value="3">
         </div>
 
@@ -820,7 +862,7 @@
 
       <div class="rad">
         <div>
-          <label for="varelagerAntall">Antall på hovedlager</label>
+          <label for="varelagerAntall">Antall p&#229; hovedlager</label>
           <input id="varelagerAntall" type="number" step="0.01" value="0">
         </div>
 
@@ -854,30 +896,40 @@
 
 </button>
 
+<button
+  id="lastInnLasLagerKnapp"
+  type="button"
+  class="secondary"
+  onclick="window.lastInnLasesmedLager && window.lastInnLasesmedLager()">
+
+  Last inn l&#229;sesmed lagervarer
+
+</button>
+
       <hr>
 
       <hr>
 
       <h3>Bil-lager</h3>
       <p>
-        Biler opprettes og vedlikeholdes på egen side under knappen <strong>Biler</strong>.
+        Biler opprettes og vedlikeholdes p&#229; egen side under knappen <strong>Biler</strong>.
         Varer beholdes her i vareregisteret.
       </p>
       <button type="button" class="secondary" onclick="window.visBilerSide && window.visBilerSide()">
-        Åpne bilregister
+        &#197;pne bilregister
       </button>
       <hr>
 
     </section>
 
-    <!-- LØNN -->
+    <!-- L&#216;NN -->
     <section id="lonnPanel" class="kort skjult" data-modul="lonn">
-      <h2>Lønn</h2>
-      <p>Lønn hentes fra registrerte timer. Her kan du lage lønnsslipper og regneark.</p>
+      <h2>L&#248;nn</h2>
+      <p>L&#248;nn hentes fra registrerte timer. Her kan du lage l&#248;nnsslipper og regneark.</p>
 
       <div class="rad">
         <div>
-          <label for="lonnManed">Måned</label>
+          <label for="lonnManed">M&#229;ned</label>
           <select id="lonnManed">
             <option value="1">Januar</option>
             <option value="2">Februar</option>
@@ -895,7 +947,7 @@
         </div>
 
         <div>
-          <label for="lonnAar">År</label>
+          <label for="lonnAar">&#197;r</label>
           <input id="lonnAar" type="number" value="2026">
         </div>
 
@@ -912,10 +964,10 @@
         </div>
       </div>
 
-      <button id="kjorLonnKnapp" type="button">Kjør lønn</button>
-      <button id="lonnsslippKnapp" type="button">Lønnsslipp valgt/alle PDF</button>
+      <button id="kjorLonnKnapp" type="button">Kj&#248;r l&#248;nn</button>
+      <button id="lonnsslippKnapp" type="button">L&#248;nnsslipp valgt/alle PDF</button>
       <button id="lonnsslippKopiKnapp" type="button">Kopi valgt/alle PDF</button>
-      <button id="lonnsslippAlleKnapp" type="button">Alle lønnsslipper PDF</button>
+      <button id="lonnsslippAlleKnapp" type="button">Alle l&#248;nnsslipper PDF</button>
       <button id="lonnsslippAlleKopiKnapp" type="button">Kopi alle PDF</button>
       <button id="trekkExcelKnapp" type="button">Skattetrekk Excel</button>
       <button id="utbetalingExcelKnapp" type="button">Utbetalinger Excel</button>
@@ -993,6 +1045,14 @@
       <label for="ansattMobil">Mobil</label>
       <input id="ansattMobil">
 
+      <label for="ansattRolle">Rolle</label>
+      <select id="ansattRolle">
+        <option value="bruker">Bruker</option>
+        <option value="admin">Admin</option>
+        <option value="systemadmin">Systemadmin</option>
+      </select>
+
+
       <label for="ansattStandardBil">Standard bil</label>
       <select id="ansattStandardBil">
         <option value="">Ingen fast bil</option>
@@ -1013,7 +1073,7 @@
         </div>
 
         <div>
-          <label for="trekkBelop">Beløp</label>
+          <label for="trekkBelop">Bel&#248;p</label>
           <input id="trekkBelop" type="number" value="0">
         </div>
       </div>
@@ -1049,10 +1109,10 @@
       <input id="firmaVippsMottaker">
 
       <label for="firmaBrevhode">Brevhode</label>
-      <textarea id="firmaBrevhode" placeholder="Tekst øverst på faktura / PDF"></textarea>
+      <textarea id="firmaBrevhode" placeholder="Tekst &#248;verst p&#229; faktura / PDF"></textarea>
 
       <label for="firmaBrevfot">Brevfot / brevhale</label>
-      <textarea id="firmaBrevfot" placeholder="Tekst nederst på faktura / PDF"></textarea>
+      <textarea id="firmaBrevfot" placeholder="Tekst nederst p&#229; faktura / PDF"></textarea>
 
       <label for="firmaOrgNr">Org nr</label>
       <input id="firmaOrgNr">
@@ -1074,16 +1134,16 @@
 
 
 
-    <section id="modulerSide" class="kort skjult admin-only">
+    <section id="modulerSide" class="kort skjult admin-only systemadmin-only">
       <h2>Moduler</h2>
       <p>Skru av det kunden ikke trenger. Valget lagres i Supabase for denne kunden.</p>
 
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
         <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
-        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">Håndverker</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">H&#229;ndverker</button>
         <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
         <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
-          <button type="button" class="secondary" onclick="brukModulPakke('veterinaer')">Veterinær</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('veterinaer')">Veterin&#230;r</button>
       </div>
 
       <div id="modulListe"></div>
@@ -1099,11 +1159,11 @@
       <h2>Testpanel</h2>
 
       <button id="testFakturaProsjektGrupperingKnapp" type="button" onclick="testFakturaProsjektGruppering()">Test faktura per prosjekt</button>
-      <button id="kjorHelsetestKnapp" type="button">Kjør helsetest</button>
-      <button id="kjorStresstestKnapp" type="button">Kjør stresstest</button>
+      <button id="kjorHelsetestKnapp" type="button">Kj&#248;r helsetest</button>
+      <button id="kjorStresstestKnapp" type="button">Kj&#248;r stresstest</button>
       <button id="testDobbeltregistreringKnapp" type="button">Test dobbeltregistrering</button>
       <button id="testBlankLagringKnapp" type="button">Test blank lagring</button>
-      <button id="testLonnKnapp" type="button">Test lønn</button>
+      <button id="testLonnKnapp" type="button">Test l&#248;nn</button>
       <button id="testFakturaGrunnlagKnapp" type="button">Test fakturagrunnlag</button>
       <button id="testMvaKnapp" type="button">Test MVA</button>
       <button id="testFakturaSperreKnapp" type="button">Test fakturasperre</button>
@@ -1117,39 +1177,40 @@
 
   </section>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script charset="UTF-8" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="../js/core/config.js?v=5001"></script>
-<script src="../js/core/state.js?v=999"></script>
-<script src="../js/core/moduler.js?v=999"></script>
-<script src="../js/handverker/navigation.js?v=7058"></script>
-<script src="../js/handverker/auth.js?v=5003"></script>
-<script src="../js/handverker/kunder.js?v=7044"></script>
-<script src="../js/handverker/prosjekter.js?v=5003"></script>
-<script src="../js/handverker/ansatte.js?v=7044"></script>
-<script src="../js/core/brevhode.js?v=5003"></script>
-<script src="../js/handverker/firma.js?v=7058"></script>
-<script src="../js/handverker/timer.js?v=7044"></script>
-<script src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
-<script src="../js/handverker/utils.js?v=5003"></script>
-<script src="../js/handverker/fakturaData.js?v=5003"></script>
-<script src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
-<script src="../js/handverker/pdfLayout.js?v=5003"></script>
-<script src="../js/handverker/fakturaPdf.js?v=5003"></script>
-<script src="../js/handverker/faktura.js?v=5003"></script>
-<script src="../js/handverker/okonomi.js?v=5003"></script>
-<script src="../js/handverker/fakturaValg.js?v=5003"></script>
-<script src="../js/handverker/backup.js?v=5003"></script>
-<script src="../js/handverker/lonn.js?v=7044"></script>
-<script src="../js/handverker/tester.js?v=5003"></script>
-<script src="../js/handverker/app.js?v=7021"></script>
-<script src="../js/handverker/varer.js?v=7044"></script>
-<script src="../js/handverker/biler.js?v=7044"></script>
-<script src="../js/handverker/jobber-rolle.js?v=7055"></script>
-<script src="../js/handverker/bruker-billager.js?v=7055"></script>
-<script src="../js/handverker/bilvalg-repair.js?v=7059"></script>
+<script charset="UTF-8" src="../js/core/config.js?v=5001"></script>
+<script charset="UTF-8" src="../js/core/state.js?v=999"></script>
+<script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/navigation.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/auth.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/kunder.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/prosjekter.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/ansatte.js?v=7044"></script>
+<script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/firma.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/timer.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/utils.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaData.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
+<script charset="UTF-8" src="../js/handverker/pdfLayout.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaPdf.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/faktura.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/okonomi.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaValg.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/backup.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/lonn.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/tester.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/app.js?v=7021"></script>
+<script charset="UTF-8" src="../js/handverker/varer.js?v=7066"></script>
+<script charset="UTF-8" src="../js/handverker/biler.js?v=7066"></script>
+  <script charset="UTF-8" src="../js/handverker/lager-patch.js?v=7300"></script>
+<script charset="UTF-8" src="../js/handverker/jobber-rolle.js?v=7068"></script>
+<script charset="UTF-8" src="../js/handverker/bruker-billager.js?v=7055"></script>
+<script charset="UTF-8" src="../js/handverker/bilvalg-repair.js?v=7059"></script>
 
 
 <script>
@@ -1199,10 +1260,12 @@ window.addEventListener("load", function () {
         window.innloggetAnsattId = ansattData.id || "";
       }
     } catch (e) {
-      console.warn("Kunne ikke hente ansattdata i nødinnlogging:", e);
+      console.warn("Kunne ikke hente ansattdata i n\u00F8dinnlogging:", e);
     }
 
     const rolle = String(ansattData?.rolle || "").toLowerCase();
+    window.innloggetRolle = rolle;
+    window.erSystemadmin = ["systemadmin", "sysadmin"].includes(rolle);
     const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
     window.erAdmin = harAdminRolle && vilAdmin;
     localStorage.setItem("rilAdminModus", window.erAdmin ? "ja" : "nei");
@@ -1222,6 +1285,7 @@ window.addEventListener("load", function () {
         el.classList.remove("skjult", "hidden");
       });
       if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
+      if (typeof window.skjulSystemadminHvisIkkeSystemadmin === "function") window.skjulSystemadminHvisIkkeSystemadmin();
     } else {
       document.querySelectorAll(".admin-only").forEach(el => {
         el.style.display = "none";
@@ -1236,7 +1300,7 @@ window.addEventListener("load", function () {
     const email = document.getElementById("loginEpost")?.value?.trim()?.toLowerCase() || "";
 
     if (!email) {
-      if (loginMelding) loginMelding.textContent = "Skriv inn e-postadressen først.";
+      if (loginMelding) loginMelding.textContent = "Skriv inn e-postadressen f\u00F8rst.";
       return;
     }
 
@@ -1260,7 +1324,7 @@ window.addEventListener("load", function () {
 
   if (typeof window.loggInn !== "function") {
     window.loggInn = nodLoggInn;
-    console.warn("Bruker nødinnlogging fordi auth.js ikke registrerte window.loggInn.");
+    console.warn("Bruker n\u00F8dinnlogging fordi auth.js ikke registrerte window.loggInn.");
   }
 
   if (typeof window.glemtPassord !== "function") {
@@ -1361,6 +1425,123 @@ window.addEventListener("load", function () {
 
 
 
+
+
+<script>
+// N\u00D8D-FIX 7063: s\u00F8rger for at Lagre bil alltid er klikkbar selv om en annen fil overskriver onclick.
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function msg(t, feil) {
+    var m = $("bilMelding");
+    if (m) { m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+    if (feil) console.error(t); else if (t) console.log(t);
+  }
+  function visBilSkjemaNod() {
+    var o = $("bilSkjemaOmrade");
+    var r = $("bilSkjemaRad");
+    var k = $("lagreBilKnapp");
+    if (o) { o.classList.remove("skjult", "hidden", "modul-skjult"); o.style.display = "block"; }
+    if (r) { r.classList.remove("skjult", "hidden", "modul-skjult"); r.style.display = "grid"; }
+    if (k) { k.style.display = "inline-block"; k.disabled = false; k.textContent = "\uD83D\uDCBE Lagre bil"; }
+  }
+  async function lagreBilNod() {
+    try {
+      visBilSkjemaNod();
+      msg("Lagrer bil...");
+      if (!window.supabaseClient) { msg("Supabase er ikke lastet. Sjekk js/core/config.js.", true); return; }
+      var id = ($("bilId") && $("bilId").value || "").trim();
+      var navn = ($("bilNavn") && $("bilNavn").value || "").trim();
+      var regnr = ($("bilRegnr") && $("bilRegnr").value || "").trim();
+      if (!navn && !regnr) { msg("Skriv bilnavn eller regnr.", true); alert("Skriv bilnavn eller regnr."); return; }
+      var rad = { navn: navn || regnr, regnr: regnr || null, aktiv: true };
+      var q = id
+        ? window.supabaseClient.from("biler").update(rad).eq("id", id).select().single()
+        : window.supabaseClient.from("biler").insert([rad]).select().single();
+      var res = await q;
+      if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
+        var rad2 = { navn: navn || regnr, regnr: regnr || null };
+        res = id
+          ? await window.supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
+          : await window.supabaseClient.from("biler").insert([rad2]).select().single();
+      }
+      if (res.error) { msg("Kunne ikke lagre bil: " + res.error.message, true); alert("Kunne ikke lagre bil: " + res.error.message); return; }
+      if (res.data && res.data.id) {
+        localStorage.setItem("aktivBilId", String(res.data.id));
+        localStorage.setItem("aktivBilNavn", (res.data.navn || "Bil") + (res.data.regnr ? " - " + res.data.regnr : ""));
+        window.aktivBilId = String(res.data.id);
+      }
+      if ($("bilId")) $("bilId").value = "";
+      if ($("bilNavn")) $("bilNavn").value = "";
+      if ($("bilRegnr")) $("bilRegnr").value = "";
+      msg(id ? "Bil oppdatert." : "Ny bil lagret.");
+      if (typeof window.lastBilerOgBilLager === "function") await window.lastBilerOgBilLager();
+      else if (typeof window.lastBiler === "function") await window.lastBiler();
+    } catch (e) {
+      var tekst = "Feil ved lagring av bil: " + (e && e.message ? e.message : String(e));
+      msg(tekst, true); alert(tekst);
+    }
+  }
+  function koble() {
+    visBilSkjemaNod();
+    var ny = $("nyBilKnapp");
+    var lagre = $("lagreBilKnapp");
+    if (ny) ny.onclick = function (e) { if (e) e.preventDefault(); visBilSkjemaNod(); if ($("bilNavn")) $("bilNavn").focus(); };
+    if (lagre) lagre.onclick = function (e) { if (e) e.preventDefault(); return lagreBilNod(); };
+    window.lagreBilNod = lagreBilNod;
+  }
+  document.addEventListener("DOMContentLoaded", koble);
+  window.addEventListener("load", koble);
+  setTimeout(koble, 500);
+})();
+</script>
+
+
+<script charset="UTF-8">
+// FIX 7067: Jobboversikt skal ikke vise rene utlegg/refusjon-rader med 0 kr som egne jobber.
+(function () {
+  function tekst(e) { return (e && e.textContent ? e.textContent : "").trim(); }
+  function erNullKroner(t) {
+    var x = String(t || "").replace(/\s+/g, "").toLowerCase();
+    return x === "0kr" || x === "0,00kr" || x === "0.00kr" || x === "0";
+  }
+  function ryddJobbListe() {
+    var c = document.getElementById("jobberListe");
+    if (!c) return;
+    var rader = Array.from(c.querySelectorAll("tbody tr"));
+    rader.forEach(function (tr) {
+      var celler = Array.from(tr.children);
+      if (!celler.length) return;
+      var radtekst = tekst(tr).toLowerCase();
+      var beskrivelse = celler[4] ? tekst(celler[4]).toLowerCase() : radtekst;
+      var belop = celler[5] ? tekst(celler[5]) : "";
+      var erRenUtleggRad = beskrivelse.indexOf("utlegg/refusjon") !== -1 || radtekst.indexOf("utlegg/refusjon") !== -1;
+      if (erRenUtleggRad && erNullKroner(belop)) {
+        tr.style.display = "none";
+        tr.setAttribute("data-skjult-utlegg-null", "ja");
+      }
+    });
+  }
+  var gammelVisJobberSide = window.visJobberSide;
+  if (typeof gammelVisJobberSide === "function") {
+    window.visJobberSide = async function () {
+      var res = await gammelVisJobberSide.apply(this, arguments);
+      setTimeout(ryddJobbListe, 100);
+      setTimeout(ryddJobbListe, 600);
+      return res;
+    };
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    ryddJobbListe();
+    var c = document.getElementById("jobberListe");
+    if (c && window.MutationObserver) {
+      new MutationObserver(function () { ryddJobbListe(); }).observe(c, { childList: true, subtree: true });
+    }
+    var k = document.getElementById("oppdaterJobberKnapp");
+    if (k) k.addEventListener("click", function () { setTimeout(ryddJobbListe, 400); });
+  });
+  window.ryddJobbListe = ryddJobbListe;
+})();
+</script>
 
 </body>
 </html>

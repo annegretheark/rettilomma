@@ -50,13 +50,11 @@ async function leggTilLogo(doc) {
     });
 
     const ratio = img.width / img.height;
-    const bredde = 70;
+    const bredde = 25;
     const hoyde = bredde / ratio;
+    const x = 14;
 
-    const sidebredde = doc.internal.pageSize.getWidth();
-    const x = (sidebredde - bredde) / 2;
-
-    doc.addImage(logoBase64, "JPEG", x, 3, bredde, hoyde);
+    doc.addImage(logoBase64, "JPEG", x, 5, bredde, hoyde);
 
     return true;
   } catch (e) {
@@ -68,41 +66,86 @@ async function leggTilLogo(doc) {
 
 async function sperrFakturerteTimer(timerListe, fakturanr) {
   const ider =
-    timerListe
+    (timerListe || [])
       .map(t => t.id)
       .filter(Boolean);
 
-  timerListe.forEach(t => {
+  // Oppdater minnet med en gang, slik at samme jobb ikke kan faktureres på nytt
+  // uten at siden lastes på nytt.
+  (timerListe || []).forEach(t => {
     t.fakturerbar = false;
     t.fakturert = true;
-    t.fakturanr = fakturanr;
     t.fakturert_dato = new Date().toISOString();
+    // Ikke alle timer-tabeller har fakturanr. Bruk bare i minnet hvis det finnes.
+    t.fakturanr = fakturanr;
   });
 
   if (!ider.length) {
     return true;
   }
 
-  try {
-    const { error } =
-      await supabaseClient
+  const dato = new Date().toISOString();
+
+  // Viktig: Noen Supabase-tabeller mangler kolonnen fakturanr.
+  // Derfor prøver vi først full oppdatering, og faller tilbake til bare kolonner
+  // som normalt finnes på timer: fakturerbar, fakturert og fakturert_dato.
+  const forsok = [
+    {
+      fakturerbar: false,
+      fakturert: true,
+      fakturanr: fakturanr,
+      fakturert_dato: dato
+    },
+    {
+      fakturerbar: false,
+      fakturert: true,
+      fakturert_dato: dato
+    },
+    {
+      fakturerbar: false,
+      fakturert: true
+    },
+    {
+      fakturerbar: false
+    }
+  ];
+
+  let sisteError = null;
+
+  for (const oppdatering of forsok) {
+    try {
+      const { error } = await supabaseClient
         .from("timer")
-        .update({
-          fakturerbar: false,
-          fakturert: true,
-          fakturanr: fakturanr,
-          fakturert_dato: new Date().toISOString()
-        })
+        .update(oppdatering)
         .in("id", ider);
 
-    if (error) {
-      console.warn("Kunne ikke sperre fakturerte timer:", error);
-      return false;
-    }
+      if (!error) {
+        return true;
+      }
 
-    return true;
-  } catch (e) {
-    console.warn("Kunne ikke sperre fakturerte timer:", e);
-    return false;
+      sisteError = error;
+      const tekst = String(error.message || "");
+
+      // Prøv neste fallback bare ved manglende kolonner/schema-cache.
+      if (
+        !tekst.includes("Could not find") &&
+        !tekst.includes("schema cache") &&
+        !tekst.includes("does not exist")
+      ) {
+        break;
+      }
+    } catch (e) {
+      sisteError = e;
+      break;
+    }
   }
+
+  console.warn("Kunne ikke sperre fakturerte timer:", sisteError);
+  alert(
+    "Faktura ble laget, men jobbene ble ikke sperret mot ny fakturering. " +
+    "Ikke lag faktura på nytt før dette er rettet. Feil: " +
+    (sisteError?.message || String(sisteError || "ukjent feil"))
+  );
+  return false;
 }
+

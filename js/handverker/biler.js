@@ -1,7 +1,8 @@
-console.log("biler.js permanent bil_lager-løsning lastet 7020");
+console.log("biler.js bilskjema synlig fix lastet 7063");
 
 let biler = [];
 let bilLager = [];
+let bilLagerHentetMap = new Map();
 let varerTilBilLager = [];
 
 function bilErSynlig(el) {
@@ -17,6 +18,65 @@ function bilEl(id) {
 function bilVerdi(id) {
   const e = bilEl(id);
   return e ? String(e.value || "").trim() : "";
+}
+
+function bilSettVerdi(id, verdi) {
+  const e = bilEl(id);
+  if (e) e.value = verdi ?? "";
+}
+
+function visBilSkjema() {
+  const omrade = bilEl("bilSkjemaOmrade");
+  if (omrade) {
+    omrade.classList.remove("skjult", "hidden", "modul-skjult");
+    omrade.style.display = "block";
+  }
+  const rad = bilEl("bilSkjemaRad");
+  if (rad) {
+    rad.classList.remove("skjult", "hidden", "modul-skjult");
+    rad.style.display = "grid";
+  }
+}
+
+function nyBilSkjema() {
+  visBilSkjema();
+  bilSettVerdi("bilId", "");
+  bilSettVerdi("bilNavn", "");
+  bilSettVerdi("bilRegnr", "");
+  const tittel = bilEl("nyBilTittel");
+  if (tittel) tittel.textContent = "Registrer ny bil";
+  const knapp = bilEl("lagreBilKnapp");
+  if (knapp) knapp.textContent = "Lagre ny bil";
+  const navn = bilEl("bilNavn");
+  if (navn) {
+    navn.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => navn.focus(), 50);
+  }
+}
+
+function redigerBil(id) {
+  visBilSkjema();
+  const bil = (biler || []).find(b => String(b.id) === String(id));
+  if (!bil) {
+    bilMelding("Fant ikke bilen.", true);
+    return;
+  }
+
+  bilSettVerdi("bilId", bil.id || "");
+  bilSettVerdi("bilNavn", bil.navn || bil.name || bil.bilnavn || "");
+  bilSettVerdi("bilRegnr", bil.regnr || bil.registreringsnummer || "");
+
+  const tittel = bilEl("nyBilTittel");
+  if (tittel) tittel.textContent = "Rediger bil";
+
+  const knapp = bilEl("lagreBilKnapp");
+  if (knapp) knapp.textContent = "Lagre endring";
+
+  const navn = bilEl("bilNavn");
+  if (navn) {
+    navn.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => navn.focus(), 100);
+  }
 }
 
 function bilMelding(tekst, erFeil = false) {
@@ -135,6 +195,7 @@ async function visBilerSide() {
 
   side.classList.remove("skjult", "hidden", "modul-skjult");
   side.style.display = "";
+  visBilSkjema();
 
   await lastBilerOgBilLager();
 }
@@ -181,7 +242,7 @@ function fyllAlleBilvalg() {
 
 async function lastBiler() {
   if (!window.supabaseClient) {
-    bilMelding("Supabase er ikke lastet ennå.", true);
+    bilMelding("Supabase er ikke lastet enn\u00E5.", true);
     return [];
   }
 
@@ -215,11 +276,13 @@ async function lagreBil() {
       return;
     }
 
+    const id = bilVerdi("bilId");
     const navn = bilVerdi("bilNavn");
     const regnr = bilVerdi("bilRegnr");
 
     if (!navn && !regnr) {
       bilMelding("Skriv bilnavn eller regnr.", true);
+      alert("Skriv bilnavn eller regnr.");
       return;
     }
 
@@ -229,14 +292,19 @@ async function lagreBil() {
       aktiv: true
     };
 
-    let res = await supabaseClient.from("biler").insert([rad]).select().single();
+    let res = id
+      ? await supabaseClient.from("biler").update(rad).eq("id", id).select().single()
+      : await supabaseClient.from("biler").insert([rad]).select().single();
 
     if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
-      res = await supabaseClient
-        .from("biler")
-        .insert([{ navn: navn || regnr, regnr: regnr || null }])
-        .select()
-        .single();
+      const rad2 = {
+        navn: navn || regnr,
+        regnr: regnr || null
+      };
+
+      res = id
+        ? await supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
+        : await supabaseClient.from("biler").insert([rad2]).select().single();
     }
 
     if (res.error) {
@@ -245,16 +313,15 @@ async function lagreBil() {
       return;
     }
 
-    if (bilEl("bilNavn")) bilEl("bilNavn").value = "";
-    if (bilEl("bilRegnr")) bilEl("bilRegnr").value = "";
-
     if (res.data?.id) {
       localStorage.setItem("aktivBilId", String(res.data.id));
       localStorage.setItem("aktivBilNavn", bilNavn(res.data));
       window.aktivBilId = String(res.data.id);
     }
 
-    bilMelding("Bil lagret.");
+    nyBilSkjema();
+
+    bilMelding(id ? "Bil oppdatert." : "Ny bil lagret.");
     await lastBilerOgBilLager();
     await fyllVarevalgFraAktivBil();
   } catch (e) {
@@ -294,7 +361,7 @@ async function slettBil(id) {
 async function apneBilForFylling(id) {
   if (!id) return;
 
-  // Hold oss på Biler-siden. Ingen navigation.js, ingen kundevisning.
+  // Hold oss p\u00E5 Biler-siden. Ingen navigation.js, ingen kundevisning.
   const appSide = bilEl("appSide");
   if (appSide) {
     appSide.classList.remove("skjult", "hidden");
@@ -339,9 +406,9 @@ async function apneBilForFylling(id) {
   // Bygg listen direkte. Ikke kall funksjoner som kan trigge andre sider.
   tegnFyllBilListe();
 
-  const mål = bilEl("bilLagerFyllListe") || bilEl("bilLagerBilValg");
-  if (mål) {
-    mål.scrollIntoView({ behavior: "smooth", block: "start" });
+  const m\u00E5l = bilEl("bilLagerFyllListe") || bilEl("bilLagerBilValg");
+  if (m\u00E5l) {
+    m\u00E5l.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   bilMelding("Valgt bil for fylling.");
@@ -370,6 +437,7 @@ function tegnBiler() {
             <td>${hentAnsattForBil(bil.id)}</td>
             <td>${bil.aktiv === false ? "Inaktiv" : "Aktiv"}</td>
             <td>
+              <button type="button" class="secondary" onclick="event.stopPropagation(); redigerBil('${bil.id}')">Endre</button>
               <button type="button" class="secondary" onclick="event.stopPropagation(); slettBil('${bil.id}')">Slett</button>
             </td>
           </tr>
@@ -410,7 +478,7 @@ async function fyllBilLagerVareValg() {
   window.varerTilBilLager = varerTilBilLager;
   tegnFyllBilListe();
 
-  // Fyll gamle dropdowns bare hvis de finnes. De er valgfrie nå.
+  // Fyll gamle dropdowns bare hvis de finnes. De er valgfrie n\u00E5.
   const selects = ["bilLagerVareValg", "lagerVareValg"]
     .map(id => bilEl(id))
     .filter(Boolean);
@@ -442,7 +510,7 @@ function tegnFyllBilListe() {
   const biltekst = valgtBilOverskrift();
 
   if (!varerTilBilLager.length) {
-    c.innerHTML = "<p>Ingen varer i vareregisteret ennå.</p>";
+    c.innerHTML = "<p>Ingen varer i vareregisteret enn\u00E5.</p>";
     return;
   }
 
@@ -450,7 +518,7 @@ function tegnFyllBilListe() {
     <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">
       Fyller bil: ${biltekst}
     </div>
-    ${!bilId ? '<p class="melding">Velg bil først. Listen er klar, men lagring krever valgt bil.</p>' : ''}
+    ${!bilId ? '<p class="melding">Velg bil f\u00F8rst. Listen er klar, men lagring krever valgt bil.</p>' : ''}
     <div style="overflow:auto; max-height:460px; border:1px solid #374151; border-radius:10px; margin-top:8px;">
       <table class="bil-tabell">
         <thead>
@@ -463,7 +531,7 @@ function tegnFyllBilListe() {
             <th>Min. hovedlager</th>
             <th>MVA</th>
             <th>Antall til bil</th>
-            <th>Min. på bil</th>
+            <th>Min. p\u00E5 bil</th>
           </tr>
         </thead>
         <tbody>
@@ -490,11 +558,48 @@ function tegnFyllBilListe() {
   `;
 }
 
+async function hentInnloggetBrukerTilLogg() {
+  try {
+    if (!window.supabaseClient || !supabaseClient.auth) return {};
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data && data.user ? data.user : null;
+    return {
+      bruker_id: user && user.id ? user.id : null,
+      bruker_epost: user && user.email ? user.email : null,
+      bruker_navn: user && user.user_metadata ? (user.user_metadata.full_name || user.user_metadata.name || null) : null
+    };
+  } catch (e) {
+    console.warn("Kunne ikke hente innlogget bruker til lagerlogg:", e);
+    return {};
+  }
+}
+
+async function skrivLagerlogg(rad) {
+  try {
+    let { error } = await supabaseClient.from("lagerlogg").insert([rad]);
+
+    // Hvis hentet_av-kolonnen ikke er lagt inn enn\u00E5, skriver vi resten av loggen
+    // slik at lagerflytting ikke stopper. Kj\u00F8r SQL-filen i zippen for \u00E5 lagre hentet_av.
+    if (error && String(error.message || "").toLowerCase().includes("hentet_av")) {
+      const radUtenHentetAv = { ...rad };
+      delete radUtenHentetAv.hentet_av;
+      const fallback = await supabaseClient.from("lagerlogg").insert([radUtenHentetAv]);
+      error = fallback.error;
+    }
+
+    if (error) {
+      console.warn("Lagerlogg ble ikke skrevet. Kj\u00F8r lagerlogg.sql hvis tabellen mangler:", error.message);
+    }
+  } catch (e) {
+    console.warn("Lagerlogg feilet:", e);
+  }
+}
+
 async function lagreBilLagerListe() {
   const bilId = hentValgtBilIdForBilLager();
 
   if (!bilId) {
-    bilMelding("Velg bil først.", true);
+    bilMelding("Velg bil f\u00F8rst.", true);
     return;
   }
 
@@ -509,15 +614,50 @@ async function lagreBilLagerListe() {
     .filter(r => r.vareId && Number.isFinite(r.antall) && r.antall > 0 && Number.isInteger(r.antall));
 
   if (!rader.length) {
-    bilMelding("Skriv antall på minst én vare i listen.", true);
+    bilMelding("Skriv antall p\u00E5 minst \u00E9n vare i listen.", true);
     return;
   }
 
-  bilMelding("Lagrer varer på bil...");
+  bilMelding("Sjekker hovedlager...");
 
+  const vareIds = rader.map(r => r.vareId);
+  const { data: varerFraDb, error: vareError } = await supabaseClient
+    .from("varer")
+    .select("*")
+    .in("id", vareIds);
+
+  if (vareError) {
+    bilMelding("Kunne ikke hente hovedlager: " + vareError.message, true);
+    return;
+  }
+
+  const varerMap = new Map((varerFraDb || []).map(v => [String(v.id), v]));
+
+  for (const r of rader) {
+    const vare = varerMap.get(String(r.vareId));
+    const beholdning = vareHovedlager(vare);
+    if (!vare) {
+      bilMelding("Fant ikke en av varene i hovedlager.", true);
+      return;
+    }
+    if (beholdning < r.antall) {
+      bilMelding(`Ikke nok p\u00E5 hovedlager for ${vareNavn(vare)}. P\u00E5 lager: ${beholdning}, fors\u00F8ker: ${r.antall}.`, true);
+      return;
+    }
+  }
+
+  bilMelding("Fyller bil og trekker fra hovedlager...");
+
+  const bruker = await hentInnloggetBrukerTilLogg();
+  const hentetAv = bilVerdi("bilLagerHentetAv") || bruker.bruker_navn || bruker.bruker_epost || "";
+  const bil = hentBilFraId(bilId);
   let lagret = 0;
 
   for (const r of rader) {
+    const vare = varerMap.get(String(r.vareId));
+    const hovedlagerFor = vareHovedlager(vare);
+    const hovedlagerEtter = hovedlagerFor - r.antall;
+
     const { data: eksisterende, error: sjekkError } = await supabaseClient
       .from("bil_lager")
       .select("id, antall, minimum_antall")
@@ -545,15 +685,40 @@ async function lagreBilLagerListe() {
     }
 
     if (res.error) {
-      bilMelding("Kunne ikke lagre vare på bil: " + res.error.message, true);
+      bilMelding("Kunne ikke lagre vare p\u00E5 bil: " + res.error.message, true);
       return;
     }
+
+    const oppdater = await supabaseClient
+      .from("varer")
+      .update({ lager_antall: hovedlagerEtter })
+      .eq("id", r.vareId);
+
+    if (oppdater.error) {
+      bilMelding("Varen ble lagt p\u00E5 bil, men hovedlager kunne ikke trekkes: " + oppdater.error.message, true);
+      return;
+    }
+
+    await skrivLagerlogg({
+      type: "flytting",
+      handling: "hovedlager_til_bil",
+      bil_id: bilId,
+      bil_navn: bilNavn(bil),
+      vare_id: r.vareId,
+      varenr: vareNr(vare) || null,
+      varenavn: vareNavn(vare),
+      antall: r.antall,
+      hovedlager_for: hovedlagerFor,
+      hovedlager_etter: hovedlagerEtter,
+      hentet_av: hentetAv || null,
+      ...bruker
+    });
 
     lagret++;
   }
 
   document.querySelectorAll(".bil-lager-antall-liste, .bil-lager-min-liste").forEach(input => input.value = "");
-  bilMelding(`La ${lagret} varer på bilen.`);
+  bilMelding(`La ${lagret} varer p\u00E5 bilen og trakk fra hovedlager${hentetAv ? " \u2013 hentet av " + hentetAv : ""}.`);
 
   await lastBilerOgBilLager();
   await fyllVarevalgFraAktivBil();
@@ -566,12 +731,12 @@ async function lagreBilLager() {
   const minimum = Number(String(bilVerdi("bilLagerMinimum") || "0").replace(",", "."));
 
   if (!bilId || !vareId) {
-    bilMelding("Velg bil og vare først.", true);
+    bilMelding("Velg bil og vare f\u00F8rst.", true);
     return;
   }
 
   if (!Number.isFinite(antall) || antall < 0 || !Number.isInteger(antall)) {
-    bilMelding("Antall må være heltall 0 eller høyere.", true);
+    bilMelding("Antall m\u00E5 v\u00E6re heltall 0 eller h\u00F8yere.", true);
     return;
   }
 
@@ -629,8 +794,47 @@ async function lastBilLager() {
 
   bilLager = data || [];
   window.bilLager = bilLager;
+
+  // Hent siste lagerlogg per bil/vare, s\u00E5 vi kan vise hvem som faktisk hentet varene.
+  bilLagerHentetMap = new Map();
+  try {
+    const { data: loggData, error: loggError } = await supabaseClient
+      .from("lagerlogg")
+      .select("bil_id, vare_id, hentet_av, bruker_navn, bruker_epost, created_at")
+      .eq("handling", "hovedlager_til_bil")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (!loggError && Array.isArray(loggData)) {
+      loggData.forEach(rad => {
+        const key = `${rad.bil_id || ""}|${rad.vare_id || ""}`;
+        if (!bilLagerHentetMap.has(key)) {
+          bilLagerHentetMap.set(key, {
+            navn: rad.hentet_av || rad.bruker_navn || rad.bruker_epost || "",
+            dato: rad.created_at || ""
+          });
+        }
+      });
+    } else if (loggError) {
+      console.warn("Kunne ikke hente hvem som hentet varer fra lagerlogg:", loggError.message);
+    }
+  } catch (e) {
+    console.warn("Henting av henter-navn feilet:", e);
+  }
+
   tegnBilLager();
   return bilLager;
+}
+
+function henterTekstForBilLagerRad(rad) {
+  const key = `${rad?.bil_id || ""}|${rad?.vare_id || ""}`;
+  const logg = bilLagerHentetMap.get(key);
+  if (!logg || !logg.navn) return "";
+  let dato = "";
+  try {
+    if (logg.dato) dato = new Date(logg.dato).toLocaleDateString("no-NO");
+  } catch (_) {}
+  return dato ? `${logg.navn} (${dato})` : logg.navn;
 }
 
 function tegnBilLager() {
@@ -644,14 +848,14 @@ function tegnBilLager() {
 
   if (!rader.length) {
     e.innerHTML = valgtBilId
-      ? `<p>Ingen varer ligger på ${valgtBilOverskrift()} ennå.</p>`
-      : "<p>Ingen varer på bil-lager.</p>";
+      ? `<p>Ingen varer ligger p\u00E5 ${valgtBilOverskrift()} enn\u00E5.</p>`
+      : "<p>Ingen varer p\u00E5 bil-lager.</p>";
     return;
   }
 
   e.innerHTML = `
     <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">
-      ${valgtBilId ? 'Varer på bil: ' + valgtBilOverskrift() : 'Varer på bil-lager'}
+      ${valgtBilId ? 'Varer p\u00E5 bil: ' + valgtBilOverskrift() : 'Varer p\u00E5 bil-lager'}
     </div>
     <table class="bil-tabell">
       <thead>
@@ -661,8 +865,9 @@ function tegnBilLager() {
           <th>Varenr</th>
           <th>Vare</th>
           <th>Utpris</th>
-          <th>Antall på bil</th>
-          <th>Minimum på bil</th>
+          <th>Antall p\u00E5 bil</th>
+          <th>Minimum p\u00E5 bil</th>
+          <th>Sist hentet av</th>
         </tr>
       </thead>
       <tbody>
@@ -675,6 +880,7 @@ function tegnBilLager() {
             <td>${formatKr(varePris(rad.varer))}</td>
             <td>${Number(rad.antall || 0)}</td>
             <td>${Number(rad.minimum_antall || 0)}</td>
+            <td>${henterTekstForBilLagerRad(rad) || ""}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -692,7 +898,7 @@ async function fyllVarevalgFraAktivBil() {
   select.innerHTML = "";
 
   if (!bilId) {
-    select.innerHTML = '<option value="">Velg aktiv bil først</option>';
+    select.innerHTML = '<option value="">Velg aktiv bil f\u00F8rst</option>';
     if (bilEl("varePris")) bilEl("varePris").value = "0";
     return;
   }
@@ -783,6 +989,9 @@ async function lastBilerOgBilLager() {
 }
 
 function kobleBilKnapper() {
+  const nyBilKnapp = bilEl("nyBilKnapp");
+  if (nyBilKnapp) nyBilKnapp.onclick = nyBilSkjema;
+
   const lagreBilKnapp = bilEl("lagreBilKnapp");
   if (lagreBilKnapp) lagreBilKnapp.onclick = lagreBil;
 
@@ -849,3 +1058,7 @@ window.oppdaterAktivBilVisning = oppdaterAktivBilVisning;
 window.lastBilerOgBilLager = lastBilerOgBilLager;
 
 window.hentAnsattForBil = hentAnsattForBil;
+
+window.nyBilSkjema = nyBilSkjema;
+window.visBilSkjema = visBilSkjema;
+window.redigerBil = redigerBil;

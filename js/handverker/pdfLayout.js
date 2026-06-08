@@ -14,8 +14,8 @@ const PDF_LAYOUT = {
   brevfotLinjeY: 276,
   brevfotY: 284,
   sideNrY: 291,
-  logoBredde: 70,
-  logoTopp: 3,
+  logoBredde: 25,
+  logoTopp: 5,
   linjeFarge: 180
 };
 
@@ -137,7 +137,7 @@ async function tegnLogoPdf(doc, firma = {}) {
   const bredde = PDF_LAYOUT.logoBredde;
   const ratio = logo.width && logo.height ? logo.width / logo.height : 3;
   const hoyde = bredde / ratio;
-  const x = (pdfSidebredde(doc) - bredde) / 2;
+  const x = PDF_LAYOUT.venstre;
 
   doc.addImage(
     logo.data,
@@ -176,21 +176,11 @@ async function tegnBrevhodePdf(doc, firma = {}, tittel = "") {
 }
 
 function tegnSkilleLinjePdf(doc, y, fraX = PDF_LAYOUT.venstre, tilX = PDF_LAYOUT.hoyre) {
-  if (firma.navn) {
-    doc.setFontSize(12);
-    doc.text(pdfTryggTekst(firma.navn), pdfSidebredde(doc) / 2, 45, { align: "center" });
-  }
-
   doc.setDrawColor(PDF_LAYOUT.linjeFarge);
   doc.line(fraX, y, tilX, y);
 }
 
 function tegnBrevfotPdf(doc, firma = {}, sideNr = null, antallSider = null) {
-  if (firma.navn) {
-    doc.setFontSize(12);
-    doc.text(pdfTryggTekst(firma.navn), pdfSidebredde(doc) / 2, 45, { align: "center" });
-  }
-
   doc.setDrawColor(PDF_LAYOUT.linjeFarge);
   doc.line(
     PDF_LAYOUT.venstre,
@@ -201,26 +191,27 @@ function tegnBrevfotPdf(doc, firma = {}, sideNr = null, antallSider = null) {
 
   doc.setFontSize(8);
 
-  const venstreTekst = pdfTryggTekst(firma.navn || "");
-  const midtTekst = [
-    firma.adresse,
-    firma.postadresse
-  ].filter(Boolean).join(", ");
-  const hoyreTekst = [
-    (firma.org_nr || firma.orgnr) ? "Org.nr: " + (firma.org_nr || firma.orgnr) : "",
-    firma.mva_nr ? "MVA: " + firma.mva_nr : "",
-    firma.kontonr ? "Konto: " + firma.kontonr : ""
-  ].filter(Boolean).join("  ");
+  const firmanavn = pdfTryggTekst(firma.navn || firma.firmanavn || "");
+  const adresse = pdfTryggTekst([firma.adresse, firma.postadresse].filter(Boolean).join(", "));
+  const orgnr = pdfTryggTekst(firma.org_nr || firma.orgnr || firma.organisasjonsnummer || "");
+  const mva = pdfTryggTekst(firma.mva_nr || firma.mvanr || "");
+  const konto = pdfTryggTekst(firma.kontonr || firma.konto || "");
 
-  doc.text(venstreTekst, PDF_LAYOUT.venstre, PDF_LAYOUT.brevfotY);
-  doc.text(midtTekst, 70, PDF_LAYOUT.brevfotY);
-  doc.text(hoyreTekst, PDF_LAYOUT.venstre, PDF_LAYOUT.brevfotY + 5);
+  const linje1 = [firmanavn, adresse].filter(Boolean).join(" | ");
+  const linje2 = [
+    orgnr ? "Org.nr: " + orgnr : "",
+    mva ? "MVA: " + mva : "",
+    konto ? "Konto: " + konto : ""
+  ].filter(Boolean).join(" | ");
+
+  doc.text(linje1, PDF_LAYOUT.venstre, PDF_LAYOUT.brevfotY);
+  doc.text(linje2, PDF_LAYOUT.venstre, PDF_LAYOUT.brevfotY + 5);
 
   if (sideNr !== null && antallSider !== null) {
     doc.text(
       "Side " + sideNr + " av " + antallSider,
       170,
-      PDF_LAYOUT.sideNrY
+      PDF_LAYOUT.brevfotY + 5
     );
   }
 }

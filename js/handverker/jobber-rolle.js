@@ -1,9 +1,12 @@
-/* Rett i Lomma - jobbliste for admin/bruker 7055
+/* Rett i Lomma - jobbliste for admin/bruker 7068
    Vanlig bruker ser egne jobber. Admin ser alle.
    Klikk på en jobb i listen for å få den opp som detaljvisning.
 */
 (function () {
   let sisteJobber = [];
+  let prosjektMap = new Map();
+  let ansattMap = new Map();
+
 
   function hent(id) { return document.getElementById(id); }
 
@@ -29,6 +32,99 @@
       localStorage.getItem("innloggetAnsattId") ||
       localStorage.getItem("ansattId") ||
       "";
+  }
+
+  function erUuid(verdi) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(verdi || "").trim());
+  }
+
+  function utenUuid(verdi) {
+    const s = String(verdi ?? "").trim();
+    return erUuid(s) ? "" : s;
+  }
+
+  function prosjektFraMap(rad) {
+    const id = String(rad.prosjekt_id || rad.prosjektId || "").trim();
+    if (!id) return null;
+    return prosjektMap.get(id) || null;
+  }
+
+  function ansattFraMap(rad) {
+    const id = String(rad.ansatt_id || rad.ansattId || rad.bruker_id || rad.user_id || "").trim();
+    if (!id) return null;
+    return ansattMap.get(id) || null;
+  }
+
+  function visningProsjekt(rad) {
+    const p = prosjektFraMap(rad) || rad.prosjekter || {};
+    const nr =
+      p.prosjektnr || p.prosjekt_nr || p.prosjektNr || p.nr || p.nummer ||
+      rad.prosjektnr || rad.prosjekt_nr || rad.prosjektNr || rad.prosjekt_nummer || "";
+    if (nr) return String(nr);
+
+    const navn = p.navn || p.prosjektnavn || rad.prosjekt_navn || rad.prosjektnavn || rad.prosjekt || "";
+    return utenUuid(navn);
+  }
+
+  function visningAnsatt(rad) {
+    const a = ansattFraMap(rad) || rad.ansatte || {};
+    const navn = a.navn || a.fullt_navn || a.full_name || rad.ansatt_navn || rad.ansattnavn || rad.ansatt || "";
+    if (navn) return String(navn);
+
+    const epost = a.epost || a.email || rad.epost || rad.ansatt_epost || rad.bruker_epost || "";
+    if (epost) return String(epost);
+
+    return utenUuid(rad.ansatt_id || rad.ansattId || rad.bruker_id || rad.user_id || "");
+  }
+
+  function pentBeskrivelse(verdi) {
+    return String(verdi || "")
+      .replaceAll("kjoring", "kjøring")
+      .replaceAll("Kjoring", "Kjøring")
+      .replaceAll("belop", "beløp")
+      .replaceAll("Belop", "Beløp");
+  }
+
+  function erNullUtleggRad(rad) {
+    const sum = Number(rad.sum ?? rad.belop ?? rad.total ?? 0);
+    const tekst = String(rad.beskrivelse || rad.notat || rad.arbeid || "").toLowerCase();
+    return sum === 0 && (tekst.includes("utlegg/refusjon") || tekst.includes("utlegg"));
+  }
+
+  async function berikJobberMedNavn(rader) {
+    prosjektMap = new Map();
+    ansattMap = new Map();
+
+    if (!window.supabaseClient || !Array.isArray(rader) || !rader.length) return rader || [];
+
+    const prosjektIds = [...new Set(rader.map(r => r.prosjekt_id || r.prosjektId).filter(Boolean).map(String))];
+    const ansattIds = [...new Set(rader.map(r => r.ansatt_id || r.ansattId || r.bruker_id || r.user_id).filter(Boolean).map(String))];
+
+    if (prosjektIds.length) {
+      try {
+        const { data, error } = await supabaseClient
+          .from("prosjekter")
+          .select("*")
+          .in("id", prosjektIds);
+        if (!error) prosjektMap = new Map((data || []).map(p => [String(p.id), p]));
+      } catch (e) {
+        console.warn("Kunne ikke hente prosjektnummer:", e);
+      }
+    }
+
+    if (ansattIds.length) {
+      try {
+        const { data, error } = await supabaseClient
+          .from("ansatte")
+          .select("*")
+          .in("id", ansattIds);
+        if (!error) ansattMap = new Map((data || []).map(a => [String(a.id), a]));
+      } catch (e) {
+        console.warn("Kunne ikke hente ansattnavn:", e);
+      }
+    }
+
+    return rader;
   }
 
   function finnTimerTabell() {
@@ -64,11 +160,11 @@
   }
 
   function hentProsjekt(rad) {
-    return rad.prosjekt_navn || rad.prosjektnavn || rad.prosjekt || rad.prosjekter?.navn || rad.prosjekt_id || "";
+    return visningProsjekt(rad);
   }
 
   function hentAnsatt(rad) {
-    return rad.ansatt_navn || rad.ansattnavn || rad.ansatt || rad.ansatte?.navn || rad.epost || rad.ansatt_id || "";
+    return visningAnsatt(rad);
   }
 
   function jobbStatus(rad) {
@@ -267,8 +363,8 @@
     html.push('<div class="rad" style="margin-top:12px;">');
     html.push(felt("Dato", datoNo(rad.dato || rad.created_at)));
     html.push(felt("Kunde", hentKunde(rad)));
-    html.push(felt("Prosjekt", hentProsjekt(rad)));
-    html.push(felt("Ansatt", hentAnsatt(rad)));
+    html.push(felt("Prosjektnr", hentProsjekt(rad)));
+    html.push(felt("Utført av", hentAnsatt(rad)));
     html.push(felt("Start", rad.start || rad.start_tid || rad.startTid));
     html.push(felt("Slutt", rad.slutt || rad.slutt_tid || rad.sluttTid));
     html.push(felt("Timer", rad.timer || rad.antall_timer || rad.timer_antall));
@@ -280,7 +376,7 @@
     const beskrivelse = rad.beskrivelse || rad.notat || rad.arbeid || "";
     if (beskrivelse) {
       html.push('<h4>Beskrivelse</h4>');
-      html.push('<div style="white-space:pre-wrap; background:#111827; padding:10px; border-radius:8px;">' + esc(beskrivelse) + '</div>');
+      html.push('<div style="white-space:pre-wrap; background:#111827; padding:10px; border-radius:8px;">' + esc(pentBeskrivelse(beskrivelse)) + '</div>');
     }
 
     html.push('<h4>Bilder</h4>');
@@ -351,7 +447,7 @@
       return;
     }
 
-    const html = ['<table class="bil-tabell"><thead><tr><th>Dato</th><th>Kunde</th><th>Prosjekt</th><th>Ansatt</th><th>Beskrivelse</th><th>Beløp</th><th>Status</th></tr></thead><tbody>'];
+    const html = ['<table class="bil-tabell"><thead><tr><th>Dato</th><th>Kunde</th><th>Prosjektnr</th><th>Utført av</th><th>Beskrivelse</th><th>Beløp</th><th>Status</th></tr></thead><tbody>'];
 
     rader.forEach(function (r, idx) {
       html.push('<tr data-jobb-index="' + idx + '" style="cursor:pointer;">' +
@@ -359,7 +455,7 @@
         "<td>" + esc(hentKunde(r)) + "</td>" +
         "<td>" + esc(hentProsjekt(r)) + "</td>" +
         "<td>" + esc(hentAnsatt(r)) + "</td>" +
-        "<td>" + esc(r.beskrivelse || r.notat || r.arbeid || "") + "</td>" +
+        "<td>" + esc(pentBeskrivelse(r.beskrivelse || r.notat || r.arbeid || "")) + "</td>" +
         "<td>" + esc(jobbBelop(r)) + "</td>" +
         "<td>" + esc(jobbStatus(r)) + "</td>" +
       "</tr>");
@@ -395,7 +491,9 @@
       const { data, error } = await query;
       if (error) throw error;
 
-      const rader = (!erAdminModus() && !ansattId) ? filtrerEgneJobber(data || []) : (data || []);
+      let rader = (!erAdminModus() && !ansattId) ? filtrerEgneJobber(data || []) : (data || []);
+      rader = rader.filter(function (r) { return !erNullUtleggRad(r); });
+      await berikJobberMedNavn(rader);
       tegnJobber(rader);
     } catch (e) {
       console.error("Feil ved lasting av jobber:", e);

@@ -1,6 +1,4 @@
-console.log("fakturaValg.js lastet");
-
-const FELLES_FAKTURA_MVA_SATS = 0.25;
+console.log("fakturaValg.js lastet - henter fakturaer fra fakturaer-tabellen");
 
 function fellesFormatBelop(verdi) {
   return Number(verdi || 0).toLocaleString("no-NO", {
@@ -14,67 +12,72 @@ function fellesFakturaDato(dato) {
   return String(dato).slice(0, 10);
 }
 
-function fellesKundeNavnForTime(time) {
-  if (!time) return "Kunde";
-
-  if (time.kunde_navn || time.kundeNavn || time.kunde) {
-    return time.kunde_navn || time.kundeNavn || time.kunde;
-  }
-
+function fellesKundeNavn(kundeId, fallback) {
   const kunde = (window.kunder || []).find(k =>
-    String(k.id || "") === String(time.kunde_id || time.kundeId || "")
+    String(k.id || "") === String(kundeId || "")
   );
 
-  return kunde?.navn || "Kunde";
-}
-
-function fellesFakturaLinjeSum(time) {
-  if (typeof beregnMvaLinje === "function") {
-    const mvaLinje = beregnMvaLinje(time);
-    return Number(mvaLinje?.sumEksMva || 0);
-  }
-
-  if (time?.sum !== undefined && time?.sum !== null && Number(time.sum) > 0) {
-    return Number(time.sum);
-  }
-
-  return Number(time?.timer || 0) * Number(time?.timepris || 0);
-}
-
-function hentFellesFakturaValgData() {
-  const map = new Map();
-
-  (window.timer || [])
-    .filter(t => t.fakturanr || t.faktura_nr)
-    .forEach(t => {
-      const fakturanr = String(t.fakturanr || t.faktura_nr || "").trim();
-      if (!fakturanr) return;
-
-      if (!map.has(fakturanr)) {
-        map.set(fakturanr, {
-          fakturanr,
-          dato: t.fakturert_dato || t.faktura_dato || t.dato || "",
-          kunde: fellesKundeNavnForTime(t),
-          belop: 0
-        });
-      }
-
-      const post = map.get(fakturanr);
-      post.belop += fellesFakturaLinjeSum(t) * (1 + FELLES_FAKTURA_MVA_SATS);
-    });
-
-  return Array.from(map.values()).sort((a, b) => {
-    const datoA = String(a.dato || "");
-    const datoB = String(b.dato || "");
-    return datoB.localeCompare(datoA) || String(b.fakturanr).localeCompare(String(a.fakturanr));
-  });
+  return kunde?.navn || fallback || "Kunde";
 }
 
 function lagFellesFakturaValgTekst(faktura) {
-  return `${faktura.fakturanr} | ${faktura.kunde || "Kunde"} | ${fellesFakturaDato(faktura.dato)} | ${fellesFormatBelop(faktura.belop)} kr`;
+  const kunde = fellesKundeNavn(
+    faktura.kunden_id || faktura.kunde_id,
+    faktura.kunde_navn || faktura.kundenavn || ""
+  );
+
+  const belop = faktura.inkl_mva || faktura.total || 0;
+
+  return `${faktura.fakturanr} | ${kunde} | ${fellesFakturaDato(faktura.dato || faktura.created_at)} | ${fellesFormatBelop(belop)} kr`;
 }
 
-function fyllFellesFakturaValg(selectId, tomTekst, ingenTekst) {
+function sorterFakturaer(a, b) {
+  const datoA = String(a.created_at || a.dato || "");
+  const datoB = String(b.created_at || b.dato || "");
+  return datoB.localeCompare(datoA) || String(b.fakturanr || "").localeCompare(String(a.fakturanr || ""));
+}
+
+function ryddDuplikatFakturaer(fakturaer) {
+  const sett = new Set();
+  const ryddet = [];
+
+  (fakturaer || [])
+    .slice()
+    .sort(sorterFakturaer)
+    .forEach(f => {
+      const status = String(f.status || f.betalingsstatus || "").toLowerCase();
+      if (status === "kreditert" || status === "kreditnota") return;
+
+      const key = [
+        String(f.kunden_id || f.kunde_id || ""),
+        String(f.dato || f.created_at || "").slice(0, 10),
+        Number(f.inkl_mva || f.total || 0).toFixed(2)
+      ].join("|");
+
+      if (sett.has(key)) return;
+      sett.add(key);
+      ryddet.push(f);
+    });
+
+  return ryddet;
+}
+
+async function hentFellesFakturaValgData() {
+  if (!window.supabaseClient) return [];
+
+  const { data, error } = await supabaseClient
+    .from("fakturaer")
+    .select("*");
+
+  if (error) {
+    console.error("Feil ved henting av fakturaer:", error);
+    return [];
+  }
+
+  return ryddDuplikatFakturaer(data || []);
+}
+
+async function fyllFellesFakturaValg(selectId, tomTekst, ingenTekst) {
   const select = document.getElementById(selectId);
 
   if (!select) {
@@ -89,7 +92,7 @@ function fyllFellesFakturaValg(selectId, tomTekst, ingenTekst) {
   tom.textContent = tomTekst || "Velg faktura";
   select.appendChild(tom);
 
-  const fakturaer = hentFellesFakturaValgData();
+  const fakturaer = await hentFellesFakturaValgData();
 
   fakturaer.forEach(faktura => {
     const option = document.createElement("option");
@@ -107,7 +110,7 @@ function fyllFellesFakturaValg(selectId, tomTekst, ingenTekst) {
 }
 
 function fyllFakturaKopiValg() {
-  fyllFellesFakturaValg(
+  return fyllFellesFakturaValg(
     "fakturaKopiValg",
     "Velg faktura for kopi",
     "Ingen fakturaer funnet"
@@ -115,7 +118,7 @@ function fyllFakturaKopiValg() {
 }
 
 function fyllKreditnotaFakturaValg() {
-  fyllFellesFakturaValg(
+  return fyllFellesFakturaValg(
     "kreditnotaFakturaValg",
     "Velg faktura å kreditere",
     "Ingen fakturaer funnet"
