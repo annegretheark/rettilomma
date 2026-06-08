@@ -52,6 +52,8 @@ async function lastFirma() {
   if (kontonrFelt) kontonrFelt.value = firma.kontonr || firma.konto_nr || "";
   settFirmaFeltHvisFinnes("firmaVippsNummer", firma.vipps_nummer);
   settFirmaFeltHvisFinnes("firmaVippsMottaker", firma.vipps_mottaker);
+  settFirmaFeltHvisFinnes("firmaBrevhode", firma.brevhode_tekst);
+  settFirmaFeltHvisFinnes("firmaBrevfot", firma.brevfot_tekst);
   settFirmaFeltHvisFinnes("firmaKontaktperson", firma.kontaktperson);
   settFirmaFeltHvisFinnes("firmaAndreOpplysninger", firma.andre_opplysninger);
 
@@ -149,6 +151,8 @@ async function lagreFirma() {
   leggTilHvisUtfylt(firma, "kontonr", "firmaKontonr");
   leggTilHvisUtfylt(firma, "vipps_nummer", "firmaVippsNummer");
   leggTilHvisUtfylt(firma, "vipps_mottaker", "firmaVippsMottaker");
+  leggTilHvisUtfylt(firma, "brevhode_tekst", "firmaBrevhode");
+  leggTilHvisUtfylt(firma, "brevfot_tekst", "firmaBrevfot");
   leggTilHvisUtfylt(firma, "kontaktperson", "firmaKontaktperson");
   leggTilHvisUtfylt(firma, "andre_opplysninger", "firmaAndreOpplysninger");
 

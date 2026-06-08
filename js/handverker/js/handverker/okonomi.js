@@ -79,19 +79,6 @@ function okonomiBetaltKnapp(f) {
   </button>`;
 }
 
-
-function okonomiPurringKnapp(f) {
-  const status = okonomiVisStatus(f);
-  if (status === "Betalt" || status === "Kreditert") return "";
-  const fakturanr = f?.fakturanr || "";
-  if (!fakturanr) return "";
-  return `<button type="button"
-    class="secondary okonomi-mini-knapp"
-    onclick="event.stopPropagation(); lagPurringFraOkonomi('${okonomiTryggJs(fakturanr)}')">
-    Purring
-  </button>`;
-}
-
 async function okonomiSettBetalt(fakturanr, belop) {
   if (!fakturanr) {
     alert("Mangler fakturanr.");
@@ -236,7 +223,6 @@ function okonomiDetaljHtml(type, rad) {
       <div>Beløp: ${okonomiBelop(belop)} kr</div>
       ${tekst ? `<p>${okonomiTryggTekst(tekst)}</p>` : ""}
       ${type === "Faktura" ? okonomiBetaltKnapp(rad) : ""}
-      ${type === "Faktura" ? okonomiPurringKnapp(rad) : ""}
     </div>
   `;
 }
@@ -401,8 +387,7 @@ async function visOkonomiOversikt() {
       { tittel: "Fakturastatus", html: f => okonomiStatusMerke(f) },
       { tittel: "Forfall", verdi: f => okonomiDato(f.forfallsdato) },
       { tittel: "Inkl. mva", verdi: f => okonomiBelop(f.inkl_mva || f.total || 0) + " kr" },
-      { tittel: "Betalt", html: f => okonomiBetaltKnapp(f) },
-      { tittel: "Purring", html: f => okonomiPurringKnapp(f) }
+      { tittel: "Betalt", html: f => okonomiBetaltKnapp(f) }
     ],
     "Ingen fakturaer i dette utvalget.",
     "Faktura"
@@ -463,7 +448,6 @@ async function visOkonomiOversikt() {
 window.fyllOkonomiKundeValg = fyllOkonomiKundeValg;
 window.visOkonomiOversikt = visOkonomiOversikt;
 window.okonomiSettBetalt = okonomiSettBetalt;
-window.okonomiPurringKnapp = okonomiPurringKnapp;
 window.okonomiVisDetalj = okonomiVisDetalj;
 
 window.addEventListener("load", function () {

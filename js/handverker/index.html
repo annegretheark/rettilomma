@@ -168,6 +168,37 @@
       color: #b42318;
     }
 
+    .okonomi-mini-knapp {
+      padding: 5px 7px;
+      margin: 0;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi {
+      cursor: pointer;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi:hover {
+      background: #1f2937;
+    }
+
+    .okonomi-detalj {
+      margin-top: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      background: #22272a;
+      color: #f3f4f6;
+    }
+
+    .okonomi-detalj strong,
+    .okonomi-detalj div,
+    .okonomi-detalj p {
+      color: #f3f4f6;
+    }
+
     .modul-skjult {
       display: none !important;
     }
@@ -395,13 +426,7 @@
         <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
         <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">Lønn</button>
 
-        <div class="meny-gruppe" data-modul="varer">
-          <button id="lagerMenyKnapp" type="button">Min bil ▼</button>
-          <div class="meny-panel">
-            <button id="varerKnapp" class="admin-only" data-modul="varer" type="button">Vareregister</button>
-            <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
-          </div>
-        </div>
+        <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
 
         <div class="meny-gruppe admin-only">
           <button id="adminMenyKnapp" type="button">Admin ▼</button>
@@ -542,11 +567,13 @@
   <label for="varePris">Varepris</label>
   <input id="varePris" type="number" value="0" step="0.01">
 </div>
+
+</div>
+
 <button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
   Legg til vare på faktura
 </button>
 <div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
-</div>
 
       <div class="rad">
   <div>
@@ -587,6 +614,13 @@
   
         </div>
       </div>
+<button id="leggTilUtleggKnapp" type="button">
+  Legg til utlegg på faktura
+</button>
+
+<div id="utleggListe" style="margin-top:10px;">
+  Utlegg som legges her kommer med på neste faktura.
+</div>
       <label for="beskrivelse">Beskrivelse</label>
       <textarea id="beskrivelse"></textarea>
       <label for="timerBildeGalleri">
@@ -616,13 +650,7 @@
   id="timerBildeTekst"
   type="text"
   placeholder="F.eks. før arbeid">
-<button id="leggTilUtleggKnapp" type="button">
-  Legg til utlegg på faktura
-</button>
 
-<div id="utleggListe" style="margin-top:10px;">
-  Utlegg som legges her kommer med på neste faktura.
-</div>
       <button id="lagreTimerKnapp" type="button">Lagre timer</button>
 
       <div id="timerMelding" class="melding"></div>
@@ -701,6 +729,7 @@
       <button id="okonomiOversiktKnapp" type="button">Vis økonomioversikt</button>
 
       <div id="okonomiMelding" class="melding"></div>
+      <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
       <div id="okonomiOversikt"></div>
 
 </section>
@@ -1018,6 +1047,12 @@
 
       <label for="firmaVippsMottaker">Vipps mottaker</label>
       <input id="firmaVippsMottaker">
+
+      <label for="firmaBrevhode">Brevhode</label>
+      <textarea id="firmaBrevhode" placeholder="Tekst øverst på faktura / PDF"></textarea>
+
+      <label for="firmaBrevfot">Brevfot / brevhale</label>
+      <textarea id="firmaBrevfot" placeholder="Tekst nederst på faktura / PDF"></textarea>
 
       <label for="firmaOrgNr">Org nr</label>
       <input id="firmaOrgNr">

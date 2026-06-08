@@ -168,6 +168,37 @@
       color: #b42318;
     }
 
+    .okonomi-tabell tr.klikkbar-okonomi {
+      cursor: pointer;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi:hover {
+      background: #1f2937;
+    }
+
+    .okonomi-mini-knapp {
+      padding: 5px 7px;
+      margin: 0;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .okonomi-detalj {
+      margin-top: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      background: #22272a;
+      color: #f3f4f6;
+    }
+
+    .okonomi-detalj strong,
+    .okonomi-detalj div,
+    .okonomi-detalj p {
+      color: #f3f4f6;
+    }
+
     .modul-skjult {
       display: none !important;
     }
@@ -698,6 +729,7 @@
       <button id="okonomiOversiktKnapp" type="button">Vis økonomioversikt</button>
 
       <div id="okonomiMelding" class="melding"></div>
+      <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
       <div id="okonomiOversikt"></div>
 
 </section>
@@ -1016,6 +1048,12 @@
       <label for="firmaVippsMottaker">Vipps mottaker</label>
       <input id="firmaVippsMottaker">
 
+      <label for="firmaBrevhode">Brevhode</label>
+      <textarea id="firmaBrevhode" placeholder="Tekst øverst på faktura / PDF"></textarea>
+
+      <label for="firmaBrevfot">Brevfot / brevhale</label>
+      <textarea id="firmaBrevfot" placeholder="Tekst nederst på faktura / PDF"></textarea>
+
       <label for="firmaOrgNr">Org nr</label>
       <input id="firmaOrgNr">
 
@@ -1097,6 +1135,7 @@
 <script src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
 <script src="../js/handverker/utils.js?v=5003"></script>
 <script src="../js/handverker/fakturaData.js?v=5003"></script>
+<script src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
 <script src="../js/handverker/pdfLayout.js?v=5003"></script>
 <script src="../js/handverker/fakturaPdf.js?v=5003"></script>
 <script src="../js/handverker/faktura.js?v=5003"></script>

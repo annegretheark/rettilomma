@@ -1,0 +1,3 @@
+Legg denne script-linjen i index.html etter faktura.js og før/etter okonomi.js:
+
+<script src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
