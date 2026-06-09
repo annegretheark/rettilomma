@@ -102,6 +102,7 @@ function erAlleredeFakturert(time) {
     time.fakturert === true ||
     time.faktura_id ||
     time.fakturanr ||
+    time.fakturert_at ||
     time.fakturert_dato
   );
 }

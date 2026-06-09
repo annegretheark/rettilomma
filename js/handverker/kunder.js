@@ -59,14 +59,16 @@ async function lagreKunde() {
     return;
   }
 
-  const lagretKundeId = result.data?.[0]?.id || id;
-  document.getElementById("kundeId").value = lagretKundeId;
-
-  settKundeMelding("Kunde lagret. Du kan legge til prosjekter.");
+  // AGK FIX 7088:
+  // Etter lagring skal kundeskjemaet bli blankt, klart for neste kunde.
+  settKundeMelding("Kunde lagret.");
 
   await lastKunder();
 
-  document.getElementById("kundeId").value = lagretKundeId;
+  nullstillKundeSkjema();
+
+  // Behold meldingen etter nullstilling.
+  settKundeMelding("Kunde lagret. Skjemaet er klart for ny kunde.");
 }
 
 function visProsjektVindu() {

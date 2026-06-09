@@ -60,16 +60,24 @@ koble("backupKnapp", "click", tryggFunksjon("backup"));
 koble("lagreBilKnapp", "click", tryggFunksjon("lagreBil"));
 
 koble("kjorLonnKnapp", "click", tryggFunksjon("kjorLonn"));
-koble("lonnsslippKnapp", "click", tryggFunksjon("lagLonnsslipper"));
 koble("trekkExcelKnapp", "click", tryggFunksjon("eksporterTrekkExcel"));
 koble("utbetalingExcelKnapp", "click", tryggFunksjon("eksporterUtbetalingerExcel"));
-koble("lonnsslippKnapp", "click", tryggFunksjon("lagLonnsslipper"));
-koble("lonnsslippKopiKnapp", "click", () => lagLonnsslipper(true));
-koble("lonnsslippAlleKnapp", "click", () => lagLonnsslipper(false));
-koble("lonnsslippAlleKopiKnapp", "click", () => lagLonnsslipper(true));
-koble("lonnsslippKopiKnapp", "click", tryggFunksjon("lagLonnsslipperKopi"));
-koble("lonnsslippAlleKnapp", "click", tryggFunksjon("lagLonnsslipper"));
-koble("lonnsslippAlleKopiKnapp", "click", tryggFunksjon("lagLonnsslipperKopi"));
+
+// AGK FIX 7087:
+// Ikke koble lagLonnsslipper direkte som event-handler.
+// Da får funksjonen MouseEvent som første parameter, og det tolkes som kopi=true.
+koble("lonnsslippKnapp", "click", function () {
+  return lagLonnsslipper(false);
+});
+koble("lonnsslippAlleKnapp", "click", function () {
+  return lagLonnsslipper(false);
+});
+koble("lonnsslippKopiKnapp", "click", function () {
+  return lagLonnsslipper(true);
+});
+koble("lonnsslippAlleKopiKnapp", "click", function () {
+  return lagLonnsslipper(true);
+});
 
 koble("kjorHelsetestKnapp", "click", tryggFunksjon("kjorHelsetest"));
 koble("kjorStresstestKnapp", "click", tryggFunksjon("kjorStresstest"));

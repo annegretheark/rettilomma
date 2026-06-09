@@ -155,6 +155,21 @@ function sikreLonnFelter() {
 
     <label for="bonusBeskrivelse">Bonusbeskrivelse</label>
     <input id="bonusBeskrivelse" type="text" placeholder="F.eks. månedens bonus" />
+
+    <h3>Frav&#230;r / Flexi</h3>
+    <label>
+      <input id="flexiAktiv" type="checkbox" style="width:auto;" checked>
+      Bruk flexi/timebank for denne ansatte
+    </label>
+
+    <label>
+      <input id="overtidTilFlexi" type="checkbox" style="width:auto;">
+      Overtid skal som standard g&#229; til flexi i stedet for utbetaling
+    </label>
+
+    <label for="normalArbeidsdagTimer">Normal arbeidsdag timer</label>
+    <input id="normalArbeidsdagTimer" type="number" step="0.25" value="7.5" />
+
   `;
 
   anchor.parentNode.insertBefore(container, anchor.nextSibling);
@@ -392,6 +407,11 @@ async function endreAnsatt(id) {
   settVerdi("provisjonOmsetningManuell", ansatt.provisjon_omsetning_manuell || ansatt.provisjon_grunnlag_manuell || "");
   settVerdi("bonus", ansatt.bonus);
   settVerdi("bonusBeskrivelse", ansatt.bonus_beskrivelse || "");
+  const flexiAktiv = document.getElementById("flexiAktiv");
+  if (flexiAktiv) flexiAktiv.checked = ansatt.flexi_aktiv !== false;
+  const overtidTilFlexi = document.getElementById("overtidTilFlexi");
+  if (overtidTilFlexi) overtidTilFlexi.checked = ansatt.overtid_til_flexi === true;
+  settVerdi("normalArbeidsdagTimer", ansatt.normal_arbeidsdag_timer || ansatt.normal_timer_dag || 7.5);
   oppdaterLonnFelter();
   settVerdi("skattetrekk", ansatt.skattetrekk);
   settVerdi("ekstraSkatt", ansatt.ekstra_skatt || ansatt.ekstraskatt);
@@ -493,11 +513,16 @@ async function lagreAnsatt() {
       await lagreTrekkForAnsatt(lagretAnsattId);
     }
 
-    nyttAnsattSkjema();
-    if (!(result.fjernetKolonner && result.fjernetKolonner.length)) {
-      settAnsattMelding("Ansatt lagret med lønnsoppsett og trekk.");
-    }
     await lastAnsatte();
+
+    // AGK FIX 7089:
+    // Nullstill skjema etter lagring, men behold tydelig melding.
+    // Dette hindrer at neste ansatt oppdaterer forrige ansatt ved et uhell.
+    nyttAnsattSkjema();
+
+    if (!(result.fjernetKolonner && result.fjernetKolonner.length)) {
+      settAnsattMelding("Ansatt lagret. Skjemaet er klart for ny ansatt.");
+    }
   } finally {
     lagrerAnsatt = false;
     if (lagreKnapp) lagreKnapp.disabled = false;
@@ -614,7 +639,7 @@ function nyttAnsattSkjema() {
   settVerdi("ansattStandardBil", "");
   settVerdi("ansattPersonnr", "");
   settVerdi("ansattKontonr", "");
-  settVerdi("ansattRolle", "ansatt");
+  settVerdi("ansattRolle", "bruker");
   settVerdi("ansattStartDato", "");
   settVerdi("ansattSluttDato", "");
   sikreLonnFelter();
@@ -626,6 +651,11 @@ function nyttAnsattSkjema() {
   settVerdi("provisjonOmsetningManuell", "");
   settVerdi("bonus", "");
   settVerdi("bonusBeskrivelse", "");
+  const flexiAktiv = document.getElementById("flexiAktiv");
+  if (flexiAktiv) flexiAktiv.checked = true;
+  const overtidTilFlexi = document.getElementById("overtidTilFlexi");
+  if (overtidTilFlexi) overtidTilFlexi.checked = false;
+  settVerdi("normalArbeidsdagTimer", "7.5");
   oppdaterLonnFelter();
   settVerdi("skattetrekk", "");
   settVerdi("ekstraSkatt", "");

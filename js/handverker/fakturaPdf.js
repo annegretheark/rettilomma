@@ -70,13 +70,16 @@ async function sperrFakturerteTimer(timerListe, fakturanr) {
       .map(t => t.id)
       .filter(Boolean);
 
+  const dato = new Date().toISOString();
+
   // Oppdater minnet med en gang, slik at samme jobb ikke kan faktureres på nytt
   // uten at siden lastes på nytt.
   (timerListe || []).forEach(t => {
     t.fakturerbar = false;
     t.fakturert = true;
-    t.fakturert_dato = new Date().toISOString();
-    // Ikke alle timer-tabeller har fakturanr. Bruk bare i minnet hvis det finnes.
+    t.faktura_id = t.faktura_id || null;
+    t.fakturert_at = dato;
+    t.fakturert_dato = dato; // brukes bare som bakoverkompatibilitet i minnet
     t.fakturanr = fakturanr;
   });
 
@@ -84,22 +87,13 @@ async function sperrFakturerteTimer(timerListe, fakturanr) {
     return true;
   }
 
-  const dato = new Date().toISOString();
-
-  // Viktig: Noen Supabase-tabeller mangler kolonnen fakturanr.
-  // Derfor prøver vi først full oppdatering, og faller tilbake til bare kolonner
-  // som normalt finnes på timer: fakturerbar, fakturert og fakturert_dato.
+  // Tabellen din har fakturert_at, ikke fakturert_dato.
+  // Derfor prøver vi riktig kolonne først.
   const forsok = [
     {
       fakturerbar: false,
       fakturert: true,
-      fakturanr: fakturanr,
-      fakturert_dato: dato
-    },
-    {
-      fakturerbar: false,
-      fakturert: true,
-      fakturert_dato: dato
+      fakturert_at: dato
     },
     {
       fakturerbar: false,

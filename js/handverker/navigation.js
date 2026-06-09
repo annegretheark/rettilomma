@@ -4,7 +4,7 @@
 (function () {
   const ARBEIDSSIDER = [
     "timerSide", "jobberSide", "backupSide", "fakturaSide", "varerSide", "bilerSide",
-    "kundeSide", "ansattSide", "firmaSide", "testSide", "lonnPanel", "modulerSide"
+    "kundeSide", "ansattSide", "firmaSide", "testSide", "lonnPanel", "fravaerSide", "modulerSide"
   ];
 
   function hent(id) { return document.getElementById(id); }
@@ -184,6 +184,13 @@
     else if (typeof window.fyllLonnAnsattValg === "function") window.fyllLonnAnsattValg(window.ansatte || []);
   }
 
+
+  async function visFravaerSide() {
+    oppdaterAdminVisning();
+    visSide("fravaerSide");
+    if (typeof window.lastFravaerFlexi === "function") await window.lastFravaerFlexi();
+  }
+
   function visTestSide() {
     if (!krevAdmin("Du har ikke tilgang til testpanel.")) return;
     visSide("testSide");
@@ -231,6 +238,7 @@
     bindKnapp("visKundeKnapp", visKundeSide);
     bindKnapp("visFakturaKnapp", visFakturaSide);
     bindKnapp("visLonnKnapp", visLonnSide);
+    bindKnapp("visFravaerKnapp", visFravaerSide);
     bindKnapp("varerKnapp", visVarerSide);
     bindKnapp("visBilerKnapp", visBilerSide);
     bindKnapp("visAnsattKnapp", visAnsattSide);
@@ -265,6 +273,7 @@
   window.visFirmaSide = visFirmaSide;
   window.visTestSide = visTestSide;
   window.visLonnSide = visLonnSide;
+  window.visFravaerSide = visFravaerSide;
   window.visModulerSide = visModulerSide;
   window.skjulAlleSider = skjulAlleSider;
   window.skjulArbeidssider = skjulArbeidssider;

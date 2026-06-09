@@ -1254,6 +1254,37 @@ async function lagPurringFraOkonomi(fakturanr) {
   await skrivUtPurringerPdf([faktura]);
 }
 
+
+function koblePurrAlleKnapp() {
+  const knapp =
+    document.getElementById("purrAlleKnapp") ||
+    document.getElementById("purringKnapp");
+
+  if (!knapp) {
+    console.warn("Fant ikke purrAlleKnapp/purringKnapp");
+    return;
+  }
+
+  knapp.onclick = async function () {
+    const fakturaer = await hentPurrbareFakturaer();
+
+    if (!fakturaer.length) {
+      alert("Ingen ubetalte/forfalte fakturaer å purre.");
+      return;
+    }
+
+    const tekst =
+      "Fant " + fakturaer.length + " forfalte fakturaer.\n\n" +
+      "Vil du lage purring for alle nå?";
+
+    if (!confirm(tekst)) {
+      return;
+    }
+
+    await skrivUtPurringerPdf(fakturaer);
+  };
+}
+
 function koblePurringKnapp() {
   const knapp = document.getElementById("purringKnapp");
 
@@ -1274,6 +1305,7 @@ kobleFakturaKopiKnapp();
 kobleKreditnotaVisning();
 kobleKreditnotaKnapp();
 koblePurringKnapp();
+koblePurrAlleKnapp();
 /* AGK FIX 7074: PDF-finjustering uten å bytte pdfLayout.js, så skjermdesign ikke påvirkes. */
 (function () {
   function trygg(verdi) {

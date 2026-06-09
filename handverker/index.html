@@ -455,6 +455,7 @@
         <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
         <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
         <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
+        <button id="visFravaerKnapp" type="button">Frav&#230;r / Flexi</button>
 
         <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
 
@@ -660,7 +661,8 @@
 <input
   id="timerBildeGalleri"
   type="file"
-  accept="image/*">
+  accept="image/*"
+  multiple>
 
 <label for="timerBildeKamera">
   Ta bilde
@@ -670,7 +672,8 @@
   id="timerBildeKamera"
   type="file"
   accept="image/*"
-  capture="environment">
+  capture="environment"
+  multiple>
 
 <label for="timerBildeTekst">
   Bildetekst
@@ -684,6 +687,70 @@
       <button id="lagreTimerKnapp" type="button">Lagre timer</button>
 
       <div id="timerMelding" class="melding"></div>
+    </section>
+
+
+    <!-- FRAVÆR / FLEXI -->
+    <section id="fravaerSide" class="kort skjult">
+      <h2>Frav&#230;r / Flexi</h2>
+      <p class="info">Ansatte kan registrere frav&#230;r og avspasering. Admin kan godkjenne og se alle.</p>
+
+      <div class="rad admin-only">
+        <div>
+          <label for="fravaerAnsattValg">Ansatt</label>
+          <select id="fravaerAnsattValg">
+            <option value="">Meg selv / valgt ansatt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="fravaerType">Type</label>
+          <select id="fravaerType">
+            <option value="Ferie">Ferie</option>
+            <option value="Egenmelding">Egenmelding</option>
+            <option value="Sykemelding">Sykemelding</option>
+            <option value="Permisjon med l&#248;nn">Permisjon med l&#248;nn</option>
+            <option value="Permisjon uten l&#248;nn">Permisjon uten l&#248;nn</option>
+            <option value="Avspasering">Avspasering</option>
+            <option value="Annet">Annet</option>
+          </select>
+        </div>
+        <div>
+          <label for="fravaerFraDato">Fra dato</label>
+          <input id="fravaerFraDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTilDato">Til dato</label>
+          <input id="fravaerTilDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTimerPrDag">Timer pr dag</label>
+          <input id="fravaerTimerPrDag" type="number" step="0.25" value="7.5">
+        </div>
+      </div>
+
+      <label for="fravaerKommentar">Kommentar</label>
+      <textarea id="fravaerKommentar" placeholder="F.eks. ferieuke, egenmelding, avspasering"></textarea>
+
+      <button id="lagreFravaerKnapp" type="button">Send til godkjenning</button>
+      <button id="oppdaterFravaerKnapp" type="button" class="secondary">Oppdater</button>
+
+      <div id="fravaerMelding" class="melding"></div>
+
+      <hr>
+
+      <h3>Flexisaldo / timebank</h3>
+      <div id="flexiSaldo"></div>
+
+      <h3>Mine registreringer</h3>
+      <div id="fravaerListe"></div>
+
+      <div class="admin-only">
+        <h3>Til godkjenning</h3>
+        <div id="fravaerGodkjenning"></div>
+      </div>
     </section>
 
     <!-- FAKTURA -->
@@ -701,6 +768,7 @@
       <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
       <button id="excelKnapp" type="button">MVA Excel</button>
       <button id="purringKnapp" type="button">Kj&#248;r purring</button>
+      <button id="purrAlleKnapp" type="button">Purr alle forfalte</button>
       <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
       <button id="kreditnotaKnapp" type="button">Kreditnota</button>
 
@@ -1202,7 +1270,8 @@
 <script charset="UTF-8" src="../js/handverker/okonomi.js?v=7086"></script>
 <script charset="UTF-8" src="../js/handverker/fakturaValg.js?v=5003"></script>
 <script charset="UTF-8" src="../js/handverker/backup.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/lonn.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/lonn.js?v=7091"></script>
+<script charset="UTF-8" src="../js/handverker/fravaer.js?v=7090"></script>
 <script charset="UTF-8" src="../js/handverker/tester.js?v=5003"></script>
 <script charset="UTF-8" src="../js/handverker/app.js?v=7021"></script>
 <script charset="UTF-8" src="../js/handverker/varer.js?v=7066"></script>
