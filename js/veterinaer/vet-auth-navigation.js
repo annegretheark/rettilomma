@@ -1,3 +1,4 @@
+/* Split from vet-app.js lines 81-423. Keep load order. */
 async function hentVetInnloggetEpost() {
   try {
     const { data } = await supabaseClient.auth.getUser();
@@ -113,38 +114,72 @@ function oppdaterVetToppInfo() {
 
 
 function opprettVetPasientKnapper() {
-  return;
+  if (document.getElementById("vetPasientHurtigKnapper")) return;
+
+  const nav =
+    document.getElementById("vetMeny") ||
+    document.querySelector(".vet-meny") ||
+    document.querySelector("nav") ||
+    document.querySelector("header") ||
+    document.body;
+
+  if (!nav) return;
+
+  const wrap = document.createElement("div");
+  wrap.id = "vetPasientHurtigKnapper";
+  wrap.style.display = "flex";
+  wrap.style.flexWrap = "wrap";
+  wrap.style.gap = "8px";
+  wrap.style.margin = "8px 0";
+
+  const lagKnapp = (tekst, sideId) => {
+    const knapp = document.createElement("button");
+    knapp.type = "button";
+    knapp.textContent = tekst;
+    knapp.className = "vet-bruker-nav secondary";
+    knapp.onclick = () => sideId === "eierSide" ? nyDyreeier() : nyPasient();
+    knapp.style.display = "inline-block";
+    return knapp;
+  };
+
+  wrap.appendChild(lagKnapp("Ny dyreeier", "eierSide"));
+  wrap.appendChild(lagKnapp("Ny pasient", "dyrSide"));
+
+  if (nav === document.body) {
+    document.body.insertBefore(wrap, document.body.firstChild);
+  } else {
+    nav.appendChild(wrap);
+  }
 }
 
 
 function visVetPasientKnapperAlltid() {
-  return;
+  const wrap = document.getElementById("vetPasientHurtigKnapper");
+  if (!wrap) return;
+  wrap.style.display = "flex";
+  wrap.querySelectorAll("button").forEach(knapp => {
+    knapp.style.display = "inline-block";
+  });
 }
 
 function oppdaterVetMenySynlighet() {
   oppdaterVetToppInfo();
 
-  const adminModus = erKlinikkAdmin();
-  const systemAdminModus = vetErSystemAdmin;
+  const admin = erKlinikkAdmin();
 
   const arbeidKnapp = document.getElementById("vetArbeidKnapp");
+  const adminKnapp = document.getElementById("vetAdminKnapp");
+  const visInfo = document.getElementById("vetVisningInfo");
+
   if (arbeidKnapp) arbeidKnapp.style.display = "inline-block";
+  if (adminKnapp) adminKnapp.style.display = admin ? "inline-block" : "none";
+  if (visInfo) visInfo.style.display = "none";
 
-  document.querySelectorAll(".vet-admin-nav").forEach(el => {
-    el.style.display = adminModus ? "inline-block" : "none";
+  document.querySelectorAll(".vet-admin-nav,.vet-systemadmin-nav,.vet-oppsett-nav,.vet-admin-toggle").forEach(el => {
+    el.style.display = "none";
   });
 
-  document.querySelectorAll(".vet-systemadmin-nav").forEach(el => {
-    el.style.display = systemAdminModus ? "inline-block" : "none";
-  });
-
-  const toggle = document.getElementById("vetVisSomVeterinaerKnapp");
-  if (toggle) toggle.style.display = "none";
-
-  const info = document.getElementById("vetVisningInfo");
-  if (info) info.style.display = "none";
-
-  ["vetArbeidMeny", "vetOppsettMeny"].forEach(id => {
+  ["vetArbeidMeny", "vetAdminMeny", "vetOppsettMeny"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.classList.add("skjult");
@@ -155,7 +190,7 @@ function oppdaterVetMenySynlighet() {
 
 function toggleVetArbeidMeny() {
   const meny = document.getElementById("vetArbeidMeny");
-  const adminMeny = document.getElementById("vetOppsettMeny");
+  const adminMeny = document.getElementById("vetAdminMeny");
   if (!meny) return;
 
   if (adminMeny) {
@@ -163,14 +198,24 @@ function toggleVetArbeidMeny() {
     adminMeny.style.display = "none";
   }
 
-  const erSkjult = meny.classList.contains("skjult") || meny.style.display === "none";
-  if (erSkjult) {
-    meny.classList.remove("skjult");
-    meny.style.display = "block";
-  } else {
-    meny.classList.add("skjult");
-    meny.style.display = "none";
+  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
+  meny.classList.toggle("skjult", !skalVises);
+  meny.style.display = skalVises ? "block" : "none";
+}
+
+function toggleVetAdminMeny() {
+  const meny = document.getElementById("vetAdminMeny");
+  const arbeidMeny = document.getElementById("vetArbeidMeny");
+  if (!meny) return;
+
+  if (arbeidMeny) {
+    arbeidMeny.classList.add("skjult");
+    arbeidMeny.style.display = "none";
   }
+
+  const skalVises = meny.classList.contains("skjult") || meny.style.display === "none";
+  meny.classList.toggle("skjult", !skalVises);
+  meny.style.display = skalVises ? "block" : "none";
 }
 
 function toggleVetOppsettMeny() {
@@ -297,56 +342,3 @@ function skjulAdminKnapperForVanligVet() {
 }
 
 
-async function lastVetData() {
-  await lastVetKlinikkTilgang();
-
-  await Promise.all([
-    lastKlinikker(),
-    lastDyreeiere(),
-    lastDyr(),
-    lastJournal(),
-    lastPriser(),
-    lastVetLagerAlt(),
-    lastVetFakturaer(),
-    lastVetKlinikkBrukereAlle()
-  ]);
-
-  fyllDyreeierValg();
-  fyllDyrValg();
-  fyllDyreeierDyrValg(vetTekst("dyreeierId"));
-  skjulAdminKnapperForVanligVet();
-  opprettVetPasientKnapper();
-}
-
-
-/* ===== ROBUST SYSADMIN/OPPSETT FIX ===== */
-(function () {
-  function adminNaa() {
-    try { return (typeof erKlinikkAdmin === "function" && erKlinikkAdmin()) || vetErSystemAdmin === true; }
-    catch (e) { return vetErSystemAdmin === true; }
-  }
-  window.toggleVetOppsettMeny = window.toggleVetOppsettMeny || function () {
-    const meny = document.getElementById("vetOppsettMeny");
-    if (!meny) return false;
-    const skjult = meny.classList.contains("skjult") || meny.style.display === "none" || !meny.style.display;
-    meny.classList.toggle("skjult", !skjult);
-    meny.style.display = skjult ? "block" : "none";
-    return false;
-  };
-  const gammelOppdater = window.oppdaterVetMenySynlighet;
-  window.oppdaterVetMenySynlighet = function () {
-    if (typeof gammelOppdater === "function") {
-      try { gammelOppdater(); } catch(e) { console.warn(e); }
-    }
-    const admin = adminNaa();
-    const systemadmin = vetErSystemAdmin === true || String(vetKlinikkRolle || "").toLowerCase() === "systemadmin";
-    document.querySelectorAll(".vet-admin-nav,.vet-faktura-nav,.vet-oppsett-nav").forEach(el => { el.style.display = admin ? "inline-block" : "none"; });
-    document.querySelectorAll(".vet-systemadmin-nav").forEach(el => { el.style.display = systemadmin ? "inline-block" : "none"; });
-    const k = document.getElementById("vetOppsettKnapp");
-    if (k) { k.style.display = admin ? "inline-block" : "none"; k.onclick = window.toggleVetOppsettMeny; }
-  };
-  function koble(){ if (window.oppdaterVetMenySynlighet) window.oppdaterVetMenySynlighet(); }
-  document.addEventListener("DOMContentLoaded", koble);
-  window.addEventListener("load", koble);
-  setTimeout(koble, 500);
-})();

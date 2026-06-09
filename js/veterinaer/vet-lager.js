@@ -76,6 +76,31 @@ function bilNavn(bilId) {
   return [b?.navn, b?.regnr].filter(Boolean).join(" - ") || "Ukjent bil";
 }
 
+function vetElementSynlig(el) {
+  if (!el) return false;
+  if (el.disabled) return false;
+  const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+  if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+  return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+}
+
+function vetTekstFraSynligFelt(id) {
+  const felter = Array.from(document.querySelectorAll('[id="' + id + '"]'));
+  if (!felter.length) return vetTekst(id);
+
+  const aktivt = felter.find(el => el === document.activeElement && String(el.value || "").trim());
+  if (aktivt) return String(aktivt.value || "").trim();
+
+  const synligMedVerdi = felter.find(el => vetElementSynlig(el) && String(el.value || "").trim());
+  if (synligMedVerdi) return String(synligMedVerdi.value || "").trim();
+
+  const medVerdi = felter.find(el => String(el.value || "").trim());
+  if (medVerdi) return String(medVerdi.value || "").trim();
+
+  return "";
+}
+
+
 function fyllLagerValg() {
   const vareOptions = '<option value="">Velg vare</option>' + vetVarer.map(v => `<option value="${v.id}">${v.navn || ""} (${v.enhet || "stk"})</option>`).join("");
   ["hovedlagerVareValg", "fyllBilVareValg"].forEach(id => {
@@ -86,7 +111,11 @@ function fyllLagerValg() {
   const bilOptions = '<option value="">Velg bil</option>' + vetBiler.map(b => { const eier = b.veterinaer_navn ? " | " + b.veterinaer_navn : ""; return `<option value="${b.id}">${[b.navn, b.regnr].filter(Boolean).join(" - ")}${eier}</option>`; }).join("");
   ["fyllBilValg", "journalBilValg"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = bilOptions;
+    if (el) {
+      const valgt = el.value;
+      el.innerHTML = bilOptions;
+      if (valgt) el.value = valgt;
+    }
   });
 }
 
@@ -380,7 +409,7 @@ async function oppdaterHovedlager() {
 async function flyttTilBil() {
   vetMelding("billagerMelding", "");
   const klinikkId = hentKlinikkIdForLager();
-  const bilId = vetTekst("fyllBilValg");
+  const bilId = vetTekstFraSynligFelt("fyllBilValg");
   const vareId = vetTekst("fyllBilVareValg");
   const antall = vetTall("fyllBilAntall");
   if (!klinikkId || !bilId || !vareId) { vetMelding("billagerMelding", "Velg klinikk, bil og vare."); return; }
@@ -396,8 +425,9 @@ async function flyttTilBil() {
     await settLagerAntall("vet_lager", { klinikk_id: klinikkId, vare_id: vareId }, hovedAntall - antall);
     await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: vareId }, bilNytt);
     vetSett("fyllBilAntall", "1");
-    vetMelding("billagerMelding", "Vare flyttet fra hovedlager til bil.");
+    vetMelding("billagerMelding", "Vare flyttet fra hovedlager til " + bilNavn(bilId) + ".");
     await lastVetLagerAlt();
+    if (typeof lastVetLagerLogg === "function") await lastVetLagerLogg();
   } catch (e) {
     vetMelding("billagerMelding", "Feil ved flytting til bil: " + e.message);
   }
@@ -419,8 +449,13 @@ function oppdaterLagerSideRollevisning() {
 }
 
 function valgtMinBilId() {
-  const valgt = vetTekst("minBilValg");
+  const valgt = vetTekstFraSynligFelt("minBilValg");
   if (valgt) return valgt;
+
+  // Admin/systemadmin skal ikke automatisk falle tilbake til første/standard bil.
+  // Da kan lagerloggen ende på feil bil hvis man fyller flere biler etter hverandre.
+  if (erKlinikkAdmin() && !erVetVisningVanlig()) return "";
+
   const bil = finnStandardBilForInnloggetVeterinaer();
   return bil?.id || "";
 }
@@ -430,7 +465,7 @@ function fyllMinBilValg() {
   if (!valg) return;
 
   const standardBil = finnStandardBilForInnloggetVeterinaer();
-  const aktiv = valg.value || standardBil?.id || "";
+  const aktiv = vetTekstFraSynligFelt("minBilValg") || standardBil?.id || "";
 
   valg.innerHTML = '<option value="">Velg bil</option>' + vetBiler.map(b => {
     const eier = b.veterinaer_navn ? " | " + b.veterinaer_navn : "";
@@ -561,9 +596,10 @@ async function fyllMinBilMedFlereVarer() {
       await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: linje.vareId }, bilNytt);
     }
 
-    vetMelding("minBilMelding", `La ${linjer.length} varelinje(r) på bilen.`);
+    vetMelding("minBilMelding", `La ${linjer.length} varelinje(r) på ${bilNavn(bilId)}.`);
     await lastVetLagerAlt();
     fyllMinBilSide();
+    if (typeof lastVetLagerLogg === "function") await lastVetLagerLogg();
   } catch (e) {
     vetMelding("minBilMelding", "Feil ved fylling av bil: " + (e.message || e));
   }
@@ -781,3 +817,207 @@ function redigerKlinikk(id) {
   visVetSide("klinikkSide");
   lastKlinikkBrukere();
 }
+
+/* ===== LAGERLOGG FINAL FIX - NAVN + KOMMENTAR-FALLBACK =====
+   Viser lagerlogg med lave linjer.
+   Henter bilnavn fra vet_biler og varenavn fra vet_varer.
+   Hvis en gammel vare_id peker til slettet vare, brukes varenavnet fra kommentar.
+*/
+(function () {
+  const LOGG_TABELL = 'vet_lager_logg';
+
+  function $(id) { return document.getElementById(id); }
+
+  function esc(v) {
+    return String(v ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function globalArray(navn) {
+    try {
+      return Function('return (typeof ' + navn + ' !== "undefined" ? ' + navn + ' : [])')() || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function globalValue(navn, fallback = null) {
+    try {
+      const v = Function('return (typeof ' + navn + ' !== "undefined" ? ' + navn + ' : undefined)')();
+      return v === undefined ? fallback : v;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function antall0(v) {
+    const n = Number(v || 0);
+    return Number.isFinite(n) ? String(Math.round(n)) : '0';
+  }
+
+  function steder() {
+    return ['lagerLoggListe', 'lagerLoggListeFane', 'lagerLoggListeStor', 'minBilLoggListe']
+      .map($)
+      .filter(Boolean);
+  }
+
+  function hentVareFraKommentar(kommentar) {
+    const tekst = String(kommentar || '').trim();
+    const m = tekst.match(/Fylte\s+[\d.,]+\s+(.+?)\s+p[åa]\s+/i);
+    return m?.[1]?.trim() || '';
+  }
+
+  function hentBilFraKommentar(kommentar) {
+    const tekst = String(kommentar || '').trim();
+    const m = tekst.match(/\sp[åa]\s+(.+)$/i);
+    return m?.[1]?.trim() || '';
+  }
+
+  function navnFraCache(id, cache, felt = 'navn') {
+    if (!id) return '';
+    const rad = cache.get(String(id));
+    return String(rad?.[felt] || '').trim();
+  }
+
+  async function hentMap(tabell, ids, select) {
+    const map = new Map();
+    const unike = [...new Set((ids || []).map(String).filter(Boolean))];
+    if (!unike.length || !window.supabaseClient) return map;
+
+    const { data, error } = await supabaseClient
+      .from(tabell)
+      .select(select)
+      .in('id', unike);
+
+    if (error) {
+      console.warn('Kunne ikke hente ' + tabell + ' til lagerlogg:', error.message);
+      return map;
+    }
+
+    (data || []).forEach(rad => map.set(String(rad.id), rad));
+    return map;
+  }
+
+  async function hentLagerloggRader() {
+    if (!window.supabaseClient) return [];
+
+    let query = supabaseClient
+      .from(LOGG_TABELL)
+      .select('id,created_at,klinikk_id,bil_id,vare_id,antall,type,retning,beholdning_for,beholdning_etter,opprettet_av_epost,opprettet_av_navn,kommentar')
+      .order('created_at', { ascending: false })
+      .limit(120);
+
+    const aktivKlinikkId = globalValue('vetAktivKlinikkId', null);
+    const erSystemAdmin = globalValue('vetErSystemAdmin', false);
+    if (aktivKlinikkId && erSystemAdmin !== true) {
+      query = query.eq('klinikk_id', aktivKlinikkId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rader = data || [];
+
+    const bilCache = await hentMap('vet_biler', rader.map(r => r.bil_id), 'id,navn,regnr');
+    const vareCache = await hentMap('vet_varer', rader.map(r => r.vare_id), 'id,navn,enhet');
+
+    // Ta også med allerede lastede globale arrays hvis de finnes.
+    globalArray('vetBiler').forEach(b => bilCache.set(String(b.id), b));
+    globalArray('vetVarer').forEach(v => vareCache.set(String(v.id), v));
+
+    return rader.map(r => {
+      const bilRad = bilCache.get(String(r.bil_id));
+      const vareRad = vareCache.get(String(r.vare_id));
+      const bilNavn = [bilRad?.navn, bilRad?.regnr].filter(Boolean).join(' - ') || hentBilFraKommentar(r.kommentar) || 'Ukjent bil';
+      const vareNavn = navnFraCache(r.vare_id, vareCache) || hentVareFraKommentar(r.kommentar) || 'Ukjent vare';
+      const enhet = vareRad?.enhet || 'stk';
+      return { ...r, bilNavn, vareNavn, enhet };
+    });
+  }
+
+  function renderLagerlogg(rader) {
+    const els = steder();
+    if (!els.length) return;
+
+    if (!rader || !rader.length) {
+      els.forEach(el => el.innerHTML = '<p class="lite">Ingen lagerbevegelser logget ennå.</p>');
+      return;
+    }
+
+    const html = `
+      <div style="display:grid;gap:1px;margin-top:6px;font-size:12px;line-height:1.05;">
+        <div style="display:grid;grid-template-columns:88px minmax(105px,1fr) minmax(150px,1.6fr) 54px minmax(95px,1fr);gap:5px;align-items:center;padding:2px 6px;background:#111827;border:1px solid #374151;font-weight:bold;color:#f8fafc;min-height:22px;">
+          <span>Tid</span><span>Bil</span><span>Vare</span><span>Ant.</span><span>Bruker</span>
+        </div>
+        ${rader.map(r => {
+          const dato = r.created_at
+            ? new Date(r.created_at).toLocaleString('nb-NO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+            : '';
+          const bruker = r.opprettet_av_navn || r.opprettet_av_epost || 'Ukjent';
+          return `
+            <div title="${esc(r.kommentar || '')}" style="display:grid;grid-template-columns:88px minmax(105px,1fr) minmax(150px,1.6fr) 54px minmax(95px,1fr);gap:5px;align-items:center;padding:1px 6px;border:1px solid #374151;background:#1f2427;min-height:22px;">
+              <span class="lite" style="white-space:nowrap;font-size:12px;">${esc(dato)}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${esc(r.bilNavn)}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${esc(r.vareNavn)}</span>
+              <span style="text-align:right;font-size:12px;white-space:nowrap;">${esc(antall0(r.antall))}</span>
+              <span class="lite" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${esc(bruker)}</span>
+            </div>`;
+        }).join('')}
+      </div>`;
+
+    els.forEach(el => el.innerHTML = html);
+  }
+
+  async function lastVetLagerLogg() {
+    const els = steder();
+    if (!els.length || !window.supabaseClient) return;
+
+    try {
+      const rader = await hentLagerloggRader();
+      renderLagerlogg(rader);
+    } catch (e) {
+      console.warn('Kunne ikke lese lagerlogg:', e);
+      els.forEach(el => el.innerHTML = '<p class="lite">Kunne ikke lese lagerlogg: ' + esc(e.message || e) + '</p>');
+    }
+  }
+
+  function visLagerLoggSide() {
+    if (typeof window.visVetSide === 'function') window.visVetSide('lagerLoggSide');
+    setTimeout(lastVetLagerLogg, 50);
+  }
+
+  window.lastVetLagerLogg = lastVetLagerLogg;
+  window.tegnVetLagerLogg = renderLagerlogg;
+  window.visLagerLoggSide = visLagerLoggSide;
+
+  const gammelVisVetSide = window.visVetSide;
+  if (typeof gammelVisVetSide === 'function' && !gammelVisVetSide.__lagerloggNavnFinal) {
+    const nyVisVetSide = function (id) {
+      const res = gammelVisVetSide.apply(this, arguments);
+      if (String(id) === 'lagerSide' || String(id) === 'lagerLoggSide') {
+        setTimeout(lastVetLagerLogg, 100);
+      }
+      return res;
+    };
+    nyVisVetSide.__lagerloggNavnFinal = true;
+    window.visVetSide = nyVisVetSide;
+  }
+
+  document.addEventListener('click', function (e) {
+    const knapp = e.target && e.target.closest ? e.target.closest('button') : null;
+    if (!knapp) return;
+    const tekst = String(knapp.textContent || '').toLowerCase();
+    const onclick = String(knapp.getAttribute('onclick') || '').toLowerCase();
+    if (tekst.includes('lagerlogg') || onclick.includes('lagerlogg')) {
+      setTimeout(lastVetLagerLogg, 100);
+    }
+  }, true);
+
+  document.addEventListener('DOMContentLoaded', () => setTimeout(lastVetLagerLogg, 1500));
+  window.addEventListener('load', () => setTimeout(lastVetLagerLogg, 1700));
+})();
+/* ===== SLUTT LAGERLOGG FINAL FIX ===== */
