@@ -2346,3 +2346,900 @@ window.redigerDyr = redigerDyr;
 window.vetVisDyrDetaljer = vetVisDyrDetaljer;
 window.vetFyllDyrSkjemaForRedigering = vetFyllDyrSkjemaForRedigering;
 /* ===== SLUTT DYR DETALJVISNING VED ÅPNE 09.06 FINAL ===== */
+
+
+/* =========================================================
+   PASIENTLISTE EIER -> DYR -> BEHANDLINGER - REN STABIL VERSJON
+   2026-06-10
+   Erstatter eksperimentelle pasientliste-fikser.
+   Flyt:
+   1) Vis kun dyreeiere som klikkbar liste.
+   2) Klikk eier viser kun dyrene til denne eieren.
+   3) Klikk dyr viser behandlingene til dyret.
+   4) Ny behandling åpner journal ferdig valgt på riktig eier/dyr.
+   ========================================================= */
+(function () {
+  let valgtEierId = "";
+  let valgtDyrId = "";
+  let sistTegnet = "";
+
+  function qs(id) { return document.getElementById(id); }
+  function v(id) { return String(qs(id)?.value || "").trim(); }
+  function setv(id, value) { const x = qs(id); if (x) x.value = value || ""; }
+  function esc(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+  function datoNo(d) {
+    const s = String(d || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y,m,day] = s.split("-");
+      return `${day}.${m}.${y}`;
+    }
+    return s;
+  }
+  function sideErPasienter() {
+    const side = qs("eierSide");
+    if (!side) return false;
+    return !side.classList.contains("skjult") && side.style.display !== "none";
+  }
+  function arrDyreeiere() {
+    try { return (vetDyreeiere || []).slice(); } catch(e) { return []; }
+  }
+  function arrDyr() {
+    try { return (vetDyr || []).slice(); } catch(e) { return []; }
+  }
+  function arrJournal() {
+    try { return (vetJournal || []).slice(); } catch(e) { return []; }
+  }
+  function eierForDyr(dyr) {
+    return arrDyreeiere().find(e => String(e.id) === String(dyr?.dyreeier_id));
+  }
+  function dyrForEier(eierId) {
+    return arrDyr()
+      .filter(d => String(d.dyreeier_id) === String(eierId))
+      .sort((a,b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+  }
+  function journalForDyr(dyrId) {
+    return arrJournal()
+      .filter(j => String(j.dyr_id) === String(dyrId))
+      .sort((a,b) => String(b.dato || "").localeCompare(String(a.dato || "")) || String(b.created_at || "").localeCompare(String(a.created_at || "")));
+  }
+  function antallJournal(dyrId) {
+    return journalForDyr(dyrId).length;
+  }
+
+  function styleOnce() {
+    if (qs("vetPasientTreStil")) return;
+    const s = document.createElement("style");
+    s.id = "vetPasientTreStil";
+    s.textContent = `
+      #vetPasientTreRoot { margin-top:10px; }
+      .vet-tre-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px 0; }
+      .vet-tre-toolbar button { width:auto !important; min-height:34px !important; display:inline-block !important; border-radius:8px !important; padding:8px 12px !important; }
+      .vet-eier-rad { border:1px solid #374151; border-radius:10px; background:#202528; margin:8px 0; overflow:hidden; }
+      .vet-eier-knapp { width:100% !important; display:grid !important; grid-template-columns:minmax(160px,1fr) auto !important; gap:10px !important; text-align:left !important; align-items:center !important; background:#202528 !important; border:0 !important; border-radius:0 !important; padding:10px 12px !important; color:#f8fafc !important; }
+      .vet-eier-knapp:hover, .vet-dyr-knapp:hover { outline:1px solid #60a5fa !important; background:#26313a !important; }
+      .vet-eier-navn { font-size:18px !important; font-weight:700 !important; line-height:1.1 !important; color:#f8fafc !important; }
+      .vet-eier-info { font-size:13px !important; color:#cbd5e1 !important; font-weight:400 !important; margin-top:3px !important; }
+      .vet-eier-teller { font-size:13px !important; color:#cbd5e1 !important; white-space:nowrap !important; font-weight:400 !important; }
+      .vet-dyr-liste { border-top:1px solid #374151; background:#171a1b; }
+      .vet-dyr-rad { border-bottom:1px solid #374151; }
+      .vet-dyr-rad:last-child { border-bottom:0; }
+      .vet-dyr-knapp { width:100% !important; display:grid !important; grid-template-columns:minmax(130px,1fr) minmax(80px,.7fr) minmax(90px,.8fr) auto !important; gap:8px !important; align-items:center !important; text-align:left !important; background:#1f2528 !important; color:#f3f4f6 !important; border:0 !important; border-radius:0 !important; padding:7px 12px !important; min-height:34px !important; }
+      .vet-dyr-knapp.valgt { background:#102033 !important; outline:1px solid #60a5fa !important; }
+      .vet-dyr-knapp span { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; font-size:13px !important; font-weight:400 !important; color:#f3f4f6 !important; }
+      .vet-dyr-knapp .dyrnavn { font-weight:700 !important; }
+      .vet-behandling-panel { padding:10px 12px 12px 12px; background:#0f172a; border-top:1px solid #1f6feb; }
+      .vet-behandling-topp { display:flex; gap:8px; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+      .vet-behandling-topp strong { font-size:16px; }
+      .vet-behandling-topp button { width:auto !important; display:inline-block !important; min-height:32px !important; padding:7px 10px !important; border-radius:8px !important; }
+      .vet-behandling-linje { display:grid; grid-template-columns:110px minmax(100px,.7fr) minmax(160px,1.4fr) auto; gap:8px; align-items:start; padding:6px 8px; border:1px solid #374151; background:#202528; margin-top:4px; border-radius:6px; font-size:13px; }
+      .vet-behandling-linje span { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+      .vet-tom { padding:10px 12px; color:#cbd5e1; }
+      @media (max-width:700px) {
+        .vet-dyr-knapp { grid-template-columns:1fr; gap:2px; }
+        .vet-behandling-linje { grid-template-columns:1fr; }
+        .vet-eier-knapp { grid-template-columns:1fr; }
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function byggPasientTreHtml() {
+    const eiere = arrDyreeiere().sort((a,b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+    if (!eiere.length) {
+      return `
+        <div class="vet-tom">
+          Fant ingen dyreeiere på denne klinikken. Legg inn ny dyreeier, eller sjekk at dyreeiere har riktig klinikk_id.
+        </div>`;
+    }
+
+    return eiere.map(e => {
+      const eierId = String(e.id || "");
+      const dyr = dyrForEier(eierId);
+      const apen = String(valgtEierId) === eierId;
+      const dyrHtml = apen ? `
+        <div class="vet-dyr-liste">
+          ${dyr.length ? dyr.map(d => byggDyrRad(e, d)).join("") : '<div class="vet-tom">Ingen dyr på denne eieren.</div>'}
+        </div>` : "";
+      return `
+        <div class="vet-eier-rad" data-eier-id="${esc(eierId)}">
+          <button type="button" class="vet-eier-knapp" onclick="vetTreVelgEier('${esc(eierId)}')">
+            <span>
+              <span class="vet-eier-navn">${esc(e.navn || "Uten navn")}</span>
+              <span class="vet-eier-info">${esc([e.telefon, e.epost].filter(Boolean).join(" | "))}</span>
+            </span>
+            <span class="vet-eier-teller">${dyr.length} dyr</span>
+          </button>
+          ${dyrHtml}
+        </div>`;
+    }).join("");
+  }
+
+  function byggDyrRad(eier, d) {
+    const dyrId = String(d.id || "");
+    const valgt = String(valgtDyrId) === dyrId;
+    const beh = antallJournal(dyrId);
+    return `
+      <div class="vet-dyr-rad" data-dyr-id="${esc(dyrId)}">
+        <button type="button" class="vet-dyr-knapp ${valgt ? "valgt" : ""}" onclick="vetTreVelgDyr('${esc(dyrId)}')">
+          <span class="dyrnavn">${esc(d.navn || "Uten navn")}</span>
+          <span>${esc(d.art || "")}</span>
+          <span>${esc(d.rase || "")}</span>
+          <span>${beh} beh.</span>
+        </button>
+        ${valgt ? byggBehandlingPanel(eier, d) : ""}
+      </div>`;
+  }
+
+  function byggBehandlingPanel(eier, d) {
+    const journaler = journalForDyr(d.id);
+    const linjer = journaler.length ? journaler.map(j => {
+      const tekst = String(j.notat || j.medisin_kladd || "").replace(/\s+/g, " ").trim();
+      const kortTekst = tekst.length > 120 ? tekst.slice(0, 120) + "..." : tekst;
+      const sum = Number(j.belop_eks_mva || 0);
+      const sumTekst = sum > 0 && typeof formaterKr === "function" ? `${formaterKr(sum)} kr` : "";
+      return `
+        <div class="vet-behandling-linje">
+          <span><strong>${esc(datoNo(j.dato))}</strong></span>
+          <span>${esc(j.type || "Behandling")}</span>
+          <span>${esc(kortTekst || "Ingen notattekst")}</span>
+          <span>${esc(sumTekst)}</span>
+        </div>`;
+    }).join("") : '<div class="vet-tom">Ingen tidligere behandlinger på dette dyret.</div>';
+
+    return `
+      <div class="vet-behandling-panel">
+        <div class="vet-behandling-topp">
+          <strong>${esc(d.navn || "Dyr")} - tidligere behandlinger</strong>
+          <span>
+            <button type="button" onclick="vetTreNyBehandling('${esc(d.id)}')">Ny behandling</button>
+            <button type="button" class="secondary" onclick="redigerDyr('${esc(d.id)}')">Rediger dyr</button>
+          </span>
+        </div>
+        <div class="lite">Eier: ${esc(eier?.navn || "")} ${d.art ? " | " + esc(d.art) : ""} ${d.rase ? " | " + esc(d.rase) : ""}</div>
+        ${linjer}
+      </div>`;
+  }
+
+  function byggPasientSide() {
+    styleOnce();
+    const side = qs("eierSide");
+    if (!side) return;
+
+    side.innerHTML = `
+      <h2>Dyreeiere</h2>
+      <h3>Pasientliste</h3>
+      <p class="lite">Klikk på en eier for å vise dyrene. Klikk på et dyr for å vise tidligere behandlinger.</p>
+      <div class="vet-tre-toolbar">
+        <button type="button" class="secondary" onclick="vetTreOppdater()">Oppdater</button>
+        <button type="button" class="secondary" onclick="nyDyreeier()">Ny dyreeier</button>
+        <button type="button" class="secondary" onclick="nyPasient()">Nytt dyr</button>
+      </div>
+      <div id="vetPasientTreRoot">${byggPasientTreHtml()}</div>
+      <div id="dyreeierMelding" class="melding"></div>
+      <input id="dyreeierId" type="hidden">
+      <input id="dyreeierVelgForDyr" type="hidden">
+      <div id="dyreeierListe" style="display:none"></div>
+    `;
+    sistTegnet = JSON.stringify({
+      e: arrDyreeiere().map(x => [x.id, x.navn, x.telefon, x.epost]),
+      d: arrDyr().map(x => [x.id, x.dyreeier_id, x.navn, x.art, x.rase]),
+      j: arrJournal().map(x => [x.id, x.dyr_id, x.dato, x.type, x.notat, x.belop_eks_mva]),
+      valgtEierId,
+      valgtDyrId
+    });
+  }
+
+  function oppdaterBareHvisEndret() {
+    if (!sideErPasienter()) return;
+    const now = JSON.stringify({
+      e: arrDyreeiere().map(x => [x.id, x.navn, x.telefon, x.epost]),
+      d: arrDyr().map(x => [x.id, x.dyreeier_id, x.navn, x.art, x.rase]),
+      j: arrJournal().map(x => [x.id, x.dyr_id, x.dato, x.type, x.notat, x.belop_eks_mva]),
+      valgtEierId,
+      valgtDyrId
+    });
+    if (now !== sistTegnet) byggPasientSide();
+  }
+
+  window.vetTreVelgEier = function (eierId) {
+    eierId = String(eierId || "");
+    valgtEierId = valgtEierId === eierId ? "" : eierId;
+    valgtDyrId = "";
+    setv("dyreeierId", valgtEierId);
+    setv("dyreeierVelgForDyr", valgtEierId);
+    byggPasientSide();
+  };
+
+  window.vetTreVelgDyr = function (dyrId) {
+    dyrId = String(dyrId || "");
+    const d = arrDyr().find(x => String(x.id) === dyrId);
+    if (!d) return;
+    valgtEierId = String(d.dyreeier_id || "");
+    valgtDyrId = valgtDyrId === dyrId ? "" : dyrId;
+    setv("dyreeierId", valgtEierId);
+    setv("dyreeierVelgForDyr", valgtEierId);
+    byggPasientSide();
+  };
+
+  window.vetTreNyBehandling = function (dyrId) {
+    const d = arrDyr().find(x => String(x.id) === String(dyrId));
+    if (!d) return;
+    valgtEierId = String(d.dyreeier_id || "");
+    valgtDyrId = String(d.id || "");
+
+    if (typeof visVetSide === "function") visVetSide("journalSide");
+
+    setTimeout(() => {
+      try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
+      setv("journalDyreeierValg", valgtEierId);
+      try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+      setv("journalDyrValg", valgtDyrId);
+      setv("journalDato", new Date().toISOString().split("T")[0]);
+      setv("journalNotat", "");
+      setv("journalMedisin", "");
+      const jl = qs("journalListe");
+      if (jl) jl.innerHTML = "";
+      const notat = qs("journalNotat");
+      if (notat) notat.focus();
+    }, 80);
+  };
+
+  window.vetTreOppdater = async function () {
+    try {
+      if (typeof lastDyreeiere === "function") await lastDyreeiere();
+      if (typeof lastDyr === "function") await lastDyr();
+      if (typeof lastJournal === "function") await lastJournal();
+    } catch(e) {
+      console.warn("Kunne ikke oppdatere pasienttre", e);
+    }
+    byggPasientSide();
+  };
+
+  const gammelVisVetSide = window.visVetSide || (typeof visVetSide === "function" ? visVetSide : null);
+  if (gammelVisVetSide && !window.__vetTreOriginalVisVetSide) {
+    window.__vetTreOriginalVisVetSide = gammelVisVetSide;
+  }
+  window.visVetSide = function (sideId) {
+    const original = window.__vetTreOriginalVisVetSide || gammelVisVetSide;
+    if (original) original(sideId);
+    if (sideId === "eierSide") {
+      valgtDyrId = "";
+      setTimeout(() => {
+        if (!arrDyreeiere().length && typeof lastDyreeiere === "function") lastDyreeiere().then(() => {
+          if (typeof lastDyr === "function") return lastDyr();
+        }).then(() => {
+          if (typeof lastJournal === "function") return lastJournal();
+        }).finally(byggPasientSide);
+        else byggPasientSide();
+      }, 30);
+    }
+  };
+
+  const gammelTegnDyreeiere = window.tegnDyreeiere || (typeof tegnDyreeiere === "function" ? tegnDyreeiere : null);
+  window.tegnDyreeiere = function () {
+    if (sideErPasienter()) byggPasientSide();
+    else if (gammelTegnDyreeiere) gammelTegnDyreeiere();
+  };
+
+  const gammelTegnDyr = window.tegnDyr || (typeof tegnDyr === "function" ? tegnDyr : null);
+  window.tegnDyr = function () {
+    if (sideErPasienter()) byggPasientSide();
+    else if (gammelTegnDyr) gammelTegnDyr();
+  };
+
+  const gammelTegnJournal = window.tegnJournal || (typeof tegnJournal === "function" ? tegnJournal : null);
+  window.tegnJournal = function () {
+    if (sideErPasienter()) {
+      oppdaterBareHvisEndret();
+      return;
+    }
+    if (gammelTegnJournal) gammelTegnJournal();
+  };
+
+  // Start på Pasienter når alt er lastet.
+  window.addEventListener("load", function () {
+    setTimeout(() => {
+      try { window.visVetSide("eierSide"); } catch(e) { byggPasientSide(); }
+    }, 800);
+  });
+})();
+
+
+/* ===== PASIENTLISTE FINAL: EIER -> DYR -> BEHANDLING -> JOURNAL 10.06.2026 ===== */
+(function () {
+  const ROOT_ID = "vetPasientTreRoot";
+
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function kr(v) {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n)) return "0,00";
+    try {
+      return n.toLocaleString("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (_) {
+      return String(n.toFixed(2)).replace(".", ",");
+    }
+  }
+
+  function datoKort(v) {
+    const s = String(v || "");
+    return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
+  }
+
+  function eierListe() { return Array.isArray(window.vetDyreeiere) ? window.vetDyreeiere : (typeof vetDyreeiere !== "undefined" ? vetDyreeiere : []); }
+  function dyrListe() { return Array.isArray(window.vetDyr) ? window.vetDyr : (typeof vetDyr !== "undefined" ? vetDyr : []); }
+  function journalListe() { return Array.isArray(window.vetJournal) ? window.vetJournal : (typeof vetJournal !== "undefined" ? vetJournal : []); }
+
+  function setVal(id, verdi) {
+    const el = document.getElementById(id);
+    if (el) el.value = verdi ?? "";
+  }
+
+  function root() {
+    const side = document.getElementById("eierSide");
+    if (!side) return null;
+
+    let r = document.getElementById(ROOT_ID);
+    if (!r) {
+      r = document.createElement("div");
+      r.id = ROOT_ID;
+      const h2 = side.querySelector("h2");
+      if (h2 && h2.parentNode) h2.parentNode.insertBefore(r, h2.nextSibling);
+      else side.prepend(r);
+    }
+    return r;
+  }
+
+  function skjulGammelEierUi() {
+    // Behold skjulte felt som koden trenger, men skjul gammel select/skjema-visning fra arbeidslista.
+    const ids = [
+      "dyreeierVelgForDyr", "dyreeierNavn", "dyreeierTelefon", "dyreeierEpost", "dyreeierAdresse",
+      "dyreeierDyrValg", "dyreeierDyrInfo", "dyreeierListe", "dyreeierMelding"
+    ];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const label = document.querySelector(`label[for="${id}"]`);
+      if (label) label.style.display = "none";
+      el.style.display = "none";
+    });
+
+    const lagre = document.getElementById("lagreDyreeierKnapp");
+    if (lagre) lagre.style.display = "none";
+
+    const h3 = Array.from(document.querySelectorAll("#eierSide h3"));
+    h3.forEach(x => {
+      if (/dyr hos valgt dyreeier/i.test(x.textContent || "")) x.style.display = "none";
+    });
+    const tekster = Array.from(document.querySelectorAll("#eierSide p.lite"));
+    tekster.forEach(x => {
+      if (/redigerer en dyreeier|tilhører denne eieren/i.test(x.textContent || "")) x.style.display = "none";
+    });
+  }
+
+  function css() {
+    if (document.getElementById("vetPasientTreCss")) return;
+    const s = document.createElement("style");
+    s.id = "vetPasientTreCss";
+    s.textContent = `
+      #${ROOT_ID} { margin-top:10px; }
+      .vet-tree-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px 0; }
+      .vet-tree-box { border:1px solid #374151; border-radius:10px; background:#171a1b; overflow:hidden; }
+      .vet-tree-row { width:100%; display:grid; gap:8px; align-items:center; text-align:left; border:0; border-bottom:1px solid #374151; border-radius:0; margin:0; padding:6px 9px; background:#22272a; color:#f3f4f6; cursor:pointer; font-size:14px; line-height:1.15; }
+      .vet-tree-row:hover { background:#26313a; outline:1px solid #60a5fa; }
+      .vet-tree-owner { grid-template-columns:minmax(180px,1.4fr) minmax(90px,.7fr) minmax(170px,1.2fr) 80px; font-weight:600; }
+      .vet-tree-animal { grid-template-columns:24px minmax(160px,1.2fr) minmax(120px,.9fr) minmax(120px,.9fr) 92px; padding-left:20px; background:#1d2225; }
+      .vet-tree-journal { grid-template-columns:24px minmax(95px,.7fr) minmax(150px,1.2fr) minmax(180px,1.5fr) 80px; padding-left:38px; background:#191f22; }
+      .vet-tree-selected { outline:1px solid #60a5fa; background:#1f2937 !important; }
+      .vet-tree-detail { padding:12px 14px; background:#111827; border-bottom:1px solid #374151; }
+      .vet-tree-detail h3 { margin:0 0 8px 0; }
+      .vet-tree-detail p { margin:7px 0; }
+      .vet-tree-detail ul { margin-top:6px; }
+      .vet-tree-empty { padding:10px; color:#cbd5e1; }
+      .vet-tree-small { font-size:13px; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .vet-tree-mini { font-size:13px; color:#93c5fd; }
+      .vet-tree-photo { display:inline-block; margin:6px 8px 6px 0; vertical-align:top; max-width:150px; }
+      .vet-tree-photo img { width:140px; height:100px; object-fit:cover; border-radius:6px; border:1px solid #374151; }
+      @media (max-width:720px){
+        .vet-tree-owner { grid-template-columns:minmax(150px,1fr) 70px; }
+        .vet-tree-owner .hide-mobile { display:none; }
+        .vet-tree-animal { grid-template-columns:20px minmax(130px,1fr) 70px; }
+        .vet-tree-animal .hide-mobile { display:none; }
+        .vet-tree-journal { grid-template-columns:20px 85px minmax(120px,1fr); }
+        .vet-tree-journal .hide-mobile { display:none; }
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function dyrForEier(eierId) {
+    return dyrListe()
+      .filter(d => String(d.dyreeier_id || d.eier_id || "") === String(eierId))
+      .sort((a,b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+  }
+
+  function journalForDyr(dyrId) {
+    return journalListe()
+      .filter(j => String(j.dyr_id || "") === String(dyrId))
+      .sort((a,b) => String(b.dato || "").localeCompare(String(a.dato || "")) || String(b.created_at || "").localeCompare(String(a.created_at || "")));
+  }
+
+  function journalDetaljHtml(j) {
+    const sum = Number(j.belop_eks_mva || 0);
+    const prislinje = sum > 0
+      ? `<p><strong>Pris:</strong> ${kr(sum)} kr eks. mva<br><span class="vet-tree-small">Fastpris: ${kr(j.fastpris)} | Time: ${kr(j.timepris)} x ${esc(j.timer || 0)} | Km: ${esc(j.km || 0)} x ${kr(j.km_pris)}</span></p>`
+      : "";
+
+    const varer = (j.vet_journal_varer || []).map(v => {
+      const vareSum = Number(v.sum_eks_mva || (Number(v.antall || 0) * Number(v.pris || 0)));
+      return `<li>${esc(v.varenavn || "Vare/medisin")} - ${kr(v.antall)} x ${kr(v.pris)} kr = ${kr(vareSum)} kr</li>`;
+    }).join("");
+    const vareblokk = varer ? `<p><strong>Varer/medisiner:</strong></p><ul>${varer}</ul>` : "";
+
+    const bilder = (j.vet_journal_bilder || []).map(b => `
+      <div class="vet-tree-photo">
+        <a href="${esc(b.bilde_url || "#")}" target="_blank">
+          <img src="${esc(b.bilde_url || "")}" alt="${esc(b.bildetekst || b.filnavn || "Journalbilde")}">
+        </a>
+        <div class="vet-tree-small">${esc(b.bildetekst || b.filnavn || "")}</div>
+      </div>
+    `).join("");
+    const bildeblokk = bilder ? `<p><strong>Bilder:</strong></p><div>${bilder}</div>` : "";
+
+    return `
+      <div class="vet-tree-detail">
+        <h3>${esc(datoKort(j.dato))} ${j.type ? "- " + esc(j.type) : "- Journal"}</h3>
+        <p><strong>Dyr:</strong> ${esc(j.vet_dyr?.navn || (dyrListe().find(d => String(d.id) === String(j.dyr_id))?.navn) || "")}</p>
+        ${j.notat ? `<p><strong>Journalnotat:</strong><br>${esc(j.notat).replaceAll("\n", "<br>")}</p>` : ""}
+        ${j.medisin_kladd ? `<p><strong>Medisin/reseptkladd:</strong><br>${esc(j.medisin_kladd).replaceAll("\n", "<br>")}</p>` : ""}
+        ${prislinje}
+        ${vareblokk}
+        ${bildeblokk}
+      </div>
+    `;
+  }
+
+  function render() {
+    css();
+    skjulGammelEierUi();
+    const r = root();
+    if (!r) return;
+
+    const eiere = eierListe().slice().sort((a,b) => String(a.navn || "").localeCompare(String(b.navn || ""), "nb"));
+    const valgtEier = String(window.vetPasientTreValgtEierId || "");
+    const valgtDyr = String(window.vetPasientTreValgtDyrId || "");
+    const valgtJournal = String(window.vetPasientTreValgtJournalId || "");
+
+    if (!eiere.length) {
+      r.innerHTML = `
+        <div class="vet-tree-toolbar">
+          <button type="button" onclick="window.vetPasientTreOppdater()" class="secondary">Oppdater</button>
+          <button type="button" onclick="window.nyDyreeier && window.nyDyreeier()">Ny dyreeier</button>
+        </div>
+        <div class="vet-tree-box"><div class="vet-tree-empty">Fant ingen dyreeiere. Klikk Oppdater, eller legg inn ny dyreeier.</div></div>`;
+      return;
+    }
+
+    let html = `
+      <div class="vet-tree-toolbar">
+        <button type="button" onclick="window.vetPasientTreOppdater()" class="secondary">Oppdater</button>
+        <button type="button" onclick="window.nyDyreeier && window.nyDyreeier()">Ny dyreeier</button>
+        <button type="button" onclick="window.nyPasient && window.nyPasient()" class="secondary">Nytt dyr</button>
+      </div>
+      <div class="vet-tree-box">`;
+
+    eiere.forEach(e => {
+      const eierId = String(e.id || "");
+      const dyr = dyrForEier(eierId);
+      const erValgtEier = valgtEier === eierId;
+      html += `
+        <button type="button" class="vet-tree-row vet-tree-owner ${erValgtEier ? "vet-tree-selected" : ""}" data-vet-tree-owner="${esc(eierId)}">
+          <span>${esc(e.navn || "Uten navn")}</span>
+          <span class="hide-mobile vet-tree-small">${esc(e.telefon || "")}</span>
+          <span class="hide-mobile vet-tree-small">${esc(e.epost || "")}</span>
+          <span class="vet-tree-mini">${dyr.length} dyr</span>
+        </button>`;
+
+      if (erValgtEier) {
+        if (!dyr.length) {
+          html += `<div class="vet-tree-empty">Ingen dyr registrert på denne eieren.</div>`;
+        }
+        dyr.forEach(d => {
+          const dyrId = String(d.id || "");
+          const journaler = journalForDyr(dyrId);
+          const erValgtDyr = valgtDyr === dyrId;
+          html += `
+            <button type="button" class="vet-tree-row vet-tree-animal ${erValgtDyr ? "vet-tree-selected" : ""}" data-vet-tree-animal="${esc(dyrId)}" data-vet-tree-owner-for-animal="${esc(eierId)}">
+              <span>↳</span>
+              <span>${esc(d.navn || "Uten navn")}</span>
+              <span class="hide-mobile vet-tree-small">${esc([d.art, d.rase].filter(Boolean).join(" / "))}</span>
+              <span class="hide-mobile vet-tree-small">${esc(d.idmerking || "")}</span>
+              <span class="vet-tree-mini">${journaler.length} beh.</span>
+            </button>`;
+
+          if (erValgtDyr) {
+            html += `<div class="vet-tree-toolbar" style="padding-left:38px;margin:6px 0;">
+              <button type="button" data-vet-tree-new-journal="${esc(dyrId)}" data-vet-tree-new-journal-owner="${esc(eierId)}">Ny behandling</button>
+            </div>`;
+            if (!journaler.length) {
+              html += `<div class="vet-tree-empty" style="padding-left:38px;">Ingen behandlinger på dette dyret ennå.</div>`;
+            }
+            journaler.forEach(j => {
+              const jid = String(j.id || "");
+              const erValgtJournal = valgtJournal === jid;
+              const kortNotat = String(j.notat || "").replace(/\s+/g, " ").slice(0, 80);
+              html += `
+                <button type="button" class="vet-tree-row vet-tree-journal ${erValgtJournal ? "vet-tree-selected" : ""}" data-vet-tree-journal="${esc(jid)}" data-vet-tree-journal-dyr="${esc(dyrId)}" data-vet-tree-journal-owner="${esc(eierId)}">
+                  <span>•</span>
+                  <span>${esc(datoKort(j.dato))}</span>
+                  <span>${esc(j.type || "Journal")}</span>
+                  <span class="hide-mobile vet-tree-small">${esc(kortNotat)}</span>
+                  <span class="vet-tree-mini">Åpne</span>
+                </button>`;
+              if (erValgtJournal) html += journalDetaljHtml(j);
+            });
+          }
+        });
+      }
+    });
+
+    html += `</div>`;
+    r.innerHTML = html;
+  }
+
+  async function sikreJournalLastet() {
+    if (journalListe().length) return;
+    if (typeof window.lastJournal === "function") {
+      try { await window.lastJournal(); } catch (e) { console.warn("Kunne ikke laste journal", e); }
+    } else if (typeof lastJournal === "function") {
+      try { await lastJournal(); } catch (e) { console.warn("Kunne ikke laste journal", e); }
+    }
+  }
+
+  window.vetPasientTreOppdater = async function () {
+    try { if (typeof window.lastDyreeiere === "function") await window.lastDyreeiere(); else if (typeof lastDyreeiere === "function") await lastDyreeiere(); } catch(e) { console.warn(e); }
+    try { if (typeof window.lastDyr === "function") await window.lastDyr(); else if (typeof lastDyr === "function") await lastDyr(); } catch(e) { console.warn(e); }
+    await sikreJournalLastet();
+    render();
+  };
+
+  window.vetPasientTreAapneEier = async function (eierId) {
+    window.vetPasientTreValgtEierId = String(eierId || "");
+    window.vetPasientTreValgtDyrId = "";
+    window.vetPasientTreValgtJournalId = "";
+    setVal("dyreeierId", eierId || "");
+    setVal("dyreeierVelgForDyr", eierId || "");
+    const e = eierListe().find(x => String(x.id) === String(eierId));
+    if (e) {
+      setVal("dyreeierNavn", e.navn || "");
+      setVal("dyreeierTelefon", e.telefon || "");
+      setVal("dyreeierEpost", e.epost || "");
+      setVal("dyreeierAdresse", e.adresse || "");
+    }
+    render();
+  };
+
+  window.vetPasientTreAapneDyr = async function (dyrId, eierId) {
+    window.vetPasientTreValgtEierId = String(eierId || window.vetPasientTreValgtEierId || "");
+    window.vetPasientTreValgtDyrId = String(dyrId || "");
+    window.vetPasientTreValgtJournalId = "";
+    setVal("dyreeierId", window.vetPasientTreValgtEierId);
+    setVal("dyreeierVelgForDyr", window.vetPasientTreValgtEierId);
+    setVal("dyreeierDyrValg", dyrId || "");
+    await sikreJournalLastet();
+    render();
+  };
+
+  window.vetPasientTreAapneJournal = async function (journalId, dyrId, eierId) {
+    window.vetPasientTreValgtEierId = String(eierId || window.vetPasientTreValgtEierId || "");
+    window.vetPasientTreValgtDyrId = String(dyrId || window.vetPasientTreValgtDyrId || "");
+    window.vetPasientTreValgtJournalId = String(journalId || "");
+    await sikreJournalLastet();
+    render();
+  };
+
+  window.vetPasientTreNyBehandling = function (dyrId, eierId) {
+    const d = dyrListe().find(x => String(x.id) === String(dyrId));
+    const ownerId = eierId || d?.dyreeier_id || "";
+    if (typeof window.visVetSide === "function") window.visVetSide("journalSide");
+    else if (typeof visVetSide === "function") visVetSide("journalSide");
+
+    setTimeout(() => {
+      if (typeof window.fyllJournalDyreeierValg === "function") window.fyllJournalDyreeierValg();
+      else if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg();
+      setVal("journalDyreeierValg", ownerId);
+      if (typeof window.fyllDyrValg === "function") window.fyllDyrValg();
+      else if (typeof fyllDyrValg === "function") fyllDyrValg();
+      setVal("journalDyrValg", dyrId);
+      const dato = document.getElementById("journalDato");
+      if (dato && !dato.value) dato.value = new Date().toISOString().slice(0,10);
+      const notat = document.getElementById("journalNotat");
+      if (notat) notat.focus();
+    }, 80);
+  };
+
+  // Disse navnene brukes av gammel kode. Nå peker de til trevisningen, ikke dyrkortet.
+  window.redigerDyreeier = function (id) { window.vetPasientTreAapneEier(id); return false; };
+  window.fyllDyreeierDyrValg = function (dyreeierId = "", valgtDyrId = "") {
+    window.vetPasientTreValgtEierId = String(dyreeierId || window.vetPasientTreValgtEierId || "");
+    if (valgtDyrId) window.vetPasientTreValgtDyrId = String(valgtDyrId);
+    render();
+  };
+  window.tegnDyreeiere = render;
+
+  // Stopper gamle stack-safe funksjoner fra å sende bruker til Dyr-siden når dyret klikkes i pasientlista.
+  window.vetStackSafeOpenEier = function(id){ window.vetPasientTreAapneEier(id); return false; };
+  window.vetStackSafeOpenDyr = function(id){
+    const d = dyrListe().find(x => String(x.id) === String(id));
+    window.vetPasientTreAapneDyr(id, d?.dyreeier_id || window.vetPasientTreValgtEierId || "");
+    return false;
+  };
+
+  document.addEventListener("click", function (e) {
+    const owner = e.target.closest("[data-vet-tree-owner]");
+    if (owner) {
+      e.preventDefault(); e.stopPropagation();
+      window.vetPasientTreAapneEier(owner.dataset.vetTreeOwner);
+      return;
+    }
+    const animal = e.target.closest("[data-vet-tree-animal]");
+    if (animal) {
+      e.preventDefault(); e.stopPropagation();
+      window.vetPasientTreAapneDyr(animal.dataset.vetTreeAnimal, animal.dataset.vetTreeOwnerForAnimal);
+      return;
+    }
+    const journal = e.target.closest("[data-vet-tree-journal]");
+    if (journal) {
+      e.preventDefault(); e.stopPropagation();
+      window.vetPasientTreAapneJournal(journal.dataset.vetTreeJournal, journal.dataset.vetTreeJournalDyr, journal.dataset.vetTreeJournalOwner);
+      return;
+    }
+    const ny = e.target.closest("[data-vet-tree-new-journal]");
+    if (ny) {
+      e.preventDefault(); e.stopPropagation();
+      window.vetPasientTreNyBehandling(ny.dataset.vetTreeNewJournal, ny.dataset.vetTreeNewJournalOwner);
+      return;
+    }
+  }, true);
+
+  const gammelVisVetSide = typeof window.visVetSide === "function" ? window.visVetSide : (typeof visVetSide === "function" ? visVetSide : null);
+  if (gammelVisVetSide && !gammelVisVetSide.__vetPasientTreWrapped) {
+    const wrapped = function (sideId) {
+      const res = gammelVisVetSide.apply(this, arguments);
+      if (sideId === "eierSide") setTimeout(() => { css(); skjulGammelEierUi(); render(); }, 50);
+      return res;
+    };
+    wrapped.__vetPasientTreWrapped = true;
+    window.visVetSide = wrapped;
+    try { visVetSide = wrapped; } catch (_) {}
+  }
+
+  function start() {
+    css();
+    skjulGammelEierUi();
+    sikreJournalLastet().then(render);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(start, 350), { once:true });
+  } else {
+    setTimeout(start, 350);
+  }
+})();
+/* ===== SLUTT PASIENTLISTE FINAL ===== */
+
+/* ===== HARD FIX 10.06: PASIENTER ER STARTSIDE, JOURNAL ÅPNES KUN FRA NY BEHANDLING ===== */
+(function(){
+  function erSynlig(el){ return el && !el.classList.contains('skjult') && el.style.display !== 'none'; }
+  function finnSide(id){ return document.getElementById(id); }
+  function visPasienter(){
+    if (Date.now() < (window.__vetTillatJournalSideTil || 0)) return;
+    try {
+      if (typeof window.visVetSide === 'function') window.visVetSide('eierSide');
+      else if (typeof visVetSide === 'function') visVetSide('eierSide');
+    } catch(e) { console.warn('Kunne ikke vise pasientside', e); }
+    setTimeout(function(){
+      try { if (typeof window.vetPasientTreOppdater === 'function') window.vetPasientTreOppdater(); }
+      catch(e) { console.warn(e); }
+    }, 80);
+  }
+
+  // Ny behandling skal få lov til å åpne journal-skjemaet.
+  const gammelNyBeh = window.vetPasientTreNyBehandling;
+  window.vetPasientTreNyBehandling = function(dyrId, eierId){
+    window.__vetTillatJournalSideTil = Date.now() + 20000;
+    if (typeof gammelNyBeh === 'function') return gammelNyBeh(dyrId, eierId);
+    if (typeof window.visVetSide === 'function') window.visVetSide('journalSide');
+  };
+
+  // Journal-knappen i toppmenyen skal ikke kaste bruker til gammel journaloversikt.
+  function kobleJournalKnappTilPasienter(){
+    document.querySelectorAll('button').forEach(function(btn){
+      const tekst = String(btn.textContent || '').trim().toLowerCase();
+      const on = String(btn.getAttribute('onclick') || '');
+      if (tekst === 'journal' || on.includes("journalSide")) {
+        if (btn.dataset.vetPasientStartJournalKoblet === '1') return;
+        btn.dataset.vetPasientStartJournalKoblet = '1';
+        btn.textContent = 'Pasientjournal';
+        btn.onclick = function(e){
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          visPasienter();
+          return false;
+        };
+      }
+    });
+  }
+
+  // Pasienter-knappen skal alltid åpne trelisten.
+  function koblePasientKnapp(){
+    document.querySelectorAll('button').forEach(function(btn){
+      const tekst = String(btn.textContent || '').trim().toLowerCase();
+      const on = String(btn.getAttribute('onclick') || '');
+      if (tekst === 'pasienter' || on.includes("eierSide")) {
+        if (btn.dataset.vetPasientStartKoblet === '1') return;
+        btn.dataset.vetPasientStartKoblet = '1';
+        btn.onclick = function(e){
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          visPasienter();
+          return false;
+        };
+      }
+    });
+  }
+
+  function ryddGammelJournalHvisDenStaarOppe(){
+    const journalSide = finnSide('journalSide');
+    if (erSynlig(journalSide) && Date.now() >= (window.__vetTillatJournalSideTil || 0)) {
+      visPasienter();
+    }
+  }
+
+  function start(){
+    kobleJournalKnappTilPasienter();
+    koblePasientKnapp();
+    // Start alltid på pasientlisten etter innlasting.
+    setTimeout(visPasienter, 250);
+    setTimeout(visPasienter, 900);
+    setTimeout(visPasienter, 1800);
+    setInterval(function(){
+      kobleJournalKnappTilPasienter();
+      koblePasientKnapp();
+      ryddGammelJournalHvisDenStaarOppe();
+    }, 1200);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+  else start();
+})();
+/* ===== SLUTT HARD FIX PASIENTSTART ===== */
+
+/* ===== MENYREPARASJON 10.06: TOPPKNAPPER TILBAKE ===== */
+(function(){
+  function qs(id){ return document.getElementById(id); }
+
+  function safeVis(sideId){
+    // Ikke la den forrige hardfixen dra brukeren tilbake mens man trykker meny.
+    window.__vetTillatJournalSideTil = Date.now() + 60 * 60 * 1000;
+    try {
+      if (typeof window.visVetSide === 'function') window.visVetSide(sideId);
+      else if (typeof visVetSide === 'function') visVetSide(sideId);
+    } catch(e) {
+      console.error('Kunne ikke vise side ' + sideId, e);
+      alert('Kunne ikke åpne siden: ' + (e && e.message ? e.message : e));
+    }
+
+    setTimeout(function(){
+      try {
+        if (sideId === 'eierSide' && typeof window.vetPasientTreOppdater === 'function') window.vetPasientTreOppdater();
+        if (sideId === 'lagerSide' && typeof window.lastVetLagerAlt === 'function') window.lastVetLagerAlt();
+        if (sideId === 'okonomiSide' && typeof window.tegnAdminOkonomiOversikt === 'function') window.tegnAdminOkonomiOversikt();
+        if (sideId === 'fakturaSide' && typeof window.fyllFakturaDyreeierValg === 'function') window.fyllFakturaDyreeierValg();
+      } catch(e) { console.warn(e); }
+    }, 80);
+  }
+
+  function toggleOppsett(){
+    const meny = qs('vetOppsettMeny');
+    if (!meny) return false;
+    const skjult = meny.classList.contains('skjult') || meny.style.display === 'none';
+    meny.classList.toggle('skjult', !skjult);
+    meny.style.display = skjult ? '' : 'none';
+    return false;
+  }
+
+  function bindButton(btn, fn){
+    if (!btn) return;
+    btn.onclick = function(e){
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      fn();
+      return false;
+    };
+    btn.dataset.vetMenyReparert = '1';
+  }
+
+  function bindByText(text, fn){
+    const wanted = String(text || '').trim().toLowerCase();
+    Array.from(document.querySelectorAll('button')).forEach(function(btn){
+      const t = String(btn.textContent || '').trim().toLowerCase();
+      if (t === wanted) bindButton(btn, fn);
+    });
+  }
+
+  function reparerMeny(){
+    // Kjente toppknapper i index.html
+    bindButton(qs('vetOppsettKnapp'), toggleOppsett);
+
+    bindByText('Pasienter', function(){ safeVis('eierSide'); });
+    bindByText('Pasientjournal', function(){ safeVis('eierSide'); });
+    bindByText('Journal', function(){ safeVis('journalSide'); });
+    bindByText('Bil og lager', function(){ safeVis('lagerSide'); });
+    bindByText('Fyll bil', function(){
+      window.__vetTillatJournalSideTil = Date.now() + 60 * 60 * 1000;
+      if (typeof window.visFyllBilSide === 'function') window.visFyllBilSide();
+      else safeVis('lagerSide');
+    });
+    bindByText('Lagerlogg', function(){ safeVis('lagerLoggSide'); });
+    bindByText('Oversikt', function(){ safeVis('okonomiSide'); });
+    bindByText('Faktura', function(){ safeVis('fakturaSide'); });
+    bindByText('Backup / Import', function(){ safeVis('backupSide'); });
+
+    // Undermenyknapper i Oppsett
+    bindByText('Klinikk og brukere', function(){ safeVis('klinikkSide'); });
+    bindByText('Hovedlager og biler', function(){ safeVis('lagerSide'); });
+    bindByText('Prisliste', function(){ safeVis('prisSide'); });
+
+    // Ikke rør Logg ut-knappen.
+  }
+
+  // Eksponer for test i konsoll hvis nødvendig.
+  window.vetReparerToppmeny = reparerMeny;
+
+  function start(){
+    reparerMeny();
+    setTimeout(reparerMeny, 300);
+    setTimeout(reparerMeny, 1000);
+    setTimeout(reparerMeny, 2500);
+    // Kjør etter den gamle hardfixens intervall, så denne vinner.
+    if (!window.__vetMenyReparasjonsInterval) {
+      window.__vetMenyReparasjonsInterval = setInterval(reparerMeny, 1500);
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
+  else start();
+})();
+/* ===== SLUTT MENYREPARASJON ===== */

@@ -53,7 +53,242 @@
     .listekort strong, .listekort span, .listekort p, .listekort div { color:#f3f4f6; }
     hr { border:0; border-top:1px solid #374151; margin:18px 0; }
 
-  </style>
+  
+/* Kompakt medisinliste i journal */
+#journalBilVareListe { padding:6px !important; }
+#journalBilVareListe label { margin-top:2px !important; }
+#journalBilVareListe input[type="checkbox"] { transform:scale(.85); }
+#journalBilVareListe input[type="number"] { height:24px !important; min-height:24px !important; padding:1px 3px !important; font-size:12px !important; }
+#journalBilVareListe .lite { font-size:12px !important; line-height:1.05 !important; }
+
+
+/* Vis/skjul medisinliste */
+#toggleJournalBilVareListeKnapp{
+  padding:6px 9px !important;
+  font-size:13px !important;
+  margin-top:4px !important;
+  margin-bottom:4px !important;
+}
+#journalBilVareListe.skjult-medisinliste{
+  display:none !important;
+}
+
+
+/* PROFILBILDER AV DYR - små miniatyrer */
+#dyrListe img,
+#dyreeierDyrInfo img,
+#dyreeierDyrValg img,
+.dyr-profilbilde,
+.dyr-bilde,
+.pasient-bilde,
+.pasient-profilbilde,
+img[src*="dyr"],
+img[src*="pasient"] {
+  width: 70px !important;
+  height: 70px !important;
+  max-width: 70px !important;
+  max-height: 70px !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+}
+
+
+/* Klikkbar/sammenfoldet journalliste */
+#journalListe .listekort.journal-sammenfoldet {
+  max-height: 96px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+}
+#journalListe .listekort.journal-utvidet {
+  max-height: none !important;
+  overflow: visible !important;
+  cursor: pointer !important;
+}
+#journalListe .listekort.journal-sammenfoldet:hover,
+#journalListe .listekort.journal-utvidet:hover {
+  outline: 1px solid #60a5fa !important;
+}
+#journalListe .listekort::after {
+  content: "Klikk for detaljer";
+  display: block;
+  margin-top: 6px;
+  color: #93c5fd;
+  font-size: 12px;
+}
+#journalListe .listekort.journal-utvidet::after {
+  content: "Klikk for å skjule";
+}
+
+
+/* Medisinliste skjules til bruker klikker Velg vare */
+#toggleJournalBilVareListeKnapp{
+  width:100%;
+  text-align:left;
+  background:#f8fafc !important;
+  color:#111827 !important;
+  border:1px solid #4b5563 !important;
+  border-radius:8px !important;
+  padding:10px !important;
+  margin-top:4px !important;
+  font-size:15px !important;
+}
+#journalBilVareListe.skjult-medisinliste{
+  display:none !important;
+}
+#journalBilVareListe{
+  max-height:220px !important;
+  overflow-y:auto !important;
+}
+
+
+/* Klikkbar dyreliste i journal */
+.journal-dyr-klikk-liste{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:6px;
+}
+.journal-dyr-linje{
+  background:#374151 !important;
+  color:#f3f4f6 !important;
+  border:1px solid #4b5563 !important;
+  border-radius:8px !important;
+  padding:6px 9px !important;
+  margin:0 !important;
+  font-size:13px !important;
+  line-height:1.1 !important;
+}
+.journal-dyr-linje.valgt{
+  background:#1f6feb !important;
+  border-color:#60a5fa !important;
+}
+
+
+/* Klikkbar dyreliste i journal - smale linjer */
+.journal-dyr-klikk-liste{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:1px !important;
+  margin-top:6px !important;
+  max-height:150px !important;
+  overflow-y:auto !important;
+  border:1px solid #374151 !important;
+  border-radius:8px !important;
+  background:#171a1b !important;
+}
+.journal-dyr-linje{
+  width:100% !important;
+  display:grid !important;
+  grid-template-columns:minmax(140px,1.4fr) minmax(80px,.7fr) minmax(100px,.9fr) !important;
+  gap:6px !important;
+  align-items:center !important;
+  text-align:left !important;
+  background:#22272a !important;
+  color:#f3f4f6 !important;
+  border:0 !important;
+  border-bottom:1px solid #374151 !important;
+  border-radius:0 !important;
+  padding:3px 7px !important;
+  margin:0 !important;
+  min-height:26px !important;
+  font-size:13px !important;
+  line-height:1.05 !important;
+  cursor:pointer !important;
+}
+.journal-dyr-linje:hover{
+  background:#26313a !important;
+}
+.journal-dyr-linje.valgt{
+  background:#1f6feb !important;
+}
+.journal-dyr-linje span{
+  font-size:13px !important;
+  line-height:1.05 !important;
+  font-weight:400 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+
+/* Pasienter-side: smale klikkbare lister i stedet for store kort */
+#eierSide #dyreeierListe,
+#eierSide #dyreeierDyrInfo,
+#eierSide .dyreeier-dyr-liste,
+#eierSide .dyr-hos-eier-liste {
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:1px !important;
+  margin-top:8px !important;
+}
+
+#eierSide button:not(#lagreDyreeierKnapp):not(.danger),
+#eierSide .listekort,
+#eierSide [onclick*="redigerDyreeier"],
+#eierSide [onclick*="redigerDyr"],
+#eierSide [onclick*="apneDyr"],
+#eierSide [onclick*="åpneDyr"] {
+  width:100% !important;
+  max-width:none !important;
+  min-height:30px !important;
+  display:grid !important;
+  grid-template-columns:48px minmax(180px,1fr) minmax(90px,.5fr) !important;
+  gap:8px !important;
+  align-items:center !important;
+  text-align:left !important;
+  background:#22272a !important;
+  color:#f3f4f6 !important;
+  border:1px solid #374151 !important;
+  border-radius:0 !important;
+  padding:3px 7px !important;
+  margin:0 !important;
+  font-size:13px !important;
+  line-height:1.1 !important;
+  font-weight:400 !important;
+  cursor:pointer !important;
+}
+
+#eierSide button:not(#lagreDyreeierKnapp):not(.danger):hover,
+#eierSide .listekort:hover {
+  background:#26313a !important;
+  outline:1px solid #60a5fa !important;
+}
+
+#eierSide button:not(#lagreDyreeierKnapp):not(.danger) img,
+#eierSide .listekort img {
+  width:38px !important;
+  height:38px !important;
+  max-width:38px !important;
+  max-height:38px !important;
+  object-fit:cover !important;
+  border-radius:6px !important;
+  margin:0 !important;
+}
+
+#eierSide button:not(#lagreDyreeierKnapp):not(.danger) span,
+#eierSide button:not(#lagreDyreeierKnapp):not(.danger) div,
+#eierSide .listekort span,
+#eierSide .listekort div {
+  font-size:13px !important;
+  line-height:1.1 !important;
+  font-weight:400 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* Behold lagreknappen som normal knapp */
+#lagreDyreeierKnapp{
+  width:auto !important;
+  display:inline-block !important;
+  min-height:auto !important;
+  padding:11px 14px !important;
+  border-radius:8px !important;
+  background:#1f6feb !important;
+  color:white !important;
+}
+
+</style>
 </head>
 <body>
 <script>localStorage.setItem("rettilommaValgtModul", "veterinar");</script>
@@ -380,6 +615,7 @@
       <div>
         <label for="journalDyrValg">Dyr</label>
         <select id="journalDyrValg"><option value="">Velg dyreeier først</option></select>
+        <div id="journalDyrKlikkListe" class="journal-dyr-klikk-liste"></div>
       </div>
       <div>
         <label for="journalDato">Dato</label>
@@ -428,10 +664,13 @@
 
     <h4>Fra bil-lager</h4>
     <div class="rad">
-      <div><label for="journalBilValg">Bil</label><select id="journalBilValg"><option value="">Velg bil</option></select></div>
+      <div><label for="journalBilValg">Bil</label><select id="journalBilValg" onchange="fyllJournalBilVareValg()" onclick="setTimeout(fyllJournalBilVareValg,20)"><option value="">Velg bil</option></select></div>
     </div>
-    <div id="journalBilVareListe" class="listekort">Velg bil først.</div>
-    <button id="leggTilJournalVarerFraBilListeKnapp" type="button" class="secondary">Legg inn valgte varer fra bil</button>
+    
+<button id="toggleJournalBilVareListeKnapp" type="button" class="secondary" onclick="visJournalBilVareListeSomValg()">Velg vare/medisin fra bil</button>
+<div id="journalBilVareListe" class="listekort skjult-medisinliste">Velg bil først.</div>
+
+    <button id="leggTilJournalVarerFraBilListeKnapp" type="button" class="secondary" onclick="leggTilJournalVarerFraBilListe()">Legg inn valgte varer fra bil</button>
 
     <div style="display:none;">
       <select id="journalBilVareValg"><option value="">Velg bil først</option></select>
@@ -452,7 +691,7 @@
     <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
     <div class="rad">
       <div><label for="journalBildeGalleri">Velg bilde fra galleri</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
-      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment" multiple></div>
     </div>
     <label for="journalBildeTekst">Bildetekst</label>
     <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
@@ -567,13 +806,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/core/config.js"></script>
-<script src="../js/veterinaer/vet-state-utils.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-auth-navigation.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-data-pris-lager-biler.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-klinikk-dyreeier-dyr.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-journal-okonomi-faktura.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-backup-import-brukere-init.js?v=20260609split"></script>
-<script src="../js/veterinaer/vet-final-fixes.js?v=20260609split"></script>
+<script src="../js/veterinaer/vet-state-utils.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-auth-navigation.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-data-pris-lager-biler.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-klinikk-dyreeier-dyr.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-journal-okonomi-faktura.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-backup-import-brukere-init.js?v=20260610inlinefix"></script>
+<script src="../js/veterinaer/vet-final-fixes.js?v=20260610inlinefix"></script>
 <script src="../js/veterinaer/vet-bilregistrering-fix.js?v=20260609bil"></script>
 <script src="../js/veterinaer/vet-oppsett-nybil-final.js?v=20260609final"></script>
 <script src="../js/veterinaer/vet-smal-liste-final.js?v=20260609smal2"></script>
@@ -610,5 +849,873 @@ function gaaTilModulvalg() {
 }
 window.addEventListener("load", visVelgModulForGreknuts);
 </script>
+
+
+<script>
+/* =========================================================
+   JOURNAL BILVARER INLINE FIKS - 2026-06-10
+   Denne ligger i index.html fordi denne siden laster split-filer, ikke alltid vet-app.js.
+   Den retter bare listen "Varer/medisiner fra bil".
+   ========================================================= */
+(function () {
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function kr(tall) {
+    const n = Number(tall || 0);
+    return n.toLocaleString("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getListe() { return document.getElementById("journalBilVareListe"); }
+  function getSelect() { return document.getElementById("journalBilValg"); }
+
+  function bilLabel(b) {
+    const eier = b?.veterinaer_navn ? " | " + b.veterinaer_navn : "";
+    return [b?.navn, b?.regnr].filter(Boolean).join(" - ") + eier;
+  }
+
+  async function finnBilId() {
+    const el = getSelect();
+    if (!el) return "";
+
+    // 1. Vanlig select-verdi
+    let id = String(el.value || "").trim();
+    if (id) return id;
+
+    // 2. Første reelle option
+    const reell = Array.from(el.options || []).find(o => String(o.value || "").trim());
+    if (reell?.value) {
+      el.value = reell.value;
+      return String(reell.value).trim();
+    }
+
+    // 3. Hvis option viser tekst men mangler value: match mot vet_biler
+    const tekst = String(el.options?.[el.selectedIndex]?.textContent || el.textContent || "").trim().toLowerCase();
+    const globaleBiler = Array.isArray(window.vetBiler) ? window.vetBiler : [];
+    let match = globaleBiler.find(b => bilLabel(b).toLowerCase() === tekst || tekst.includes(String(b.regnr || "").toLowerCase()));
+    if (match?.id) return String(match.id);
+
+    // 4. Hent biler direkte fra Supabase og match på tekst
+    if (window.supabaseClient) {
+      try {
+        const { data } = await supabaseClient.from("vet_biler").select("id,navn,regnr,veterinaer_navn,aktiv").eq("aktiv", true);
+        const biler = data || [];
+        match = biler.find(b => bilLabel(b).toLowerCase() === tekst || tekst.includes(String(b.regnr || "").toLowerCase()));
+        if (!match && biler.length === 1) match = biler[0];
+        if (match?.id) {
+          if (!Array.from(el.options || []).some(o => String(o.value) === String(match.id))) {
+            const opt = document.createElement("option");
+            opt.value = match.id;
+            opt.textContent = bilLabel(match) || "Bil";
+            el.appendChild(opt);
+          }
+          el.value = match.id;
+          return String(match.id);
+        }
+      } catch (e) {
+        console.warn("Kunne ikke hente vet_biler", e);
+      }
+    }
+
+    return "";
+  }
+
+  function varenavn(rad, vare) {
+    return vare?.navn || rad?.varenavn || rad?.navn || "Vare/medisin";
+  }
+
+  function pris(rad, vare) {
+    return Number(vare?.utsalgspris ?? vare?.utpris ?? vare?.pris ?? vare?.salgspris ?? rad?.utsalgspris ?? rad?.utpris ?? rad?.pris ?? 0) || 0;
+  }
+
+  async function hentBilvarer(bilId) {
+    if (!window.supabaseClient || !bilId) return { rader: [], feil: "Mangler Supabase eller bil-id." };
+
+    // Prøv med relasjon først
+    try {
+      const { data, error } = await supabaseClient
+        .from("vet_bil_lager")
+        .select("*, vet_varer(*)")
+        .eq("bil_id", bilId)
+        .gt("antall", 0)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return { rader: data || [], feil: "" };
+    } catch (e1) {
+      console.warn("Relasjon vet_varer(*) feilet, prøver rå rader", e1);
+      try {
+        const { data, error } = await supabaseClient
+          .from("vet_bil_lager")
+          .select("*")
+          .eq("bil_id", bilId)
+          .gt("antall", 0)
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        const rader = data || [];
+        const ids = [...new Set(rader.map(r => r.vare_id).filter(Boolean))];
+        let varer = [];
+        if (ids.length) {
+          const res = await supabaseClient.from("vet_varer").select("*").in("id", ids);
+          varer = res.data || [];
+        }
+        const medVarer = rader.map(r => ({ ...r, vet_varer: varer.find(v => String(v.id) === String(r.vare_id)) || null }));
+        return { rader: medVarer, feil: "" };
+      } catch (e2) {
+        return { rader: [], feil: (e2?.message || e1?.message || "Ukjent feil ved henting av bil-lager.") };
+      }
+    }
+  }
+
+  window.fyllJournalBilVareValg = async function () {
+    const liste = getListe();
+    const selectGammel = document.getElementById("journalBilVareValg");
+    if (liste) liste.innerHTML = '<p class="lite">Henter medisinliste fra valgt bil ...</p>';
+
+    const bilId = await finnBilId();
+    if (!bilId) {
+      if (liste) liste.innerHTML = '<p class="melding">Fant ikke bil-id. Velg bilen på nytt i nedtrekket.</p>';
+      return;
+    }
+
+    const { rader, feil } = await hentBilvarer(bilId);
+    if (!rader.length) {
+      if (selectGammel) selectGammel.innerHTML = '<option value="">Ingen varer på bil</option>';
+      if (liste) liste.innerHTML = `<p class="melding">Ingen varer/medisiner funnet på valgt bil. Bil-id: ${esc(bilId)}${feil ? "<br>Feil: " + esc(feil) : "<br>Sjekk at denne bilen har beholdning over 0 i bil-lager."}</p>`;
+      return;
+    }
+
+    if (selectGammel) {
+      selectGammel.innerHTML = '<option value="">Velg medisin/vare</option>' + rader.map(r => {
+        const v = r.vet_varer || {};
+        return `<option value="${esc(r.vare_id)}">${esc(varenavn(r, v))} - på bil: ${Math.floor(Number(r.antall || 0))} ${esc(v.enhet || "stk")} - ${kr(pris(r, v))} kr</option>`;
+      }).join("");
+    }
+
+    window.__journalBilvarerRader = rader;
+    if (liste) {
+      liste.innerHTML = `
+        <div style="display:grid;gap:2px;margin-top:4px;max-height:220px;overflow-y:auto;">
+          ${rader.map(r => {
+            const v = r.vet_varer || {};
+            const vareId = String(r.vare_id || "");
+            const maks = Math.floor(Number(r.antall || 0));
+            return `
+              <label style="display:grid;grid-template-columns:24px minmax(130px,1.8fr) 70px 70px 62px;gap:3px;align-items:center;border:1px solid #374151;border-radius:5px;padding:2px 4px;background:#22272a;cursor:pointer;min-height:24px;margin-top:2px;">
+                <input class="journal-bilvare-velg" data-vare-id="${esc(vareId)}" type="checkbox" style="width:auto;margin:0;">
+                <span class="lite" style="font-size:12px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(varenavn(r, v))}</span>
+                <span class="lite" style="font-size:12px;line-height:1.05;white-space:nowrap;">${maks} ${esc(v.enhet || "stk")}</span>
+                <span class="lite" style="font-size:12px;line-height:1.05;white-space:nowrap;">${kr(pris(r, v))}</span>
+                <input class="journal-bilvare-antall" data-vare-id="${esc(vareId)}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" onclick="event.stopPropagation();" style="margin:0;padding:1px 3px;height:24px;font-size:12px;min-height:24px;">
+              </label>`;
+          }).join("")}
+        </div>`;
+    }
+  };
+
+  window.leggTilJournalVarerFraBilListe = async function () {
+    const rader = window.__journalBilvarerRader || [];
+    if (!rader.length) await window.fyllJournalBilVareValg();
+    const ferskeRader = window.__journalBilvarerRader || [];
+    if (!ferskeRader.length) {
+      if (typeof vetMelding === "function") vetMelding("journalMelding", "Ingen varer/medisiner funnet på valgt bil.");
+      return;
+    }
+
+    const valgte = new Set(Array.from(document.querySelectorAll(".journal-bilvare-velg:checked")).map(cb => String(cb.dataset.vareId || "")));
+    const linjer = Array.from(document.querySelectorAll(".journal-bilvare-antall"))
+      .map(input => ({ vareId: String(input.dataset.vareId || ""), antall: Number(String(input.value || "").replace(",", ".")) }))
+      .filter(l => l.vareId && (valgte.has(l.vareId) || l.antall > 0));
+
+    if (!linjer.length) {
+      if (typeof vetMelding === "function") vetMelding("journalMelding", "Huk av vare og skriv antall.");
+      return;
+    }
+
+    window.vetJournalVarerTemp = window.vetJournalVarerTemp || [];
+    for (const linje of linjer) {
+      const rad = ferskeRader.find(r => String(r.vare_id) === String(linje.vareId));
+      const v = rad?.vet_varer || {};
+      const beholdning = Math.floor(Number(rad?.antall || 0));
+      if (!Number.isInteger(linje.antall) || linje.antall <= 0) {
+        if (typeof vetMelding === "function") vetMelding("journalMelding", "Antall må være heltall større enn 0.");
+        return;
+      }
+      if (linje.antall > beholdning) {
+        if (typeof vetMelding === "function") vetMelding("journalMelding", `${varenavn(rad, v)}: ikke nok på bilen. Tilgjengelig: ${beholdning}.`);
+        return;
+      }
+      window.vetJournalVarerTemp.push({
+        vare_id: linje.vareId,
+        bil_id: rad?.bil_id || await finnBilId(),
+        varenavn: varenavn(rad, v),
+        antall: linje.antall,
+        pris: pris(rad, v),
+        trekk_fra_billager: true
+      });
+    }
+
+    if (typeof tegnJournalVareListe === "function") tegnJournalVareListe();
+    if (typeof oppdaterJournalSum === "function") oppdaterJournalSum();
+    if (typeof vetMelding === "function") vetMelding("journalMelding", `${linjer.length} varelinje(r) lagt til fra bil.`);
+    document.querySelectorAll(".journal-bilvare-velg").forEach(cb => cb.checked = false);
+    document.querySelectorAll(".journal-bilvare-antall").forEach(input => input.value = "");
+  };
+
+  function bind() {
+    const el = getSelect();
+    if (el && !el.dataset.inlineBilvarerFix) {
+      el.dataset.inlineBilvarerFix = "1";
+      el.addEventListener("change", () => window.fyllJournalBilVareValg());
+      el.addEventListener("click", () => setTimeout(() => window.fyllJournalBilVareValg(), 50));
+      el.addEventListener("input", () => window.fyllJournalBilVareValg());
+    }
+    const knapp = document.getElementById("leggTilJournalVarerFraBilListeKnapp");
+    if (knapp && !knapp.dataset.inlineBilvarerFix) {
+      knapp.dataset.inlineBilvarerFix = "1";
+      knapp.onclick = () => window.leggTilJournalVarerFraBilListe();
+    }
+  }
+
+  window.addEventListener("load", () => {
+    bind();
+    setTimeout(() => window.fyllJournalBilVareValg(), 800);
+    setTimeout(() => window.fyllJournalBilVareValg(), 1800);
+  });
+
+  setInterval(() => {
+    bind();
+    const liste = getListe();
+    if (liste && /velg bil først/i.test(String(liste.textContent || ""))) {
+      window.fyllJournalBilVareValg();
+    }
+  }, 1000);
+})();
+</script>
+
+
+<script>
+/* Vis/skjul medisinliste i journal */
+function toggleJournalBilVareListe() {
+  const liste = document.getElementById("journalBilVareListe");
+  const knapp = document.getElementById("toggleJournalBilVareListeKnapp");
+  if (!liste) return;
+
+  const skjul = !liste.classList.contains("skjult-medisinliste");
+  liste.classList.toggle("skjult-medisinliste", skjul);
+
+  if (knapp) knapp.textContent = skjul ? "Vis medisinliste" : "Skjul medisinliste";
+}
+
+function skjulJournalBilVareListeEtterBruk() {
+  const liste = document.getElementById("journalBilVareListe");
+  const knapp = document.getElementById("toggleJournalBilVareListeKnapp");
+  if (!liste) return;
+  liste.classList.add("skjult-medisinliste");
+  if (knapp) knapp.textContent = "Vis medisinliste";
+}
+
+window.addEventListener("load", function () {
+  const knapp = document.getElementById("leggTilJournalVarerFraBilListeKnapp");
+  if (knapp && !knapp.dataset.skjulEtterBruk) {
+    knapp.dataset.skjulEtterBruk = "1";
+    knapp.addEventListener("click", function () {
+      setTimeout(skjulJournalBilVareListeEtterBruk, 250);
+    });
+  }
+});
+</script>
+
+
+<script>
+/* =========================================================
+   NY PASIENT + LAGRE DYR EIER-FIKS - 2026-06-10
+   Viktig: bruker aldri skjult gammel dyreeierId ved lagring.
+   Dyret lagres kun på eier valgt i feltet "Eier" på pasientskjemaet.
+   ========================================================= */
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function val(id) { return String(el(id)?.value || "").trim(); }
+  function setVal(id, v) { const x = el(id); if (x) x.value = v ?? ""; }
+  function msg(t) { const m = el("dyrMelding"); if (m) m.textContent = t || ""; }
+
+  function visSide(id) {
+    if (typeof window.visVetSide === "function") {
+      window.visVetSide(id);
+      return;
+    }
+    document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide")
+      .forEach(s => { s.classList.add("skjult"); s.style.display = "none"; });
+    const side = el(id);
+    if (side) { side.classList.remove("skjult"); side.style.display = ""; }
+  }
+
+  function resetDyrSkjema(beholdEier) {
+    ["dyrId","dyrNavn","dyrArt","dyrRase","dyrFodselsdato","dyrIdmerking"].forEach(id => setVal(id, ""));
+    setVal("dyrKjonn", "");
+    if (!beholdEier) setVal("dyrEierValg", "");
+    msg("");
+  }
+
+  function aktivKlinikkId() {
+    return window.vetAktivKlinikkId || val("klinikkId") || null;
+  }
+
+  function valgtEierFraSynligFelt() {
+    // Kun synlige/aktive select-felt skal brukes. Ikke hidden dyreeierId, den kan være gammel.
+    const dyrEier = val("dyrEierValg");
+    if (dyrEier) return dyrEier;
+
+    const velgForDyr = val("dyreeierVelgForDyr");
+    if (velgForDyr) return velgForDyr;
+
+    return "";
+  }
+
+  window.nyPasient = function () {
+    const eierSomFaktiskErValgt = valgtEierFraSynligFelt();
+
+    visSide("dyrSide");
+    resetDyrSkjema(false);
+
+    try {
+      if (typeof window.fyllDyreeierValg === "function") window.fyllDyreeierValg();
+      if (typeof window.fyllDyreeierVelgForDyr === "function") window.fyllDyreeierVelgForDyr();
+    } catch (e) {
+      console.warn("Kunne ikke fylle dyreeiere:", e);
+    }
+
+    // Sett eier bare hvis bruker faktisk hadde valgt en eier i et select-felt.
+    if (eierSomFaktiskErValgt) {
+      setTimeout(() => setVal("dyrEierValg", eierSomFaktiskErValgt), 80);
+    }
+
+    setTimeout(() => el("dyrNavn")?.focus(), 140);
+  };
+
+  window.nyDyr = window.nyPasient;
+
+  window.lagreDyr = async function (event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const knapp = el("lagreDyrKnapp");
+    const gammel = knapp?.textContent || "Lagre dyr";
+
+    try {
+      msg("");
+
+      if (!window.supabaseClient) {
+        msg("Supabase er ikke lastet.");
+        return false;
+      }
+
+      // VIKTIG: Kun eier valgt i pasientskjemaet brukes ved lagring.
+      const eierId = val("dyrEierValg");
+      const navn = val("dyrNavn");
+
+      if (!eierId) {
+        msg("Velg riktig eier i feltet Eier før du lagrer dyret.");
+        el("dyrEierValg")?.focus();
+        return false;
+      }
+
+      const valgtOption = el("dyrEierValg")?.selectedOptions?.[0]?.textContent || "";
+      if (!navn) {
+        msg("Skriv navn på dyret.");
+        el("dyrNavn")?.focus();
+        return false;
+      }
+
+      if (knapp) {
+        knapp.disabled = true;
+        knapp.textContent = "Lagrer ...";
+      }
+
+      const rad = {
+        dyreeier_id: eierId,
+        navn,
+        art: val("dyrArt") || null,
+        rase: val("dyrRase") || null,
+        fodselsdato: val("dyrFodselsdato") || null,
+        kjonn: val("dyrKjonn") || null,
+        idmerking: val("dyrIdmerking") || null
+      };
+
+      const kid = aktivKlinikkId();
+      if (kid) rad.klinikk_id = kid;
+
+      const id = val("dyrId");
+      const query = id
+        ? supabaseClient.from("vet_dyr").update(rad).eq("id", id).select("*").single()
+        : supabaseClient.from("vet_dyr").insert(rad).select("*").single();
+
+      const { data, error } = await query;
+
+      if (error) {
+        msg("Feil ved lagring av dyr: " + error.message);
+        return false;
+      }
+
+      resetDyrSkjema(true);
+      setVal("dyrEierValg", eierId);
+
+      msg("Dyr lagret på eier: " + String(valgtOption || eierId).trim());
+
+      try {
+        if (typeof window.lastDyr === "function") await window.lastDyr();
+        if (typeof window.fyllDyrValg === "function") window.fyllDyrValg();
+        if (typeof window.fyllDyreeierDyrValg === "function") window.fyllDyreeierDyrValg(eierId);
+        if (typeof window.tegnDyr === "function") window.tegnDyr();
+      } catch (e) {
+        console.warn("Dyr lagret, men listeoppdatering feilet:", e);
+      }
+
+      return false;
+    } catch (e) {
+      msg("Feil ved lagring av dyr: " + (e?.message || e));
+      return false;
+    } finally {
+      if (knapp) {
+        knapp.disabled = false;
+        knapp.textContent = gammel;
+      }
+    }
+  };
+
+  function bindPasientKnapper() {
+    const lagre = el("lagreDyrKnapp");
+    if (lagre) lagre.onclick = window.lagreDyr;
+
+    document.querySelectorAll("button").forEach(btn => {
+      const txt = String(btn.textContent || "").toLowerCase();
+      const onclick = String(btn.getAttribute("onclick") || "").toLowerCase();
+      if (txt.includes("ny pasient") || onclick.includes("nypasient") || onclick.includes("nydyr")) {
+        btn.onclick = window.nyPasient;
+      }
+    });
+  }
+
+  window.addEventListener("load", function () {
+    bindPasientKnapper();
+    setTimeout(bindPasientKnapper, 500);
+    setTimeout(bindPasientKnapper, 1500);
+  });
+
+  setInterval(bindPasientKnapper, 1500);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   HARD FIKS PROFILBILDER AV DYR - 2026-06-10
+   Krymper dyre-/pasientbilder etter at split-filene har tegnet dem.
+   ========================================================= */
+(function () {
+  function erDyreProfilBilde(img) {
+    if (!img) return false;
+
+    const src = String(img.getAttribute("src") || "").toLowerCase();
+    const alt = String(img.getAttribute("alt") || "").toLowerCase();
+    const cls = String(img.className || "").toLowerCase();
+
+    if (src.includes("dyr") || src.includes("pasient")) return true;
+    if (alt.includes("dyr") || alt.includes("pasient") || alt.includes("profil")) return true;
+    if (cls.includes("dyr") || cls.includes("pasient") || cls.includes("profil")) return true;
+
+    const dyrListe = document.getElementById("dyrListe");
+    const eierSide = document.getElementById("eierSide");
+    const dyrSide = document.getElementById("dyrSide");
+
+    // Profilbilder ligger typisk i pasient-/dyrelister, ikke i journalListen.
+    const journalListe = document.getElementById("journalListe");
+    if (journalListe && journalListe.contains(img)) return false;
+
+    return (dyrListe && dyrListe.contains(img)) ||
+           (dyrSide && dyrSide.contains(img)) ||
+           (eierSide && eierSide.contains(img));
+  }
+
+  function krymp(img) {
+    if (!erDyreProfilBilde(img)) return;
+
+    img.removeAttribute("width");
+    img.removeAttribute("height");
+
+    img.style.setProperty("width", "70px", "important");
+    img.style.setProperty("height", "70px", "important");
+    img.style.setProperty("max-width", "70px", "important");
+    img.style.setProperty("max-height", "70px", "important");
+    img.style.setProperty("object-fit", "cover", "important");
+    img.style.setProperty("border-radius", "8px", "important");
+    img.style.setProperty("display", "inline-block", "important");
+  }
+
+  function krympAlleDyrebilder() {
+    document.querySelectorAll("img").forEach(krymp);
+  }
+
+  window.krympAlleDyrebilder = krympAlleDyrebilder;
+
+  window.addEventListener("load", function () {
+    krympAlleDyrebilder();
+
+    const observer = new MutationObserver(function (mutations) {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (!node) continue;
+          if (node.tagName === "IMG") krymp(node);
+          if (node.querySelectorAll) node.querySelectorAll("img").forEach(krymp);
+        }
+      }
+      krympAlleDyrebilder();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    setTimeout(krympAlleDyrebilder, 300);
+    setTimeout(krympAlleDyrebilder, 1000);
+    setTimeout(krympAlleDyrebilder, 2500);
+  });
+
+  setInterval(krympAlleDyrebilder, 1200);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   SAMMENFOLDET KLIKKBAR JOURNAL - 2026-06-10
+   Viser bare kort journalrad først. Detaljer/varer/bilder vises først ved klikk.
+   Rører ikke behandlinglisten eller medisinlisten.
+   ========================================================= */
+(function () {
+  function ryddGammelFeilmelding() {
+    document.querySelectorAll("#journalListe .journal-detaljer-inline").forEach(x => x.remove());
+  }
+
+  function bindJournalKort() {
+    const liste = document.getElementById("journalListe");
+    if (!liste) return;
+
+    ryddGammelFeilmelding();
+
+    liste.querySelectorAll(".listekort").forEach(kort => {
+      if (kort.dataset.sammenfoldetJournal === "1") return;
+      kort.dataset.sammenfoldetJournal = "1";
+      kort.classList.add("journal-sammenfoldet");
+      kort.classList.remove("journal-utvidet");
+      kort.title = "Klikk for å vise/skjule detaljer";
+
+      kort.addEventListener("click", function (e) {
+        if (e.target.closest("button,input,select,textarea,a")) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const erApen = kort.classList.contains("journal-utvidet");
+
+        // Lukk andre åpne journaler
+        liste.querySelectorAll(".listekort.journal-utvidet").forEach(annen => {
+          if (annen !== kort) {
+            annen.classList.remove("journal-utvidet");
+            annen.classList.add("journal-sammenfoldet");
+          }
+        });
+
+        if (erApen) {
+          kort.classList.remove("journal-utvidet");
+          kort.classList.add("journal-sammenfoldet");
+        } else {
+          kort.classList.remove("journal-sammenfoldet");
+          kort.classList.add("journal-utvidet");
+        }
+      }, true);
+    });
+  }
+
+  window.bindJournalKort = bindJournalKort;
+
+  window.addEventListener("load", function () {
+    bindJournalKort();
+
+    const liste = document.getElementById("journalListe");
+    if (liste) {
+      new MutationObserver(bindJournalKort).observe(liste, { childList: true, subtree: true });
+    }
+
+    setTimeout(bindJournalKort, 500);
+    setTimeout(bindJournalKort, 1500);
+  });
+
+  setInterval(bindJournalKort, 1500);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   MEDISINLISTE SOM VALG - 2026-06-10
+   Listen skjules og åpnes bare når man klikker Velg vare/medisin,
+   samme følelse som Velg behandling.
+   ========================================================= */
+(function () {
+  function liste() { return document.getElementById("journalBilVareListe"); }
+  function knapp() { return document.getElementById("toggleJournalBilVareListeKnapp"); }
+
+  window.visJournalBilVareListeSomValg = async function () {
+    const l = liste();
+    const k = knapp();
+    if (!l) return;
+
+    const erSkjult = l.classList.contains("skjult-medisinliste");
+
+    if (erSkjult) {
+      l.classList.remove("skjult-medisinliste");
+      if (k) k.textContent = "Skjul vare-/medisinliste";
+
+      if (typeof window.fyllJournalBilVareValg === "function") {
+        await window.fyllJournalBilVareValg();
+      }
+    } else {
+      l.classList.add("skjult-medisinliste");
+      if (k) k.textContent = "Velg vare/medisin fra bil";
+    }
+  };
+
+  window.skjulJournalBilVareListeEtterBruk = function () {
+    const l = liste();
+    const k = knapp();
+    if (!l) return;
+    l.classList.add("skjult-medisinliste");
+    if (k) k.textContent = "Velg vare/medisin fra bil";
+  };
+
+  function bindMedisinValg() {
+    const k = knapp();
+    if (k) {
+      k.onclick = window.visJournalBilVareListeSomValg;
+    }
+
+    const leggTil = document.getElementById("leggTilJournalVarerFraBilListeKnapp");
+    if (leggTil && !leggTil.dataset.skjulMedisinlisteEtterBruk2) {
+      leggTil.dataset.skjulMedisinlisteEtterBruk2 = "1";
+      leggTil.addEventListener("click", function () {
+        setTimeout(window.skjulJournalBilVareListeEtterBruk, 300);
+      });
+    }
+  }
+
+  window.addEventListener("load", function () {
+    bindMedisinValg();
+    setTimeout(bindMedisinValg, 800);
+  });
+
+  setInterval(bindMedisinValg, 1500);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   KLIKKBAR DYRELISTE I JOURNAL - 2026-06-10
+   Når dyreeier velges, vises dyrene som klikkbare knapper.
+   ========================================================= */
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function val(id) { return String(el(id)?.value || "").trim(); }
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function dyrenavn(d) {
+    return [d.navn, d.art, d.rase].filter(Boolean).join(" - ");
+  }
+
+  function finnDyrForEier(eierId) {
+    if (!eierId) return [];
+    const dyr = Array.isArray(window.vetDyr) ? window.vetDyr : [];
+    return dyr.filter(d =>
+      String(d.dyreeier_id || d.eier_id || d.kunde_id || "") === String(eierId)
+    );
+  }
+
+  window.tegnJournalDyrKlikkListe = function () {
+    const liste = el("journalDyrKlikkListe");
+    if (!liste) return;
+
+    const eierId = val("journalDyreeierValg");
+    const valgtDyrId = val("journalDyrValg");
+
+    if (!eierId) {
+      liste.innerHTML = '<span class="lite">Velg dyreeier først.</span>';
+      return;
+    }
+
+    const dyr = finnDyrForEier(eierId);
+
+    if (!dyr.length) {
+      liste.innerHTML = '<span class="lite">Ingen dyr registrert på valgt eier.</span>';
+      return;
+    }
+
+    liste.innerHTML = dyr.map(d => `
+      <button
+        type="button"
+        class="journal-dyr-linje ${String(d.id) === String(valgtDyrId) ? "valgt" : ""}"
+        data-dyr-id="${esc(d.id)}"
+        onclick="velgJournalDyrFraListe('${esc(d.id)}')"
+      >
+        <span>${esc(d.navn || "Uten navn")}</span>
+        <span>${esc(d.art || "")}</span>
+        <span>${esc(d.rase || d.idmerking || "")}</span>
+      </button>
+    `).join("");
+  };
+
+  window.velgJournalDyrFraListe = function (dyrId) {
+    const select = el("journalDyrValg");
+    if (select) select.value = dyrId;
+    window.tegnJournalDyrKlikkListe();
+
+    try {
+      if (typeof window.oppdaterJournalSum === "function") window.oppdaterJournalSum();
+    } catch(e) {}
+  };
+
+  function bindJournalDyreeierDyr() {
+    const eier = el("journalDyreeierValg");
+    const dyr = el("journalDyrValg");
+
+    if (eier && !eier.dataset.klikkbarDyreliste) {
+      eier.dataset.klikkbarDyreliste = "1";
+      eier.addEventListener("change", function () {
+        setTimeout(window.tegnJournalDyrKlikkListe, 80);
+        setTimeout(window.tegnJournalDyrKlikkListe, 300);
+      });
+    }
+
+    if (dyr && !dyr.dataset.klikkbarDyreliste) {
+      dyr.dataset.klikkbarDyreliste = "1";
+      dyr.addEventListener("change", window.tegnJournalDyrKlikkListe);
+    }
+  }
+
+  window.addEventListener("load", function () {
+    bindJournalDyreeierDyr();
+    setTimeout(window.tegnJournalDyrKlikkListe, 500);
+    setTimeout(window.tegnJournalDyrKlikkListe, 1500);
+  });
+
+  setInterval(function () {
+    bindJournalDyreeierDyr();
+    const liste = el("journalDyrKlikkListe");
+    const eierId = val("journalDyreeierValg");
+    if (liste && eierId && !liste.innerHTML.trim()) window.tegnJournalDyrKlikkListe();
+  }, 1200);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   PASIENTER-SIDE SMAL LISTE - 2026-06-10
+   Gjør store pasient-/dyreeierkort om til smale klikkbare linjer.
+   Rører ikke lagring.
+   ========================================================= */
+(function () {
+  function erInnenPasientListe(el) {
+    const eierSide = document.getElementById("eierSide");
+    if (!eierSide || !eierSide.contains(el)) return false;
+
+    if (el.id === "lagreDyreeierKnapp") return false;
+    if (el.closest("#lagreDyreeierKnapp")) return false;
+
+    return true;
+  }
+
+  function smalKnapp(btn) {
+    if (!erInnenPasientListe(btn)) return;
+    if (btn.dataset.pasientSmalLinje === "1") return;
+
+    const txt = String(btn.textContent || "").toLowerCase();
+    if (txt.includes("lagre dyreeier")) return;
+
+    btn.dataset.pasientSmalLinje = "1";
+    btn.classList.add("pasient-smal-linje");
+
+    btn.style.setProperty("width", "100%", "important");
+    btn.style.setProperty("max-width", "none", "important");
+    btn.style.setProperty("min-height", "30px", "important");
+    btn.style.setProperty("display", "grid", "important");
+    btn.style.setProperty("grid-template-columns", "48px minmax(180px,1fr) minmax(90px,.5fr)", "important");
+    btn.style.setProperty("gap", "8px", "important");
+    btn.style.setProperty("align-items", "center", "important");
+    btn.style.setProperty("text-align", "left", "important");
+    btn.style.setProperty("background", "#22272a", "important");
+    btn.style.setProperty("border", "1px solid #374151", "important");
+    btn.style.setProperty("border-radius", "0", "important");
+    btn.style.setProperty("padding", "3px 7px", "important");
+    btn.style.setProperty("margin", "0", "important");
+    btn.style.setProperty("font-size", "13px", "important");
+    btn.style.setProperty("line-height", "1.1", "important");
+
+    btn.querySelectorAll("img").forEach(img => {
+      img.style.setProperty("width", "38px", "important");
+      img.style.setProperty("height", "38px", "important");
+      img.style.setProperty("max-width", "38px", "important");
+      img.style.setProperty("max-height", "38px", "important");
+      img.style.setProperty("object-fit", "cover", "important");
+      img.style.setProperty("border-radius", "6px", "important");
+      img.style.setProperty("margin", "0", "important");
+    });
+  }
+
+  function smalListe() {
+    const eierSide = document.getElementById("eierSide");
+    if (!eierSide) return;
+
+    eierSide.querySelectorAll("button").forEach(smalKnapp);
+
+    ["dyreeierListe", "dyreeierDyrInfo"].forEach(id => {
+      const box = document.getElementById(id);
+      if (!box) return;
+      box.style.setProperty("display", "grid", "important");
+      box.style.setProperty("grid-template-columns", "1fr", "important");
+      box.style.setProperty("gap", "1px", "important");
+    });
+  }
+
+  window.smalPasientListe = smalListe;
+
+  window.addEventListener("load", function () {
+    smalListe();
+
+    const eierSide = document.getElementById("eierSide");
+    if (eierSide) {
+      new MutationObserver(smalListe).observe(eierSide, { childList:true, subtree:true });
+    }
+
+    setTimeout(smalListe, 500);
+    setTimeout(smalListe, 1500);
+  });
+
+  setInterval(smalListe, 1500);
+})();
+</script>
+
 </body>
 </html>

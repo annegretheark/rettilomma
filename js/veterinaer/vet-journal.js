@@ -56,6 +56,22 @@ async function lastJournal() {
 
 async function lagreJournal() {
   vetMelding("journalMelding", "");
+
+  // FIX 2026-06-10:
+  // Hvis bruker har valgt en behandling i nedtrekket, men ikke trykket
+  // "Legg til behandling", legger vi den automatisk til før lagring.
+  // Ellers blir journalen bare lagret som "Kjøring" når km er fylt ut.
+  try {
+    const valgtPrisId = vetTekst("journalPrisValg");
+    const finnesAllerede = (window.vetJournalBehandlingerTemp || vetJournalBehandlingerTemp || [])
+      .some(b => String(b.pris_id || "") === String(valgtPrisId || ""));
+    if (valgtPrisId && !finnesAllerede && typeof leggTilJournalBehandling === "function") {
+      leggTilJournalBehandling();
+    }
+  } catch (e) {
+    console.warn("Kunne ikke autolegge til valgt behandling før lagring", e);
+  }
+
   const fastpris = vetTall("journalFastpris");
   const timepris = vetTall("journalTimepris");
   const timer = vetTall("journalTimer");

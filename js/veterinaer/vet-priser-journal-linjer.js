@@ -431,3 +431,104 @@ function fyllPrisValg() {
     .map(p => `<option value="${p.id}">${p.navn || ""} - ${formaterKr(p.pris)} kr</option>`)
     .join("");
 }
+
+
+/* ===== FIX 2026-06-10: trygg behandling og bilde-kobling ===== */
+(function () {
+  function bindJournalKnapperFix() {
+    const behandlingKnapp = document.getElementById("leggTilJournalBehandlingKnapp");
+    if (behandlingKnapp && behandlingKnapp.dataset.fixBehandlingKoblet !== "1") {
+      behandlingKnapp.dataset.fixBehandlingKoblet = "1";
+      behandlingKnapp.onclick = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        leggTilJournalBehandling();
+        return false;
+      };
+    }
+
+    const lagreKnapp = document.getElementById("lagreJournalKnapp");
+    if (lagreKnapp && lagreKnapp.dataset.fixJournalLagreKoblet !== "1") {
+      lagreKnapp.dataset.fixJournalLagreKoblet = "1";
+      lagreKnapp.onclick = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        lagreJournal();
+        return false;
+      };
+    }
+
+    ["journalBildeGalleri", "journalBildeKamera"].forEach(id => {
+      const input = document.getElementById(id);
+      if (input && input.dataset.fixBildeInfoKoblet !== "1") {
+        input.dataset.fixBildeInfoKoblet = "1";
+        input.addEventListener("change", oppdaterJournalBildeInfo);
+      }
+    });
+  }
+
+  const gammelLagreJournalBilder = typeof lagreJournalBilder === "function" ? lagreJournalBilder : null;
+  window.lagreJournalBilder = async function (journalId) {
+    const filer = hentValgteJournalBilder();
+    if (!journalId || !filer.length) return true;
+
+    const bildetekst = vetTekst("journalBildeTekst") || null;
+    const rader = [];
+
+    for (const fil of filer) {
+      try {
+        const filnavn = vetTryggFilnavn(fil.name || "journalbilde.jpg");
+        const sti = `${journalId}/${Date.now()}_${Math.random().toString(16).slice(2)}_${filnavn}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from(VET_BILDE_BUCKET)
+          .upload(sti, fil, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: fil.type || "image/jpeg"
+          });
+
+        if (uploadError) {
+          console.warn("Bilde kunne ikke lastes opp", uploadError);
+          continue;
+        }
+
+        const { data: publicData } = supabaseClient.storage
+          .from(VET_BILDE_BUCKET)
+          .getPublicUrl(sti);
+
+        rader.push({
+          journal_id: journalId,
+          filnavn: fil.name || filnavn,
+          bilde_url: publicData?.publicUrl || null,
+          bildetekst
+        });
+      } catch (e) {
+        console.warn("Bilde feilet, journal beholdes lagret", e);
+      }
+    }
+
+    if (!rader.length) {
+      vetMelding("journalMelding", "Journal lagret. Bildet ble ikke lagret, sjekk Storage/bucket hvis dette gjentar seg.");
+      return true;
+    }
+
+    const { error } = await supabaseClient
+      .from("vet_journal_bilder")
+      .insert(rader);
+
+    if (error) {
+      console.warn("Bildedata kunne ikke lagres", error);
+      vetMelding("journalMelding", "Journal lagret, men bildedata kunne ikke lagres: " + error.message);
+      return true;
+    }
+
+    return true;
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(bindJournalKnapperFix, 100), { once: true });
+  } else {
+    setTimeout(bindJournalKnapperFix, 100);
+  }
+  setInterval(bindJournalKnapperFix, 1200);
+})();
+/* ===== SLUTT FIX 2026-06-10 ===== */
