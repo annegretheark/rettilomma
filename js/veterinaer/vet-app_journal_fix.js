@@ -239,7 +239,7 @@ function oppdaterVetMenySynlighet() {
   });
 
   document.querySelectorAll(".vet-faktura-nav").forEach(el => {
-    el.style.display = admin && !vanlig ? "inline-block" : "none";
+    el.style.display = "inline-block";
   });
 
   const oppsettKnapp = document.getElementById("vetOppsettKnapp");
@@ -253,7 +253,7 @@ function oppdaterVetMenySynlighet() {
     visSomVetKnapp.textContent = vetVisSomVeterinaer ? "Vis som admin" : "Vis som vanlig veterinær";
   }
 
-  ["vetArbeidMeny", "vetAdminMeny"].forEach(id => {
+  ["vetArbeidMeny", "vetAdminMeny", "vetOppsettMeny"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.classList.add("skjult");
@@ -292,13 +292,10 @@ function toggleVetAdminMeny() {
   meny.style.display = skalVises ? "block" : "none";
 }
 
-function toggleVetOppsettMeny(ev) {
-  if (ev) {
-    try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
-  }
+function toggleVetOppsettMeny() {
   const meny = document.getElementById("vetOppsettMeny");
-  if (!meny) return false;
-  const erSkjult = meny.classList.contains("skjult") || meny.style.display === "none" || getComputedStyle(meny).display === "none";
+  if (!meny) return;
+  const erSkjult = meny.classList.contains("skjult") || meny.style.display === "none";
   if (erSkjult) {
     meny.classList.remove("skjult");
     meny.style.display = "block";
@@ -306,7 +303,6 @@ function toggleVetOppsettMeny(ev) {
     meny.classList.add("skjult");
     meny.style.display = "none";
   }
-  return false;
 }
 
 function byttVetRollevisning() {
@@ -441,9 +437,6 @@ async function lastVetData() {
   fyllDyreeierDyrValg(vetTekst("dyreeierId"));
   skjulAdminKnapperForVanligVet();
   opprettVetPasientKnapper();
-
-  // Produksjon: vis først når rolle og meny er ferdig filtrert.
-  try { document.body.classList.remove("vet-loading"); } catch(e) {}
 }
 
 
@@ -483,27 +476,72 @@ async function lastVetData() {
 })();
 
 
-/* Produksjon: stabil kobling for toppmenyen */
-(function(){
-  try { window.visVetSide = visVetSide; } catch(e) {}
-  try { window.toggleVetOppsettMeny = toggleVetOppsettMeny; } catch(e) {}
-  try { window.oppdaterVetMenySynlighet = oppdaterVetMenySynlighet; } catch(e) {}
+/* ===== JOURNALTILGANG: robust lesing av riktig tabell ===== */
+async function lastJournalLogg() {
+  const liste = document.getElementById("journalLoggListe");
+  if (!liste) return;
+  liste.innerHTML = '<p class="lite">Laster journaltilgang ...</p>';
 
-  function kobleToppmeny(){
-    const oppsett = document.getElementById('vetOppsettKnapp');
-    if (oppsett) {
-      oppsett.onclick = function(ev){
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        toggleVetOppsettMeny();
-        return false;
-      };
+  const muligeTabeller = ["vet_journal_apninger", "vet_journal_tilgang", "vet_journal_logg"];
+  let sisteFeil = "";
+
+  for (const tabell of muligeTabeller) {
+    try {
+      let q = supabaseClient
+        .from(tabell)
+        .select("*")
+        .order("created_at", { ascending:false })
+        .limit(100);
+
+      if (!vetErSystemAdmin && vetInnloggetEpost) {
+        // Fungerer bare hvis tabellen har epost/bruker_epost. Hvis ikke faller vi videre til catch.
+        q = q.or("bruker_epost.eq." + vetInnloggetEpost + ",epost.eq." + vetInnloggetEpost);
+      }
+
+      const { data, error } = await q;
+      if (error) {
+        sisteFeil = error.message || String(error);
+        continue;
+      }
+
+      if (!data || data.length === 0) {
+        liste.innerHTML = '<p class="lite">Ingen journaltilgang er logget ennå.</p><p class="lite">Tabellen finnes: <strong>' + tabell + '</strong>, men den har ingen rader.</p>';
+        return;
+      }
+
+      liste.innerHTML = data.map(r => {
+        const dato = r.created_at ? new Date(r.created_at).toLocaleString("no-NO") : "";
+        const bruker = r.bruker_navn || r.navn || r.bruker_epost || r.epost || r.opprettet_av_epost || "Ukjent bruker";
+        const dyr = r.dyr_navn || r.pasient_navn || r.dyr || r.dyr_id || "";
+        const eier = r.dyreeier_navn || r.eier_navn || r.dyreeier || r.dyreeier_id || "";
+        const handling = r.handling || r.type || "Åpnet journal";
+        return '<div class="listekort">' +
+          '<strong>' + escapeHtml(dato + ' - ' + handling) + '</strong><br>' +
+          '<span>' + escapeHtml(bruker) + '</span>' +
+          (dyr ? '<br><span>Dyr: ' + escapeHtml(dyr) + '</span>' : '') +
+          (eier ? '<br><span>Eier: ' + escapeHtml(eier) + '</span>' : '') +
+        '</div>';
+      }).join("");
+      return;
+    } catch(e) {
+      sisteFeil = e && e.message ? e.message : String(e);
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', kobleToppmeny, { once:true });
-  } else {
-    kobleToppmeny();
-  }
-  window.addEventListener('load', kobleToppmeny);
-})();
+  liste.innerHTML = '<div class="melding">Fant ingen journaltilgang-tabell med data.</div>' +
+    '<p class="lite">Siste feil: ' + escapeHtml(sisteFeil || "ukjent") + '</p>' +
+    '<p class="lite">Sjekk om tabellen heter <strong>vet_journal_apninger</strong>, <strong>vet_journal_tilgang</strong> eller <strong>vet_journal_logg</strong>.</p>';
+}
+
+function skjulJournaltilgang() {
+  visVetSide("eierSide");
+}
+
+function escapeHtml(v) {
+  return String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}

@@ -169,10 +169,6 @@
     body.vet-loading #appSide { visibility:hidden; }
     .vet-bruker-nav, .vet-lagerlogg-nav, .vet-faktura-nav, .vet-admin-toggle, #vetSlettTestdataKnapp { display:none; }
 
-    /* Vipps på faktura og purring */
-    .vet-vipps-betaling { color:#d40000; font-weight:800; font-size:18px; margin-top:14px; }
-    .vet-vipps-betaling .lite { color:#d40000; font-weight:700; font-size:14px; }
-
   </style>
 </head>
 <body class="vet-loading">
@@ -194,9 +190,9 @@
       <button type="button" class="vet-bruker-nav" onclick="visFyllBilSide()">Fyll bil</button>
       <button type="button" class="vet-lagerlogg-nav" onclick="visVetSide('lagerLoggSide')">Lagerlogg</button>
       <button type="button" onclick="visVetSide('journalLoggSide')">Journaltilgang</button>
-      <button id="vetFakturaFastKnapp" type="button" onclick="visVetSide('fakturaSide')">Faktura</button>
-      <button id="vetOversiktFastKnapp" type="button" onclick="visVetSide('okonomiSide')">Oversikt</button>
       <button id="vetSlettTestdataKnapp" type="button" class="danger" onclick="slettVetTestdata()" style="display:none;">Slett testdata</button>
+      <button type="button" class="vet-admin-nav" onclick="visVetSide('okonomiSide')">Oversikt</button>
+      <button type="button" class="vet-faktura-nav" onclick="visVetSide('fakturaSide')">Faktura</button>
       <button type="button" class="vet-systemadmin-nav" onclick="visVetSide('backupSide')">Backup / Import</button>
       <button id="vetVisSomVeterinaerKnapp" type="button" class="secondary vet-admin-toggle">Vis som vanlig veterinær</button>
       <button type="button" class="danger" onclick="loggUtVeterinaer()">Logg ut</button>
@@ -234,14 +230,6 @@
         <div>
           <label for="klinikkKmPris">Km-pris</label>
           <input id="klinikkKmPris" type="number" step="0.01" min="0" value="5.30">
-        </div>
-        <div>
-          <label for="klinikkVippsNr">Vipps nr</label>
-          <input id="klinikkVippsNr" type="text" inputmode="numeric" placeholder="F.eks. 123456">
-        </div>
-        <div>
-          <label for="klinikkVippsTil">Vipps til</label>
-          <input id="klinikkVippsTil" type="text" placeholder="F.eks. klinikknavn">
         </div>
         <div>
           <label for="klinikkLogoFil">Klinikklogo</label>
@@ -697,7 +685,6 @@
     </select>
     <button id="lagVetKreditnotaKnapp" type="button" class="danger">Lag kreditnota</button>
 
-    <div id="vetVippsFakturaVisning" class="vet-vipps-betaling"></div>
     <div id="fakturaMelding" class="melding"></div>
     <div id="fakturaGrunnlagListe"></div>
   </section>
@@ -705,7 +692,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/core/config.js"></script>
-<script src="../js/veterinaer/vet-app.js?v=20260611adminokonomi1"></script>
+<script src="../js/veterinaer/vet-app.js?v=20260611beholdoppsett1"></script>
 <script src="../js/veterinaer/vet-klinikk-priser-bilder.js?v=20260611split"></script>
 <script src="../js/veterinaer/vet-lager-bil.js?v=20260611safe1"></script>
 <script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
@@ -963,215 +950,6 @@ window.addEventListener("load", function () {
     document.body.classList.remove("vet-loading");
   }, 3500);
 });
-</script>
-
-
-<script>
-/* Produksjon: vis Faktura/Oversikt for admin etter rollefilter */
-(function () {
-  function erAdminMeny() {
-    var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
-    var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
-    return rolle.includes("admin") || rolle.includes("administrator") || info.includes("systemadmin");
-  }
-
-  function visAdminOkonomi() {
-    var admin = erAdminMeny();
-
-    document.querySelectorAll(".vet-admin-nav").forEach(function (el) {
-      el.classList.toggle("skjult", !admin);
-      el.style.display = admin ? "inline-block" : "none";
-    });
-
-    document.querySelectorAll(".vet-faktura-nav").forEach(function (el) {
-      el.classList.toggle("skjult", !admin);
-      el.style.display = admin ? "inline-block" : "none";
-    });
-
-    var oversikt = Array.from(document.querySelectorAll("button")).find(function (b) {
-      return (b.textContent || "").trim().toLowerCase() === "oversikt";
-    });
-    if (oversikt) {
-      oversikt.classList.toggle("skjult", !admin);
-      oversikt.style.display = admin ? "inline-block" : "none";
-      if (admin) {
-        oversikt.onclick = function () {
-          if (typeof window.visVetSide === "function") window.visVetSide("okonomiSide");
-          return false;
-        };
-      }
-    }
-
-    var faktura = Array.from(document.querySelectorAll("button")).find(function (b) {
-      return (b.textContent || "").trim().toLowerCase() === "faktura";
-    });
-    if (faktura) {
-      faktura.classList.toggle("skjult", !admin);
-      faktura.style.display = admin ? "inline-block" : "none";
-      if (admin) {
-        faktura.onclick = function () {
-          if (typeof window.visVetSide === "function") window.visVetSide("fakturaSide");
-          return false;
-        };
-      }
-    }
-  }
-
-  window.addEventListener("load", function () {
-    visAdminOkonomi();
-    setTimeout(visAdminOkonomi, 300);
-    setTimeout(visAdminOkonomi, 1200);
-  });
-})();
-</script>
-
-
-<script>
-/* Stabil knapp for Faktura/Oversikt: blir ikke skjult av rollefilteret */
-(function () {
-  function adminTekst() {
-    var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
-    var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
-    return rolle.includes("admin") || rolle.includes("administrator") || info.includes("systemadmin");
-  }
-  function visStabileAdminKnapper() {
-    var admin = adminTekst();
-    ["vetFakturaFastKnapp", "vetOversiktFastKnapp"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.classList.toggle("skjult", !admin);
-      el.style.display = admin ? "inline-block" : "none";
-    });
-  }
-  document.addEventListener("DOMContentLoaded", visStabileAdminKnapper);
-  window.addEventListener("load", function () {
-    visStabileAdminKnapper();
-    setTimeout(visStabileAdminKnapper, 300);
-    setTimeout(visStabileAdminKnapper, 1200);
-    setTimeout(visStabileAdminKnapper, 2500);
-  });
-  setInterval(visStabileAdminKnapper, 1500);
-})();
-</script>
-
-<script>
-/* VIPPS-FIKS: Vipps nr + Vipps til på klinikk, faktura og purring. Ingen QR. */
-(function () {
-  function esc(v) {
-    return String(v ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-  function aktivKlinikkId() {
-    return String(document.getElementById("klinikkId")?.value || window.vetAktivKlinikkId || window.vetAktivKlinikk?.id || "");
-  }
-  function key(felt) { return "vetVipps_" + (aktivKlinikkId() || "standard") + "_" + felt; }
-  function getNr() {
-    return String(document.getElementById("klinikkVippsNr")?.value || window.vetAktivKlinikk?.vipps_nr || localStorage.getItem(key("nr")) || "").trim();
-  }
-  function getTil() {
-    return String(document.getElementById("klinikkVippsTil")?.value || window.vetAktivKlinikk?.vipps_til || localStorage.getItem(key("til")) || window.vetAktivKlinikk?.navn || "").trim();
-  }
-  function setFelterFraKlinikk() {
-    const k = window.vetAktivKlinikk || null;
-    const nrEl = document.getElementById("klinikkVippsNr");
-    const tilEl = document.getElementById("klinikkVippsTil");
-    if (nrEl && !nrEl.value) nrEl.value = String(k?.vipps_nr || localStorage.getItem(key("nr")) || "");
-    if (tilEl && !tilEl.value) tilEl.value = String(k?.vipps_til || localStorage.getItem(key("til")) || k?.navn || "");
-    oppdaterVippsVisning();
-  }
-  function lagreLokalt() {
-    const nr = getNr();
-    const til = getTil();
-    if (nr) localStorage.setItem(key("nr"), nr);
-    if (til) localStorage.setItem(key("til"), til);
-    oppdaterVippsVisning();
-  }
-  function vippsHtml() {
-    const nr = getNr();
-    const til = getTil();
-    if (!nr && !til) return "";
-    return '<div class="vet-vipps-betaling" style="color:#d40000;font-weight:800;font-size:18px;margin-top:14px;">Betal med Vipps' +
-      (nr ? '<br><span style="color:#d40000;font-weight:700;font-size:14px;">Vipps nr: ' + esc(nr) + '</span>' : '') +
-      (til ? '<br><span style="color:#d40000;font-weight:700;font-size:14px;">Vipps til: ' + esc(til) + '</span>' : '') +
-      '</div>';
-  }
-  function oppdaterVippsVisning() {
-    const el = document.getElementById("vetVippsFakturaVisning");
-    if (el) el.innerHTML = vippsHtml();
-  }
-  function leggVippsIGrunnlag() {
-    oppdaterVippsVisning();
-    const mål = document.getElementById("fakturaGrunnlagListe");
-    if (!mål) return;
-    let el = document.getElementById("vetVippsFakturaGrunnlag");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "vetVippsFakturaGrunnlag";
-      mål.appendChild(el);
-    }
-    el.innerHTML = vippsHtml();
-  }
-  function patchPrint() {
-    if (window.__vetVippsPrintPatch) return;
-    window.__vetVippsPrintPatch = true;
-    const gammelOpen = window.open;
-    window.open = function () {
-      const w = gammelOpen.apply(window, arguments);
-      try {
-        if (w && w.document && !w.__vetVippsWritePatch) {
-          w.__vetVippsWritePatch = true;
-          const gammelWrite = w.document.write.bind(w.document);
-          w.document.write = function (html) {
-            try {
-              const v = vippsHtml();
-              if (v && typeof html === "string" && html.includes("</body>") && !html.includes("vet-vipps-betaling")) {
-                html = html.replace("</body>", v + "</body>");
-              }
-            } catch (e) {}
-            return gammelWrite(html);
-          };
-        }
-      } catch (e) {}
-      return w;
-    };
-  }
-  function koble() {
-    patchPrint();
-    setFelterFraKlinikk();
-    ["klinikkVippsNr", "klinikkVippsTil"].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (el && !el.__vippsKoblet) {
-        el.__vippsKoblet = true;
-        el.addEventListener("input", lagreLokalt);
-        el.addEventListener("change", lagreLokalt);
-      }
-    });
-    const lagre = document.getElementById("lagreKlinikkKnapp");
-    if (lagre && !lagre.__vippsKoblet) {
-      lagre.__vippsKoblet = true;
-      lagre.addEventListener("click", lagreLokalt, true);
-    }
-    const hent = document.getElementById("hentFakturaGrunnlagKnapp");
-    if (hent && !hent.__vippsKoblet) {
-      hent.__vippsKoblet = true;
-      hent.addEventListener("click", function () { setTimeout(leggVippsIGrunnlag, 250); });
-    }
-    const skriv = document.getElementById("skrivUtVetFakturaKnapp");
-    if (skriv && !skriv.__vippsKoblet) {
-      skriv.__vippsKoblet = true;
-      skriv.addEventListener("click", function () { lagreLokalt(); leggVippsIGrunnlag(); }, true);
-    }
-  }
-  window.vetVippsOppdater = function () { lagreLokalt(); leggVippsIGrunnlag(); };
-  window.vetVippsSettFelterFraKlinikk = setFelterFraKlinikk;
-  document.addEventListener("DOMContentLoaded", koble);
-  window.addEventListener("load", koble);
-  setInterval(koble, 1200);
-})();
 </script>
 
 </body>
