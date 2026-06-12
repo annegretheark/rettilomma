@@ -63,21 +63,7 @@ koble("kjorLonnKnapp", "click", tryggFunksjon("kjorLonn"));
 koble("trekkExcelKnapp", "click", tryggFunksjon("eksporterTrekkExcel"));
 koble("utbetalingExcelKnapp", "click", tryggFunksjon("eksporterUtbetalingerExcel"));
 
-// AGK FIX 7087:
-// Ikke koble lagLonnsslipper direkte som event-handler.
-// Da får funksjonen MouseEvent som første parameter, og det tolkes som kopi=true.
-koble("lonnsslippKnapp", "click", function () {
-  return lagLonnsslipper(false);
-});
-koble("lonnsslippAlleKnapp", "click", function () {
-  return lagLonnsslipper(false);
-});
-koble("lonnsslippKopiKnapp", "click", function () {
-  return lagLonnsslipper(true);
-});
-koble("lonnsslippAlleKopiKnapp", "click", function () {
-  return lagLonnsslipper(true);
-});
+// Lønnsslippknapper er koblet direkte i handverker/index.html for å unngå doble event-handlere.
 
 koble("kjorHelsetestKnapp", "click", tryggFunksjon("kjorHelsetest"));
 koble("kjorStresstestKnapp", "click", tryggFunksjon("kjorStresstest"));
@@ -240,3 +226,4 @@ if (typeof supabaseClient !== "undefined" && supabaseClient.auth) {
 window.addEventListener("load", () => {
   setTimeout(startModulerEtterInnlogging, 1800);
 });
+

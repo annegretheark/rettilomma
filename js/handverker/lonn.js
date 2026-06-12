@@ -135,7 +135,7 @@ async function hentLonnskjoringMap(lonnData) {
   return map;
 }
 
-async function registrerLonnskjoringHvisNy(r) {
+async function registrerLonnskjoringHvisNy(r, filnavn = null) {
   if (!r || !r.ansattId || !window.supabaseClient) return;
 
   try {
@@ -146,17 +146,24 @@ async function registrerLonnskjoringHvisNy(r) {
       brutto: lonnRund(r.brutto),
       netto: lonnRund(r.netto),
       ansatt_navn: r.ansattNavn || null,
-      filnavn_sist: null
+      filnavn_sist: filnavn || null,
+      opprettet: new Date().toISOString()
     };
 
-    const { error } = await supabaseClient
-      .from("lonnskjoring")
-      .insert([rad]);
+    let { error } = await supabaseClient.from("lonnskjoring").insert([rad]);
 
     if (error) {
       const tekst = String(error.message || "").toLowerCase();
       if (tekst.includes("duplicate") || tekst.includes("unique") || tekst.includes("violates")) return;
-      console.warn("Kunne ikke registrere lønnskjøring. Kjør SQL for lonnskjoring:", error);
+
+      if (tekst.includes("opprettet")) {
+        const rad2 = { ...rad };
+        delete rad2.opprettet;
+        const res2 = await supabaseClient.from("lonnskjoring").insert([rad2]);
+        error = res2.error;
+      }
+
+      if (error) console.warn("Kunne ikke registrere lønnskjøring:", error);
     }
   } catch (e) {
     console.warn("Registrering av lønnskjøring feilet:", e);
@@ -165,6 +172,74 @@ async function registrerLonnskjoringHvisNy(r) {
 
 function lonnskjoringKey(r) {
   return `${r.ansattId}|${String(r.periodeFra || "").slice(0, 10)}|${String(r.periodeTil || "").slice(0, 10)}`;
+}
+
+function lonnskjoringLokalKey(r) {
+  return "lonnskjoring_" + lonnskjoringKey(r);
+}
+
+function lonnskjoringFinnesLokalt(r) {
+  try {
+    return window.localStorage && localStorage.getItem(lonnskjoringLokalKey(r)) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+function lonnskjoringLagreLokalt(r) {
+  try {
+    if (window.localStorage) localStorage.setItem(lonnskjoringLokalKey(r), "1");
+  } catch (e) {
+    // Ignorer hvis nettleseren blokkerer localStorage.
+  }
+}
+
+async function lonnskjoringFinnesIDatabase(r) {
+  if (!r || !r.ansattId || !r.periodeFra || !r.periodeTil || !window.supabaseClient) return false;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("lonnskjoring")
+      .select("id")
+      .eq("ansatt_id", r.ansattId)
+      .eq("periode_fra", String(r.periodeFra).slice(0, 10))
+      .eq("periode_til", String(r.periodeTil).slice(0, 10))
+      .limit(1);
+
+    if (error) {
+      console.warn("Kunne ikke sjekke om lønnsslippen finnes fra før:", error);
+      return false;
+    }
+
+    return Array.isArray(data) && data.length > 0;
+  } catch (e) {
+    console.warn("Direkte KOPI-sjekk feilet:", e);
+    return false;
+  }
+}
+
+async function finnesLonnskjoringFraFor(r) {
+  if (!r || !r.ansattId || !r.periodeFra || !r.periodeTil || !window.supabaseClient) return false;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("lonnskjoring")
+      .select("id")
+      .eq("ansatt_id", r.ansattId)
+      .eq("periode_fra", String(r.periodeFra).slice(0, 10))
+      .eq("periode_til", String(r.periodeTil).slice(0, 10))
+      .limit(1);
+
+    if (error) {
+      console.warn("Kunne ikke sjekke om lønnsslipp er kopi:", error);
+      return false;
+    }
+
+    return Array.isArray(data) && data.length > 0;
+  } catch (e) {
+    console.warn("Kopi-sjekk for lønnsslipp feilet:", e);
+    return false;
+  }
 }
 
 async function hentFravaerOgFlexiMap(periode, ansattIds) {
@@ -830,8 +905,9 @@ function lonnTrygtFilnavn(tekst) {
 }
 
 async function lagLonnsslipper(kopi = false) {
-  // AGK FIX 7091: Én PDF-fil per ansatt, med Side X av Y per ansatt.
-  kopi = kopi === true;
+  // Én PDF-fil per ansatt. Kopi styres direkte fra HTML-knappen.
+  kopi = (kopi === true || kopi === "true" || kopi === 1 || kopi === "1");
+  lonnMelding(kopi ? "Lager lønnsslipp som KOPI..." : "Lager original lønnsslipp...");
 
   try {
     const data = sisteLonnData.length
@@ -867,7 +943,14 @@ async function lagLonnsslipper(kopi = false) {
     const lonnskjoringMap = await hentLonnskjoringMap(dataMedLonn);
 
     async function lagEnLonnsslipp(r) {
-      const finnesFraFor = lonnskjoringMap.has(lonnskjoringKey(r));
+      // KOPI skal settes hvis samme ansatt/periode er laget før.
+      // Vi sjekker både hurtigkart, localStorage og databasen direkte.
+      const finnesFraFor =
+        lonnskjoringMap.has(lonnskjoringKey(r)) ||
+        lonnskjoringFinnesLokalt(r) ||
+        await lonnskjoringFinnesIDatabase(r) ||
+        await finnesLonnskjoringFraFor(r);
+
       const erKopi = kopi || finnesFraFor;
 
       const doc = new jsPDF();
@@ -883,6 +966,17 @@ async function lagLonnsslipper(kopi = false) {
         doc.setFont(undefined, "bold");
         doc.setFontSize(16);
         doc.text(tittel, 20, y);
+        if (erKopi) {
+          doc.setFontSize(18);
+          doc.text("KOPI", 165, y);
+
+          // Ekstra tydelig stempel midt på siden, så det ikke kan overses.
+          doc.setTextColor(160, 160, 160);
+          doc.setFontSize(42);
+          doc.text("KOPI", 105, 45, { align: "center" });
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(16);
+        }
 
         y += 12;
         doc.setFont(undefined, "normal");
@@ -1049,22 +1143,17 @@ async function lagLonnsslipper(kopi = false) {
       if (typeof window.tegnBrevfotAlleSiderPdf === "function") {
         window.tegnBrevfotAlleSiderPdf(doc, firma);
       }
-
-      const antallSider = doc.getNumberOfPages();
-      for (let side = 1; side <= antallSider; side++) {
-        doc.setPage(side);
-        doc.setFont(undefined, "normal");
-        doc.setFontSize(8);
-        doc.text("Side " + side + " av " + antallSider, 190, 289, { align: "right" });
-      }
-
-      const periode = String(r.periodeFra || "").slice(0, 7) || "periode";
+const periode = String(r.periodeFra || "").slice(0, 7) || "periode";
       const navn = lonnTrygtFilnavn(r.ansattNavn || r.ansattId || "ansatt");
       const filnavn = (erKopi ? "lonnsslipp_kopi_" : "lonnsslipp_") + navn + "_" + periode + ".pdf";
       doc.save(filnavn);
 
+      // Etter at en slipp er laget, huskes den både lokalt og i databasen.
+      // Dermed blir neste slipp for samme ansatt/periode KOPI selv før lønn er markert utbetalt.
+      lonnskjoringLagreLokalt(r);
+
       if (!erKopi) {
-        await registrerLonnskjoringHvisNy(r);
+        await registrerLonnskjoringHvisNy(r, filnavn);
         lonnskjoringMap.set(lonnskjoringKey(r), { ansatt_id: r.ansattId, periode_fra: r.periodeFra, periode_til: r.periodeTil });
       }
     }
@@ -1073,7 +1162,7 @@ async function lagLonnsslipper(kopi = false) {
       await lagEnLonnsslipp(r);
     }
 
-    lonnMelding("Lønnsslipper laget som individuelle PDF-filer for " + dataMedLonn.length + " ansatt(e). Hvis lønn allerede var kjørt for perioden, er slippen merket KOPI.");
+    lonnMelding("Lønnsslipper laget for " + dataMedLonn.length + " ansatt(e). Neste gang samme ansatt/periode lages, blir slippen merket KOPI.");
   } catch (e) {
     console.error(e);
     lonnMelding(e.message, true);
@@ -1210,3 +1299,12 @@ window.eksporterUtbetalingerExcel = eksporterUtbetalingerExcel;
 window.hentOgBeregnLonn = hentOgBeregnLonn;
 window.lagLonnsslipperKopi = lagLonnsslipperKopi;
 window.markerLonnSomUtbetalt = markerLonnSomUtbetalt;
+
+
+window.addEventListener("load", function () {
+  const el = document.getElementById("lonnMelding");
+  if (el && !el.textContent) {
+    el.textContent = "Lønn kopi-ren versjon lastet.";
+    el.style.color = "#116329";
+  }
+});

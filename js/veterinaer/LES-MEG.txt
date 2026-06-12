@@ -1,1 +1,0 @@
-Ren veterinærpakke uten fix-filer i filnavn. Faktura er beholdt. Kontinuerlige blinke-løkker er fjernet, men funksjonene er ikke fjernet. Bytt hele pakken og trykk Ctrl+F5.
