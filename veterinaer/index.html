@@ -168,6 +168,7 @@
     /* Hindrer blink av gamle/feil knapper før rolle er ferdig lastet */
     body.vet-loading #appSide { visibility:hidden; }
     .vet-bruker-nav, .vet-lagerlogg-nav, .vet-faktura-nav, .vet-admin-toggle, #vetSlettTestdataKnapp { display:none; }
+    #vetFakturaFastKnapp, #vetOversiktFastKnapp { display:inline-block !important; }
 
     /* Vipps på faktura og purring */
     .vet-vipps-betaling { color:#d40000; font-weight:800; font-size:18px; margin-top:14px; }
@@ -711,9 +712,9 @@
 <script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
 <script src="../js/veterinaer/vet-faktura-okonomi.js?v=20260611split"></script>
 <script src="../js/veterinaer/vet-backup-import-admin.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-fixes-pasient-admin.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-fixes-journal-lager.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-fixes-final.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-pasient-admin.js?v=20260612minimal"></script>
+<script src="../js/veterinaer/vet-journal-lager.js?v=20260612minimal"></script>
+<script src="../js/veterinaer/vet-admin-ekstra.js?v=20260612minimal"></script>
 <script>
 async function loggUtVeterinaer() {
   try {
@@ -772,7 +773,9 @@ window.addEventListener("load", visVelgModulForGreknuts);
     const liste = document.getElementById("journalLoggListe");
     if (!liste) return;
 
-    liste.innerHTML = '<p class="lite">Laster journaltilgang ...</p>';
+    if (!liste.innerHTML || !liste.innerHTML.trim()) {
+      liste.innerHTML = '<p class="lite">Laster journaltilgang ...</p>';
+    }
 
     try {
       if (!window.supabaseClient) throw new Error("Supabase er ikke lastet.");
@@ -834,8 +837,6 @@ window.addEventListener("load", visVelgModulForGreknuts);
   }
   window.addEventListener("load", function () {
     visApp();
-    setTimeout(visApp, 250);
-    setTimeout(visApp, 1200);
   });
 })();
 </script>
@@ -949,8 +950,6 @@ window.addEventListener("load", visVelgModulForGreknuts);
 
   window.addEventListener("load", function () {
     kobleOppsett();
-    setTimeout(kobleOppsett, 300);
-    setTimeout(kobleOppsett, 1200);
   });
 })();
 </script>
@@ -1019,38 +1018,24 @@ window.addEventListener("load", function () {
 
   window.addEventListener("load", function () {
     visAdminOkonomi();
-    setTimeout(visAdminOkonomi, 300);
-    setTimeout(visAdminOkonomi, 1200);
   });
 })();
 </script>
 
 
 <script>
-/* Stabil knapp for Faktura/Oversikt: blir ikke skjult av rollefilteret */
+/* Stabil knapp for Faktura/Oversikt: uten forsinket omtegning */
 (function () {
-  function adminTekst() {
-    var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
-    var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
-    return rolle.includes("admin") || rolle.includes("administrator") || info.includes("systemadmin");
-  }
   function visStabileAdminKnapper() {
-    var admin = adminTekst();
     ["vetFakturaFastKnapp", "vetOversiktFastKnapp"].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
-      el.classList.toggle("skjult", !admin);
-      el.style.display = admin ? "inline-block" : "none";
+      el.classList.remove("skjult");
+      el.style.setProperty("display", "inline-block", "important");
     });
   }
   document.addEventListener("DOMContentLoaded", visStabileAdminKnapper);
-  window.addEventListener("load", function () {
-    visStabileAdminKnapper();
-    setTimeout(visStabileAdminKnapper, 300);
-    setTimeout(visStabileAdminKnapper, 1200);
-    setTimeout(visStabileAdminKnapper, 2500);
-  });
-  setInterval(visStabileAdminKnapper, 1500);
+  window.addEventListener("load", visStabileAdminKnapper);
 })();
 </script>
 
@@ -1128,7 +1113,7 @@ window.addEventListener("load", function () {
           w.document.write = function (html) {
             try {
               const v = vippsHtml();
-              if (v && typeof html === "string" && html.includes("</body>") && !html.includes("vet-vipps-betaling")) {
+              if (v && typeof html === "string" && !html.includes("vet-vipps-betaling")) {
                 html = html.replace("</body>", v + "</body>");
               }
             } catch (e) {}
@@ -1170,9 +1155,9 @@ window.addEventListener("load", function () {
   window.vetVippsSettFelterFraKlinikk = setFelterFraKlinikk;
   document.addEventListener("DOMContentLoaded", koble);
   window.addEventListener("load", koble);
-  setInterval(koble, 1200);
 })();
 </script>
 
+  <script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612real16redigerknapp"></script>
 </body>
 </html>

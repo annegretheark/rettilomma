@@ -241,16 +241,23 @@ function vetJournalBindBilvareHardt() {
   }
 }
 
-setInterval(() => {
+function vetJournalBilvareStartEnGang() {
   vetJournalBindBilvareHardt();
   const liste = document.getElementById("journalBilVareListe");
   const el = document.getElementById("journalBilValg");
   if (liste && el && String(liste.textContent || "").toLowerCase().includes("velg bil først")) {
-    window.fyllJournalBilVareValg();
+    window.fyllJournalBilVareValg?.();
   }
-}, 700);
+}
 
-setTimeout(() => { vetJournalBindBilvareHardt(); window.fyllJournalBilVareValg?.(); }, 1000);
+setTimeout(vetJournalBilvareStartEnGang, 1000);
+window.addEventListener("load", () => setTimeout(vetJournalBilvareStartEnGang, 300), { once: true });
+document.addEventListener("click", function(ev) {
+  const t = ev.target;
+  if (t && (t.id === "journalBilValg" || t.id === "journalSide" || t.closest?.("#journalSide"))) {
+    setTimeout(vetJournalBilvareStartEnGang, 50);
+  }
+}, true);
 
 
 /* =========================================================

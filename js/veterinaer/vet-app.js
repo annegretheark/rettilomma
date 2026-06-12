@@ -77,7 +77,9 @@ function visVetSide(id) {
   if (id === "fakturaSide") { fyllFakturaDyreeierValg(); settStandardFakturaDatoer(); fyllKreditnotaFakturaValg(); tegnFakturaGrunnlag(); }
   if (id === "okonomiSide") { tegnAdminOkonomiOversikt(); tegnAdminMvaOversikt(); }
   if (id === "klinikkSide") { oppdaterAdminKlinikkSynlighet(); fyllKlinikkSkjemaMedAktivKlinikk(); settKlinikkSkjemaLesemodusForVanligVet(); }
-  if (id === "journalLoggSide" && typeof lastJournalLogg === "function") { setTimeout(lastJournalLogg, 50); }
+  if (id === "journalLoggSide" && typeof lastJournalLogg === "function") {
+    lastJournalLogg();
+  }
 }
 
 
@@ -454,7 +456,9 @@ async function lastVetData() {
 
   window.lastJournalLogg = async function() {
     const liste = document.getElementById("journalLoggListe");
-    if (liste) liste.innerHTML = '<p class="lite">Laster journaltilgang ...</p>';
+    if (liste && (!liste.innerHTML || !liste.innerHTML.trim())) {
+      liste.innerHTML = '<p class="lite">Laster journaltilgang ...</p>';
+    }
 
     try {
       if (gammelLastJournalLogg) {
