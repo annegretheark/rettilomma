@@ -357,40 +357,64 @@
     valgtEierId = eid;
     valgtDyrId = dyrId;
 
-    // Redigering skal ikke åpnes nederst i pasientlisten.
-    // Den skal åpne den vanlige Journal-siden med eksisterende verdier fylt inn.
+    // Redigering åpner samme journalbilde som Ny behandling, men med eksisterende verdier.
+    try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
     try { if (typeof window.visVetSide === "function") window.visVetSide("journalSide"); else if (typeof visVetSide === "function") visVetSide("journalSide"); } catch(e) {}
 
-    try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
-    setv("journalDyreeierValg", eid);
-    try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
-    setv("journalDyrValg", dyrId);
+    setTimeout(function(){
+      const side = qs("journalSide");
+      if (side) {
+        try {
+          document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(el => {
+            el.classList.add("skjult");
+            el.style.display = "none";
+          });
+        } catch(e) {}
+        side.classList.remove("skjult");
+        side.style.display = "";
+      }
 
-    setv("journalDato", String(j.dato || "").slice(0,10) || new Date().toISOString().slice(0,10));
-    setv("journalNotat", j.notat || "");
-    setv("journalMedisin", j.medisin_kladd || "");
-    setv("journalFastpris", j.fastpris || 0);
-    setv("journalTimepris", j.timepris || 0);
-    setv("journalTimer", j.timer || 0);
-    setv("journalKm", j.km || 0);
-    setv("journalKmPris", j.km_pris || 0);
-    setv("journalBildeTekst", "");
+      try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
+      setv("journalDyreeierValg", eid);
+      try {
+        const eierValg = qs("journalDyreeierValg");
+        if (eierValg) eierValg.dispatchEvent(new Event("change", { bubbles:true }));
+      } catch(e) {}
 
-    try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
-    try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
-    try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
-    try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
+      setTimeout(function(){
+        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+        setv("journalDyrValg", dyrId);
+        try {
+          const dyrValg = qs("journalDyrValg");
+          if (dyrValg) dyrValg.dispatchEvent(new Event("change", { bubbles:true }));
+        } catch(e) {}
 
-    settRedigeringsmodus(j.id);
-    const h = qs("journalSide")?.querySelector("h2");
-    if (h) h.textContent = "Rediger behandling";
-    const msg = qs("journalMelding");
-    if (msg) msg.textContent = "Redigerer tidligere behandling. Trykk Lagre endring når du er ferdig.";
+        setv("journalDato", String(j.dato || "").slice(0,10) || new Date().toISOString().slice(0,10));
+        setv("journalNotat", j.notat || "");
+        setv("journalMedisin", j.medisin_kladd || "");
+        setv("journalMedisinKladd", j.medisin_kladd || "");
+        setv("journalFastpris", j.fastpris || 0);
+        setv("journalTimepris", j.timepris || 0);
+        setv("journalTimer", j.timer || 0);
+        setv("journalKm", j.km || 0);
+        setv("journalKmPris", j.km_pris || 0);
+        setv("journalBildeTekst", "");
 
-    const notat = qs("journalNotat");
-    if (notat) notat.focus();
-    const side = qs("journalSide");
-    if (side) side.scrollIntoView({ behavior:"smooth", block:"start" });
+        try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
+        try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
+
+        settRedigeringsmodus(j.id);
+        const h = qs("journalSide")?.querySelector("h2");
+        if (h) h.textContent = "Rediger behandling";
+        const msg = qs("journalMelding");
+        if (msg) msg.textContent = "Redigerer tidligere behandling. Trykk Lagre endring når du er ferdig.";
+        const notat = qs("journalNotat");
+        if (notat) notat.focus();
+        if (side) side.scrollIntoView({ behavior:"smooth", block:"start" });
+      }, 80);
+    }, 120);
     return false;
   }
 
