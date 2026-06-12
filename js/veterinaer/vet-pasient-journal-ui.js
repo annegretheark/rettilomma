@@ -274,33 +274,57 @@
     try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
     try { if (typeof window.visVetSide === "function") window.visVetSide("journalSide"); else if (typeof visVetSide === "function") visVetSide("journalSide"); } catch(e) {}
 
-    // Fyll etter at siden er vist, fordi visVetSide selv fyller lister først.
+    // Fyll etter at siden er vist. Denne er bevisst robust, fordi flere filer fyller
+    // journal-rullefeltene på nytt. Først tvinger vi journalSide synlig, så setter vi
+    // dyreeier, bygger dyrelisten, og setter dyr etterpå.
     setTimeout(function(){
+      const side = qs("journalSide");
+      if (side) {
+        try {
+          document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(el => {
+            el.classList.add("skjult");
+            el.style.display = "none";
+          });
+        } catch(e) {}
+        side.classList.remove("skjult");
+        side.style.display = "";
+      }
+
       try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
       setv("journalDyreeierValg", eid);
-      try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
-      setv("journalDyrValg", d.id);
-      setv("journalDato", new Date().toISOString().slice(0,10));
+      try {
+        const eierValg = qs("journalDyreeierValg");
+        if (eierValg) eierValg.dispatchEvent(new Event("change", { bubbles:true }));
+      } catch(e) {}
 
-      ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
-      ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
-      try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
-      try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
-      try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
-      try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
-      try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
+      setTimeout(function(){
+        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+        setv("journalDyrValg", d.id);
+        try {
+          const dyrValg = qs("journalDyrValg");
+          if (dyrValg) dyrValg.dispatchEvent(new Event("change", { bubbles:true }));
+        } catch(e) {}
 
-      const btn = qs("lagreJournalKnapp");
-      if (btn) btn.textContent = "Lagre journal";
-      const h = qs("journalSide")?.querySelector("h2");
-      if (h) h.textContent = "Ny behandling";
-      const msg = qs("journalMelding");
-      if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
-      const side = qs("journalSide");
-      if (side) side.scrollIntoView({ behavior:"smooth", block:"start" });
-      const notat = qs("journalNotat");
-      if (notat) notat.focus();
-    }, 80);
+        setv("journalDato", new Date().toISOString().slice(0,10));
+        ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
+        ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
+        try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
+        try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
+        try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
+
+        const btn = qs("lagreJournalKnapp");
+        if (btn) btn.textContent = "Lagre journal";
+        const h = qs("journalSide")?.querySelector("h2");
+        if (h) h.textContent = "Ny behandling";
+        const msg = qs("journalMelding");
+        if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
+        if (side) side.scrollIntoView({ behavior:"smooth", block:"start" });
+        const notat = qs("journalNotat");
+        if (notat) notat.focus();
+      }, 50);
+    }, 120);
     return false;
   }
 
@@ -510,6 +534,7 @@
 
   function init(){
     cssOnce();
+    kobleRedigerLagring();
     const eierSide = qs("eierSide");
     if (eierSide && !eierSide.classList.contains("skjult") && eierSide.style.display !== "none") byggPasienter();
   }
