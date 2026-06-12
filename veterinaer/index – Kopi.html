@@ -190,8 +190,14 @@
       <button id="vetOppsettKnapp" type="button" class="vet-oppsett-nav secondary">Oppsett</button>
 
       <button type="button" class="vet-bruker-nav" onclick="visVetSide('eierSide')">Pasienter</button>
-<button type="button" class="vet-bruker-nav" onclick="visVetSide('lagerSide')">Bil og lager</button>
-<button id="vetSlettTestdataKnapp" type="button" class="danger" onclick="slettVetTestdata()" style="display:none;">Slett testdata</button>
+      <button type="button" class="vet-bruker-nav" onclick="visVetSide('journalSide')">Journal</button>
+      <button type="button" class="vet-bruker-nav" onclick="visVetSide('lagerSide')">Bil og lager</button>
+      <button type="button" class="vet-bruker-nav" onclick="visFyllBilSide()">Fyll bil</button>
+      <button type="button" class="vet-lagerlogg-nav" onclick="visVetSide('lagerLoggSide')">Lagerlogg</button>
+      <button type="button" onclick="visVetSide('journalLoggSide')">Journaltilgang</button>
+      <button id="vetFakturaFastKnapp" type="button" class="vet-faktura-nav" onclick="visVetSide('fakturaSide')">Faktura</button>
+      <button id="vetOversiktFastKnapp" type="button" class="vet-faktura-nav" onclick="visVetSide('okonomiSide')">Oversikt</button>
+      <button id="vetSlettTestdataKnapp" type="button" class="danger" onclick="slettVetTestdata()" style="display:none;">Slett testdata</button>
       <button type="button" class="vet-systemadmin-nav" onclick="visVetSide('backupSide')">Backup / Import</button>
       <button id="vetVisSomVeterinaerKnapp" type="button" class="secondary vet-admin-toggle">Vis som vanlig veterinær</button>
       <button type="button" class="danger" onclick="loggUtVeterinaer()">Logg ut</button>
@@ -378,7 +384,8 @@
       <button type="button" class="secondary" onclick="visLagerFane('minBilOmrade')">Min bil</button>
       <button type="button" class="secondary vet-admin-nav" onclick="visLagerFane('adminLagerOmrade')">Hovedlager</button>
       <button type="button" class="secondary" onclick="visLagerFane('bestillingOmrade')">Bestillingsliste</button>
-</div>
+      <button type="button" class="secondary" onclick="visLagerFane('lagerLoggOmrade')">Lagerlogg</button>
+    </div>
     <div id="lagerVarselTopp"></div>
 
     <div id="minBilOmrade">
@@ -474,8 +481,32 @@
       <div id="bestillingVarsel"></div>
       <div id="bestillingListe"></div>
     </div>
-</div>
+
+    <div id="lagerLoggOmrade" style="display:none;">
+      <h2>Lagerlogg</h2>
+      <p class="lite">Viser siste lagerbevegelser. Admin ser alle biler, vanlig veterinær ser valgt bil.</p>
+      <button type="button" onclick="visFyllBilSide()">Fyll bil fra hovedlager</button>
+      <div id="lagerLoggListeFane"></div>
+    </div>
   </section>
+
+  <section id="lagerLoggSide" class="kort skjult">
+    <h2>Lagerlogg</h2>
+    <p class="lite">Full oversikt over hvem som flyttet eller brukte varer, hvilken bil det gjaldt, og når det skjedde.</p>
+    <button type="button" onclick="visFyllBilSide()">Fyll bil fra hovedlager</button>
+    <button type="button" class="secondary" onclick="lastVetLagerAlt()">Oppdater lagerlogg</button>
+    <div id="lagerLoggListeStor" style="margin-top:10px;"></div>
+  </section>
+
+  
+  <section id="journalLoggSide" class="kort skjult">
+    <h2>Journaltilgang</h2>
+    <p class="lite">Vanlig bruker ser egen logg. Admin ser alle.</p>
+    <button type="button" class="secondary" onclick="skjulJournaltilgang()">Lukk logg</button>
+    <button type="button" class="secondary" onclick="lastJournalLogg()">Oppdater</button>
+    <div id="journalLoggListe"></div>
+  </section>
+
 <section id="journalSide" class="kort skjult">
     <h2>Journal / behandling</h2>
 
@@ -526,17 +557,9 @@
     <div id="journalKjoringListe" class="lite">Ingen kjøring lagt til.</div>
     <p class="lite">Sum eks. mva: <strong id="journalSumVisning">0,00</strong></p>
     <label for="journalNotat">Journalnotat</label>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button type="button" class="secondary" onclick="startTale('journalNotat')">Snakk inn journalnotat</button>
-      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
-    </div>
-    <textarea id="journalNotat" placeholder="Skriv eller snakk inn journalnotat."></textarea>
+    <textarea id="journalNotat" placeholder="Skriv notat. Tale kommer i versjon 2 der pilotene bruker det mest."></textarea>
     <label for="journalMedisin">Medisin / reseptkladd</label>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button type="button" class="secondary" onclick="startTale('journalMedisin')">Snakk inn medisin/reseptkladd</button>
-      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
-    </div>
-    <textarea id="journalMedisin" placeholder="Skriv eller snakk inn medisin / reseptkladd. Ikke e-resept."></textarea>
+    <textarea id="journalMedisin" placeholder="Kun kladd/notat. Ikke e-resept."></textarea>
 
     <h3>Varer / medisiner til faktura</h3>
     <p class="lite">Velg helst fra bil-lager. Da trekkes beholdningen fra bilen når journalen lagres. Manuell varelinje kan fortsatt brukes ved behov.</p>
@@ -820,6 +843,118 @@ window.addEventListener("load", visVelgModulForGreknuts);
 
 
 <script>
+/* Produksjon: sen toppmeny-kobling */
+(function () {
+  function vis(el, display) {
+    if (!el) return;
+    el.classList.remove("skjult");
+    el.style.display = display || "inline-block";
+  }
+
+  function skjul(el) {
+    if (!el) return;
+    el.classList.add("skjult");
+    el.style.display = "none";
+  }
+
+  function erAdmin() {
+    var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
+    var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
+    return rolle.includes("admin") || rolle.includes("administrator") || info.includes("systemadmin");
+  }
+
+  function kobleOppsett() {
+    var knapp = document.getElementById("vetOppsettKnapp");
+    var meny = document.getElementById("vetOppsettMeny");
+
+    if (knapp) {
+      vis(knapp);
+      knapp.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+
+        meny = document.getElementById("vetOppsettMeny");
+        if (!meny) return false;
+
+        var skalVise = meny.classList.contains("skjult") || meny.style.display === "none" || getComputedStyle(meny).display === "none";
+        if (skalVise) {
+          meny.classList.remove("skjult");
+          meny.style.display = "block";
+        } else {
+          meny.classList.add("skjult");
+          meny.style.display = "none";
+        }
+        return false;
+      };
+    }
+
+    document.querySelectorAll(".vet-faktura-nav").forEach(function (el) {
+      if (erAdmin()) vis(el);
+      else skjul(el);
+    });
+
+    var fakturaKnapp = document.getElementById("vetFakturaFastKnapp");
+    if (fakturaKnapp && erAdmin()) {
+      vis(fakturaKnapp);
+      fakturaKnapp.onclick = function () {
+        if (typeof window.visVetSide === "function") window.visVetSide("fakturaSide");
+        return false;
+      };
+    }
+
+    if (erAdmin()) {
+      document.querySelectorAll(".vet-admin-nav,.vet-oppsett-nav,.vet-admin-toggle").forEach(function (el) {
+        vis(el);
+      });
+
+      var oversiktKnapp = Array.from(document.querySelectorAll("button")).find(function (b) {
+        return (b.textContent || "").trim().toLowerCase() === "oversikt";
+      });
+      if (oversiktKnapp) {
+        vis(oversiktKnapp);
+        oversiktKnapp.onclick = function () {
+          if (typeof window.visVetSide === "function") window.visVetSide("okonomiSide");
+          return false;
+        };
+      }
+    }
+  }
+
+  document.addEventListener("click", function (ev) {
+    var target = ev.target;
+    if (target && target.id === "vetOppsettKnapp") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var meny = document.getElementById("vetOppsettMeny");
+      if (!meny) return false;
+      var skalVise = meny.classList.contains("skjult") || meny.style.display === "none" || getComputedStyle(meny).display === "none";
+      if (skalVise) {
+        meny.classList.remove("skjult");
+        meny.style.display = "block";
+      } else {
+        meny.classList.add("skjult");
+        meny.style.display = "none";
+      }
+      return false;
+    }
+  }, true);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", kobleOppsett);
+  } else {
+    kobleOppsett();
+  }
+
+  window.addEventListener("load", function () {
+    kobleOppsett();
+  });
+})();
+</script>
+
+
+<script>
 /* Produksjon: sikkerhetsvisning hvis datalasting feiler */
 window.addEventListener("load", function () {
   setTimeout(function () {
@@ -830,40 +965,12 @@ window.addEventListener("load", function () {
 
 
 <script>
-/* Tale til tekst i journalfeltene. Lagrer ingen lydfil. */
-let vetTaleRecognition = null;
-let vetAktivtTaleFelt = null;
-function startTale(feltId) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) { alert("Talegjenkjenning støttes ikke i denne nettleseren. Bruk Chrome eller Edge."); return; }
-  if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} }
-  vetAktivtTaleFelt = document.getElementById(feltId);
-  if (!vetAktivtTaleFelt) return;
-  vetTaleRecognition = new SpeechRecognition();
-  vetTaleRecognition.lang = "no-NO";
-  vetTaleRecognition.continuous = true;
-  vetTaleRecognition.interimResults = false;
-  vetTaleRecognition.onresult = function(event) {
-    let tekst = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) tekst += event.results[i][0].transcript + " ";
-    const gammel = vetAktivtTaleFelt.value || "";
-    vetAktivtTaleFelt.value = gammel + (gammel && !gammel.endsWith(" ") ? " " : "") + tekst;
-    vetAktivtTaleFelt.dispatchEvent(new Event("input", { bubbles:true }));
-  };
-  vetTaleRecognition.start();
-}
-function stoppTale() { if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} } }
-window.startTale = startTale;
-window.stoppTale = stoppTale;
-</script>
-
-
-<script>
-/* Stabil meny uten blinking */
+/* Produksjon: vis Faktura/Oversikt kun for admin/systemadmin */
 (function () {
-  function erAdmin() {
+  function erAdminMeny() {
     var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
     var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
+
     return info.includes("systemadmin") ||
            info.includes("(admin)") ||
            info.includes("(systemadmin)") ||
@@ -871,167 +978,71 @@ window.stoppTale = stoppTale;
            rolle.includes("klinikkadministrator");
   }
 
-  function initStabilMeny() {
-    var admin = erAdmin();
+  function visAdminOkonomi() {
+    var admin = erAdminMeny();
 
-    document.querySelectorAll(".vet-admin-nav,.vet-systemadmin-nav,.vet-oppsett-nav,.vet-admin-toggle,.vet-faktura-nav,.vet-lagerlogg-nav").forEach(function(el) {
+    document.querySelectorAll(".vet-admin-nav").forEach(function (el) {
       el.classList.toggle("skjult", !admin);
       el.style.display = admin ? "inline-block" : "none";
     });
 
-    var knapp = document.getElementById("vetOppsettKnapp");
-    var meny = document.getElementById("vetOppsettMeny");
+    document.querySelectorAll(".vet-faktura-nav").forEach(function (el) {
+      el.classList.toggle("skjult", !admin);
+      el.style.display = admin ? "inline-block" : "none";
+    });
 
-    if (knapp) {
-      knapp.style.display = admin ? "inline-block" : "none";
-      knapp.onclick = function(ev) {
-        if (ev) ev.preventDefault();
-        if (!admin || !meny) return false;
-        var vis = meny.classList.contains("skjult") || meny.style.display === "none";
-        meny.classList.toggle("skjult", !vis);
-        meny.style.display = vis ? "block" : "none";
-        return false;
-      };
-    }
+    ["vetFakturaFastKnapp", "vetOversiktFastKnapp"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("skjult", !admin);
+      el.style.setProperty("display", admin ? "inline-block" : "none", "important");
+      el.disabled = !admin;
+    });
   }
 
-  window.addEventListener("load", initStabilMeny);
+  window.addEventListener("load", function () {
+    visAdminOkonomi();
+    setTimeout(visAdminOkonomi, 300);
+    setTimeout(visAdminOkonomi, 1200);
+  });
 })();
 </script>
 
-<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612NYBEHANDLINGFAST2"></script>
+
 
 <script>
-/* ENDLIG: Ny behandling fra alle pasientliste-knapper */
+/* Ren meny: vanlig veterinær skal ikke se Faktura/Oversikt */
 (function () {
-  function getGlobal(name, fallback) {
-    try {
-      const v = Function("return (typeof " + name + " !== 'undefined' ? " + name + " : undefined)")();
-      return v === undefined ? fallback : v;
-    } catch(e) { return fallback; }
+  function erAdminMeny() {
+    var rolle = (document.getElementById("vetToppRolle")?.textContent || "").toLowerCase();
+    var info = (document.getElementById("aktivKlinikkInfo")?.textContent || "").toLowerCase();
+
+    return info.includes("systemadmin") ||
+           info.includes("(admin)") ||
+           info.includes("(systemadmin)") ||
+           rolle.includes("systemadministrator") ||
+           rolle.includes("klinikkadministrator");
   }
 
-  function setv(id, v) {
-    const el = document.getElementById(id);
-    if (el) el.value = v == null ? "" : v;
-  }
-
-  function finnEierIdForDyr(d) {
-    return d?.dyreeier_id || d?.eier_id || d?.kunde_id || d?.owner_id || d?.vet_dyreeiere?.id || d?.dyreeier?.id || "";
-  }
-
-  function finnDyrIdFraKnapp(btn) {
-    if (!btn) return "";
-    let id = btn.getAttribute("data-dyr-id") || "";
-    if (id) return id;
-
-    const onclick = btn.getAttribute("onclick") || "";
-    const m = onclick.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    if (m) return m[0];
-
-    const panel = btn.closest("[id^='vetBehandlingPanel_']");
-    if (panel && panel.id) return panel.id.replace("vetBehandlingPanel_", "");
-
-    const kort = btn.closest(".vet-dyr-kort");
-    if (kort) {
-      const b = kort.querySelector("button[data-dyr-id]");
-      if (b) return b.getAttribute("data-dyr-id") || "";
-    }
-    return "";
-  }
-
-  function apneJournalForDyr(dyrId) {
-    const dyrListe = getGlobal("vetDyr", []) || [];
-    const d = dyrListe.find(x => String(x.id || "") === String(dyrId || ""));
-
-    if (!d) {
-      alert("Fant ikke dyret for ny behandling. Trykk Oppdater og prøv igjen.");
-      return false;
-    }
-
-    const eierId = finnEierIdForDyr(d);
-    if (!eierId) {
-      alert("Dyret mangler eierkobling.");
-      return false;
-    }
-
-    try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
-    try { window.vetRedigerJournalId = ""; } catch(e) {}
-
-    document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(function(el) {
+  function skjulVanligVetKnapper() {
+    var admin = erAdminMeny();
+    ["vetFakturaFastKnapp", "vetOversiktFastKnapp"].forEach(function (id) {
+      var el = document.getElementById(id);
       if (!el) return;
-      el.classList.add("skjult");
-      el.style.display = "none";
+      el.classList.toggle("skjult", !admin);
+      el.style.setProperty("display", admin ? "inline-block" : "none", "important");
+      el.disabled = !admin;
     });
-
-    const side = document.getElementById("journalSide");
-    if (!side) {
-      alert("Fant ikke journalbildet.");
-      return false;
-    }
-    side.classList.remove("skjult");
-    side.style.display = "";
-
-    setTimeout(function () {
-      try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
-      setv("journalDyreeierValg", eierId);
-      const eierValg = document.getElementById("journalDyreeierValg");
-      if (eierValg) {
-        try { eierValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
-      }
-
-      setTimeout(function () {
-        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
-        setv("journalDyrValg", d.id);
-        const dyrValg = document.getElementById("journalDyrValg");
-        if (dyrValg) {
-          try { dyrValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
-        }
-
-        setv("journalDato", new Date().toISOString().slice(0,10));
-        ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
-        ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
-
-        try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
-        try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
-        try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
-        try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
-        try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
-
-        const lagre = document.getElementById("lagreJournalKnapp");
-        if (lagre) lagre.textContent = "Lagre journal";
-        const h = document.querySelector("#journalSide h2");
-        if (h) h.textContent = "Ny behandling";
-        const msg = document.getElementById("journalMelding");
-        if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
-        side.scrollIntoView({ behavior:"smooth", block:"start" });
-        const notat = document.getElementById("journalNotat");
-        if (notat) notat.focus();
-      }, 100);
-    }, 100);
-    return false;
   }
 
-  window.vetApneJournalForDyr = apneJournalForDyr;
+  document.addEventListener("DOMContentLoaded", skjulVanligVetKnapper);
+  window.addEventListener("load", function () {
+    skjulVanligVetKnapper();
+    [200, 600, 1200, 2500].forEach(function(ms){ setTimeout(skjulVanligVetKnapper, ms); });
+  });
+})();
+</script>
 
-  document.addEventListener("click", function (ev) {
-    const btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
-    if (!btn || !btn.closest("#eierSide")) return;
-
-    const tekst = String(btn.textContent || "").trim().toLowerCase();
-    const erNyBehandling = btn.matches(".vet-nybehandling-radknapp,[data-dyr-id],.vet-nybehandling-direkte") || tekst === "ny behandling";
-    if (!erNyBehandling) return;
-
-    const dyrId = finnDyrIdFraKnapp(btn);
-    if (!dyrId) return;
-
-    ev.preventDefault();
-    ev.stopPropagation();
-    ev.stopImmediatePropagation();
-    return apneJournalForDyr(dyrId);
-  }, true);
-})();</script>
-
-
+<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612rettet17nybehandling"></script>
 </body>
 </html>

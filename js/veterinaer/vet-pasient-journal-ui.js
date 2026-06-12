@@ -74,6 +74,12 @@
       #eierSide .vet-eier-count,#eierSide .vet-beh-sum{color:#f8fafc!important;font-size:13px!important;white-space:nowrap!important;}
       #eierSide .vet-dyr-liste{padding:6px 10px 10px!important;border-top:1px solid #374151!important;background:#151b20!important;}
       #eierSide .vet-dyr-kort{margin:5px 0!important;border:1px solid #1f6feb!important;border-radius:7px!important;background:#0f172a!important;overflow:hidden!important;}
+      #eierSide .vet-dyr-rad-stabil{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px!important;align-items:center!important;background:#1f2427!important;}
+      #eierSide .vet-dyr-rad-stabil .vet-dyr-head{background:transparent!important;border:0!important;}
+      #eierSide .vet-nybehandling-direkteknapp{width:auto!important;margin:4px 8px 4px 0!important;padding:7px 10px!important;white-space:nowrap!important;font-size:13px!important;}
+      #eierSide .vet-dyr-rad-med-knapp{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px!important;align-items:center!important;background:#1f2427!important;}
+      #eierSide .vet-dyr-rad-med-knapp .vet-dyr-head{background:transparent!important;border:0!important;}
+      #eierSide .vet-nybehandling-radknapp{width:auto!important;margin:4px 8px 4px 0!important;padding:7px 10px!important;white-space:nowrap!important;font-size:13px!important;}
       #eierSide .vet-behandling-panel{padding:10px!important;border-top:1px solid #1f6feb!important;background:#0b1220!important;}
       #eierSide .vet-panel-topp{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:10px!important;flex-wrap:wrap!important;margin-bottom:8px!important;}
       #eierSide .vet-panel-knapper{display:flex!important;gap:6px!important;flex-wrap:wrap!important;}
@@ -263,68 +269,87 @@
   async function apneNyBehandling(dyrId){
     cssOnce();
     const d = finnDyr(dyrId);
-    if (!d) return false;
+    if (!d) { alert("Fant ikke dyret. Trykk Oppdater og prøv igjen."); return false; }
     const eid = eierIdForDyr(d);
     if (!eid) { alert("Dette dyret mangler sikker eierkobling. Rediger dyret og velg riktig dyreeier først."); return false; }
-    valgtEierId = String(eid); valgtDyrId = String(d.id || "");
 
-    // Ny behandling skal IKKE åpnes inne i pasientlisten. Det laget blinking og mobilrot.
-    // Den åpner den vanlige Journal-siden og fyller inn eier + dyr.
+    valgtEierId = String(eid);
+    valgtDyrId = String(d.id || "");
+
     try { window.vetRedigerJournalId = ""; } catch(e) {}
+    try { fjernNyBehandlingFraRedigering(); } catch(e) {}
     try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
-    try { if (typeof window.visVetSide === "function") window.visVetSide("journalSide"); else if (typeof visVetSide === "function") visVetSide("journalSide"); } catch(e) {}
 
-    // Fyll etter at siden er vist. Denne er bevisst robust, fordi flere filer fyller
-    // journal-rullefeltene på nytt. Først tvinger vi journalSide synlig, så setter vi
-    // dyreeier, bygger dyrelisten, og setter dyr etterpå.
-    setTimeout(function(){
-      const side = qs("journalSide");
-      if (side) {
-        try {
-          document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(el => {
-            el.classList.add("skjult");
-            el.style.display = "none";
-          });
-        } catch(e) {}
-        side.classList.remove("skjult");
-        side.style.display = "";
-      }
+    // Vis KUN journalbildet. Dette er bevisst direkte og overstyrer gammel menylogikk/caching.
+    document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(el => {
+      if (!el) return;
+      el.classList.add("skjult");
+      el.style.display = "none";
+    });
+    const side = qs("journalSide");
+    if (!side) { alert("Finner ikke journalbildet/journalSide i index.html."); return false; }
+    side.classList.remove("skjult");
+    side.style.display = "";
 
+    function velgSelect(id, verdi){
+      const el = qs(id);
+      if (!el) return false;
+      el.value = String(verdi || "");
+      return String(el.value || "") === String(verdi || "");
+    }
+
+    function fyllAlt(){
       try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
-      setv("journalDyreeierValg", eid);
+      velgSelect("journalDyreeierValg", eid);
       try {
         const eierValg = qs("journalDyreeierValg");
         if (eierValg) eierValg.dispatchEvent(new Event("change", { bubbles:true }));
       } catch(e) {}
+      try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+      velgSelect("journalDyrValg", d.id);
+      try {
+        const dyrValg = qs("journalDyrValg");
+        if (dyrValg) dyrValg.dispatchEvent(new Event("change", { bubbles:true }));
+      } catch(e) {}
+    }
 
-      setTimeout(function(){
-        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
-        setv("journalDyrValg", d.id);
-        try {
-          const dyrValg = qs("journalDyrValg");
-          if (dyrValg) dyrValg.dispatchEvent(new Event("change", { bubbles:true }));
-        } catch(e) {}
+    // Noen av de gamle filene fyller nedtrekkene asynkront. Vi prøver flere ganger,
+    // så knappen virker selv om Chrome/serveren har litt etterslep.
+    let forsok = 0;
+    const timer = setInterval(function(){
+      forsok += 1;
+      fyllAlt();
+      const okEier = String(qs("journalDyreeierValg")?.value || "") === String(eid);
+      const okDyr = String(qs("journalDyrValg")?.value || "") === String(d.id || "");
+      if ((okEier && okDyr) || forsok >= 12) {
+        clearInterval(timer);
 
         setv("journalDato", new Date().toISOString().slice(0,10));
         ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
         ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
+
         try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
         try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
         try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
         try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
         try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
 
-        const btn = qs("lagreJournalKnapp");
-        if (btn) btn.textContent = "Lagre journal";
-        const h = qs("journalSide")?.querySelector("h2");
+        const lagre = qs("lagreJournalKnapp");
+        if (lagre) lagre.textContent = "Lagre journal";
+        const h = side.querySelector("h2");
         if (h) h.textContent = "Ny behandling";
         const msg = qs("journalMelding");
-        if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
-        if (side) side.scrollIntoView({ behavior:"smooth", block:"start" });
+        if (msg) {
+          msg.textContent = okDyr
+            ? "Ny behandling for " + (d.navn || "valgt dyr") + "."
+            : "Journalbildet er åpnet. Velg dyret hvis det ikke allerede står riktig.";
+        }
+        side.scrollIntoView({ behavior:"smooth", block:"start" });
         const notat = qs("journalNotat");
         if (notat) notat.focus();
-      }, 50);
-    }, 120);
+      }
+    }, 80);
+
     return false;
   }
 
@@ -397,7 +422,7 @@
       const side = qs("journalSide");
       if (side) {
         try {
-          document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(el => {
+          document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide").forEach(el => {
             el.classList.add("skjult");
             el.style.display = "none";
           });
@@ -510,8 +535,8 @@
           <div class="lite">Eier: ${esc(finnEier(eierIdForDyr(d))?.navn || "")} | ${esc(d.art || "")} | ${esc(d.rase || "")}</div>
         </div>
         <div class="vet-panel-knapper">
-          <button type="button" onclick="return vetSamletNyBehandling('${esc(d.id)}')">Ny behandling</button>
-          <button type="button" class="secondary" onclick="try{redigerDyr('${esc(d.id)}')}catch(e){}">Rediger dyr</button>
+<button type="button" class="vet-nybehandling-radknapp" data-dyr-id="${esc(d.id)}" onclick="return vetSamletNyBehandling('${esc(d.id)}', event)">Ny behandling</button>
+<button type="button" class="secondary" onclick="try{redigerDyr('${esc(d.id)}')}catch(e){}">Rediger dyr</button>
         </div>
       </div>
       ${linjer.length ? linjer.map(j => {
@@ -547,10 +572,13 @@
             const dId = String(d.id || "");
             const valgt = valgtDyrId === dId;
             return `<div class="vet-dyr-kort">
-              <button type="button" class="vet-dyr-head" onclick="return vetSamletVelgDyr('${esc(dId)}')">
-                <div class="vet-dyr-main"><strong>${esc(d.navn || "Uten navn")}</strong><span class="vet-meta">${esc(d.art || "")} ${d.rase ? " | " + esc(d.rase) : ""}</span></div>
-                <span class="vet-eier-count">${journalForDyr(dId).length} beh.</span>
-              </button>
+              <div class="vet-dyr-rad-med-knapp">
+                <button type="button" class="vet-dyr-head" onclick="return vetSamletVelgDyr('${esc(dId)}')">
+                  <div class="vet-dyr-main"><strong>${esc(d.navn || "Uten navn")}</strong><span class="vet-meta">${esc(d.art || "")} ${d.rase ? " | " + esc(d.rase) : ""}</span></div>
+                  <span class="vet-eier-count">${journalForDyr(dId).length} beh.</span>
+                </button>
+                <button type="button" class="vet-nybehandling-radknapp" data-dyr-id="${esc(dId)}" onclick="return vetSamletNyBehandling('${esc(dId)}', event)">Ny behandling</button>
+              </div>
               ${valgt ? behandlingPanel(d) : ""}
             </div>`;
           }).join("") : '<div class="vet-tom">Ingen dyr registrert på denne eieren.</div>'}
@@ -571,7 +599,21 @@
   window.vetSamletVelgDyr = function(dyrId){ const d = finnDyr(dyrId); if (!d) return false; valgtEierId = String(eierIdForDyr(d) || ""); valgtDyrId = valgtDyrId === String(dyrId) ? "" : String(dyrId || ""); byggPasienter(); return false; };
   window.vetSamletApneJournal = function(journalId, ev){ if (ev) { try{ev.preventDefault();ev.stopPropagation();}catch(e){} } apneTidligereBehandling(journalId, ev?.currentTarget || null); return false; };
   window.vetSamletRedigerBehandling = function(journalId, ev){ if (ev) { try{ev.preventDefault();ev.stopPropagation();}catch(e){} } apneRedigerBehandling(journalId, ev?.currentTarget || null); return false; };
-  window.vetSamletNyBehandling = function(dyrId){ apneNyBehandling(dyrId); return false; };
+  window.vetSamletNyBehandling = function(dyrId, ev){
+    if (ev) {
+      try { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); } catch(e) {}
+    }
+    if (!dyrId) {
+      alert("Fant ikke valgt dyr for ny behandling.");
+      return false;
+    }
+    try {
+      apneNyBehandling(dyrId);
+    } catch(e) {
+      alert("Kunne ikke åpne ny behandling: " + (e?.message || e));
+    }
+    return false;
+  };
   window.vetSamletOppdater = async function(){ try { if (typeof lastDyreeiere === "function") await lastDyreeiere(); } catch(e) {} try { if (typeof lastDyr === "function") await lastDyr(); } catch(e) {} try { if (typeof lastJournal === "function") await lastJournal(); } catch(e) {} byggPasienter(); return false; };
 
   window.vetRenNyBehandling = window.vetSamletNyBehandling;
@@ -598,4 +640,22 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, {once:true});
   else init();
   window.addEventListener("load", () => setTimeout(init, 300));
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest("button.vet-nybehandling-radknapp[data-dyr-id]") : null;
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    const dyrId = btn.getAttribute("data-dyr-id");
+    if (!dyrId) {
+      alert("Fant ikke valgt dyr for ny behandling.");
+      return false;
+    }
+
+    return apneNyBehandling(dyrId);
+  }, true);
+
 })();
