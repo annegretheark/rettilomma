@@ -556,9 +556,16 @@
     </div>
     <div id="journalKjoringListe" class="lite">Ingen kjøring lagt til.</div>
     <p class="lite">Sum eks. mva: <strong id="journalSumVisning">0,00</strong></p>
-    <label for="journalNotat">Journalnotat</label>
+    <div style="margin-bottom:8px;">
+  <button type="button" class="secondary" onclick="startTale('journalNotat')">🎤 Start tale</button>
+  <button type="button" class="secondary" onclick="stoppTale()">⏹️ Stopp</button>
+</div>
+<label for="journalNotat">Journalnotat</label>
     <textarea id="journalNotat" placeholder="Skriv notat. Tale kommer i versjon 2 der pilotene bruker det mest."></textarea>
-    <label for="journalMedisin">Medisin / reseptkladd</label>
+    <div style="margin-bottom:8px;">
+  <button type="button" class="secondary" onclick="startTale('journalMedisin')">🎤 Medisin tale</button>
+</div>
+<label for="journalMedisin">Medisin / reseptkladd</label>
     <textarea id="journalMedisin" placeholder="Kun kladd/notat. Ikke e-resept."></textarea>
 
     <h3>Varer / medisiner til faktura</h3>
@@ -1158,6 +1165,40 @@ window.addEventListener("load", function () {
 })();
 </script>
 
-  <script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612rettet17nybehandling"></script>
+  
+<script>
+let vetTaleRecognition = null;
+let vetAktivtTaleFelt = null;
+
+function startTale(feltId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Talegjenkjenning støttes ikke i denne nettleseren.");
+    return;
+  }
+
+  vetAktivtTaleFelt = document.getElementById(feltId);
+  vetTaleRecognition = new SpeechRecognition();
+  vetTaleRecognition.lang = "no-NO";
+  vetTaleRecognition.continuous = true;
+  vetTaleRecognition.interimResults = false;
+
+  vetTaleRecognition.onresult = function(event) {
+    let tekst = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      tekst += event.results[i][0].transcript + " ";
+    }
+    if (vetAktivtTaleFelt) vetAktivtTaleFelt.value += tekst;
+  };
+
+  vetTaleRecognition.start();
+}
+
+function stoppTale() {
+  if (vetTaleRecognition) vetTaleRecognition.stop();
+}
+</script>
+
+<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612rettet17nybehandling"></script>
 </body>
 </html>

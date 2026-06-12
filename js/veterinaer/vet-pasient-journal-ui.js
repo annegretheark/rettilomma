@@ -338,10 +338,42 @@
     return fast + (timer * timepris) + (km * kmpris);
   }
 
-  function settRedigeringsmodus(journalId){
+  function fjernNyBehandlingFraRedigering(){
+    const ekstra = qs("vetNyBehandlingFraRedigeringKnapp");
+    if (ekstra) ekstra.remove();
+  }
+
+  function visNyBehandlingFraRedigeringKnapp(dyrId){
+    fjernNyBehandlingFraRedigering();
+    const lagreBtn = qs("lagreJournalKnapp");
+    if (!lagreBtn || !dyrId) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "vetNyBehandlingFraRedigeringKnapp";
+    btn.className = "secondary";
+    btn.style.marginLeft = "8px";
+    btn.textContent = "Ny behandling";
+    btn.onclick = function(ev){
+      if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {} }
+      const aktivtDyrId = qs("journalDyrValg")?.value || dyrId;
+      window.vetRedigerJournalId = "";
+      const lagre = qs("lagreJournalKnapp");
+      if (lagre) lagre.textContent = "Lagre journal";
+      fjernNyBehandlingFraRedigering();
+      apneNyBehandling(aktivtDyrId);
+      return false;
+    };
+
+    lagreBtn.insertAdjacentElement("afterend", btn);
+  }
+
+  function settRedigeringsmodus(journalId, dyrId){
     window.vetRedigerJournalId = String(journalId || "");
     const btn = qs("lagreJournalKnapp");
     if (btn) btn.textContent = window.vetRedigerJournalId ? "Lagre endring" : "Lagre journal";
+    if (window.vetRedigerJournalId) visNyBehandlingFraRedigeringKnapp(dyrId || qs("journalDyrValg")?.value || "");
+    else fjernNyBehandlingFraRedigering();
     const msg = qs("journalMelding");
     if (msg && window.vetRedigerJournalId) msg.textContent = "Redigerer eksisterende behandling. Nye bilder kan fortsatt legges til som ny opplasting senere.";
   }
@@ -405,7 +437,7 @@
         try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
         try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
 
-        settRedigeringsmodus(j.id);
+        settRedigeringsmodus(j.id, dyrId);
         const h = qs("journalSide")?.querySelector("h2");
         if (h) h.textContent = "Rediger behandling";
         const msg = qs("journalMelding");
@@ -444,6 +476,7 @@
       if (error) throw error;
       Object.assign(j, rad);
       window.vetRedigerJournalId = "";
+      fjernNyBehandlingFraRedigering();
       const btn = qs("lagreJournalKnapp");
       if (btn) btn.textContent = "Lagre journal";
       const h = qs("journalSide")?.querySelector("h2");
