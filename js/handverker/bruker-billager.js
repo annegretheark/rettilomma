@@ -150,7 +150,7 @@
       skjul(egenDiv);
     }
 
-    ["bilNavn", "bilRegnr", "lagreBilKnapp", "bilListe"].forEach(function (id) {
+    ["bilListe"].forEach(function (id) {
       const el = hent(id);
       if (!el) return;
       const blokk = el.closest(".rad") || el;
@@ -161,6 +161,21 @@
     if (tilbake) tilbake.textContent = "Tilbake til timer";
 
     begrensBilValgTilAktivBil();
+
+
+
+    // AGK 20260613: Behold lagreknappen for bil synlig når bilskjemaet vises.
+    // Vanlig bruker skal ikke se import, men admin/den som registrerer bil må kunne lagre ny bil.
+    ["bilNavn", "bilRegnr", "lagreBilKnapp"].forEach(function (id) {
+      const el = hent(id);
+      if (!el) return;
+      const blokk = id === "lagreBilKnapp" ? el : (el.closest(".rad") || el.parentElement || el);
+      vis(blokk);
+      if (id === "lagreBilKnapp") {
+        el.disabled = false;
+        el.textContent = el.textContent && el.textContent.trim() ? el.textContent : "Lagre ny bil";
+      }
+    });
 
     if (!aktivBilId()) {
       settTekst("bilMelding", "Du må først velge aktiv bil på timersiden før du kan fylle bil-lager.");

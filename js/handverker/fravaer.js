@@ -1,4 +1,4 @@
-console.log("fravaer.js er lastet");
+console.log("fravaer.js admin alle ansatte 20260613 er lastet");
 
 (function () {
   const NORMAL_DAG_TIMER = 7.5;
@@ -108,7 +108,7 @@ console.log("fravaer.js er lastet");
     }
 
     const valgt = select.value;
-    select.innerHTML = '<option value="">Meg selv / valgt ansatt</option>';
+    select.innerHTML = erAdminModus() ? '<option value="">Alle ansatte</option>' : '<option value="">Meg selv</option>';
 
     (window.ansatte || []).forEach(a => {
       const opt = document.createElement("option");
@@ -275,6 +275,7 @@ console.log("fravaer.js er lastet");
   }
 
   async function hentFravaer() {
+    const valgtFilter = $("fravaerAnsattValg")?.value || "";
     const ansattId = aktivAnsattId();
 
     let query = supabaseClient
@@ -282,9 +283,11 @@ console.log("fravaer.js er lastet");
       .select("*")
       .order("fra_dato", { ascending: false });
 
-    if (!erAdminModus()) {
-      query = query.eq("ansatt_id", ansattId);
-    } else if (ansattId) {
+    // Admin: tomt valg betyr ALLE ansatte. Valgt ansatt betyr filter.
+    // Vanlig bruker: alltid bare innlogget bruker.
+    if (erAdminModus()) {
+      if (valgtFilter) query = query.eq("ansatt_id", valgtFilter);
+    } else {
       query = query.eq("ansatt_id", ansattId);
     }
 
@@ -299,15 +302,18 @@ console.log("fravaer.js er lastet");
   }
 
   async function hentTimebank() {
+    const valgtFilter = $("fravaerAnsattValg")?.value || "";
     const ansattId = aktivAnsattId();
     let query = supabaseClient
       .from("timebank")
       .select("*")
       .order("dato", { ascending: false });
 
-    if (!erAdminModus()) {
-      query = query.eq("ansatt_id", ansattId);
-    } else if (ansattId) {
+    // Admin: tomt valg betyr ALLE ansatte. Valgt ansatt betyr filter.
+    // Vanlig bruker: alltid bare innlogget bruker.
+    if (erAdminModus()) {
+      if (valgtFilter) query = query.eq("ansatt_id", valgtFilter);
+    } else {
       query = query.eq("ansatt_id", ansattId);
     }
 

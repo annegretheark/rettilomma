@@ -347,6 +347,318 @@
     }
   }
 
+
+
+  function jobbKundeId(rad) {
+    return rad.kunde_id || rad.kundeId || rad.kunder?.id || null;
+  }
+
+  function jobbProsjektId(rad) {
+    return rad.prosjekt_id || rad.prosjektId || null;
+  }
+
+  function jobbDato(rad) {
+    return String(rad.dato || rad.created_at || new Date().toISOString()).slice(0, 10);
+  }
+
+  function jobbMelding(tekst, feil) {
+    const el = hent("jobbEkstraMelding");
+    if (!el) return;
+    el.textContent = tekst || "";
+    el.style.color = feil ? "#fca5a5" : "#86efac";
+  }
+
+  function tallFraJobbFelt(id, standard = 0) {
+    const el = hent(id);
+    if (!el) return standard;
+    const tekst = String(el.value ?? "").replace(",", ".").trim();
+    if (tekst === "") return standard;
+    const n = Number(tekst);
+    return Number.isFinite(n) ? n : standard;
+  }
+
+  async function fyllJobbVarevalg(rad) {
+    const select = hent("jobbVareValg");
+    const prisFelt = hent("jobbVarePris");
+    if (!select || !window.supabaseClient) return;
+
+    select.innerHTML = '<option value="">Laster varer fra aktiv bil...</option>';
+
+    const aktivBilId = typeof window.hentAktivBilIdFraSkjerm === "function"
+      ? window.hentAktivBilIdFraSkjerm()
+      : (window.aktivBilId || localStorage.getItem("aktivBilId") || "");
+
+    if (!aktivBilId) {
+      select.innerHTML = '<option value="">Velg aktiv bil først</option>';
+      return;
+    }
+
+    const { data: bilvarer, error: bilFeil } = await supabaseClient
+      .from("bil_lager")
+      .select("id, vare_id, antall")
+      .eq("bil_id", aktivBilId)
+      .gt("antall", 0);
+
+    if (bilFeil) {
+      select.innerHTML = '<option value="">Feil ved henting av bil-lager</option>';
+      jobbMelding("Kunne ikke hente bil-lager: " + bilFeil.message, true);
+      return;
+    }
+
+    const vareIds = (bilvarer || []).map(x => x.vare_id).filter(Boolean);
+    if (!vareIds.length) {
+      select.innerHTML = '<option value="">Ingen varer på aktiv bil</option>';
+      return;
+    }
+
+    const { data: varer, error: varerFeil } = await supabaseClient
+      .from("varer")
+      .select("*")
+      .in("id", vareIds);
+
+    if (varerFeil) {
+      select.innerHTML = '<option value="">Feil ved henting av varer</option>';
+      jobbMelding("Kunne ikke hente varer: " + varerFeil.message, true);
+      return;
+    }
+
+    const vareMap = new Map((varer || []).map(v => [String(v.id), v]));
+    select.innerHTML = '<option value="">Velg vare fra aktiv bil</option>';
+
+    (bilvarer || []).forEach(bv => {
+      const v = vareMap.get(String(bv.vare_id));
+      if (!v) return;
+      const pris = Number(v.pris ?? v.utpris ?? v.utsalgspris ?? v.salgspris ?? 0);
+      const opt = document.createElement("option");
+      opt.value = v.id;
+      opt.dataset.bilLagerId = bv.id;
+      opt.dataset.antallBil = String(Number(bv.antall || 0));
+      opt.dataset.pris = String(pris);
+      opt.dataset.navn = ((v.varenr ? v.varenr + " - " : "") + (v.navn || v.varenavn || v.beskrivelse || "Vare")).trim();
+      opt.textContent = opt.dataset.navn + " | på bil: " + Number(bv.antall || 0) + " | " + pris.toFixed(2) + " kr";
+      select.appendChild(opt);
+    });
+
+    select.onchange = function () {
+      const opt = select.options[select.selectedIndex];
+      if (prisFelt && opt && opt.dataset.pris) prisFelt.value = opt.dataset.pris;
+    };
+  }
+
+  async function hentJobbVarer(jobbId, rad) {
+    if (!window.supabaseClient || !jobbId) return [];
+    const kundeId = jobbKundeId(rad);
+    let res = null;
+
+    try {
+      res = await supabaseClient
+        .from("faktura_varer")
+        .select("*")
+        .eq("timer_id", jobbId)
+        .order("id", { ascending: false });
+      if (!res.error) return res.data || [];
+    } catch (e) {}
+
+    try {
+      if (!kundeId) return [];
+      res = await supabaseClient
+        .from("faktura_varer")
+        .select("*")
+        .eq("kunde_id", kundeId)
+        .ilike("navn", "%jobb #" + jobbId + "%")
+        .order("id", { ascending: false });
+      if (!res.error) return res.data || [];
+    } catch (e) {}
+
+    return [];
+  }
+
+  async function oppdaterJobbVarer(jobbId, rad) {
+    const el = hent("jobbVarerListe");
+    if (!el) return;
+    el.innerHTML = "Laster varer...";
+    const varer = await hentJobbVarer(jobbId, rad);
+    if (!varer.length) {
+      el.innerHTML = '<div style="opacity:0.8;">Ingen varer lagt på denne jobben ennå.</div>';
+      return;
+    }
+    el.innerHTML = '<table class="bil-tabell"><thead><tr><th>Vare</th><th>Antall</th><th>Pris</th></tr></thead><tbody>' +
+      varer.map(v => '<tr><td>' + esc(String(v.navn || v.beskrivelse || "").replace("Jobb #" + jobbId + " - ", "")) + '</td><td>' + esc(v.antall || 0) + '</td><td>' + esc(v.pris || 0) + '</td></tr>').join("") +
+      '</tbody></table>';
+  }
+
+  async function leggVarePaJobb(jobbId, rad) {
+    const select = hent("jobbVareValg");
+    const antall = Math.round(tallFraJobbFelt("jobbVareAntall", 1));
+    const pris = tallFraJobbFelt("jobbVarePris", 0);
+    const kundeId = jobbKundeId(rad);
+
+    jobbMelding("");
+
+    if (!kundeId) { jobbMelding("Fant ikke kunde på jobben.", true); return; }
+    if (!select || !select.value) { jobbMelding("Velg vare først.", true); return; }
+    if (!Number.isInteger(antall) || antall <= 0) { jobbMelding("Antall må være heltall større enn 0.", true); return; }
+
+    const opt = select.options[select.selectedIndex];
+    const bilLagerId = opt?.dataset?.bilLagerId || "";
+    const antallBil = Number(opt?.dataset?.antallBil || 0);
+    const navn = opt?.dataset?.navn || opt?.textContent || "Vare";
+
+    if (antallBil < antall) {
+      jobbMelding("Det er bare " + antallBil + " på bilen.", true);
+      return;
+    }
+
+    let insertRad = {
+      kunde_id: kundeId,
+      navn: "Jobb #" + jobbId + " - " + navn,
+      antall: antall,
+      pris: pris,
+      fakturert: false,
+      fakturanr: null
+    };
+
+    let res = await supabaseClient.from("faktura_varer").insert([{ ...insertRad, timer_id: jobbId }]);
+    if (res.error && String(res.error.message || "").toLowerCase().includes("timer_id")) {
+      res = await supabaseClient.from("faktura_varer").insert([insertRad]);
+    }
+
+    if (res.error) {
+      jobbMelding("Kunne ikke lagre vare på jobben: " + res.error.message, true);
+      return;
+    }
+
+    if (bilLagerId) {
+      const nyttAntall = Math.max(0, antallBil - antall);
+      const trekk = await supabaseClient.from("bil_lager").update({ antall: nyttAntall }).eq("id", bilLagerId);
+      if (trekk.error) {
+        jobbMelding("Vare ble lagt på jobb, men lager ble ikke trukket: " + trekk.error.message, true);
+        return;
+      }
+    }
+
+    if (hent("jobbVareAntall")) hent("jobbVareAntall").value = "1";
+    if (hent("jobbVarePris")) hent("jobbVarePris").value = "0";
+    jobbMelding("Vare lagt på jobben.");
+    await fyllJobbVarevalg(rad);
+    await oppdaterJobbVarer(jobbId, rad);
+  }
+
+  async function hentJobbUtlegg(jobbId, rad) {
+    if (!window.supabaseClient || !jobbId) return [];
+    const kundeId = jobbKundeId(rad);
+    let res = null;
+
+    try {
+      res = await supabaseClient
+        .from("faktura_utlegg")
+        .select("*")
+        .eq("timer_id", jobbId)
+        .order("id", { ascending: false });
+      if (!res.error) return res.data || [];
+    } catch (e) {}
+
+    try {
+      if (!kundeId) return [];
+      res = await supabaseClient
+        .from("faktura_utlegg")
+        .select("*")
+        .eq("kunde_id", kundeId)
+        .ilike("beskrivelse", "%jobb #" + jobbId + "%")
+        .order("id", { ascending: false });
+      if (!res.error) return res.data || [];
+    } catch (e) {}
+
+    return [];
+  }
+
+  async function oppdaterJobbUtlegg(jobbId, rad) {
+    const el = hent("jobbUtleggListe");
+    if (!el) return;
+    el.innerHTML = "Laster utgifter...";
+    const utlegg = await hentJobbUtlegg(jobbId, rad);
+    if (!utlegg.length) {
+      el.innerHTML = '<div style="opacity:0.8;">Ingen utgifter lagt på denne jobben ennå.</div>';
+      return;
+    }
+    el.innerHTML = '<table class="bil-tabell"><thead><tr><th>Type</th><th>Beskrivelse</th><th>Beløp</th></tr></thead><tbody>' +
+      utlegg.map(u => '<tr><td>' + esc(u.type || "") + '</td><td>' + esc(String(u.beskrivelse || "").replace("Jobb #" + jobbId + " - ", "")) + '</td><td>' + esc(u.belop || 0) + '</td></tr>').join("") +
+      '</tbody></table>';
+  }
+
+  async function leggUtleggPaJobb(jobbId, rad) {
+    const type = hent("jobbUtgiftType")?.value || "";
+    let belop = tallFraJobbFelt("jobbUtgiftBelop", 0);
+    const km = tallFraJobbFelt("jobbUtgiftKm", 0);
+    const kmPris = tallFraJobbFelt("jobbUtgiftKmPris", 5.3);
+    const kundeId = jobbKundeId(rad);
+
+    jobbMelding("");
+
+    if (!kundeId) { jobbMelding("Fant ikke kunde på jobben.", true); return; }
+    if (!type) { jobbMelding("Velg utgiftstype.", true); return; }
+    if (type === "kjoring") belop = km * kmPris;
+    if (!belop || belop <= 0) { jobbMelding("Skriv beløp eller km.", true); return; }
+
+    const beskrivelse = "Jobb #" + jobbId + " - " + (type === "kjoring" ? ("Kjøring " + km + " km x " + kmPris) : type);
+    let insertRad = {
+      kunde_id: kundeId,
+      type: type,
+      beskrivelse: beskrivelse,
+      belop: belop,
+      fakturert: false,
+      fakturanr: null
+    };
+
+    let res = await supabaseClient.from("faktura_utlegg").insert([{ ...insertRad, timer_id: jobbId }]);
+    if (res.error && String(res.error.message || "").toLowerCase().includes("timer_id")) {
+      res = await supabaseClient.from("faktura_utlegg").insert([insertRad]);
+    }
+
+    if (res.error) {
+      jobbMelding("Kunne ikke lagre utgift på jobben: " + res.error.message, true);
+      return;
+    }
+
+    const ansattId = rad.ansatt_id || window.innloggetAnsattId || null;
+    if (ansattId) {
+      const timerUtlegg = {
+        ansatt_id: ansattId,
+        dato: jobbDato(rad),
+        kunde_id: kundeId,
+        kunde_nr: rad.kunde_nr || rad.kundeNr || null,
+        kunde_navn: hentKunde(rad) || "",
+        prosjekt_id: jobbProsjektId(rad),
+        start: "00:00",
+        slutt: "00:00",
+        timer: 0,
+        overtid50: 0,
+        overtid100: 0,
+        timepris: 0,
+        sum_timer: 0,
+        km: type === "kjoring" ? km : 0,
+        km_pris: type === "kjoring" ? kmPris : 0,
+        sum_km: type === "kjoring" ? belop : 0,
+        diett: type === "diett" ? belop : 0,
+        parkering: type === "parkering" ? belop : 0,
+        billetter: type === "billetter" ? belop : 0,
+        bompenger: type === "bompenger" ? belop : 0,
+        andre_utlegg: ["kjoring", "diett", "parkering", "billetter", "bompenger"].includes(type) ? 0 : belop,
+        andre_utlegg_beskrivelse: "Utlegg på jobb #" + jobbId + ": " + type,
+        sum: 0,
+        fakturerbar: false,
+        beskrivelse: "Utlegg/refusjon på jobb #" + jobbId + ": " + type
+      };
+      try { await supabaseClient.from("timer").insert([timerUtlegg]); } catch (e) { console.warn("Utlegg ble ikke lagt i time/lønnstabell:", e); }
+    }
+
+    if (hent("jobbUtgiftType")) hent("jobbUtgiftType").value = "";
+    if (hent("jobbUtgiftBelop")) hent("jobbUtgiftBelop").value = "0";
+    if (hent("jobbUtgiftKm")) hent("jobbUtgiftKm").value = "0";
+    jobbMelding("Utgift lagt på jobben.");
+    await oppdaterJobbUtlegg(jobbId, rad);
+  }
+
   function visJobbDetalj(rad) {
     const detalj = sikreDetaljBoks();
     if (!detalj || !rad) return;
@@ -382,6 +694,32 @@
     html.push('<h4>Bilder</h4>');
     html.push('<div id="jobbDetaljBilder" style="margin-bottom:12px;">Laster bilder...</div>');
 
+    html.push('<h4>Varer på jobben</h4>');
+    html.push('<div id="jobbVarerListe" style="margin-bottom:12px;">Laster varer...</div>');
+    html.push('<div style="margin-top:10px; padding:12px; border:1px solid #374151; border-radius:10px; background:#111827;">');
+    html.push('<h4 style="margin-top:0;">Legg til vare på denne jobben</h4>');
+    html.push('<div class="rad">');
+    html.push('<div><label for="jobbVareValg">Vare fra aktiv bil</label><select id="jobbVareValg"><option value="">Laster...</option></select></div>');
+    html.push('<div><label for="jobbVareAntall">Antall</label><input id="jobbVareAntall" type="number" step="1" min="1" value="1"></div>');
+    html.push('<div><label for="jobbVarePris">Pris</label><input id="jobbVarePris" type="number" step="0.01" value="0"></div>');
+    html.push('</div>');
+    html.push('<button type="button" id="leggJobbVareKnapp">Legg til vare</button>');
+    html.push('</div>');
+
+    html.push('<h4>Utgifter på jobben</h4>');
+    html.push('<div id="jobbUtleggListe" style="margin-bottom:12px;">Laster utgifter...</div>');
+    html.push('<div style="margin-top:10px; padding:12px; border:1px solid #374151; border-radius:10px; background:#111827;">');
+    html.push('<h4 style="margin-top:0;">Legg til utgift på denne jobben</h4>');
+    html.push('<div class="rad">');
+    html.push('<div><label for="jobbUtgiftType">Utgiftstype</label><select id="jobbUtgiftType"><option value="">Velg</option><option value="kjoring">Kjøring</option><option value="bompenger">Bompenger</option><option value="parkering">Parkering</option><option value="ferge">Ferge</option><option value="diett">Diett</option><option value="billetter">Billetter</option><option value="annet">Annet</option></select></div>');
+    html.push('<div><label for="jobbUtgiftBelop">Beløp</label><input id="jobbUtgiftBelop" type="number" step="0.01" value="0"></div>');
+    html.push('<div><label for="jobbUtgiftKm">Km</label><input id="jobbUtgiftKm" type="number" step="0.1" value="0"></div>');
+    html.push('<div><label for="jobbUtgiftKmPris">Pris pr km</label><input id="jobbUtgiftKmPris" type="number" step="0.01" value="5.30"></div>');
+    html.push('</div>');
+    html.push('<button type="button" id="leggJobbUtleggKnapp">Legg til utgift</button>');
+    html.push('<div id="jobbEkstraMelding" style="font-weight:700; margin-top:8px;"></div>');
+    html.push('</div>');
+
     html.push('<div style="margin-top:14px; padding:12px; border:1px solid #374151; border-radius:10px; background:#111827;">');
     html.push('<h4 style="margin-top:0;">Legg til bilde på denne jobben</h4>');
     html.push('<div style="display:grid; gap:8px; max-width:430px;">');
@@ -411,7 +749,24 @@
       };
     }
 
+    const vareKnapp = hent("leggJobbVareKnapp");
+    if (vareKnapp) {
+      vareKnapp.onclick = function () {
+        leggVarePaJobb(id, rad);
+      };
+    }
+
+    const utleggKnapp = hent("leggJobbUtleggKnapp");
+    if (utleggKnapp) {
+      utleggKnapp.onclick = function () {
+        leggUtleggPaJobb(id, rad);
+      };
+    }
+
     oppdaterJobbBilder(id, rad);
+    oppdaterJobbVarer(id, rad);
+    oppdaterJobbUtlegg(id, rad);
+    fyllJobbVarevalg(rad);
     detalj.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
