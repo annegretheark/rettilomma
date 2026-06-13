@@ -50,9 +50,23 @@
   }
   function begrensBilValgTilAktivBil() {
     const select = hent("bilLagerBilValg");
-    const id = aktivBilId();
+    if (!select) return;
+
+    let id = aktivBilId();
     const navn = aktivBilNavn();
-    if (!select || !id) return;
+
+    // Hvis bruker ikke har aktiv/standard bil ennå, men listen har bare én bil,
+    // velg den automatisk. Hvis listen har flere biler, la brukeren velge i listen.
+    if (!id) {
+      const valg = Array.from(select.options || []).filter(function (o) { return String(o.value || "").trim() !== ""; });
+      if (valg.length === 1) id = String(valg[0].value || "");
+    }
+
+    if (!id) {
+      select.disabled = false;
+      delete select.dataset.rilLåstTilAktivBil;
+      return;
+    }
 
     let option = Array.from(select.options || []).find(function (o) {
       return String(o.value) === String(id);
@@ -70,10 +84,12 @@
     select.dataset.rilLåstTilAktivBil = "1";
     window.aktivBilId = id;
     localStorage.setItem("aktivBilId", id);
-    if (option && option.textContent) localStorage.setItem("aktivBilNavn", option.textContent);
-
-    // Ikke send change her. Det tegnet fyllelisten på nytt mens bruker skrev antall.
+    if (option && option.textContent) {
+      window.aktivBilNavn = option.textContent;
+      localStorage.setItem("aktivBilNavn", option.textContent);
+    }
   }
+
   function styrImportForRolle() {
     const admin = erAdminModus();
 
@@ -150,10 +166,17 @@
       skjul(egenDiv);
     }
 
-    ["bilListe"].forEach(function (id) {
+    // Skjul hele registrering/redigering av bil for vanlig bruker.
+    // Vanlig bruker skal bare fylle varer på valgt/standard bil.
+    ["nyBilKnapp", "bilSkjemaOmrade", "bilListe"].forEach(function (id) {
+      skjul(hent(id));
+    });
+
+    // Ekstra sikring hvis gammel HTML/fix viser enkeltfelter likevel.
+    ["bilNavn", "bilRegnr", "lagreBilKnapp", "bilId"].forEach(function (id) {
       const el = hent(id);
       if (!el) return;
-      const blokk = el.closest(".rad") || el;
+      const blokk = el.closest("#bilSkjemaOmrade") || el.closest(".rad") || el;
       skjul(blokk);
     });
 
@@ -162,23 +185,9 @@
 
     begrensBilValgTilAktivBil();
 
-
-
-    // AGK 20260613: Behold lagreknappen for bil synlig når bilskjemaet vises.
-    // Vanlig bruker skal ikke se import, men admin/den som registrerer bil må kunne lagre ny bil.
-    ["bilNavn", "bilRegnr", "lagreBilKnapp"].forEach(function (id) {
-      const el = hent(id);
-      if (!el) return;
-      const blokk = id === "lagreBilKnapp" ? el : (el.closest(".rad") || el.parentElement || el);
-      vis(blokk);
-      if (id === "lagreBilKnapp") {
-        el.disabled = false;
-        el.textContent = el.textContent && el.textContent.trim() ? el.textContent : "Lagre ny bil";
-      }
-    });
-
-    if (!aktivBilId()) {
-      settTekst("bilMelding", "Du må først velge aktiv bil på timersiden før du kan fylle bil-lager.");
+    const select = hent("bilLagerBilValg");
+    if (!aktivBilId() && select && !select.value) {
+      settTekst("bilMelding", "Velg bil i listen for å fylle bil-lager.");
     }
   }
 
@@ -191,7 +200,18 @@
 
   document.addEventListener("change", function (event) {
     if (event.target && event.target.id === "bilLagerBilValg" && !erAdminModus()) {
-      setTimeout(begrensBilValgTilAktivBil, 0);
+      const select = event.target;
+      if (select.value) {
+        window.aktivBilId = select.value;
+        localStorage.setItem("aktivBilId", select.value);
+        const valgt = select.options[select.selectedIndex];
+        if (valgt) {
+          window.aktivBilNavn = valgt.textContent || "";
+          localStorage.setItem("aktivBilNavn", valgt.textContent || "");
+        }
+        setTimeout(begrensBilValgTilAktivBil, 0);
+        if (typeof window.tegnFyllBilListe === "function") setTimeout(window.tegnFyllBilListe, 20);
+      }
     }
   }, true);
 
