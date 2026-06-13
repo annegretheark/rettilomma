@@ -1,4 +1,5 @@
-console.log("biler.js bilskjema synlig fix lastet 7063");
+console.log("biler.js PROD firma_id fix 20260613 lastet");
+window.BILER_JS_VERSION = "PROD bil-lager import nederst 20260613";
 
 let biler = [];
 let bilLager = [];
@@ -196,6 +197,7 @@ async function visBilerSide() {
   side.classList.remove("skjult", "hidden", "modul-skjult");
   side.style.display = "";
   visBilSkjema();
+  sikreImportTilHovedlagerIBunn();
 
   await lastBilerOgBilLager();
 }
@@ -267,6 +269,35 @@ async function lastBiler() {
   return biler;
 }
 
+
+async function hentInnloggetFirmaIdForBiler() {
+  if (!window.supabaseClient || !supabaseClient.auth) {
+    throw new Error("Supabase er ikke lastet.");
+  }
+
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+
+  if (userError || !userData || !userData.user || !userData.user.id) {
+    throw new Error("Du er ikke innlogget i Supabase. Logg ut og inn igjen.");
+  }
+
+  const userId = userData.user.id;
+
+  const { data: firmaBruker, error: firmaError } = await supabaseClient
+    .from("firma_brukere")
+    .select("firma_id")
+    .eq("user_id", userId)
+    .limit(1)
+    .single();
+
+  if (firmaError || !firmaBruker || !firmaBruker.firma_id) {
+    throw new Error("Innlogget bruker er ikke koblet til firma i firma_brukere.");
+  }
+
+  return firmaBruker.firma_id;
+}
+
+
 async function lagreBil() {
   try {
     bilMelding("Lagrer bil...");
@@ -286,25 +317,53 @@ async function lagreBil() {
       return;
     }
 
+    const firmaId = await hentInnloggetFirmaIdForBiler();
+
     const rad = {
+      firma_id: firmaId,
       navn: navn || regnr,
       regnr: regnr || null,
       aktiv: true
     };
 
-    let res = id
-      ? await supabaseClient.from("biler").update(rad).eq("id", id).select().single()
-      : await supabaseClient.from("biler").insert([rad]).select().single();
+    let res;
+
+    if (id) {
+      res = await supabaseClient
+        .from("biler")
+        .update(rad)
+        .eq("id", id)
+        .select()
+        .single();
+    } else {
+      res = await supabaseClient
+        .from("biler")
+        .insert([rad])
+        .select()
+        .single();
+    }
 
     if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
-      const rad2 = {
+      const radUtenAktiv = {
+        firma_id: firmaId,
         navn: navn || regnr,
         regnr: regnr || null
       };
 
-      res = id
-        ? await supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
-        : await supabaseClient.from("biler").insert([rad2]).select().single();
+      if (id) {
+        res = await supabaseClient
+          .from("biler")
+          .update(radUtenAktiv)
+          .eq("id", id)
+          .select()
+          .single();
+      } else {
+        res = await supabaseClient
+          .from("biler")
+          .insert([radUtenAktiv])
+          .select()
+          .single();
+      }
     }
 
     if (res.error) {
@@ -313,7 +372,7 @@ async function lagreBil() {
       return;
     }
 
-    if (res.data?.id) {
+    if (res.data && res.data.id) {
       localStorage.setItem("aktivBilId", String(res.data.id));
       localStorage.setItem("aktivBilNavn", bilNavn(res.data));
       window.aktivBilId = String(res.data.id);
@@ -325,7 +384,7 @@ async function lagreBil() {
     await lastBilerOgBilLager();
     await fyllVarevalgFraAktivBil();
   } catch (e) {
-    const msg = "Feil ved lagring av bil: " + (e.message || String(e));
+    const msg = "Feil ved lagring av bil: " + (e && e.message ? e.message : String(e));
     bilMelding(msg, true);
     alert(msg);
   }
@@ -596,6 +655,8 @@ async function skrivLagerlogg(rad) {
 }
 
 async function lagreBilLagerListe() {
+  bilMelding("Knappen virker - lagrer varer på bil...");
+bilMelding("Starter fylling av bil...");
   const bilId = hentValgtBilIdForBilLager();
 
   if (!bilId) {
@@ -981,11 +1042,309 @@ async function byttBil() {
   await fyllVarevalgFraAktivBil();
 }
 
+
+
+/* RIL PROD 20260613: Importer varer til hovedlager nederst på bil-siden.
+   Dette erstatter lager-patch.js for import/fylleliste.
+*/
+function bilImportMelding(tekst, erFeil = false) {
+  const e = bilEl("importBilLagerMelding") || bilEl("bilMelding");
+  if (e) {
+    e.textContent = tekst || "";
+    e.style.color = erFeil ? "#fca5a5" : "#86efac";
+  }
+  if (erFeil) console.error(tekst);
+  else if (tekst) console.log(tekst);
+}
+
+function bilEscapeHtml(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function bilNormaliserKolonne(verdi) {
+  return String(verdi || "")
+    .toLowerCase()
+    .replaceAll(" ", "")
+    .replaceAll("_", "")
+    .replaceAll("-", "")
+    .replaceAll(".", "")
+    .replaceAll("æ", "ae")
+    .replaceAll("ø", "o")
+    .replaceAll("å", "a");
+}
+
+function bilHentKolonne(rad, navnListe) {
+  const oppslag = {};
+  Object.keys(rad || {}).forEach(k => {
+    oppslag[bilNormaliserKolonne(k)] = rad[k];
+  });
+
+  for (const navn of navnListe) {
+    const verdi = oppslag[bilNormaliserKolonne(navn)];
+    if (verdi !== undefined && verdi !== null && String(verdi).trim() !== "") {
+      return verdi;
+    }
+  }
+
+  return "";
+}
+
+function bilTilTall(verdi, standard = 0) {
+  if (verdi === undefined || verdi === null || String(verdi).trim() === "") return standard;
+
+  const s = String(verdi)
+    .replaceAll(" ", "")
+    .replaceAll("\u00a0", "")
+    .replaceAll("kr", "")
+    .replaceAll("NOK", "")
+    .replace(",", ".");
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : standard;
+}
+
+function bilRyddTekst(verdi) {
+  let s = String(verdi ?? "").replace(/^\uFEFF/, "");
+  const map = {
+    "Ã¦": "æ", "Ã†": "Æ",
+    "Ã¸": "ø", "Ã˜": "Ø",
+    "Ã¥": "å", "Ã…": "Å",
+    "Ã©": "é", "Ã¨": "è", "Ã¼": "ü", "Ã¶": "ö", "Ã¤": "ä",
+    "Â": ""
+  };
+
+  Object.keys(map).forEach(k => {
+    s = s.split(k).join(map[k]);
+  });
+
+  return s.trim();
+}
+
+function bilLagUuid() {
+  try {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  } catch (_) {}
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === "x" ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function sikreImportTilHovedlagerIBunn() {
+  const bilListe = bilEl("bilLagerListe");
+  const fylleListe = bilEl("bilLagerFyllListe");
+  if (!bilListe && !fylleListe) return;
+
+  // Hvis gammel patch allerede har laget importboksen, flytt den nederst og bruk samme innhold.
+  let wrap = bilEl("importBilLagerBunnOmrade") || bilEl("patchImportLagerWrap");
+
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "importBilLagerBunnOmrade";
+    wrap.innerHTML = `
+      <hr>
+      <h3>Importer varer til hovedlager</h3>
+      <p class="info">Dette brukes bare når du skal laste inn eller oppdatere hovedlageret.</p>
+
+      <label for="importBilLagerFil">Velg CSV/Excel-fil</label>
+      <input id="importBilLagerFil" type="file" accept=".csv,.xlsx,.xls">
+
+      <button id="importBilLagerKnapp" type="button">Importer varer til hovedlager</button>
+      <button id="hentFyllelisteFraDbKnapp" type="button" class="secondary">Oppdater fylleliste</button>
+
+      <div id="importBilLagerMelding" class="melding"></div>
+    `;
+  } else {
+    wrap.id = "importBilLagerBunnOmrade";
+  }
+
+  // Nederst: etter listen over varer som ligger på bil.
+  if (bilListe && bilListe.parentNode && bilListe.nextSibling !== wrap) {
+    bilListe.after(wrap);
+  } else if (fylleListe && fylleListe.parentNode && fylleListe.nextSibling !== wrap) {
+    fylleListe.after(wrap);
+  }
+
+  const importKnapp = bilEl("importBilLagerKnapp");
+  if (importKnapp) {
+    importKnapp.onclick = importerVarerTilHovedlagerFraBilside;
+  }
+
+  const hentKnapp = bilEl("hentFyllelisteFraDbKnapp");
+  if (hentKnapp) {
+    hentKnapp.onclick = async function () {
+      await fyllBilLagerVareValg();
+      bilImportMelding("Fyllelisten er oppdatert fra hovedlager.");
+    };
+  }
+}
+
+async function lesImportRaderFraBilside(fil) {
+  if (typeof XLSX === "undefined") {
+    throw new Error("XLSX-biblioteket er ikke lastet.");
+  }
+
+  const buffer = await fil.arrayBuffer();
+  const navn = String(fil.name || "").toLowerCase();
+
+  let workbook;
+  if (navn.endsWith(".csv")) {
+    let tekst = new TextDecoder("utf-8").decode(buffer);
+    if (tekst.includes("�")) tekst = new TextDecoder("windows-1252").decode(buffer);
+    workbook = XLSX.read(tekst, { type: "string", raw: false });
+  } else {
+    workbook = XLSX.read(buffer, { type: "array", raw: false });
+  }
+
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+}
+
+function mapImportVareFraBilside(rad) {
+  const varenr = bilRyddTekst(bilHentKolonne(rad, [
+    "varenr", "vare nr", "vare_nr", "Varenr", "VareNr",
+    "artikkel", "artikkelnr", "artikkelnummer", "produktnr", "produktnummer", "sku"
+  ]));
+
+  const navn = bilRyddTekst(bilHentKolonne(rad, [
+    "navn", "varenavn", "vare navn", "Varenavn", "vare",
+    "produkt", "beskrivelse", "tekst", "description"
+  ]));
+
+  if (!varenr && !navn) return null;
+
+  const lager = Math.round(bilTilTall(bilHentKolonne(rad, [
+    "lager_antall", "lager antall", "antall", "lager", "beholdning", "qty", "quantity"
+  ]), 0));
+
+  const minimum = Math.round(bilTilTall(bilHentKolonne(rad, [
+    "minimum_antall", "minimum", "min", "min antall"
+  ]), 0));
+
+  const mva = bilTilTall(bilHentKolonne(rad, [
+    "mva_prosent", "mva_sats", "mva", "MVA", "vat"
+  ]), 25) || 25;
+
+  const innpris = bilTilTall(bilHentKolonne(rad, [
+    "innpris", "inn pris", "kostpris", "nettopris", "pris inn"
+  ]), 0);
+
+  const pris = bilTilTall(bilHentKolonne(rad, [
+    "pris", "utpris", "ut pris", "utsalgspris", "salgspris", "pris ut"
+  ]), 0);
+
+  return {
+    varenr: varenr || null,
+    navn: navn || varenr,
+    beskrivelse: bilRyddTekst(bilHentKolonne(rad, ["beskrivelse", "tekst", "description"])) || null,
+    innpris,
+    pris,
+    utpris: pris,
+    lager_antall: lager,
+    antall: lager,
+    minimum_antall: minimum,
+    mva_prosent: mva,
+    mva,
+    mva_sats: mva,
+    aktiv: true
+  };
+}
+
+async function importerVarerTilHovedlagerFraBilside() {
+  try {
+    const input = bilEl("importBilLagerFil");
+    const fil = input && input.files && input.files[0];
+
+    if (!fil) {
+      bilImportMelding("Velg CSV- eller Excel-fil først.", true);
+      return;
+    }
+
+    if (!window.supabaseClient) {
+      bilImportMelding("Supabase er ikke lastet. Sjekk config.js.", true);
+      return;
+    }
+
+    bilImportMelding("Leser importfil...");
+    const raderFraFil = await lesImportRaderFraBilside(fil);
+    const rader = raderFraFil.map(mapImportVareFraBilside).filter(Boolean);
+
+    if (!rader.length) {
+      bilImportMelding("Fant ingen varer i importfilen.", true);
+      return;
+    }
+
+    bilImportMelding("Lagrer " + rader.length + " varer til hovedlager...");
+
+    let lagret = 0;
+
+    for (const rad of rader) {
+      let eksisterende = null;
+
+      if (rad.varenr) {
+        const sjekk = await supabaseClient
+          .from("varer")
+          .select("id")
+          .eq("varenr", rad.varenr)
+          .limit(1);
+
+        if (sjekk.error) {
+          bilImportMelding("Kunne ikke sjekke varenr " + rad.varenr + ": " + sjekk.error.message, true);
+          return;
+        }
+
+        eksisterende = sjekk.data && sjekk.data.length ? sjekk.data[0] : null;
+      }
+
+      let res;
+      if (eksisterende && eksisterende.id) {
+        res = await supabaseClient
+          .from("varer")
+          .update(rad)
+          .eq("id", eksisterende.id)
+          .select("id")
+          .single();
+      } else {
+        res = await supabaseClient
+          .from("varer")
+          .insert([{ id: bilLagUuid(), ...rad }])
+          .select("id")
+          .single();
+      }
+
+      if (res.error) {
+        bilImportMelding("Import stoppet ved " + (rad.varenr || rad.navn) + ": " + res.error.message, true);
+        return;
+      }
+
+      lagret++;
+    }
+
+    if (input) input.value = "";
+
+    bilImportMelding("Importerte " + lagret + " varer til hovedlager.");
+    await fyllBilLagerVareValg();
+    await lastBilLager();
+  } catch (e) {
+    bilImportMelding("Import feilet: " + (e && e.message ? e.message : String(e)), true);
+  }
+}
+
+
 async function lastBilerOgBilLager() {
+  sikreImportTilHovedlagerIBunn();
   await lastBiler();
   await fyllBilLagerVareValg();
   await lastBilLager();
   await fyllVarevalgFraAktivBil();
+  sikreImportTilHovedlagerIBunn();
 }
 
 function kobleBilKnapper() {
@@ -1024,7 +1383,39 @@ function kobleBilKnapper() {
     vareValg.dataset.bilerPermanent = "1";
     vareValg.addEventListener("change", oppdaterVarePrisFraValg);
   }
+
+  kobleBilLagerListeKnappRobust();
 }
+
+
+function kobleBilLagerListeKnappRobust() {
+  const knapp = bilEl("lagreBilLagerListeKnapp");
+  if (knapp) {
+    knapp.disabled = false;
+    knapp.classList.remove("skjult", "hidden", "modul-skjult");
+    knapp.style.display = "";
+    knapp.onclick = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return lagreBilLagerListe();
+    };
+  }
+
+  if (!window.__rilBilLagerDelegertKlikk) {
+    window.__rilBilLagerDelegertKlikk = true;
+    document.addEventListener("click", function (event) {
+      const target = event.target;
+      if (target && target.id === "lagreBilLagerListeKnapp") {
+        event.preventDefault();
+        event.stopPropagation();
+        return lagreBilLagerListe();
+      }
+    }, true);
+  }
+}
+
 
 document.addEventListener("DOMContentLoaded", async function () {
   kobleBilKnapper();
@@ -1056,9 +1447,82 @@ window.tegnFyllBilListe = tegnFyllBilListe;
 window.fyllVarevalgFraAktivBil = fyllVarevalgFraAktivBil;
 window.oppdaterAktivBilVisning = oppdaterAktivBilVisning;
 window.lastBilerOgBilLager = lastBilerOgBilLager;
+window.sikreImportTilHovedlagerIBunn = sikreImportTilHovedlagerIBunn;
+window.importerVarerTilHovedlagerFraBilside = importerVarerTilHovedlagerFraBilside;
 
 window.hentAnsattForBil = hentAnsattForBil;
 
 window.nyBilSkjema = nyBilSkjema;
 window.visBilSkjema = visBilSkjema;
 window.redigerBil = redigerBil;
+window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
+
+
+/* RIL HARD FIX 20260613: lås knappen "Lagre alle valgte varer på bilen"
+   Denne ligger helt sist i biler.js og overtar klikk selv om andre filer roter med onclick.
+*/
+(function () {
+  function hentKnapp() {
+    return document.getElementById("lagreBilLagerListeKnapp");
+  }
+
+  function hardKobleBilLagerKnapp() {
+    const knapp = hentKnapp();
+    if (!knapp) return;
+
+    knapp.disabled = false;
+    knapp.classList.remove("skjult", "hidden", "modul-skjult");
+    knapp.style.display = "inline-block";
+
+    knapp.onclick = async function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      const melding = document.getElementById("bilMelding");
+      if (melding) {
+        melding.textContent = "Knappen virker - lagrer varer på bil...";
+        melding.style.color = "#86efac";
+      }
+
+      if (typeof window.lagreBilLagerListe === "function") {
+        return await window.lagreBilLagerListe();
+      }
+
+      alert("Fant ikke funksjonen lagreBilLagerListe i biler.js");
+    };
+  }
+
+  document.addEventListener("click", async function (event) {
+    const target = event.target;
+    if (!target || target.id !== "lagreBilLagerListeKnapp") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const melding = document.getElementById("bilMelding");
+    if (melding) {
+      melding.textContent = "Knappen virker - lagrer varer på bil...";
+      melding.style.color = "#86efac";
+    }
+
+    if (typeof window.lagreBilLagerListe === "function") {
+      return await window.lagreBilLagerListe();
+    }
+
+    alert("Fant ikke funksjonen lagreBilLagerListe i biler.js");
+  }, true);
+
+  hardKobleBilLagerKnapp();
+  document.addEventListener("DOMContentLoaded", hardKobleBilLagerKnapp);
+  window.addEventListener("load", function () {
+    hardKobleBilLagerKnapp();
+    setTimeout(hardKobleBilLagerKnapp, 250);
+    setTimeout(hardKobleBilLagerKnapp, 1000);
+    setTimeout(hardKobleBilLagerKnapp, 2500);
+  });
+
+  window.hardKobleBilLagerKnapp = hardKobleBilLagerKnapp;
+})();
+
