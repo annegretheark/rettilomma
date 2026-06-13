@@ -2307,3 +2307,169 @@ window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
     setTimeout(tegnLagerloggForBil, 2000);
   });
 })();
+
+/* RIL FIX 20260613: faste handlingsknapper for Fyll bil
+   Flytter Lagre-knapp og PDF-knapp til en sticky toppbar, slik at de alltid er lett tilgjengelige på mobil.
+   Endrer ikke lagringslogikk. PDF er fortsatt bare bestilling, lagerlogg oppdateres først ved lagring. */
+(function () {
+  "use strict";
+
+  function $(id) { return document.getElementById(id); }
+
+  function finnBilerSide() {
+    return $("bilerSide") || document.body;
+  }
+
+  function sikreCss() {
+    if ($("rilFyllBilStickyCss")) return;
+    const style = document.createElement("style");
+    style.id = "rilFyllBilStickyCss";
+    style.textContent = `
+      #rilFyllBilStickyActions {
+        position: sticky;
+        top: 0;
+        z-index: 9000;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        padding: 10px;
+        margin: 10px 0;
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      }
+      #rilFyllBilStickyActions .ril-sticky-title {
+        width: 100%;
+        color: #cbd5e1;
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 2px;
+      }
+      #rilFyllBilStickyActions button {
+        margin: 0 !important;
+        flex: 1 1 180px;
+        min-height: 42px;
+        font-weight: bold;
+      }
+      #rilFyllBilStickyActions #lagreBilLagerListeKnapp {
+        background: #16a34a !important;
+      }
+      #rilFyllBilStickyActions #lagPdfFyllBilTilLagerKnapp {
+        background: #1f6feb !important;
+      }
+      @media (min-width: 900px) {
+        #rilFyllBilStickyActions {
+          top: 8px;
+          justify-content: flex-end;
+        }
+        #rilFyllBilStickyActions .ril-sticky-title {
+          width: auto;
+          margin-right: auto;
+          margin-bottom: 0;
+        }
+        #rilFyllBilStickyActions button {
+          flex: 0 0 auto;
+        }
+      }
+      @media (max-width: 700px) {
+        #rilFyllBilStickyActions {
+          top: 0;
+          border-radius: 0 0 12px 12px;
+          margin-left: -8px;
+          margin-right: -8px;
+        }
+        #rilFyllBilStickyActions button {
+          width: 100%;
+          flex-basis: 100%;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function sikrePdfKnappHvisMangler() {
+    let pdf = $("lagPdfFyllBilTilLagerKnapp");
+    if (pdf) return pdf;
+
+    const lagre = $("lagreBilLagerListeKnapp");
+    if (!lagre || !lagre.parentNode) return null;
+
+    pdf = document.createElement("button");
+    pdf.id = "lagPdfFyllBilTilLagerKnapp";
+    pdf.type = "button";
+    pdf.className = "secondary";
+    pdf.textContent = "Send PDF til lager";
+    pdf.onclick = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (typeof window.lagPdfFyllBilTilLager === "function") {
+        return window.lagPdfFyllBilTilLager();
+      }
+      alert("PDF-funksjonen er ikke klar ennå. Prøv Oppdater/Hent fylleliste først.");
+    };
+    lagre.after(pdf);
+    return pdf;
+  }
+
+  function flyttKnapperTilStickyBar() {
+    const side = finnBilerSide();
+    const liste = $("bilLagerFyllListe");
+    const lagre = $("lagreBilLagerListeKnapp");
+    const pdf = sikrePdfKnappHvisMangler();
+
+    if (!side || !liste || !lagre) return;
+    sikreCss();
+
+    let bar = $("rilFyllBilStickyActions");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "rilFyllBilStickyActions";
+      bar.innerHTML = '<div class="ril-sticky-title">Fyll bil</div>';
+      liste.parentNode.insertBefore(bar, liste);
+    }
+
+    const title = bar.querySelector(".ril-sticky-title") || document.createElement("div");
+    if (!title.parentNode) {
+      title.className = "ril-sticky-title";
+      title.textContent = "Fyll bil";
+      bar.appendChild(title);
+    }
+
+    if (pdf && pdf.parentNode !== bar) bar.appendChild(pdf);
+    if (lagre.parentNode !== bar) bar.appendChild(lagre);
+
+    if (pdf) pdf.textContent = "Send PDF til lager";
+    lagre.textContent = "Lagre alle valgte varer på bilen";
+  }
+
+  window.rilFlyttFyllBilKnapperTilTopp = flyttKnapperTilStickyBar;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(flyttKnapperTilStickyBar, 200);
+    setTimeout(flyttKnapperTilStickyBar, 1000);
+  });
+
+  window.addEventListener("load", function () {
+    setTimeout(flyttKnapperTilStickyBar, 200);
+    setTimeout(flyttKnapperTilStickyBar, 1000);
+    setTimeout(flyttKnapperTilStickyBar, 2500);
+  });
+
+  document.addEventListener("click", function (event) {
+    if (event.target && (event.target.id === "visBilerKnapp" || event.target.id === "nyBilKnapp")) {
+      setTimeout(flyttKnapperTilStickyBar, 300);
+      setTimeout(flyttKnapperTilStickyBar, 1000);
+    }
+  }, true);
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.id === "bilLagerBilValg") {
+      setTimeout(flyttKnapperTilStickyBar, 100);
+    }
+  }, true);
+})();
