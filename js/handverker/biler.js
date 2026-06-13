@@ -598,17 +598,17 @@ function tegnFyllBilListe() {
       ${topp}
       <div style="display:grid; gap:8px; margin-top:8px;">
         ${varerTilBilLager.map(v => `
-          <div style="border:1px solid #374151; border-radius:10px; padding:10px; background:#22272a;">
-            <div style="font-weight:bold; font-size:15px; margin-bottom:4px;">${vareNavn(v)}</div>
-            <div class="info" style="font-size:13px; margin-bottom:8px;">P\u00E5 hovedlager: ${vareHovedlager(v)}</div>
+          <div class="ril-fyllbil-mobilkort" style="border:1px solid #374151; border-radius:10px; padding:8px; background:#22272a; box-sizing:border-box; overflow:hidden;">
+            <div style="font-weight:bold; font-size:15px; line-height:1.2; margin-bottom:4px;">${vareNavn(v)}</div>
+            <div class="info" style="font-size:13px; line-height:1.2; margin-bottom:6px;">P\u00E5 hovedlager: ${vareHovedlager(v)}</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;">
-              <label style="margin:0; font-size:13px;">
+              <label style="margin:0; font-size:13px; line-height:1.2; display:block;">
                 Antall til bil
-                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleAntall.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:40px; padding:8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
+                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleAntall.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:38px; min-height:38px; max-height:38px; padding:7px 8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1; border-radius:8px; font-size:16px; line-height:20px; box-sizing:border-box; appearance:none; -webkit-appearance:none; transform:none;">
               </label>
-              <label style="margin:0; font-size:13px;">
+              <label style="margin:0; font-size:13px; line-height:1.2; display:block;">
                 Min. p\u00E5 bil
-                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleMin.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:40px; padding:8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
+                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleMin.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:38px; min-height:38px; max-height:38px; padding:7px 8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1; border-radius:8px; font-size:16px; line-height:20px; box-sizing:border-box; appearance:none; -webkit-appearance:none; transform:none;">
               </label>
             </div>
           </div>
@@ -673,11 +673,25 @@ function aktiverBilLagerListeFelter() {
     input.style.position = "relative";
     input.style.zIndex = "5";
     input.style.opacity = "1";
+    input.style.fontSize = "16px";
+    input.style.boxSizing = "border-box";
+    input.style.transform = "none";
+    input.style.webkitTransform = "none";
+    input.style.zoom = "1";
     input.tabIndex = 0;
     if (input.dataset.rilFocusFix === "1") return;
     input.dataset.rilFocusFix = "1";
     input.addEventListener("focusin", function (e) {
       window.rilSkriverBilLager = true;
+      this.style.fontSize = "16px";
+      this.style.transform = "none";
+      this.style.webkitTransform = "none";
+      const kort = this.closest(".ril-fyllbil-mobilkort");
+      if (kort) {
+        kort.style.padding = "8px";
+        kort.style.transform = "none";
+        kort.style.webkitTransform = "none";
+      }
       e.stopPropagation();
     }, true);
     input.addEventListener("focusout", function () {
