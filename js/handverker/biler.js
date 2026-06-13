@@ -1,5 +1,5 @@
 console.log("biler.js PROD firma_id fix 20260613 lastet");
-window.BILER_JS_VERSION = "PROD mobil fyll-bil kortliste 20260613";
+window.BILER_JS_VERSION = "PROD fyll-bil skrivbare tekstfelt 20260613";
 
 let biler = [];
 let bilLager = [];
@@ -565,12 +565,24 @@ function tegnFyllBilListe() {
   const c = bilEl("bilLagerFyllListe");
   if (!c) return;
 
+  // Ikke bygg listen på nytt mens bruker skriver. Det var årsaken til blinking.
+  const aktiv = document.activeElement;
+  if (aktiv && c.contains(aktiv) && aktiv.matches && aktiv.matches("input.bil-lager-antall-liste, input.bil-lager-min-liste")) {
+    return;
+  }
+
+  // Ta vare på verdier hvis listen likevel må tegnes på nytt.
+  const gamleAntall = new Map();
+  c.querySelectorAll("input.bil-lager-antall-liste").forEach(i => gamleAntall.set(String(i.dataset.vareId || ""), i.value || ""));
+  const gamleMin = new Map();
+  c.querySelectorAll("input.bil-lager-min-liste").forEach(i => gamleMin.set(String(i.dataset.vareId || ""), i.value || ""));
+
   const bilId = hentValgtBilIdForBilLager();
   const biltekst = valgtBilOverskrift();
-  const erMobil = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  const erMobil = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
 
   if (!varerTilBilLager.length) {
-    c.innerHTML = "<p>Ingen varer i vareregisteret ennå.</p>";
+    c.innerHTML = "<p>Ingen varer i vareregisteret enn\u00E5.</p>";
     return;
   }
 
@@ -578,33 +590,32 @@ function tegnFyllBilListe() {
     <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">
       Fyller bil: ${biltekst}
     </div>
-    ${!bilId ? '<p class="melding">Velg bil først. Listen er klar, men lagring krever valgt bil.</p>' : ''}
+    ${!bilId ? '<p class="melding">Velg bil f\u00F8rst. Listen er klar, men lagring krever valgt bil.</p>' : ''}
   `;
 
   if (erMobil) {
     c.innerHTML = `
       ${topp}
-      <div class="bil-fyll-mobil-liste" style="max-height:520px; overflow:auto; margin-top:8px;">
+      <div style="display:grid; gap:8px; margin-top:8px;">
         ${varerTilBilLager.map(v => `
-          <div class="bil-fyll-mobil-kort" style="border:1px solid #374151; border-radius:10px; padding:10px; margin-bottom:8px; background:#111827;">
-            <div style="font-weight:bold; font-size:15px; margin-bottom:5px; color:#f3f4f6;">${vareNavn(v)}</div>
-            <div class="info" style="font-size:13px; margin-bottom:8px;">
-              På hovedlager: <strong>${vareHovedlager(v)}</strong>
-            </div>
+          <div style="border:1px solid #374151; border-radius:10px; padding:10px; background:#22272a;">
+            <div style="font-weight:bold; font-size:15px; margin-bottom:4px;">${vareNavn(v)}</div>
+            <div class="info" style="font-size:13px; margin-bottom:8px;">P\u00E5 hovedlager: ${vareHovedlager(v)}</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;">
               <label style="margin:0; font-size:13px;">
                 Antall til bil
-                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="height:36px; padding:6px 8px; margin-top:3px;">
+                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleAntall.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:40px; padding:8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
               </label>
               <label style="margin:0; font-size:13px;">
-                Min. på bil
-                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="height:36px; padding:6px 8px; margin-top:3px;">
+                Min. p\u00E5 bil
+                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleMin.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:100%; min-width:0; height:40px; padding:8px; margin-top:4px; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
               </label>
             </div>
           </div>
         `).join("")}
       </div>
     `;
+    aktiverBilLagerListeFelter();
     return;
   }
 
@@ -622,7 +633,7 @@ function tegnFyllBilListe() {
             <th>Min. hovedlager</th>
             <th>MVA</th>
             <th>Antall til bil</th>
-            <th>Min. på bil</th>
+            <th>Min. p\u00E5 bil</th>
           </tr>
         </thead>
         <tbody>
@@ -635,11 +646,11 @@ function tegnFyllBilListe() {
               <td>${vareHovedlager(v)}</td>
               <td>${vareMinimum(v)}</td>
               <td>${vareMva(v)}%</td>
-              <td style="width:78px;">
-                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="width:70px; max-width:70px; height:24px; padding:2px 4px; margin:0;">
+              <td style="width:92px;">
+                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleAntall.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:86px; max-width:86px; height:30px; padding:4px 6px; margin:0; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
               </td>
-              <td style="width:78px;">
-                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="width:70px; max-width:70px; height:24px; padding:2px 4px; margin:0;">
+              <td style="width:92px;">
+                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="text" inputmode="numeric" pattern="[0-9]*" value="${gamleMin.get(String(v.id)) || ''}" placeholder="0" autocomplete="off" style="width:86px; max-width:86px; height:30px; padding:4px 6px; margin:0; pointer-events:auto; background:#f8fafc; color:#111827; border:1px solid #cbd5e1;">
               </td>
             </tr>
           `).join("")}
@@ -647,6 +658,52 @@ function tegnFyllBilListe() {
       </table>
     </div>
   `;
+  aktiverBilLagerListeFelter();
+}
+
+function aktiverBilLagerListeFelter() {
+  document.querySelectorAll("#bilLagerFyllListe input.bil-lager-antall-liste, #bilLagerFyllListe input.bil-lager-min-liste").forEach(input => {
+    input.disabled = false;
+    input.readOnly = false;
+    input.removeAttribute("disabled");
+    input.removeAttribute("readonly");
+    input.style.pointerEvents = "auto";
+    input.style.userSelect = "text";
+    input.style.webkitUserSelect = "text";
+    input.style.position = "relative";
+    input.style.zIndex = "5";
+    input.style.opacity = "1";
+    input.tabIndex = 0;
+    if (input.dataset.rilFocusFix === "1") return;
+    input.dataset.rilFocusFix = "1";
+    input.addEventListener("focusin", function (e) {
+      window.rilSkriverBilLager = true;
+      e.stopPropagation();
+    }, true);
+    input.addEventListener("focusout", function () {
+      setTimeout(() => { window.rilSkriverBilLager = false; }, 250);
+    }, true);
+    input.addEventListener("touchstart", function (e) {
+      window.rilSkriverBilLager = true;
+      e.stopPropagation();
+    }, true);
+    input.addEventListener("mousedown", function (e) {
+      window.rilSkriverBilLager = true;
+      e.stopPropagation();
+    }, true);
+    input.addEventListener("click", function (e) {
+      window.rilSkriverBilLager = true;
+      e.stopPropagation();
+      this.focus();
+    }, true);
+    input.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+    }, true);
+    input.addEventListener("input", function () {
+      // Tillat bare hele tall. Tomt felt er lov helt til lagring.
+      this.value = String(this.value || "").replace(/[^0-9]/g, "");
+    });
+  });
 }
 
 async function hentInnloggetBrukerTilLogg() {
@@ -742,7 +799,7 @@ bilMelding("Starter fylling av bil...");
   bilMelding("Fyller bil og trekker fra hovedlager...");
 
   const bruker = await hentInnloggetBrukerTilLogg();
-  const hentetAv = bilVerdi("bilLagerHentetAv") || bruker.bruker_navn || bruker.bruker_epost || "";
+  const hentetAv = bruker.bruker_navn || bruker.bruker_epost || window.innloggetEpost || "";
   const bil = hentBilFraId(bilId);
   let lagret = 0;
 
@@ -1399,6 +1456,7 @@ function kobleBilKnapper() {
   if (bilLagerBilValg && !bilLagerBilValg.dataset.bilerListeKoblet) {
     bilLagerBilValg.dataset.bilerListeKoblet = "1";
     bilLagerBilValg.addEventListener("change", function () {
+      if (window.rilSkriverBilLager) return;
       tegnFyllBilListe();
       tegnBilLager();
     });

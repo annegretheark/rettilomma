@@ -8,7 +8,28 @@
     return window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja";
   }
   function aktivBilId() {
-    return window.aktivBilId || localStorage.getItem("aktivBilId") || localStorage.getItem("rilAktivBilId") || "";
+    try {
+      const fraTimer = hent("bilValg") && hent("bilValg").value ? hent("bilValg").value : "";
+      if (fraTimer) return fraTimer;
+
+      const lagret = window.aktivBilId || localStorage.getItem("aktivBilId") || localStorage.getItem("rilAktivBilId") || "";
+      if (lagret) return lagret;
+
+      const ansatte = Array.isArray(window.ansatte) ? window.ansatte : [];
+      const epost = String(window.innloggetEpost || "").toLowerCase();
+      const ansattId = String(window.innloggetAnsattId || "");
+      const ansatt = ansatte.find(function (a) {
+        return (ansattId && String(a.id || "") === ansattId) ||
+          (epost && String(a.epost || "").toLowerCase() === epost);
+      });
+      if (ansatt && ansatt.standard_bil_id) return String(ansatt.standard_bil_id);
+
+      const biler = Array.isArray(window.biler) ? window.biler.filter(function (b) { return b.aktiv !== false; }) : [];
+      if (biler.length === 1 && biler[0].id) return String(biler[0].id);
+    } catch (e) {
+      console.warn("Kunne ikke finne aktiv bil for bruker:", e);
+    }
+    return "";
   }
   function aktivBilNavn() {
     return window.aktivBilNavn || localStorage.getItem("aktivBilNavn") || localStorage.getItem("rilAktivBilNavn") || "";
@@ -47,12 +68,41 @@
     select.value = id;
     select.disabled = true;
     select.dataset.rilLåstTilAktivBil = "1";
+    window.aktivBilId = id;
+    localStorage.setItem("aktivBilId", id);
+    if (option && option.textContent) localStorage.setItem("aktivBilNavn", option.textContent);
 
-    // Noen lagerfunksjoner reagerer på change.
-    try { select.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) {}
+    // Ikke send change her. Det tegnet fyllelisten på nytt mens bruker skrev antall.
   }
+  function styrImportForRolle() {
+    const admin = erAdminModus();
+
+    // Import til hovedlager skal bare vises for admin.
+    // Vanlig bruker skal kun fylle sin egen bil fra eksisterende vareliste.
+    [
+      "patchImportLagerWrap",
+      "importBilLagerFil",
+      "importBilLagerKnapp",
+      "hentFyllelisteFraDbKnapp",
+      "importBilLagerMelding"
+    ].forEach(function (id) {
+      const el = hent(id);
+      if (!el) return;
+      const blokk = id === "patchImportLagerWrap" ? el : (el.closest("#patchImportLagerWrap") || el.parentElement || el);
+      if (admin) vis(blokk); else skjul(blokk);
+    });
+
+    // Hvis wrapperen ikke finnes, finn importseksjonen via knappen og skjul nærmeste blokk.
+    const importKnapp = hent("importBilLagerKnapp");
+    if (importKnapp && !admin) {
+      const blokk = importKnapp.closest("#patchImportLagerWrap") || importKnapp.closest("div") || importKnapp.parentElement;
+      skjul(blokk);
+    }
+  }
+
   function begrensBilLagerForVanligBruker() {
     const admin = erAdminModus();
+    styrImportForRolle();
 
     // Lagerknappen skal vises for alle.
     const lagerGruppe = hent("lagerMenyKnapp")?.closest(".meny-gruppe");
@@ -68,6 +118,14 @@
     const bilerSide = hent("bilerSide");
     if (!bilerSide) return;
 
+    // Hvem som henter settes automatisk til innlogget bruker, også for admin.
+    const henterFelt = hent("bilLagerHentetAv");
+    if (henterFelt) {
+      henterFelt.value = window.innloggetEpost || "";
+      const egenDiv = henterFelt.parentElement;
+      skjul(egenDiv);
+    }
+
     if (admin) {
       const select = hent("bilLagerBilValg");
       if (select && select.dataset.rilLåstTilAktivBil === "1") {
@@ -81,6 +139,16 @@
     settTekst("bilMelding", "Vanlig bruker kan fylle varer på sin egen aktive bil.");
     const h2 = bilerSide.querySelector("h2");
     if (h2) h2.textContent = "Min bil / lager";
+
+    // Hvem som henter skal ikke velges manuelt. Det settes automatisk til innlogget bruker i biler.js.
+    const henter = hent("bilLagerHentetAv");
+    if (henter) {
+      henter.value = window.innloggetEpost || "";
+      const blokk = henter.closest(".rad") || henter.parentElement;
+      // skjul bare selve input-blokken hvis den ligger sammen med bilvalg i samme rad
+      const egenDiv = henter.parentElement;
+      skjul(egenDiv);
+    }
 
     ["bilNavn", "bilRegnr", "lagreBilKnapp", "bilListe"].forEach(function (id) {
       const el = hent(id);
@@ -101,6 +169,11 @@
 
   window.begrensBilLagerForVanligBruker = begrensBilLagerForVanligBruker;
 
+  try {
+    const obs = new MutationObserver(function () { styrImportForRolle(); });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+
   document.addEventListener("change", function (event) {
     if (event.target && event.target.id === "bilLagerBilValg" && !erAdminModus()) {
       setTimeout(begrensBilValgTilAktivBil, 0);
@@ -115,5 +188,7 @@
   window.addEventListener("load", function () {
     setTimeout(begrensBilLagerForVanligBruker, 100);
     setTimeout(begrensBilLagerForVanligBruker, 700);
+    setTimeout(begrensBilLagerForVanligBruker, 1500);
+    setTimeout(begrensBilLagerForVanligBruker, 2500);
   });
 })();
