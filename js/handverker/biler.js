@@ -973,6 +973,9 @@ async function lastBilLager() {
   }
 
   tegnBilLager();
+  if (typeof window.tegnLagerloggForBil === "function") {
+    try { await window.tegnLagerloggForBil(); } catch (e) { console.warn("Kunne ikke vise lagerlogg:", e); }
+  }
   return bilLager;
 }
 
@@ -1616,3 +1619,691 @@ window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
   window.hardKobleBilLagerKnapp = hardKobleBilLagerKnapp;
 })();
 
+
+/* RIL FIX 20260613: PDF-liste til lager + registrering av mangler ved fyll bil */
+(function () {
+  function $(id) { return document.getElementById(id); }
+
+  function tekst(v) { return String(v ?? "").trim(); }
+  function escPdf(v) { return tekst(v).replace(/[\r\n]+/g, " "); }
+  function tall(v) {
+    const n = Number(String(v ?? "0").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function finnVare(vareId) {
+    const id = String(vareId || "");
+    const liste = Array.isArray(window.varerTilBilLager) ? window.varerTilBilLager : [];
+    return liste.find(v => String(v.id) === id) || null;
+  }
+
+  function hentValgteFyllBilRader() {
+    const rader = [];
+    document.querySelectorAll(".bil-lager-antall-liste").forEach(input => {
+      const vareId = input.dataset.vareId || "";
+      const antall = tall(input.value);
+      if (!vareId || !antall || antall <= 0) return;
+
+      const vare = finnVare(vareId);
+      const minInput = document.querySelector('.bil-lager-min-liste[data-vare-id="' + CSS.escape(vareId) + '"]');
+      const hovedlager = typeof window.vareHovedlager === "function" ? window.vareHovedlager(vare) : tall(vare?.lager_antall ?? vare?.antall ?? vare?.beholdning);
+      const varenavn = typeof window.vareNavn === "function" ? window.vareNavn(vare) : (vare?.navn || vare?.varenavn || vare?.beskrivelse || "Vare");
+      const varenr = typeof window.vareNr === "function" ? window.vareNr(vare) : (vare?.varenr || "");
+
+      rader.push({
+        vareId,
+        varenr,
+        varenavn,
+        antall,
+        minimum: tall(minInput?.value),
+        hovedlager,
+        mangler: Math.max(0, antall - hovedlager)
+      });
+    });
+    return rader;
+  }
+
+  async function registrerLagermangler(rader) {
+    const mangler = (rader || []).filter(r => r.mangler > 0);
+    if (!mangler.length) return;
+
+    const bilId = typeof window.hentValgtBilIdForBilLager === "function"
+      ? window.hentValgtBilIdForBilLager()
+      : ($("bilLagerBilValg")?.value || localStorage.getItem("aktivBilId") || "");
+
+    const bilNavnTekst = $("bilLagerBilValg")?.selectedOptions?.[0]?.textContent || localStorage.getItem("aktivBilNavn") || "";
+    const opprettetAv = window.innloggetEpost || "";
+    const tidspunkt = new Date().toISOString();
+
+    const lokale = JSON.parse(localStorage.getItem("ril_lager_mangler") || "[]");
+    mangler.forEach(r => lokale.push({
+      tidspunkt,
+      bil_id: bilId || null,
+      bil_navn: bilNavnTekst || null,
+      vare_id: r.vareId,
+      varenr: r.varenr || null,
+      varenavn: r.varenavn,
+      antall_onsket: r.antall,
+      hovedlager: r.hovedlager,
+      mangler: r.mangler,
+      opprettet_av: opprettetAv || null,
+      status: "mangler"
+    }));
+    localStorage.setItem("ril_lager_mangler", JSON.stringify(lokale.slice(-300)));
+
+    // Prøv å registrere i database hvis tabellen finnes. Feiler stille hvis den ikke er opprettet ennå.
+    if (window.supabaseClient) {
+      try {
+        const dbRader = mangler.map(r => ({
+          bil_id: bilId || null,
+          bil_navn: bilNavnTekst || null,
+          vare_id: r.vareId,
+          varenr: r.varenr || null,
+          varenavn: r.varenavn,
+          antall_onsket: r.antall,
+          hovedlager: r.hovedlager,
+          mangler: r.mangler,
+          opprettet_av: opprettetAv || null,
+          status: "mangler"
+        }));
+        await supabaseClient.from("lager_mangler").insert(dbRader);
+      } catch (e) {
+        console.warn("lager_mangler-tabellen finnes kanskje ikke. Mangler er lagret lokalt på enheten.", e);
+      }
+    }
+  }
+
+  function lagPdfFyllBilTilLager() {
+    const rader = hentValgteFyllBilRader();
+    if (!rader.length) {
+      alert("Skriv antall på minst én vare før du lager PDF til lager.");
+      return;
+    }
+
+    const bilTekst = $("bilLagerBilValg")?.selectedOptions?.[0]?.textContent || localStorage.getItem("aktivBilNavn") || "Valgt bil";
+    const dato = new Date();
+    const datoTekst = dato.toLocaleString("no-NO");
+    const hentetAv = window.innloggetEpost || "Innlogget bruker";
+    const mangler = rader.filter(r => r.mangler > 0);
+
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      const html = `
+        <html><head><title>Fyll bil - lagerliste</title></head><body>
+        <h2>Fyll bil - lagerliste</h2>
+        <p><strong>Bil:</strong> ${bilTekst}</p>
+        <p><strong>Dato:</strong> ${datoTekst}</p>
+        <p><strong>Hentet av:</strong> ${hentetAv}</p>
+        <table border="1" cellpadding="5" cellspacing="0"><thead><tr><th>Varenr</th><th>Vare</th><th>Antall</th><th>På lager</th><th>Mangler</th></tr></thead><tbody>
+        ${rader.map(r => `<tr><td>${r.varenr || ""}</td><td>${r.varenavn}</td><td>${r.antall}</td><td>${r.hovedlager}</td><td>${r.mangler || ""}</td></tr>`).join("")}
+        </tbody></table>
+        ${mangler.length ? "<h3>Mangler må bestilles/registreres</h3>" : ""}
+        </body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(html); w.document.close(); w.print(); }
+      registrerLagermangler(rader);
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = 14;
+    const venstre = 12;
+
+    function nySideHvisNodvendig(hoyde) {
+      if (y + hoyde > 285) {
+        doc.addPage();
+        y = 14;
+      }
+    }
+
+    doc.setFontSize(16);
+    doc.text("Fyll bil - lagerliste", venstre, y); y += 8;
+    doc.setFontSize(10);
+    doc.text("Bil: " + escPdf(bilTekst), venstre, y); y += 5;
+    doc.text("Dato: " + escPdf(datoTekst), venstre, y); y += 5;
+    doc.text("Hentet av: " + escPdf(hentetAv), venstre, y); y += 8;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    doc.text("Varenr", venstre, y);
+    doc.text("Vare", 35, y);
+    doc.text("Antall", 128, y);
+    doc.text("På lager", 150, y);
+    doc.text("Mangler", 174, y);
+    doc.setFont(undefined, "normal");
+    y += 4;
+    doc.line(venstre, y, 198, y); y += 4;
+
+    rader.forEach(r => {
+      nySideHvisNodvendig(8);
+      const navnLinjer = doc.splitTextToSize(escPdf(r.varenavn), 88);
+      doc.text(escPdf(r.varenr || ""), venstre, y);
+      doc.text(navnLinjer, 35, y);
+      doc.text(String(r.antall), 132, y, { align: "right" });
+      doc.text(String(r.hovedlager), 164, y, { align: "right" });
+      doc.text(r.mangler > 0 ? String(r.mangler) : "", 188, y, { align: "right" });
+      y += Math.max(6, navnLinjer.length * 4);
+    });
+
+    if (mangler.length) {
+      y += 6;
+      nySideHvisNodvendig(20);
+      doc.setFontSize(12);
+      doc.setFont(undefined, "bold");
+      doc.text("Mangler som må registreres/bestilles", venstre, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont(undefined, "normal");
+      mangler.forEach(r => {
+        nySideHvisNodvendig(7);
+        doc.text(`${escPdf(r.varenr || "")} ${escPdf(r.varenavn)} - mangler ${r.mangler}`, venstre, y);
+        y += 5;
+      });
+    }
+
+    doc.save("fyll-bil-lagerliste.pdf");
+    registrerLagermangler(rader);
+
+    const melding = $("bilMelding");
+    if (melding) {
+      melding.textContent = mangler.length
+        ? "PDF laget. Mangler er registrert lokalt og forsøkt lagret i lager_mangler."
+        : "PDF laget. Ingen mangler registrert.";
+      melding.style.color = "#86efac";
+    }
+  }
+
+  function sikrePdfKnappTilLager() {
+    const lagre = $("lagreBilLagerListeKnapp");
+    if (!lagre || $("lagPdfFyllBilTilLagerKnapp")) return;
+
+    const knapp = document.createElement("button");
+    knapp.id = "lagPdfFyllBilTilLagerKnapp";
+    knapp.type = "button";
+    knapp.className = "secondary";
+    knapp.textContent = "Lag PDF til lager";
+    knapp.style.marginLeft = "6px";
+    knapp.onclick = function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      lagPdfFyllBilTilLager();
+    };
+    lagre.after(knapp);
+  }
+
+  document.addEventListener("DOMContentLoaded", sikrePdfKnappTilLager);
+  window.addEventListener("load", function () {
+    sikrePdfKnappTilLager();
+    setTimeout(sikrePdfKnappTilLager, 500);
+    setTimeout(sikrePdfKnappTilLager, 1500);
+  });
+
+  window.lagPdfFyllBilTilLager = lagPdfFyllBilTilLager;
+  window.registrerLagermangler = registrerLagermangler;
+  window.sikrePdfKnappTilLager = sikrePdfKnappTilLager;
+})();
+
+/* RIL FIX 20260613: PDF sendt til lager, liste blir stående til ansatt bekrefter med Lagre på bil */
+(function () {
+  "use strict";
+
+  function $(id) { return document.getElementById(id); }
+  function tekst(v) { return String(v ?? "").trim(); }
+  function tall(v) {
+    const n = Number(String(v ?? "0").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+  function safeCss(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(value));
+    return String(value).replace(/'/g, "\\'").replace(/"/g, "\\\"");
+  }
+  function bilId() {
+    try {
+      if (typeof window.hentValgtBilIdForBilLager === "function") return window.hentValgtBilIdForBilLager() || "";
+    } catch (e) {}
+    return $("bilLagerBilValg")?.value || localStorage.getItem("aktivBilId") || "";
+  }
+  function pendingKey() {
+    return "ril_fyll_bil_pending_" + (bilId() || "ingen_bil");
+  }
+  function finnVare(vareId) {
+    const liste = Array.isArray(window.varerTilBilLager) ? window.varerTilBilLager : [];
+    return liste.find(v => String(v.id) === String(vareId)) || null;
+  }
+  function vareNavnTrygt(v) {
+    try { if (typeof window.vareNavn === "function") return window.vareNavn(v); } catch (e) {}
+    return v?.navn || v?.varenavn || v?.beskrivelse || "Vare";
+  }
+  function vareNrTrygt(v) {
+    try { if (typeof window.vareNr === "function") return window.vareNr(v); } catch (e) {}
+    return v?.varenr || "";
+  }
+  function hovedlagerTrygt(v) {
+    try { if (typeof window.vareHovedlager === "function") return window.vareHovedlager(v); } catch (e) {}
+    return tall(v?.lager_antall ?? v?.antall ?? v?.beholdning ?? 0);
+  }
+
+  function hentValgteRader() {
+    const rader = [];
+    document.querySelectorAll(".bil-lager-antall-liste").forEach(input => {
+      const vareId = input.dataset.vareId || "";
+      const antall = tall(input.value);
+      if (!vareId || antall <= 0) return;
+      const minInput = document.querySelector(".bil-lager-min-liste[data-vare-id='" + safeCss(vareId) + "']");
+      const vare = finnVare(vareId);
+      const hovedlager = hovedlagerTrygt(vare);
+      rader.push({
+        vareId,
+        varenr: vareNrTrygt(vare),
+        varenavn: vareNavnTrygt(vare),
+        antall,
+        minimum: tall(minInput?.value),
+        hovedlager,
+        mangler: Math.max(0, antall - hovedlager)
+      });
+    });
+    return rader;
+  }
+
+  function lagrePendingListe(rader) {
+    const payload = {
+      id: Date.now(),
+      status: "sendt_til_lager",
+      opprettet: new Date().toISOString(),
+      bil_id: bilId() || null,
+      bil_navn: $("bilLagerBilValg")?.selectedOptions?.[0]?.textContent || localStorage.getItem("aktivBilNavn") || "",
+      ansatt: window.innloggetEpost || "",
+      rader
+    };
+    localStorage.setItem(pendingKey(), JSON.stringify(payload));
+    localStorage.setItem("ril_fyll_bil_siste_pending", JSON.stringify(payload));
+    visPendingMelding(payload);
+  }
+
+  function hentPendingListe() {
+    try { return JSON.parse(localStorage.getItem(pendingKey()) || "null"); }
+    catch (e) { return null; }
+  }
+
+  function visPendingMelding(payload) {
+    const melding = $("bilMelding");
+    if (!melding || !payload || !Array.isArray(payload.rader) || !payload.rader.length) return;
+    const mangler = payload.rader.reduce((sum, r) => sum + tall(r.mangler), 0);
+    melding.textContent = mangler > 0
+      ? "PDF/lagerliste er sendt. Listen blir stående til varene er hentet. Mangler er registrert: " + mangler + " stk. Når varene kommer, trykk Lagre alle valgte varer på bilen. Lagerlogg oppdateres først da."
+      : "PDF/lagerliste er sendt. Listen blir stående til varene er hentet. Når varene kommer, trykk Lagre alle valgte varer på bilen. Lagerlogg oppdateres først da.";
+    melding.style.color = "#86efac";
+  }
+
+  function gjenopprettPendingTilFelter() {
+    const payload = hentPendingListe();
+    if (!payload || !Array.isArray(payload.rader) || !payload.rader.length) return;
+    payload.rader.forEach(r => {
+      const input = document.querySelector(".bil-lager-antall-liste[data-vare-id='" + safeCss(r.vareId) + "']");
+      const minInput = document.querySelector(".bil-lager-min-liste[data-vare-id='" + safeCss(r.vareId) + "']");
+      if (input && !input.value) input.value = String(r.antall || "");
+      if (minInput && !minInput.value && r.minimum) minInput.value = String(r.minimum || "");
+    });
+    visPendingMelding(payload);
+  }
+
+  async function registrerManglerLokaltOgDb(rader) {
+    const mangler = (rader || []).filter(r => tall(r.mangler) > 0);
+    if (!mangler.length) return;
+    const tidspunkt = new Date().toISOString();
+    const bil_navn = $("bilLagerBilValg")?.selectedOptions?.[0]?.textContent || localStorage.getItem("aktivBilNavn") || "";
+    const lokale = JSON.parse(localStorage.getItem("ril_lager_mangler") || "[]");
+    const nye = mangler.map(r => ({
+      tidspunkt,
+      bil_id: bilId() || null,
+      bil_navn: bil_navn || null,
+      vare_id: r.vareId,
+      varenr: r.varenr || null,
+      varenavn: r.varenavn,
+      antall_onsket: r.antall,
+      hovedlager: r.hovedlager,
+      mangler: r.mangler,
+      opprettet_av: window.innloggetEpost || null,
+      status: "mangler"
+    }));
+    lokale.push(...nye);
+    localStorage.setItem("ril_lager_mangler", JSON.stringify(lokale.slice(-500)));
+    if (window.supabaseClient) {
+      try { await supabaseClient.from("lager_mangler").insert(nye); }
+      catch (e) { console.warn("Kunne ikke skrive lager_mangler. Lagret lokalt.", e); }
+    }
+  }
+
+  function lagPdfSomBestilling(rader) {
+    const bilTekst = $("bilLagerBilValg")?.selectedOptions?.[0]?.textContent || localStorage.getItem("aktivBilNavn") || "Valgt bil";
+    const datoTekst = new Date().toLocaleString("no-NO");
+    const hentetAv = window.innloggetEpost || "Innlogget bruker";
+    const mangler = rader.filter(r => tall(r.mangler) > 0);
+
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      const html = '<html><head><title>Fyll bil - lagerliste</title></head><body>' +
+        '<h2>Fyll bil - lagerliste</h2>' +
+        '<p><strong>Bil:</strong> ' + bilTekst + '</p>' +
+        '<p><strong>Dato:</strong> ' + datoTekst + '</p>' +
+        '<p><strong>Hentet av:</strong> ' + hentetAv + '</p>' +
+        '<p><strong>Status:</strong> Sendt til lager. Ikke lagt på bil ennå.</p>' +
+        '<table border="1" cellpadding="5" cellspacing="0"><thead><tr><th>Varenr</th><th>Vare</th><th>Antall</th><th>På lager</th><th>Mangler</th></tr></thead><tbody>' +
+        rader.map(r => '<tr><td>' + (r.varenr || '') + '</td><td>' + r.varenavn + '</td><td>' + r.antall + '</td><td>' + r.hovedlager + '</td><td>' + (r.mangler || '') + '</td></tr>').join('') +
+        '</tbody></table>' +
+        (mangler.length ? '<h3>Mangler må bestilles/registreres</h3>' : '') +
+        '</body></html>';
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(html); w.document.close(); w.print(); }
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = 14;
+    const venstre = 12;
+    function nySide(h) { if (y + h > 285) { doc.addPage(); y = 14; } }
+    function esc(v) { return tekst(v).replace(/[\r\n]+/g, " "); }
+
+    doc.setFontSize(16);
+    doc.text("Fyll bil - lagerliste", venstre, y); y += 8;
+    doc.setFontSize(10);
+    doc.text("Bil: " + esc(bilTekst), venstre, y); y += 5;
+    doc.text("Dato: " + esc(datoTekst), venstre, y); y += 5;
+    doc.text("Hentet av: " + esc(hentetAv), venstre, y); y += 5;
+    doc.text("Status: Sendt til lager. Ikke lagt på bil ennå.", venstre, y); y += 8;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    doc.text("Varenr", venstre, y);
+    doc.text("Vare", 35, y);
+    doc.text("Antall", 128, y);
+    doc.text("På lager", 150, y);
+    doc.text("Mangler", 174, y);
+    doc.setFont(undefined, "normal");
+    y += 4;
+    doc.line(venstre, y, 198, y); y += 4;
+
+    rader.forEach(r => {
+      nySide(8);
+      const navnLinjer = doc.splitTextToSize(esc(r.varenavn), 88);
+      doc.text(esc(r.varenr || ""), venstre, y);
+      doc.text(navnLinjer, 35, y);
+      doc.text(String(r.antall), 132, y, { align: "right" });
+      doc.text(String(r.hovedlager), 164, y, { align: "right" });
+      doc.text(r.mangler > 0 ? String(r.mangler) : "", 188, y, { align: "right" });
+      y += Math.max(6, navnLinjer.length * 4);
+    });
+
+    if (mangler.length) {
+      y += 6;
+      nySide(20);
+      doc.setFontSize(12);
+      doc.setFont(undefined, "bold");
+      doc.text("Mangler som må bestilles/registreres", venstre, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont(undefined, "normal");
+      mangler.forEach(r => {
+        nySide(7);
+        doc.text(`${esc(r.varenr || "")} ${esc(r.varenavn)} - mangler ${r.mangler}`, venstre, y);
+        y += 5;
+      });
+    }
+    doc.save("fyll-bil-lagerliste.pdf");
+  }
+
+  async function sendPdfTilLagerOgBeholdListe(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation(); }
+    const rader = hentValgteRader();
+    if (!rader.length) {
+      alert("Skriv antall på minst én vare før du lager PDF til lager.");
+      return;
+    }
+    lagrePendingListe(rader);
+    lagPdfSomBestilling(rader);
+    await registrerManglerLokaltOgDb(rader);
+    visPendingMelding(hentPendingListe());
+  }
+
+  function bindPdfKnappHardt() {
+    const knapp = $("lagPdfFyllBilTilLagerKnapp");
+    if (!knapp) return;
+    knapp.textContent = "Send PDF til lager";
+    knapp.onclick = sendPdfTilLagerOgBeholdListe;
+  }
+
+  document.addEventListener("click", function (event) {
+    if (event.target && event.target.id === "lagPdfFyllBilTilLagerKnapp") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      sendPdfTilLagerOgBeholdListe(event);
+    }
+  }, true);
+
+  const originalTegn = window.tegnFyllBilListe;
+  if (typeof originalTegn === "function" && !originalTegn.rilPendingWrapped) {
+    const wrapped = function () {
+      const res = originalTegn.apply(this, arguments);
+      setTimeout(gjenopprettPendingTilFelter, 50);
+      setTimeout(bindPdfKnappHardt, 60);
+      return res;
+    };
+    wrapped.rilPendingWrapped = true;
+    window.tegnFyllBilListe = wrapped;
+  }
+
+  const originalLagre = window.lagreBilLagerListe;
+  if (typeof originalLagre === "function" && !originalLagre.rilPendingWrapped) {
+    const wrappedLagre = async function () {
+      const res = await originalLagre.apply(this, arguments);
+      const melding = $("bilMelding")?.textContent || "";
+      if (/^La \d+ varer på bilen/.test(melding)) {
+        localStorage.removeItem(pendingKey());
+      }
+      return res;
+    };
+    wrappedLagre.rilPendingWrapped = true;
+    window.lagreBilLagerListe = wrappedLagre;
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(gjenopprettPendingTilFelter, 300);
+    setTimeout(bindPdfKnappHardt, 400);
+  });
+  window.addEventListener("load", function () {
+    setTimeout(gjenopprettPendingTilFelter, 700);
+    setTimeout(bindPdfKnappHardt, 800);
+    setTimeout(gjenopprettPendingTilFelter, 1600);
+    setTimeout(bindPdfKnappHardt, 1700);
+  });
+})();
+
+
+/* RIL FIX 20260613: Lagerlogg skrives kun når ansatt trykker Lagre alle valgte varer på bilen.
+   PDF/lagerliste er bare en bestilling og skal ikke oppdatere lagerlogg eller bil-lager. */
+(function () {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+
+  function bindPdfUtenLagerlogg() {
+    const knapp = $("lagPdfFyllBilTilLagerKnapp");
+    if (!knapp || knapp.dataset.rilPdfUtenLagerlogg === "1") return;
+    knapp.dataset.rilPdfUtenLagerlogg = "1";
+    knapp.textContent = "Send PDF til lager";
+    knapp.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      if (typeof window.lagPdfFyllBilTilLager === "function") {
+        // Bruk PDF-funksjonen kun som utskrift/bestilling. Den legger ikke varer på bil.
+        // Lagerlogg skrives av lagreBilLagerListe når ansatt bekrefter mottak.
+        const foerLogg = window.skrivLagerlogg;
+        try {
+          window.skrivLagerlogg = async function () {
+            console.warn("PDF til lager forsøkte å skrive lagerlogg. Blokkert. Lagerlogg skrives først ved Lagre alle valgte varer på bilen.");
+          };
+          window.lagPdfFyllBilTilLager();
+        } finally {
+          window.skrivLagerlogg = foerLogg;
+        }
+      }
+      const melding = $("bilMelding");
+      if (melding) {
+        melding.textContent = "PDF/lagerliste er sendt. Lagerlogg oppdateres ikke før ansatt trykker Lagre alle valgte varer på bilen.";
+        melding.style.color = "#86efac";
+      }
+    }, true);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(bindPdfUtenLagerlogg, 300);
+    setTimeout(bindPdfUtenLagerlogg, 1200);
+  });
+  window.addEventListener("load", function () {
+    setTimeout(bindPdfUtenLagerlogg, 500);
+    setTimeout(bindPdfUtenLagerlogg, 1800);
+  });
+})();
+
+
+/* RIL FIX 20260613: Vis lagerlogg igjen, men skriv den kun ved Lagre alle valgte varer på bilen. */
+(function () {
+  "use strict";
+
+  function el(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+  function valgtBilId() {
+    try {
+      if (typeof window.hentValgtBilIdForBilLager === "function") return window.hentValgtBilIdForBilLager() || "";
+    } catch (_) {}
+    return el("bilLagerBilValg")?.value || el("bilValg")?.value || localStorage.getItem("aktivBilId") || window.aktivBilId || "";
+  }
+  function valgtBilTekst() {
+    const select = el("bilLagerBilValg");
+    if (select && select.value) return select.selectedOptions?.[0]?.textContent || "valgt bil";
+    return localStorage.getItem("aktivBilNavn") || window.aktivBilNavn || "valgt bil";
+  }
+  function finnVareNavnFraRad(rad) {
+    const v = rad?.varer || {};
+    const varenr = v.varenr || rad.varenr || "";
+    const navn = v.navn || v.varenavn || rad.vare_navn || rad.navn || "Vare";
+    return (varenr ? varenr + " - " : "") + navn;
+  }
+  function loggNavn(rad) {
+    return rad.hentet_av || rad.bruker_navn || rad.bruker_epost || rad.opprettet_av_navn || rad.opprettet_av || "";
+  }
+  function datoNo(v) {
+    if (!v) return "";
+    try { return new Date(v).toLocaleString("no-NO"); } catch (_) { return String(v); }
+  }
+
+  function sikreLagerloggBoks() {
+    const bilLagerListe = el("bilLagerListe");
+    if (!bilLagerListe) return null;
+
+    let boks = el("bilLagerLoggListe");
+    if (boks) return boks;
+
+    const wrap = document.createElement("div");
+    wrap.id = "bilLagerLoggWrap";
+    wrap.style.marginTop = "18px";
+    wrap.innerHTML = `
+      <h4>Lagerlogg</h4>
+      <p class="info">Loggen viser først mottatte varer etter at brukeren har trykket <strong>Lagre alle valgte varer på bilen</strong>.</p>
+      <div id="bilLagerLoggListe"><p class="info">Laster lagerlogg...</p></div>
+    `;
+    bilLagerListe.after(wrap);
+    return el("bilLagerLoggListe");
+  }
+
+  async function tegnLagerloggForBil() {
+    const boks = sikreLagerloggBoks();
+    if (!boks) return;
+    if (!window.supabaseClient) {
+      boks.innerHTML = '<p class="info">Supabase er ikke lastet.</p>';
+      return;
+    }
+
+    const bilId = valgtBilId();
+    if (!bilId) {
+      boks.innerHTML = '<p class="info">Velg bil for å se lagerlogg.</p>';
+      return;
+    }
+
+    boks.innerHTML = '<p class="info">Laster lagerlogg...</p>';
+
+    let res;
+    try {
+      res = await supabaseClient
+        .from("lagerlogg")
+        .select("id,bil_id,vare_id,antall,handling,kommentar,hentet_av,bruker_navn,bruker_epost,opprettet_av,opprettet_av_navn,created_at,varer(varenr,navn,varenavn),biler(navn,regnr)")
+        .eq("bil_id", bilId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+    } catch (e) {
+      boks.innerHTML = '<p class="melding">Kunne ikke hente lagerlogg: ' + esc(e.message || e) + '</p>';
+      return;
+    }
+
+    if (res.error) {
+      boks.innerHTML = '<p class="melding">Kunne ikke hente lagerlogg: ' + esc(res.error.message) + '</p>';
+      return;
+    }
+
+    const data = res.data || [];
+    if (!data.length) {
+      boks.innerHTML = '<p class="info">Ingen lagerlogg for ' + esc(valgtBilTekst()) + ' ennå.</p>';
+      return;
+    }
+
+    boks.innerHTML = `
+      <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">Lagerlogg for ${esc(valgtBilTekst())}</div>
+      <table class="bil-tabell">
+        <thead>
+          <tr>
+            <th>Dato</th>
+            <th>Vare</th>
+            <th>Antall</th>
+            <th>Handling</th>
+            <th>Bruker</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(rad => `
+            <tr>
+              <td>${esc(datoNo(rad.created_at))}</td>
+              <td>${esc(finnVareNavnFraRad(rad))}</td>
+              <td>${esc(rad.antall ?? "")}</td>
+              <td>${esc(rad.handling || "")}</td>
+              <td>${esc(loggNavn(rad))}</td>
+              <td>${esc(rad.kommentar || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  window.tegnLagerloggForBil = tegnLagerloggForBil;
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.id === "bilLagerBilValg") {
+      setTimeout(tegnLagerloggForBil, 50);
+    }
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(tegnLagerloggForBil, 800);
+  });
+  window.addEventListener("load", function () {
+    setTimeout(tegnLagerloggForBil, 800);
+    setTimeout(tegnLagerloggForBil, 2000);
+  });
+})();
