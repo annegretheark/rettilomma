@@ -1,5 +1,5 @@
 console.log("biler.js PROD firma_id fix 20260613 lastet");
-window.BILER_JS_VERSION = "PROD bil-lager import nederst 20260613";
+window.BILER_JS_VERSION = "PROD mobil fyll-bil kortliste 20260613";
 
 let biler = [];
 let bilLager = [];
@@ -567,17 +567,49 @@ function tegnFyllBilListe() {
 
   const bilId = hentValgtBilIdForBilLager();
   const biltekst = valgtBilOverskrift();
+  const erMobil = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
 
   if (!varerTilBilLager.length) {
-    c.innerHTML = "<p>Ingen varer i vareregisteret enn\u00E5.</p>";
+    c.innerHTML = "<p>Ingen varer i vareregisteret ennå.</p>";
+    return;
+  }
+
+  const topp = `
+    <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">
+      Fyller bil: ${biltekst}
+    </div>
+    ${!bilId ? '<p class="melding">Velg bil først. Listen er klar, men lagring krever valgt bil.</p>' : ''}
+  `;
+
+  if (erMobil) {
+    c.innerHTML = `
+      ${topp}
+      <div class="bil-fyll-mobil-liste" style="max-height:520px; overflow:auto; margin-top:8px;">
+        ${varerTilBilLager.map(v => `
+          <div class="bil-fyll-mobil-kort" style="border:1px solid #374151; border-radius:10px; padding:10px; margin-bottom:8px; background:#111827;">
+            <div style="font-weight:bold; font-size:15px; margin-bottom:5px; color:#f3f4f6;">${vareNavn(v)}</div>
+            <div class="info" style="font-size:13px; margin-bottom:8px;">
+              På hovedlager: <strong>${vareHovedlager(v)}</strong>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end;">
+              <label style="margin:0; font-size:13px;">
+                Antall til bil
+                <input class="bil-lager-antall-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="height:36px; padding:6px 8px; margin-top:3px;">
+              </label>
+              <label style="margin:0; font-size:13px;">
+                Min. på bil
+                <input class="bil-lager-min-liste" data-vare-id="${v.id}" type="number" step="1" min="0" value="" placeholder="0" style="height:36px; padding:6px 8px; margin-top:3px;">
+              </label>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
     return;
   }
 
   c.innerHTML = `
-    <div class="info" style="margin:8px 0 6px 0; font-weight:bold;">
-      Fyller bil: ${biltekst}
-    </div>
-    ${!bilId ? '<p class="melding">Velg bil f\u00F8rst. Listen er klar, men lagring krever valgt bil.</p>' : ''}
+    ${topp}
     <div style="overflow:auto; max-height:460px; border:1px solid #374151; border-radius:10px; margin-top:8px;">
       <table class="bil-tabell">
         <thead>
@@ -590,7 +622,7 @@ function tegnFyllBilListe() {
             <th>Min. hovedlager</th>
             <th>MVA</th>
             <th>Antall til bil</th>
-            <th>Min. p\u00E5 bil</th>
+            <th>Min. på bil</th>
           </tr>
         </thead>
         <tbody>
