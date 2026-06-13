@@ -478,10 +478,10 @@
   localStorage.removeItem('aktivBilNavn');
   if (window.supabaseClient && supabaseClient.auth) {
     supabaseClient.auth.signOut().finally(function () {
-      window.location.href = '../index.html';
+      window.location.href = '../handverker-login.html';
     });
   } else {
-    window.location.href = '../index.html';
+    window.location.href = '../handverker-login.html';
   }
 ">Logg ut</button>
       </div>
