@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rett i Lomma Håndverker - Brukerdokumentasjon</title>
+  <style>
+    :root{--bg:#111827;--card:#ffffff;--ink:#111827;--muted:#4b5563;--blue:#1f6feb;--line:#e5e7eb;--soft:#f3f4f6;}
+    body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink);line-height:1.55;}
+    .wrap{max-width:980px;margin:0 auto;padding:28px 18px 60px;}
+    header{background:linear-gradient(135deg,#0f172a,#1f2937);color:#fff;border-radius:18px;padding:30px;margin-bottom:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    header h1{margin:0 0 8px;font-size:32px} header p{margin:0;color:#cbd5e1;font-size:17px}
+    .card{background:var(--card);border-radius:16px;padding:24px;margin:18px 0;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+    h2{margin-top:0;border-bottom:2px solid var(--line);padding-bottom:8px;color:#0f172a} h3{margin-bottom:6px;color:#0f172a}
+    .toc a{display:block;color:var(--blue);text-decoration:none;padding:6px 0}.toc a:hover{text-decoration:underline}
+    .step{border-left:4px solid var(--blue);padding-left:14px;margin:14px 0}.hint{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px;margin:14px 0}.warn{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px;margin:14px 0}
+    figure{margin:18px 0;padding:14px;background:var(--soft);border:1px solid var(--line);border-radius:14px}figure img{max-width:100%;width:360px;border-radius:12px;border:1px solid #d1d5db;display:block;margin:auto}figcaption{font-size:14px;color:var(--muted);margin-top:8px;text-align:center}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.grid figure img{width:100%}
+    ul{padding-left:22px}.small{font-size:14px;color:var(--muted)}code{background:#f1f5f9;padding:2px 5px;border-radius:6px}
+    @media print{body{background:#fff}.wrap{max-width:none;padding:0}.card,header{box-shadow:none;break-inside:avoid}a{color:#000}figure{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Rett i Lomma Håndverker</h1>
+  <p>Brukerdokumentasjon for mobil: timer, jobber, varer, utlegg, bilder, bil-lager og fravær/flexi.</p>
+</header>
+
+<section class="card toc">
+  <h2>Innhold</h2>
+  <a href="#start">1. Start appen</a>
+  <a href="#timer">2. Registrer timer</a>
+  <a href="#kunde-prosjekt">3. Velg kunde og prosjekt</a>
+  <a href="#bil-vare">4. Velg bil og legg til varer</a>
+  <a href="#utlegg">5. Legg til utlegg</a>
+  <a href="#bilder">6. Legg til bilder</a>
+  <a href="#fyll-bil">7. Fyll bil fra lager</a>
+  <a href="#fravaer">8. Fravær og flexi</a>
+  <a href="#tips">9. Tips ved mobilbruk</a>
+</section>
+
+<section id="start" class="card">
+  <h2>1. Start appen</h2>
+  <div class="step"><strong>Åpne linken til håndverkermodulen.</strong><br>Trykk <em>Start håndverkermdemo</em> for å gå inn i appen.</div>
+  <figure><img src="bilder/01-start-handverkerdemo.jpeg" alt="Startside for Rett i Lomma Håndverker"><figcaption>Startside for håndverkermodulen.</figcaption></figure>
+</section>
+
+<section id="timer" class="card">
+  <h2>2. Registrer timer</h2>
+  <p>Bruk <strong>Timer</strong> når du skal registrere arbeid på kunde og prosjekt.</p>
+  <div class="step">Fyll inn dato, kunde, prosjekt, starttid, sluttid og timepris.</div>
+  <div class="step">Velg aktiv bil dersom appen ber om det. Aktiv bil brukes for å hente varer fra bil-lageret.</div>
+  <figure><img src="bilder/02-registrer-timer-velg-bil-vare.jpeg" alt="Registrere timer med aktiv bil og vare"><figcaption>Timer med aktiv bil og varevalg.</figcaption></figure>
+</section>
+
+<section id="kunde-prosjekt" class="card">
+  <h2>3. Velg kunde og prosjekt</h2>
+  <p>Kunde og prosjekt velges i nedtrekksfelt. På mobil åpnes listen som en vanlig mobilmeny.</p>
+  <div class="grid">
+    <figure><img src="bilder/14-velg-kunde.jpeg" alt="Velg kunde"><figcaption>Velg kunde fra listen.</figcaption></figure>
+    <figure><img src="bilder/10-velg-kunde-og-prosjekt.jpeg" alt="Velg prosjekt"><figcaption>Velg prosjekt etter at kunden er valgt.</figcaption></figure>
+  </div>
+</section>
+
+<section id="bil-vare" class="card">
+  <h2>4. Velg bil og legg til varer</h2>
+  <p>Varer hentes fra den aktive bilen. Dette gjør at varer som brukes ute hos kunde trekkes fra riktig bil-lager.</p>
+  <div class="step">Velg <strong>Standard/aktiv bil</strong>.</div>
+  <div class="step">Velg vare fra listen.</div>
+  <div class="step">Skriv antall og trykk <strong>Legg til vare på faktura</strong>.</div>
+  <div class="grid">
+    <figure><img src="bilder/13-velg-standard-bil.jpeg" alt="Velg standard bil"><figcaption>Velg eller bytt aktiv bil.</figcaption></figure>
+    <figure><img src="bilder/12-velg-vare-fra-bil.jpeg" alt="Velg vare fra bil"><figcaption>Velg vare fra valgt bil.</figcaption></figure>
+    <figure><img src="bilder/06-vare-pa-faktura-og-utgift.jpeg" alt="Legg til vare på faktura"><figcaption>Skriv antall og legg varen på faktura.</figcaption></figure>
+  </div>
+  <div class="hint"><strong>Tips:</strong> Hvis varelisten er tom, sjekk at aktiv bil er valgt og at bilen faktisk har varer på lager.</div>
+</section>
+
+<section id="utlegg" class="card">
+  <h2>5. Legg til utlegg</h2>
+  <p>Utlegg kan legges til samme registrering som timer og varer.</p>
+  <div class="step">Velg utgiftstype, for eksempel kjøring, bompenger, parkering, ferge eller diett.</div>
+  <div class="step">Skriv beløp eller km/pris pr km.</div>
+  <div class="step">Trykk <strong>Legg til utlegg på faktura</strong>.</div>
+  <div class="grid">
+    <figure><img src="bilder/09-velg-utgiftstype.jpeg" alt="Velg utgiftstype"><figcaption>Velg type utlegg.</figcaption></figure>
+    <figure><img src="bilder/15-utlegg-belop-tastatur.jpeg" alt="Skriv beløp for utlegg"><figcaption>Skriv beløp på mobil.</figcaption></figure>
+    <figure><img src="bilder/11-legg-til-utlegg-og-bilde.jpeg" alt="Legg til utlegg"><figcaption>Legg til utlegg på faktura.</figcaption></figure>
+  </div>
+</section>
+
+<section id="bilder" class="card">
+  <h2>6. Legg til bilder</h2>
+  <p>Du kan legge til bilder som dokumentasjon på jobben.</p>
+  <div class="step">Trykk <strong>Velg fil</strong>.</div>
+  <div class="step">Velg <strong>Ta bilde</strong> eller <strong>Bildebibliotek</strong>.</div>
+  <div class="step">Skriv bildetekst om ønskelig og lagre.</div>
+  <div class="grid">
+    <figure><img src="bilder/07-legg-til-bilde-valg.jpeg" alt="Velg bildekilde"><figcaption>Velg bildekilde på mobil.</figcaption></figure>
+    <figure><img src="bilder/08-lagre-timer-med-bilder.jpeg" alt="Lagre timer med bilder"><figcaption>Lagre timer med bilde og bildetekst.</figcaption></figure>
+  </div>
+</section>
+
+<section id="fyll-bil" class="card">
+  <h2>7. Fyll bil fra lager</h2>
+  <p>Bruk <strong>Min bil / fyll lager</strong> når varer skal flyttes fra hovedlager til bilen.</p>
+  <div class="step">Velg bilen som skal fylles.</div>
+  <div class="step">Skriv antall på varene som skal legges i bilen.</div>
+  <div class="step">Trykk <strong>Send PDF til lager</strong> dersom lageret skal plukke varene først.</div>
+  <div class="step">Når varene faktisk er mottatt, trykker ansatt <strong>Lagre alle valgte varer på bilen</strong>.</div>
+  <div class="warn"><strong>Viktig:</strong> Lagerlogg og beholdning skal først oppdateres når varene lagres på bilen, ikke når PDF-en sendes.</div>
+  <div class="grid">
+    <figure><img src="bilder/04-min-bil-fyll-lager.jpeg" alt="Min bil fyll lager"><figcaption>Fyll bil-listen på mobil.</figcaption></figure>
+    <figure><img src="bilder/03-fyll-bil-antall-tastatur.jpeg" alt="Skriv antall ved fyll bil"><figcaption>Skriv antall på varen som skal legges i bilen.</figcaption></figure>
+  </div>
+</section>
+
+<section id="fravaer" class="card">
+  <h2>8. Fravær og flexi</h2>
+  <p>Bruk <strong>Fravær / Flexi</strong> for ferie, egenmelding, permisjon og avspasering.</p>
+  <div class="step">Velg type fravær.</div>
+  <div class="step">Velg fra dato og til dato.</div>
+  <div class="step">Skriv timer pr dag.</div>
+  <div class="step">Send til godkjenning.</div>
+  <figure><img src="bilder/05-fravaer-flexi.jpeg" alt="Fravær og flexi"><figcaption>Registrering av fravær og flexi.</figcaption></figure>
+</section>
+
+<section id="tips" class="card">
+  <h2>9. Tips ved mobilbruk</h2>
+  <ul>
+    <li>Åpne helst appen i Safari eller Chrome, ikke inne i Messenger-nettleseren.</li>
+    <li>Hvis gamle endringer vises, legg til <code>?v=20260613</code> på slutten av linken.</li>
+    <li>Velg aktiv bil før du legger til varer på faktura.</li>
+    <li>Ved fylling av bil: send PDF først hvis lageret skal plukke, og lagre først når varene er mottatt.</li>
+  </ul>
+  <p class="small">Dokumentasjonen er laget fra skjermbildene i opplastet zip. Bildene er gitt logiske filnavn i mappen <code>bilder</code>.</p>
+</section>
+</div>
+</body>
+</html>
