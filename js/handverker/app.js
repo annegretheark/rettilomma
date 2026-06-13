@@ -108,9 +108,81 @@ if (typeof supabaseClient !== "undefined") {
   });
 }
 
-function startApp() {
+async function startApp() {
   console.log("Starter app");
-  visLogin();
+
+  try {
+    if (!window.supabaseClient || !supabaseClient.auth) {
+      if (typeof window.visLogin === "function") window.visLogin();
+      return;
+    }
+
+    const { data } = await supabaseClient.auth.getSession();
+    const session = data && data.session ? data.session : null;
+    const email = String(session?.user?.email || "").toLowerCase();
+
+    if (!session || !email) {
+      if (typeof window.visLogin === "function") window.visLogin();
+      return;
+    }
+
+    window.innloggetEpost = email;
+
+    let ansattData = null;
+    try {
+      const { data: ansatte, error } = await supabaseClient
+        .from("ansatte")
+        .select("*")
+        .eq("epost", email)
+        .limit(1);
+
+      if (!error && Array.isArray(ansatte) && ansatte.length) {
+        ansattData = ansatte[0];
+        window.innloggetAnsattId = ansattData.id || "";
+      }
+    } catch (e) {
+      console.warn("Kunne ikke hente ansatt ved oppfrisking:", e);
+    }
+
+    const rolle = String(ansattData?.rolle || "").toLowerCase();
+    window.innloggetRolle = rolle;
+    window.erSystemadmin = ["systemadmin", "sysadmin"].includes(rolle);
+
+    const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    const adminModus = localStorage.getItem("rilAdminModus") === "ja";
+    window.erAdmin = harAdminRolle && adminModus;
+
+    if (typeof window.visApp === "function") {
+      await window.visApp();
+    } else {
+      const loginSide = document.getElementById("loginSide");
+      const appSide = document.getElementById("appSide");
+      if (loginSide) loginSide.classList.add("skjult");
+      if (appSide) appSide.classList.remove("skjult");
+    }
+
+    if (window.erAdmin) {
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = "";
+        el.classList.remove("skjult", "hidden");
+      });
+      if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
+      if (typeof window.skjulSystemadminHvisIkkeSystemadmin === "function") window.skjulSystemadminHvisIkkeSystemadmin();
+    } else {
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = "none";
+        el.classList.add("skjult");
+      });
+      if (typeof window.visTimerSide === "function") window.visTimerSide();
+    }
+
+    if (typeof window.startModulerEtterInnlogging === "function") {
+      setTimeout(window.startModulerEtterInnlogging, 800);
+    }
+  } catch (e) {
+    console.warn("Oppstart feilet, viser login:", e);
+    if (typeof window.visLogin === "function") window.visLogin();
+  }
 }
 
 startApp();
