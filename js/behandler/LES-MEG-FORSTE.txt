@@ -1,0 +1,15 @@
+Hestebehandler / Behandler app
+
+1. Kjør supabase-behandler-setup.sql i Supabase SQL Editor.
+2. Opprett første bruker i Authentication -> Users -> Add user.
+3. Last opp filene.
+
+Alle app-tabeller starter med beh_:
+- beh_kunder
+- beh_hester
+- beh_behandlinger
+- beh_behandling_bilder
+- beh_fakturaer
+- beh_kreditnotaer
+- beh_priser
+- beh_firma

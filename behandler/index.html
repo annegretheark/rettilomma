@@ -307,6 +307,56 @@ button.voice {
   }
 }
 
+
+/* PRISLISTE SMALERE FELT 2026-06-14 */
+#prislisteSide #behPrisSkjema .rad {
+  grid-template-columns: minmax(220px, 1.5fr) 140px 120px;
+  align-items: end;
+}
+
+#prislisteSide #behPrisSkjema input {
+  height: 40px;
+  padding: 8px 10px;
+}
+
+#prislisteSide #prisBelop,
+#prislisteSide #prisSortering {
+  max-width: 140px;
+}
+
+#prislisteApp input[data-pris-id] {
+  max-width: 90px !important;
+  height: 36px;
+  padding: 6px 8px;
+  font-size: 15px;
+}
+
+#prislisteApp table {
+  font-size: 15px;
+}
+
+#prislisteApp td,
+#prislisteApp th {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+#prislisteApp button.secondary {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+@media (max-width: 640px) {
+  #prislisteSide #behPrisSkjema .rad {
+    grid-template-columns: 1fr;
+  }
+
+  #prislisteSide #prisBelop,
+  #prislisteSide #prisSortering {
+    max-width: 100%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -397,7 +447,7 @@ if (window.location.hash !== "#behandlingSide") {
 <label for="behandlingType">
       Behandlingstype
     </label>
-<select id="behandlingType">
+<select id="behandlingType" onchange="window.behSettPrisHard4 && window.behSettPrisHard4(event)">
 <option value="">
         Velg behandlingstype
       </option>
@@ -429,6 +479,7 @@ if (window.location.hash !== "#behandlingSide") {
 <label for="behandlingBeskrivelse">
       Journalnotat / anbefaling
     </label>
+<button type="button" id="journalTaleKnapp" class="secondary" onclick="return window.startJournalTaleDirekte && window.startJournalTaleDirekte(event);">🎤 Snakk inn journalnotat</button>
 <textarea id="behandlingBeskrivelse"></textarea>
 <div class="rad">
   <div>
@@ -486,6 +537,34 @@ if (window.location.hash !== "#behandlingSide") {
 <select id="hestKunde">
 <option value="">Velg kunde</option>
 </select>
+
+<div class="behandling-knappefelt" style="margin-top:6px;">
+  <button id="visNyKundeFraDyrKnapp" type="button" class="secondary">➕ Ny kunde</button>
+</div>
+
+<div id="nyKundeFraDyrBoks" class="listekort skjult">
+  <h3 style="margin-top:0;">Ny kunde</h3>
+  <div class="rad">
+    <div>
+      <label for="dyrNyKundeNavn">Navn</label>
+      <input id="dyrNyKundeNavn" placeholder="Kundenavn">
+    </div>
+    <div>
+      <label for="dyrNyKundeTelefon">Telefon</label>
+      <input id="dyrNyKundeTelefon" placeholder="Telefon">
+    </div>
+  </div>
+  <label for="dyrNyKundeAdresse">Adresse</label>
+  <input id="dyrNyKundeAdresse" placeholder="Adresse">
+  <label for="dyrNyKundeEpost">E-post</label>
+  <input id="dyrNyKundeEpost" type="email" placeholder="epost@domene.no">
+  <div class="behandling-knappefelt">
+    <button id="lagreNyKundeFraDyrKnapp" type="button">Lagre kunde</button>
+    <button id="avbrytNyKundeFraDyrKnapp" type="button" class="secondary">Avbryt</button>
+  </div>
+  <div id="nyKundeFraDyrMelding" class="melding"></div>
+</div>
+
 <label for="hestVelg">Velg dyr å redigere</label>
 <select id="hestVelg">
 <option value="">Nytt dyr</option>
@@ -529,7 +608,7 @@ if (window.location.hash !== "#behandlingSide") {
 <option value="">Velg kunde</option>
 </select>
 <button id="oppdaterFakturaKunderKnapp" class="secondary" onclick="fyllFakturaKunder()" type="button">Oppdater kundeliste</button>
-<button id="lagFakturaKnapp" type="button">
+<button id="lagFakturaKnapp" type="button" onclick="return window.behLagFakturaHardfix && window.behLagFakturaHardfix(event);">
       Lag faktura PDF
     </button>
 <p class="info">
@@ -691,11 +770,11 @@ if (window.location.hash !== "#behandlingSide") {
 <script src="beh-kunder.js"></script>
 <script src="beh-oppsett.js"></script>
 <script src="beh-hester.js?v=20260614-knapper-linje"></script>
-<script src="beh-jobber.js?v=20260614-knapper-linje"></script>
+<script src="beh-jobber.js?v=20260614-endelig-pris6"></script>
 <script src="beh-faktura.js"></script>
 <script src="beh-kreditnota.js"></script>
 <script src="beh-fakturaoversikt.js"></script>
-<script src="beh-prisliste.js?v=20260614-prisliste-hardfix"></script>
+<script src="beh-prisliste.js?v=20260614-smale-prisfelt"></script>
 <script src="beh-app.js"></script>
 
 <script>
@@ -744,7 +823,7 @@ if (window.location.hash !== "#behandlingSide") {
       const manuell = document.getElementById("manuellBehandling");
       if (manuell) manuell.classList.remove("skjult");
 
-      const notat = document.getElementById("behandlingJournalnotat / anbefaling");
+      const notat = document.getElementById("behandlingBeskrivelse");
       if (notat) notat.value = tekst;
 
       const dato = document.getElementById("behandlingDato");
@@ -1461,6 +1540,11 @@ if (window.location.hash !== "#behandlingSide") {
         return false;
       }
 
+
+      // AUTO-PRIS HARD4: sørg for at pris er satt også ved lagring.
+      if (typeof window.behSettPrisHard4 === "function") {
+        try { await window.behSettPrisHard4({ target: el("behandlingType") }); } catch(e) { console.warn("Kunne ikke sette pris før lagring", e); }
+      }
       const km = num("behandlingKm");
       const kmPris = num("behandlingKmPris");
       const arbeid = num("arbeidBelop");
@@ -1794,6 +1878,1328 @@ if (window.location.hash !== "#behandlingSide") {
   window.addEventListener("hashchange", function(){
     if(location.hash === "#prislisteSide") setTimeout(hentPrislisteTilApp, 150);
   });
+})();
+</script>
+
+
+<script>
+// NY KUNDE FRA DYR + DAGENS DATO 2026-06-14
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function val(id){ return (el(id)?.value || "").trim(); }
+  function setv(id, v){ const e = el(id); if(e) e.value = v ?? ""; }
+  function today(){ return new Date().toISOString().slice(0,10); }
+
+  function msg(t, feil){
+    const m = el("nyKundeFraDyrMelding") || el("hestMelding");
+    if(m){ m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+  }
+
+  async function client(){
+    for(let i=0;i<80;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      await new Promise(r=>setTimeout(r,100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+
+  function settDagensDato(){
+    const d = el("behandlingDato");
+    if(d && !d.value) d.value = today();
+  }
+
+  function visNyKundeFraDyr(){
+    const boks = el("nyKundeFraDyrBoks");
+    if(boks) boks.classList.remove("skjult");
+    msg("");
+    setTimeout(()=>el("dyrNyKundeNavn")?.focus(), 0);
+    return false;
+  }
+
+  function skjulNyKundeFraDyr(){
+    const boks = el("nyKundeFraDyrBoks");
+    if(boks) boks.classList.add("skjult");
+    msg("");
+    return false;
+  }
+
+  async function lagreNyKundeFraDyr(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    const navn = val("dyrNyKundeNavn");
+    if(!navn){
+      msg("Skriv kundenavn først.", true);
+      el("dyrNyKundeNavn")?.focus();
+      return false;
+    }
+
+    const knapp = el("lagreNyKundeFraDyrKnapp");
+    const gammel = knapp?.textContent || "Lagre kunde";
+    if(knapp){ knapp.disabled = true; knapp.textContent = "Lagrer ..."; }
+
+    try{
+      const c = await client();
+      const payload = {
+        navn,
+        adresse: val("dyrNyKundeAdresse"),
+        telefon: val("dyrNyKundeTelefon"),
+        epost: val("dyrNyKundeEpost"),
+        kontaktperson: ""
+      };
+
+      const res = await c.from("beh_kunder").insert([payload]).select("id, navn").maybeSingle();
+      if(res.error) throw res.error;
+
+      const ny = res.data;
+      msg("Kunde lagret og valgt ✅", false);
+
+      if(typeof window.lastBehKunderOgDyrFinalFix === "function") {
+        try { await window.lastBehKunderOgDyrFinalFix(); } catch(e) {}
+      }
+      if(typeof window.behLastKunderDyrTrygg === "function") {
+        try { await window.behLastKunderDyrTrygg(); } catch(e) {}
+      }
+      if(typeof window.hentOgFyllHestKunder === "function") {
+        try { await window.hentOgFyllHestKunder(); } catch(e) {}
+      }
+
+      const hestKunde = el("hestKunde");
+      if(hestKunde && ny?.id){
+        if(!Array.from(hestKunde.options).some(o => String(o.value) === String(ny.id))){
+          const opt = document.createElement("option");
+          opt.value = ny.id;
+          opt.textContent = ny.navn || navn;
+          hestKunde.appendChild(opt);
+        }
+        hestKunde.value = ny.id;
+        hestKunde.dispatchEvent(new Event("change", { bubbles:true }));
+      }
+
+      ["dyrNyKundeNavn","dyrNyKundeAdresse","dyrNyKundeTelefon","dyrNyKundeEpost"].forEach(id => setv(id, ""));
+      skjulNyKundeFraDyr();
+      el("hestNavn")?.focus();
+      return false;
+    }catch(e){
+      console.error(e);
+      msg("Kunne ikke lagre kunde: " + (e.message || e), true);
+      return false;
+    }finally{
+      if(knapp){ knapp.disabled = false; knapp.textContent = gammel; }
+    }
+  }
+
+  function bind(){
+    settDagensDato();
+
+    const nyBtn = el("visNyKundeFraDyrKnapp");
+    if(nyBtn) nyBtn.onclick = visNyKundeFraDyr;
+
+    const lagreBtn = el("lagreNyKundeFraDyrKnapp");
+    if(lagreBtn) lagreBtn.onclick = lagreNyKundeFraDyr;
+
+    const avbrytBtn = el("avbrytNyKundeFraDyrKnapp");
+    if(avbrytBtn) avbrytBtn.onclick = skjulNyKundeFraDyr;
+
+    const lagreDyrBtn = el("lagreHestKnapp");
+    if(lagreDyrBtn && lagreDyrBtn.dataset.nyKundeTips !== "1"){
+      lagreDyrBtn.dataset.nyKundeTips = "1";
+      lagreDyrBtn.addEventListener("click", function(){
+        const kunde = el("hestKunde")?.value || "";
+        if(!kunde){
+          const boks = el("nyKundeFraDyrBoks");
+          if(boks) boks.classList.remove("skjult");
+          msg("Velg kunde, eller lag ny kunde her først.", true);
+        }
+      }, true);
+    }
+  }
+
+  const gammelNyBehandling = window.nyBehandling;
+  window.nyBehandling = function(){
+    if(typeof gammelNyBehandling === "function") {
+      try { gammelNyBehandling(); } catch(e) { console.warn(e); }
+    }
+    setTimeout(settDagensDato, 0);
+    return false;
+  };
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+
+  window.addEventListener("load", function(){
+    setTimeout(bind, 100);
+    setTimeout(settDagensDato, 500);
+  });
+
+  window.addEventListener("hashchange", function(){
+    setTimeout(settDagensDato, 100);
+  });
+
+  window.lagreNyKundeFraDyr = lagreNyKundeFraDyr;
+  window.visNyKundeFraDyr = visNyKundeFraDyr;
+})();
+</script>
+
+
+<script>
+// SISTE SIKRING 2026-06-14: auto-pris på behandlingstype, direkte i index.
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function norm(v){ return String(v || "").trim().toLowerCase(); }
+  function tall(v){ const n = Number(String(v ?? 0).replace(",", ".")); return Number.isFinite(n) ? n : 0; }
+  async function client(){
+    for(let i=0;i<80;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      await new Promise(r=>setTimeout(r,100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+  function melding(t, feil){
+    const m = el("behandlingMelding");
+    if(m && t){ m.textContent = t; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+  }
+  async function hentPriser(){
+    const c = await client();
+    const r = await c.from("beh_priser").select("id,navn,pris,sortering,aktiv").order("sortering",{ascending:true}).order("navn",{ascending:true});
+    if(r.error) throw r.error;
+    return (r.data || []).filter(p => p.aktiv !== false);
+  }
+  function fyllSelect(priser){
+    const s = el("behandlingType");
+    if(!s || !priser.length) return;
+    const valgt = s.value || "";
+    s.innerHTML = '<option value="">Velg behandlingstype</option>';
+    priser.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.navn || "";
+      o.textContent = p.navn || "Uten navn";
+      o.dataset.pris = String(p.pris ?? 0);
+      s.appendChild(o);
+    });
+    const match = priser.find(p => norm(p.navn) === norm(valgt));
+    if(match) s.value = match.navn || "";
+  }
+  async function settPris(){
+    const s = el("behandlingType");
+    const a = el("arbeidBelop");
+    if(!s || !a || !s.value) return false;
+    let pris = s.selectedOptions && s.selectedOptions[0] ? s.selectedOptions[0].dataset.pris : "";
+    if(pris === undefined || pris === ""){
+      const priser = await hentPriser();
+      fyllSelect(priser);
+      const p = priser.find(x => norm(x.navn) === norm(s.value));
+      if(!p){ melding("Fant ikke pris for: " + s.value, true); return false; }
+      pris = p.pris;
+    }
+    a.value = tall(pris);
+    a.dispatchEvent(new Event("input", {bubbles:true}));
+    a.dispatchEvent(new Event("change", {bubbles:true}));
+    melding("Pris hentet: " + a.value + " kr", false);
+    return false;
+  }
+  async function start(){
+    const s = el("behandlingType");
+    if(!s) return;
+    try{ fyllSelect(await hentPriser()); }catch(e){ console.warn("Auto-pris index feilet", e); }
+    if(s.dataset.indexAutoPris === "1") return;
+    s.dataset.indexAutoPris = "1";
+    s.addEventListener("change", settPris, true);
+    s.addEventListener("input", settPris, true);
+    s.addEventListener("focus", start);
+    s.addEventListener("click", start);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.addEventListener("load", function(){ setTimeout(start,100); setTimeout(start,800); setTimeout(start,2000); });
+  window.behSettPrisFraValgtBehandlingIndex = settPris;
+})();
+</script>
+
+
+<script>
+// SISTE STARTER: tving auto-pris etter at alle gamle script er ferdige.
+(function(){
+  function start(){
+    if (typeof window.behStartAutoPrisSiste === "function") window.behStartAutoPrisSiste(true);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.addEventListener("load", function(){ setTimeout(start,100); setTimeout(start,1000); setTimeout(start,2500); });
+  window.addEventListener("hashchange", function(){ setTimeout(start,150); });
+})();
+</script>
+
+
+
+<script>
+// AUTO-PRIS HARD4 2026-06-14
+// Dette er siste script og binder direkte på behandlingType med onchange + capture.
+// Den fyller Arbeid eks. mva fra beh_priser når behandling velges.
+(function(){
+  let priserCache = [];
+  let laster = false;
+  function el(id){ return document.getElementById(id); }
+  function txt(v){ return String(v ?? "").trim(); }
+  function norm(v){ return txt(v).toLowerCase().replace(/\s+/g," "); }
+  function num(v){ const n = Number(String(v ?? "0").replace(",",".")); return Number.isFinite(n) ? n : 0; }
+  function msg(t, feil){
+    const m = el("behandlingMelding");
+    if(m){ m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+    if(t) console.log("AUTO-PRIS-HARD4:", t);
+  }
+  async function client(){
+    for(let i=0;i<100;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      if(window.supabase && typeof window.supabase.createClient === "function"){
+        window.supabaseClient = window.supabase.createClient(
+          "https://pxlbrywowphkczkehmee.supabase.co",
+          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
+          { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage } }
+        );
+        return window.supabaseClient;
+      }
+      await new Promise(r=>setTimeout(r,100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+  async function hentPriser(force){
+    if(laster) return priserCache;
+    if(!force && priserCache.length) return priserCache;
+    laster = true;
+    try{
+      const c = await client();
+      const r = await c.from("beh_priser").select("id,navn,pris,sortering,aktiv").order("sortering",{ascending:true}).order("navn",{ascending:true});
+      if(r.error) throw r.error;
+      priserCache = (r.data || []).filter(p => p.aktiv !== false);
+      window.behPriserHard4 = priserCache;
+      return priserCache;
+    } finally { laster = false; }
+  }
+  function finnPrisRad(verdi){
+    const v = norm(verdi);
+    if(!v) return null;
+    return priserCache.find(p => norm(p.navn) === v || String(p.id) === String(verdi)) || null;
+  }
+  function fyllBehandlingSelect(){
+    const s = el("behandlingType");
+    if(!s || !priserCache.length) return;
+    const gammelValue = s.value;
+    const gammelText = s.selectedOptions && s.selectedOptions[0] ? s.selectedOptions[0].textContent : "";
+    const gammelMatch = finnPrisRad(gammelValue) || priserCache.find(p => norm(gammelText).startsWith(norm(p.navn)));
+    s.innerHTML = '<option value="">Velg behandlingstype</option>';
+    priserCache.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.navn || "";
+      o.textContent = (p.navn || "Uten navn") + " - " + num(p.pris).toLocaleString("no-NO", {maximumFractionDigits:2}) + " kr";
+      o.dataset.pris = String(num(p.pris));
+      o.dataset.prisId = p.id || "";
+      s.appendChild(o);
+    });
+    if(gammelMatch) s.value = gammelMatch.navn || "";
+  }
+  async function settPrisHard4(ev){
+    if(ev && ev.target && ev.target.id !== "behandlingType") return false;
+    const s = el("behandlingType");
+    const a = el("arbeidBelop");
+    if(!s || !a) return false;
+    if(!s.value){ return false; }
+
+    try{
+      await hentPriser(false);
+      if(!Array.from(s.options).some(o => o.dataset && o.dataset.prisId)) fyllBehandlingSelect();
+
+      let rad = finnPrisRad(s.value);
+      let pris = rad ? num(rad.pris) : null;
+      if(pris === null && s.selectedOptions && s.selectedOptions[0] && s.selectedOptions[0].dataset.pris !== undefined){
+        pris = num(s.selectedOptions[0].dataset.pris);
+      }
+      if(pris === null){
+        msg("Fant ikke pris for " + s.value + " i beh_priser", true);
+        return false;
+      }
+      a.value = String(pris);
+      a.setAttribute("value", String(pris));
+      a.dataset.autoPrisHard4 = "1";
+      a.dispatchEvent(new Event("input", {bubbles:true}));
+      a.dispatchEvent(new Event("change", {bubbles:true}));
+      msg("Pris hentet: " + pris.toLocaleString("no-NO", {maximumFractionDigits:2}) + " kr", pris === 0);
+    }catch(e){
+      console.error("AUTO-PRIS-HARD4 feilet", e);
+      msg("Kunne ikke hente pris: " + (e.message || e), true);
+    }
+    return false;
+  }
+  async function startHard4(force){
+    const s = el("behandlingType");
+    if(!s) return;
+    try{ await hentPriser(!!force); fyllBehandlingSelect(); }catch(e){ console.warn("Kunne ikke forhåndslaste priser", e); }
+    s.onchange = settPrisHard4;
+    if(s.dataset.hard4Bind !== "1"){
+      s.dataset.hard4Bind = "1";
+      s.addEventListener("change", settPrisHard4, true);
+      s.addEventListener("input", settPrisHard4, true);
+      s.addEventListener("mouseup", function(){ setTimeout(settPrisHard4, 50); }, true);
+      s.addEventListener("keyup", function(){ setTimeout(settPrisHard4, 50); }, true);
+      s.addEventListener("focus", function(){ startHard4(true); }, true);
+    }
+  }
+  document.addEventListener("change", function(ev){ if(ev.target && ev.target.id === "behandlingType") settPrisHard4(ev); }, true);
+  window.behSettPrisHard4 = settPrisHard4;
+  window.behStartAutoPrisHard4 = startHard4;
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ startHard4(true); }); else startHard4(true);
+  window.addEventListener("load", function(){ setTimeout(()=>startHard4(true),100); setTimeout(()=>startHard4(true),1000); setTimeout(()=>startHard4(true),2500); });
+  window.addEventListener("hashchange", function(){ setTimeout(()=>startHard4(true),100); });
+})();
+</script>
+
+
+
+<script>
+// ULTIMATE PRISFIX 2026-06-14
+// Synlig prisfelt + vedvarende synk mot Arbeid eks. mva.
+// Stopper at gamle script nullstiller prisen etter valg.
+(function(){
+  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  let priser = [];
+  let laster = false;
+  let sisteType = "";
+  let sistePris = null;
+  let brukerEndrerArbeid = false;
+
+  function el(id){ return document.getElementById(id); }
+  function norm(v){ return String(v || "").trim().toLowerCase(); }
+  function num(v){ const n = Number(String(v ?? "0").replace(",", ".")); return Number.isFinite(n) ? n : 0; }
+  function kr(v){ return num(v).toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  function msg(t, feil){
+    const m = el("behandlingMelding");
+    if(m){ m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+    if(t) console.log("ULTIMATE-PRIS:", t);
+  }
+
+  async function client(){
+    for(let i=0;i<80;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      if(window.supabase && window.supabase.createClient){
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage }
+        });
+        return window.supabaseClient;
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+
+  function sikrePrisfelt(){
+    const type = el("behandlingType");
+    const arbeid = el("arbeidBelop");
+    if(!type || !arbeid) return;
+
+    let felt = el("behandlingPrisAuto");
+    if(!felt){
+      const wrap = document.createElement("div");
+      wrap.id = "behandlingPrisAutoWrap";
+      wrap.className = "listekort";
+      wrap.style.marginTop = "10px";
+      wrap.style.marginBottom = "10px";
+      wrap.innerHTML = `
+        <label for="behandlingPrisAuto" style="margin-top:0;display:block;font-weight:bold;color:#f8fafc;">Pris eks. mva fra prisliste</label>
+        <input id="behandlingPrisAuto" type="number" step="0.01" readonly value="0" style="background:#e0f2fe;color:#0f172a;font-weight:bold;">
+        <div id="behandlingPrisAutoInfo" class="info" style="color:#cbd5e1;margin-top:6px;">Velg behandlingstype, så hentes pris automatisk.</div>
+      `;
+      type.insertAdjacentElement("afterend", wrap);
+      felt = el("behandlingPrisAuto");
+    }
+
+    const label = document.querySelector('label[for="arbeidBelop"]');
+    if(label && !/Pris/.test(label.textContent || "")) label.textContent = "Pris/arbeid eks. mva";
+  }
+
+  async function hentPriser(force){
+    if(laster) return priser;
+    if(priser.length && !force) return priser;
+    laster = true;
+    try{
+      const c = await client();
+      const r = await c.from("beh_priser")
+        .select("id,navn,pris,sortering,aktiv")
+        .order("sortering", { ascending:true })
+        .order("navn", { ascending:true });
+      if(r.error) throw r.error;
+      priser = (r.data || []).filter(p => p.aktiv !== false);
+      window.behPriserUltimate = priser;
+      return priser;
+    }finally{
+      laster = false;
+    }
+  }
+
+  function finnPris(typeverdi){
+    const verdi = norm(typeverdi);
+    if(!verdi) return null;
+    let p = priser.find(x => norm(x.navn) === verdi);
+    if(p) return p;
+    p = priser.find(x => verdi.includes(norm(x.navn)) || norm(x.navn).includes(verdi));
+    return p || null;
+  }
+
+  function fyllDropdown(){
+    const s = el("behandlingType");
+    if(!s || !priser.length) return;
+    const valgt = s.value;
+    const match = finnPris(valgt) || null;
+    s.innerHTML = '<option value="">Velg behandlingstype</option>';
+    priser.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.navn || "";
+      o.textContent = (p.navn || "Uten navn") + " - " + kr(p.pris) + " kr";
+      o.dataset.pris = String(num(p.pris));
+      o.dataset.prisId = p.id || "";
+      s.appendChild(o);
+    });
+    if(match) s.value = match.navn || "";
+  }
+
+  function settFelt(pris, kilde){
+    sikrePrisfelt();
+    const auto = el("behandlingPrisAuto");
+    const arbeid = el("arbeidBelop");
+    const info = el("behandlingPrisAutoInfo");
+    if(!arbeid) return;
+    const prisTekst = String(num(pris));
+
+    if(auto) auto.value = prisTekst;
+    arbeid.value = prisTekst;
+    arbeid.setAttribute("value", prisTekst);
+    arbeid.dataset.prisUltimate = "1";
+    arbeid.dataset.prisFraBehandling = sisteType;
+
+    if(info) info.textContent = "Pris hentet fra prisliste: " + kr(pris) + " kr" + (kilde ? " (" + kilde + ")" : "");
+  }
+
+  async function oppdaterPris(force){
+    sikrePrisfelt();
+    const s = el("behandlingType");
+    if(!s) return false;
+    if(force) await hentPriser(true); else await hentPriser(false);
+    if(priser.length) fyllDropdown();
+
+    const valgt = s.value;
+    if(!valgt){
+      sisteType = "";
+      sistePris = null;
+      return false;
+    }
+
+    const rad = finnPris(valgt);
+    let pris = rad ? num(rad.pris) : null;
+    if(pris === null && s.selectedOptions && s.selectedOptions[0]?.dataset?.pris !== undefined){
+      pris = num(s.selectedOptions[0].dataset.pris);
+    }
+
+    if(pris === null){
+      msg("Fant ikke pris for " + valgt + " i beh_priser", true);
+      return false;
+    }
+
+    sisteType = valgt;
+    sistePris = pris;
+    settFelt(pris, "valg");
+    msg("Pris hentet automatisk: " + kr(pris) + " kr", pris === 0);
+    return false;
+  }
+
+  function holdPrisenPåPlass(){
+    const s = el("behandlingType");
+    const arbeid = el("arbeidBelop");
+    const auto = el("behandlingPrisAuto");
+    if(!s || !arbeid || !s.value || sistePris === null) return;
+    if(norm(s.value) !== norm(sisteType)) return;
+
+    const arbeidNaa = num(arbeid.value);
+    const autoNaa = auto ? num(auto.value) : sistePris;
+    if(arbeidNaa !== num(sistePris) || autoNaa !== num(sistePris)){
+      settFelt(sistePris, "låst");
+    }
+  }
+
+  function bind(){
+    sikrePrisfelt();
+    const s = el("behandlingType");
+    const arbeid = el("arbeidBelop");
+    if(!s) return;
+
+    s.onchange = function(ev){ ev && ev.stopPropagation && ev.stopPropagation(); return oppdaterPris(false); };
+    if(s.dataset.prisUltimateBind !== "1"){
+      s.dataset.prisUltimateBind = "1";
+      s.addEventListener("change", ev => { ev.stopPropagation(); oppdaterPris(false); }, true);
+      s.addEventListener("input", ev => { ev.stopPropagation(); oppdaterPris(false); }, true);
+      s.addEventListener("focus", () => oppdaterPris(true), true);
+      s.addEventListener("click", () => oppdaterPris(false), true);
+      s.addEventListener("keyup", () => setTimeout(() => oppdaterPris(false), 50), true);
+      s.addEventListener("mouseup", () => setTimeout(() => oppdaterPris(false), 50), true);
+    }
+
+    if(arbeid && arbeid.dataset.prisArbeidBind !== "1"){
+      arbeid.dataset.prisArbeidBind = "1";
+      arbeid.addEventListener("input", () => { brukerEndrerArbeid = true; setTimeout(()=>{ brukerEndrerArbeid = false; }, 800); }, true);
+    }
+  }
+
+  const gammelLagre = window.behLagreBehandlingDirekte;
+  if(typeof gammelLagre === "function" && gammelLagre.dataset !== "ultimate"){
+    window.behLagreBehandlingDirekte = async function(ev){
+      await oppdaterPris(false);
+      holdPrisenPåPlass();
+      return gammelLagre(ev);
+    };
+    window.behLagreBehandlingDirekte.dataset = "ultimate";
+  }
+
+  async function start(){
+    bind();
+    try{
+      await hentPriser(true);
+      fyllDropdown();
+      await oppdaterPris(false);
+    }catch(e){
+      console.error("Ultimate prisfix feilet", e);
+      msg("Kunne ikke hente prisliste: " + (e.message || e), true);
+    }
+  }
+
+  document.addEventListener("change", function(ev){
+    if(ev.target && ev.target.id === "behandlingType"){
+      ev.stopPropagation();
+      oppdaterPris(false);
+    }
+  }, true);
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+  window.addEventListener("load", function(){ setTimeout(start,100); setTimeout(start,800); setTimeout(start,2000); });
+  window.addEventListener("hashchange", function(){ setTimeout(start,100); });
+
+  setInterval(function(){
+    bind();
+    holdPrisenPåPlass();
+  }, 250);
+
+  window.behOppdaterPrisUltimate = oppdaterPris;
+})();
+</script>
+
+
+
+<script>
+// ENDELIG PRIS/LAGRING FIX 2026-06-14
+// Ett prisfelt brukes til både visning og lagring. Teller opp behandlinger direkte etter lagring.
+(function(){
+  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  let priser = [];
+  let lagrer = false;
+
+  function el(id){ return document.getElementById(id); }
+  function val(id){ return (el(id)?.value || "").trim(); }
+  function num(v){ const n = Number(String(v ?? "0").replace(",", ".")); return Number.isFinite(n) ? n : 0; }
+  function norm(v){ return String(v || "").trim().toLowerCase().replace(/\s+/g," "); }
+  function kr(v){ return num(v).toLocaleString("no-NO", {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function msg(t, feil){ const m=el("behandlingMelding"); if(m){m.textContent=t||""; m.style.color=feil?"#fca5a5":"#86efac";} if(t) console.log("ENDELIG-BEH-FIX:", t); }
+
+  async function client(){
+    for(let i=0;i<100;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      if(window.supabase && window.supabase.createClient){
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage}
+        });
+        return window.supabaseClient;
+      }
+      await new Promise(r=>setTimeout(r,100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+
+  async function hentPriser(force){
+    if(priser.length && !force) return priser;
+    const c = await client();
+    const r = await c.from("beh_priser").select("id,navn,pris,sortering,aktiv").order("sortering",{ascending:true}).order("navn",{ascending:true});
+    if(r.error) throw r.error;
+    priser = (r.data || []).filter(p => p.aktiv !== false);
+    window.behPriserEndelig = priser;
+    return priser;
+  }
+
+  function finnPris(verdi){
+    const v = norm(verdi);
+    if(!v) return null;
+    return priser.find(p => norm(p.navn) === v || v.startsWith(norm(p.navn)) || norm(p.navn).startsWith(v)) || null;
+  }
+
+  function skjulGammeltArbeidFelt(){
+    const arbeid = el("arbeidBelop");
+    if(!arbeid) return;
+    const container = arbeid.closest("div");
+    if(container){
+      container.style.display = "none";
+      container.dataset.skjultAvPrisfix = "1";
+    }
+  }
+
+  function sikrePrisfelt(){
+    const type = el("behandlingType");
+    if(!type) return null;
+    let felt = el("behandlingPrisAuto");
+    if(!felt){
+      const wrap = document.createElement("div");
+      wrap.id = "behandlingPrisAutoWrap";
+      wrap.className = "listekort";
+      wrap.style.marginTop = "10px";
+      wrap.style.marginBottom = "10px";
+      wrap.innerHTML = `
+        <label for="behandlingPrisAuto" style="margin-top:0;display:block;font-weight:bold;color:#f8fafc;">Pris/arbeid eks. mva</label>
+        <input id="behandlingPrisAuto" type="number" step="0.01" value="0" style="background:#e0f2fe;color:#0f172a;font-weight:bold;">
+        <div id="behandlingPrisAutoInfo" class="info" style="color:#cbd5e1;margin-top:6px;">Velg behandlingstype, så hentes pris automatisk. Du kan overstyre prisen her.</div>
+      `;
+      type.insertAdjacentElement("afterend", wrap);
+      felt = el("behandlingPrisAuto");
+    }
+    skjulGammeltArbeidFelt();
+    return felt;
+  }
+
+  function synkArbeidFraPrisfelt(){
+    const prisfelt = sikrePrisfelt();
+    const arbeid = el("arbeidBelop");
+    if(!prisfelt || !arbeid) return;
+    arbeid.value = String(num(prisfelt.value));
+    arbeid.setAttribute("value", String(num(prisfelt.value)));
+  }
+
+  function fyllDropdown(){
+    const s=el("behandlingType");
+    if(!s || !priser.length) return;
+    const valgt = s.value;
+    const match = finnPris(valgt);
+    s.innerHTML = '<option value="">Velg behandlingstype</option>';
+    priser.forEach(p=>{
+      const o=document.createElement("option");
+      o.value=p.navn || "";
+      o.textContent=(p.navn || "Uten navn") + " - " + kr(p.pris) + " kr";
+      o.dataset.pris=String(num(p.pris));
+      s.appendChild(o);
+    });
+    if(match) s.value = match.navn || "";
+  }
+
+  async function settPrisFraValg(){
+    const s=el("behandlingType");
+    const prisfelt=sikrePrisfelt();
+    if(!s || !prisfelt || !s.value) return false;
+    await hentPriser(false);
+    const rad = finnPris(s.value);
+    let pris = rad ? num(rad.pris) : null;
+    if(pris === null && s.selectedOptions && s.selectedOptions[0]?.dataset?.pris !== undefined) pris = num(s.selectedOptions[0].dataset.pris);
+    if(pris === null){ msg("Fant ikke pris for " + s.value, true); return false; }
+    prisfelt.value = String(pris);
+    const info = el("behandlingPrisAutoInfo");
+    if(info) info.textContent = "Pris hentet fra prisliste: " + kr(pris) + " kr. Du kan overstyre her.";
+    synkArbeidFraPrisfelt();
+    msg("Pris hentet: " + kr(pris) + " kr", false);
+    return false;
+  }
+
+  async function oppdaterBehandlingStatusDirekte(){
+    try{
+      const c = await client();
+      const r = await c.from("beh_behandlinger").select("id,total,fakturert");
+      if(r.error) throw r.error;
+      const rows = r.data || [];
+      const ikke = rows.filter(x => x.fakturert !== true).length;
+      const fakt = rows.filter(x => x.fakturert === true).length;
+      const oms = rows.reduce((s,x)=>s+num(x.total),0);
+      if(el("antallUfatturerte")) el("antallUfatturerte").textContent = String(ikke);
+      if(el("antallFakturerte")) el("antallFakturerte").textContent = String(fakt);
+      if(el("behandlingOmsetning")) el("behandlingOmsetning").textContent = kr(oms) + " kr";
+    }catch(e){ console.warn("Kunne ikke oppdatere behandlingstatus direkte", e); }
+  }
+
+  function valgtBildeFil(){
+    const kamera=el("behandlingBildeKamera");
+    const galleri=el("behandlingBildeGalleri");
+    return (kamera?.files?.[0]) || (galleri?.files?.[0]) || null;
+  }
+  function rentFilnavn(navn){ return String(navn || "bilde.jpg").replaceAll(" ","_").replace(/[æøåÆØÅ]/g, b => ({æ:"ae",ø:"o",å:"a",Æ:"Ae",Ø:"O",Å:"A"}[b] || b)).replace(/[^a-zA-Z0-9._-]/g,"_"); }
+  async function lastOppBilde(behandlingId){
+    const fil = valgtBildeFil();
+    if(!fil || !behandlingId) return;
+    const c = await client();
+    const path = `beh-behandlinger/${behandlingId}/${Date.now()}_${rentFilnavn(fil.name)}`;
+    const up = await c.storage.from("bilder").upload(path, fil, {cacheControl:"3600", upsert:false, contentType:fil.type || "image/jpeg"});
+    if(up.error) throw up.error;
+    const pub = c.storage.from("bilder").getPublicUrl(path);
+    await c.from("beh_behandling_bilder").insert([{behandling_id:behandlingId, filnavn:fil.name, filsti:path, bilde_url:pub.data?.publicUrl || null, bildetekst:"Bilde fra behandling"}]);
+    if(el("behandlingBildeKamera")) el("behandlingBildeKamera").value = "";
+    if(el("behandlingBildeGalleri")) el("behandlingBildeGalleri").value = "";
+  }
+
+  async function lagreBehandlingEndelig(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} }
+    if(lagrer) return false;
+    lagrer = true;
+    const knapp = el("lagreBehandlingKnapp");
+    const gammel = knapp?.textContent || "Lagre behandling";
+    if(knapp){ knapp.disabled = true; knapp.textContent = "Lagrer ..."; }
+    try{
+      await hentPriser(false);
+      await settPrisFraValg();
+      synkArbeidFraPrisfelt();
+
+      const c = await client();
+      const kundeId = val("behandlingKunde");
+      const dyrId = val("behandlingHest");
+      if(!kundeId){ msg("Velg kunde først", true); return false; }
+      if(!dyrId){ msg("Velg dyr først", true); return false; }
+
+      const sj = await c.from("beh_hester").select("id,kunde_id,navn").eq("id", dyrId).maybeSingle();
+      if(sj.error) throw sj.error;
+      if(!sj.data){ msg("Fant ikke valgt dyr", true); return false; }
+      if(String(sj.data.kunde_id) !== String(kundeId)){ msg("Feil dyr/eier: " + (sj.data.navn || "valgt dyr") + " tilhører ikke valgt kunde.", true); return false; }
+
+      const arbeid = num(el("behandlingPrisAuto")?.value || el("arbeidBelop")?.value || 0);
+      const varer = num(val("varerBelop"));
+      const km = num(val("behandlingKm"));
+      const kmPris = num(val("behandlingKmPris"));
+      const eksMva = arbeid + varer + (km * kmPris);
+      const mva = eksMva * 0.25;
+      const total = eksMva + mva;
+      const dato = val("behandlingDato") || new Date().toISOString().slice(0,10);
+
+      const payload = {
+        kunde_id:kundeId,
+        hest_id:dyrId,
+        dato,
+        behandlingtype:val("behandlingType"),
+        beskrivelse:val("behandlingBeskrivelse"),
+        km,
+        km_pris:kmPris,
+        arbeid_belop:arbeid,
+        varer_belop:varer,
+        mva,
+        total,
+        fakturert:false
+      };
+
+      const res = await c.from("beh_behandlinger").insert([payload]).select("id").maybeSingle();
+      if(res.error) throw res.error;
+
+      try{ await lastOppBilde(res.data?.id); }catch(bildeFeil){ console.warn("Bilde ble ikke lagret", bildeFeil); }
+      await c.from("beh_hester").update({sist_skodd:dato}).eq("id", dyrId);
+
+      msg("Behandling lagret ✅ Ikke fakturert er oppdatert.", false);
+      if(el("behandlingBeskrivelse")) el("behandlingBeskrivelse").value = "";
+      if(el("varerBelop")) el("varerBelop").value = "0";
+      if(el("behandlingKm")) el("behandlingKm").value = "0";
+      if(el("behandlingKmPris")) el("behandlingKmPris").value = "5.30";
+      if(el("behandlingDato")) el("behandlingDato").value = new Date().toISOString().slice(0,10);
+      // Behold prisfeltet synlig etter lagring, så brukeren ser hva som ble lagret.
+      synkArbeidFraPrisfelt();
+
+      if(typeof window.hentBehandlinger === "function") { try{ await window.hentBehandlinger(); }catch(e){ console.warn(e); } }
+      await oppdaterBehandlingStatusDirekte();
+      return false;
+    }catch(e){
+      console.error("Endelig behandling-lagring feilet", e);
+      msg("Kunne ikke lagre behandling: " + (e.message || e), true);
+      return false;
+    }finally{
+      lagrer = false;
+      if(knapp){ knapp.disabled = false; knapp.textContent = gammel; }
+    }
+  }
+
+  async function start(){
+    sikrePrisfelt();
+    try{ await hentPriser(true); fyllDropdown(); }catch(e){ console.warn("Priser kunne ikke forhåndslastes", e); }
+    const s = el("behandlingType");
+    if(s){
+      s.onchange = function(ev){ return settPrisFraValg(ev); };
+      if(s.dataset.endeligPrisBind !== "1"){
+        s.dataset.endeligPrisBind = "1";
+        s.addEventListener("change", function(ev){ ev.stopPropagation(); settPrisFraValg(); }, true);
+        s.addEventListener("input", function(ev){ ev.stopPropagation(); settPrisFraValg(); }, true);
+        s.addEventListener("focus", function(){ hentPriser(true).then(()=>{fyllDropdown(); settPrisFraValg();}); }, true);
+      }
+    }
+    const prisfelt = el("behandlingPrisAuto");
+    if(prisfelt && prisfelt.dataset.syncArbeid !== "1"){
+      prisfelt.dataset.syncArbeid = "1";
+      prisfelt.addEventListener("input", synkArbeidFraPrisfelt, true);
+      prisfelt.addEventListener("change", synkArbeidFraPrisfelt, true);
+    }
+    const knapp = el("lagreBehandlingKnapp");
+    if(knapp){
+      knapp.onclick = lagreBehandlingEndelig;
+      if(knapp.dataset.endeligLagreBind !== "1"){
+        knapp.dataset.endeligLagreBind = "1";
+        knapp.addEventListener("click", lagreBehandlingEndelig, true);
+      }
+    }
+    window.behLagreBehandlingDirekte = lagreBehandlingEndelig;
+    window.lagreBehandling = lagreBehandlingEndelig;
+    await oppdaterBehandlingStatusDirekte();
+  }
+
+  window.behEndeligPrisOgLagring = start;
+  window.behLagreBehandlingEndelig = lagreBehandlingEndelig;
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.addEventListener("load", function(){ setTimeout(start,100); setTimeout(start,800); setTimeout(start,2000); });
+  window.addEventListener("hashchange", function(){ setTimeout(start,100); });
+  setInterval(function(){ sikrePrisfelt(); synkArbeidFraPrisfelt(); }, 500);
+})();
+</script>
+
+
+<script>
+(function () {
+  function bindJournalTale(){
+    const knapp = document.getElementById("journalTaleKnapp");
+    if(!knapp || knapp.dataset.bound==="1") return;
+    knapp.dataset.bound="1";
+    knapp.addEventListener("click", function(){
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SpeechRecognition){ alert("Talegjenkjenning støttes ikke."); return; }
+      const recognition = new SpeechRecognition();
+      recognition.lang = "no-NO";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.onresult = function(event){
+        const tekst = event.results[0][0].transcript;
+        const felt = document.getElementById("behandlingBeskrivelse");
+        if(!felt) return;
+        felt.value = felt.value ? felt.value + "\n" + tekst : tekst;
+      };
+      recognition.start();
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", bindJournalTale);
+  else bindJournalTale();
+})();
+</script>
+
+
+<script>
+// JOURNALTALE + PUNKTSETTING TRYGG FIX 2026-06-14
+// Trygg versjon: rører ikke behandlingType, behandlingPrisAuto eller arbeidBelop.
+(function(){
+  function el(id){ return document.getElementById(id); }
+
+  function punktsettTekst(tekst){
+    let s = String(tekst || "").trim();
+    if(!s) return "";
+    s = s
+      .replace(/\bkomma\b/gi, ",")
+      .replace(/\bpunktum\b/gi, ".")
+      .replace(/\bny linje\b/gi, "\n")
+      .replace(/\bnytt avsnitt\b/gi, "\n\n");
+    s = s.replace(/\s+([,.!?])/g, "$1");
+    s = s.replace(/([,.!?])([^\s\n])/g, "$1 $2");
+    s = s.replace(/(^|[.!?]\s+)([a-zæøå])/g, function(m, start, bokstav){
+      return start + bokstav.toUpperCase();
+    });
+    if(!/[.!?]$/.test(s)) s += ".";
+    return s;
+  }
+
+  function skrivMelding(tekst, feil){
+    const m = el("behandlingMelding") || el("taleResultat");
+    if(m){ m.textContent = tekst || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+  }
+
+  function leggTilJournaltekst(tekst){
+    const felt = el("behandlingBeskrivelse");
+    if(!felt) return;
+    const ferdig = punktsettTekst(tekst);
+    if(!ferdig){ skrivMelding("Ingen tekst ble hørt.", true); return; }
+    felt.value = felt.value.trim() ? felt.value.trimEnd() + "\n" + ferdig : ferdig;
+    felt.dispatchEvent(new Event("input", {bubbles:true}));
+    felt.dispatchEvent(new Event("change", {bubbles:true}));
+    skrivMelding("Journalnotat lagt inn med punktsetting ✅", false);
+    felt.focus();
+  }
+
+  function startJournalTaleDirekte(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition){
+      alert("Talegjenkjenning støttes ikke i denne nettleseren. Bruk Chrome eller Edge.");
+      return false;
+    }
+    const knapp = el("journalTaleKnapp");
+    const recognition = new SpeechRecognition();
+    recognition.lang = "no-NO";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onstart = function(){ if(knapp) knapp.textContent = "🎙️ Lytter ..."; skrivMelding("Lytter til journalnotat ...", false); };
+    recognition.onend = function(){ if(knapp) knapp.textContent = "🎤 Snakk inn journalnotat"; };
+    recognition.onerror = function(event){
+      if(knapp) knapp.textContent = "🎤 Snakk inn journalnotat";
+      skrivMelding("Tale feilet: " + ((event && event.error) || "ukjent feil"), true);
+    };
+    recognition.onresult = function(event){
+      const tekst = event.results && event.results[0] && event.results[0][0] ? event.results[0][0].transcript : "";
+      leggTilJournaltekst(tekst);
+    };
+    try{ recognition.start(); }catch(e){ skrivMelding("Kunne ikke starte tale: " + (e.message || e), true); }
+    return false;
+  }
+
+  function bind(){
+    const knapp = el("journalTaleKnapp");
+    if(knapp){
+      knapp.onclick = startJournalTaleDirekte;
+      if(knapp.dataset.journalTrygg !== "1"){
+        knapp.dataset.journalTrygg = "1";
+        knapp.addEventListener("click", startJournalTaleDirekte, true);
+        knapp.addEventListener("touchend", startJournalTaleDirekte, true);
+      }
+    }
+
+    const lagreDyr = el("lagreHestKnapp");
+    if(lagreDyr && lagreDyr.dataset.autoKundeTrygg !== "1"){
+      lagreDyr.dataset.autoKundeTrygg = "1";
+      lagreDyr.addEventListener("click", function(ev){
+        if(el("hestKunde")?.value) return;
+        const boks = el("nyKundeFraDyrBoks");
+        if(boks) boks.classList.remove("skjult");
+        const m = el("nyKundeFraDyrMelding") || el("hestMelding");
+        if(m){ m.textContent = "Velg kunde, eller lag ny kunde her først."; m.style.color = "#fca5a5"; }
+        setTimeout(function(){ el("dyrNyKundeNavn")?.focus(); }, 50);
+        ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){}
+        return false;
+      }, true);
+    }
+  }
+
+  window.startJournalTaleDirekte = startJournalTaleDirekte;
+  window.leggTilJournaltekst = leggTilJournaltekst;
+  window.behPunktsettTekst = punktsettTekst;
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+  window.addEventListener("load", function(){ setTimeout(bind,100); setTimeout(bind,800); setTimeout(bind,2000); });
+  window.addEventListener("hashchange", function(){ setTimeout(bind,100); });
+})();
+</script>
+
+
+<script>
+// LAG FAKTURA HARDFIX 2026-06-15
+// Binder Lag faktura-knappen sist. Prøver først eksisterende faktura-funksjoner,
+// ellers lager den en enkel PDF direkte fra ufakturerte behandlinger.
+(function(){
+  let lager = false;
+
+  function el(id){ return document.getElementById(id); }
+  function val(id){ return (el(id)?.value || "").trim(); }
+  function num(v){ const n = Number(String(v ?? "0").replace(",", ".")); return Number.isFinite(n) ? n : 0; }
+  function kr(v){ return num(v).toLocaleString("no-NO", {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function datoNo(v){
+    if(!v) return "";
+    const s = String(v).slice(0,10);
+    const d = s.split("-");
+    return d.length === 3 ? d[2] + "." + d[1] + "." + d[0] : s;
+  }
+  function today(){ return new Date().toISOString().slice(0,10); }
+
+  function msg(t, feil){
+    const m = el("fakturaMelding") || el("behandlingMelding");
+    if(m){ m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+    if(t) console.log("LAG-FAKTURA-HARDFIX:", t);
+  }
+
+  async function client(){
+    for(let i=0;i<100;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      if(window.supabase && window.supabase.createClient){
+        window.supabaseClient = window.supabase.createClient(
+          "https://pxlbrywowphkczkehmee.supabase.co",
+          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
+          { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage} }
+        );
+        return window.supabaseClient;
+      }
+      await new Promise(r=>setTimeout(r,100));
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+
+  function hentJsPdf(){
+    if(window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+    if(window.jsPDF) return window.jsPDF;
+    return null;
+  }
+
+  async function provEksisterendeFakturaFunksjoner(ev){
+    const navn = [
+      "lagFaktura",
+      "lagFakturaPDF",
+      "lagBehFaktura",
+      "lagBehFakturaPDF",
+      "lagFakturaForKunde",
+      "opprettFaktura",
+      "genererFaktura",
+      "lagFakturaDirekte"
+    ];
+
+    for(const n of navn){
+      const fn = window[n];
+      if(typeof fn === "function" && fn !== window.behLagFakturaHardfix){
+        try{
+          msg("Lager faktura ...", false);
+          const res = await fn(ev);
+          return { brukt:true, res };
+        }catch(e){
+          console.warn("Eksisterende fakturafunksjon feilet:", n, e);
+        }
+      }
+    }
+
+    return { brukt:false };
+  }
+
+  async function hentFirma(c){
+    try{
+      const r = await c.from("beh_firma").select("*").limit(1).maybeSingle();
+      if(!r.error && r.data) return r.data;
+    }catch(e){}
+    return {};
+  }
+
+  async function hentKunde(c, kundeId){
+    const r = await c.from("beh_kunder")
+      .select("id,navn,adresse,epost,telefon,kontaktperson")
+      .eq("id", kundeId)
+      .maybeSingle();
+    if(r.error) throw r.error;
+    if(!r.data) throw new Error("Fant ikke valgt kunde.");
+    return r.data;
+  }
+
+  async function hentUfakturerte(c, kundeId){
+    let r = await c.from("beh_behandlinger")
+      .select("id,dato,behandlingtype,beskrivelse,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,hester:beh_hester(navn)")
+      .eq("kunde_id", kundeId)
+      .eq("fakturert", false)
+      .order("dato", {ascending:true});
+
+    if(r.error){
+      // fallback hvis relational select feiler
+      r = await c.from("beh_behandlinger")
+        .select("id,dato,behandlingtype,beskrivelse,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,hest_id")
+        .eq("kunde_id", kundeId)
+        .eq("fakturert", false)
+        .order("dato", {ascending:true});
+    }
+
+    if(r.error) throw r.error;
+    return r.data || [];
+  }
+
+  function lagPdf(firma, kunde, behandlinger){
+    const JsPDF = hentJsPdf();
+    if(!JsPDF) throw new Error("jsPDF er ikke lastet.");
+
+    const doc = new JsPDF({ unit:"mm", format:"a4" });
+    const margin = 14;
+    let y = 16;
+
+    const fakturaNr = "BEH-" + new Date().toISOString().slice(0,10).replaceAll("-","") + "-" + String(Date.now()).slice(-5);
+
+    doc.setFontSize(18);
+    doc.text("Faktura", margin, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.text("Fakturanr: " + fakturaNr, margin, y); y += 5;
+    doc.text("Dato: " + datoNo(today()), margin, y); y += 9;
+
+    doc.setFontSize(12);
+    doc.text(String(firma.firmanavn || firma.navn || "Rett i Lomma"), margin, y);
+    y += 5;
+    doc.setFontSize(9);
+    if(firma.adresse){ doc.text(String(firma.adresse), margin, y); y += 4; }
+    if(firma.orgnr || firma.org_nr){ doc.text("Org.nr: " + String(firma.orgnr || firma.org_nr), margin, y); y += 4; }
+    if(firma.epost){ doc.text(String(firma.epost), margin, y); y += 4; }
+    if(firma.telefon){ doc.text(String(firma.telefon), margin, y); y += 4; }
+
+    y += 5;
+    doc.setFontSize(12);
+    doc.text("Kunde", margin, y); y += 5;
+    doc.setFontSize(9);
+    doc.text(String(kunde.navn || ""), margin, y); y += 4;
+    if(kunde.adresse){ doc.text(String(kunde.adresse), margin, y); y += 4; }
+    if(kunde.epost){ doc.text(String(kunde.epost), margin, y); y += 4; }
+    if(kunde.telefon){ doc.text(String(kunde.telefon), margin, y); y += 6; }
+
+    y += 3;
+    doc.setFontSize(9);
+    doc.text("Dato", margin, y);
+    doc.text("Dyr", 34, y);
+    doc.text("Behandling", 68, y);
+    doc.text("Beløp", 180, y, {align:"right"});
+    y += 2;
+    doc.line(margin, y, 196, y);
+    y += 5;
+
+    let sumEks = 0;
+    let sumMva = 0;
+    let sumTotal = 0;
+
+    for(const b of behandlinger){
+      if(y > 270){
+        doc.addPage();
+        y = 16;
+      }
+
+      const eks = num(b.arbeid_belop) + num(b.varer_belop) + (num(b.km) * num(b.km_pris));
+      const mva = num(b.mva || eks * 0.25);
+      const total = num(b.total || eks + mva);
+      sumEks += eks;
+      sumMva += mva;
+      sumTotal += total;
+
+      doc.text(datoNo(b.dato), margin, y);
+      doc.text(String((b.hester && b.hester.navn) || ""), 34, y);
+      const beh = String(b.behandlingtype || "Behandling");
+      doc.text(beh.length > 48 ? beh.slice(0,45) + "..." : beh, 68, y);
+      doc.text(kr(total), 180, y, {align:"right"});
+      y += 5;
+    }
+
+    y += 3;
+    doc.line(120, y, 196, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.text("Sum eks. mva:", 140, y, {align:"right"});
+    doc.text(kr(sumEks), 180, y, {align:"right"}); y += 5;
+    doc.text("MVA:", 140, y, {align:"right"});
+    doc.text(kr(sumMva), 180, y, {align:"right"}); y += 5;
+    doc.setFontSize(12);
+    doc.text("Total:", 140, y, {align:"right"});
+    doc.text(kr(sumTotal), 180, y, {align:"right"}); y += 8;
+
+    doc.setFontSize(9);
+    if(firma.kontonr || firma.kontonummer){
+      doc.text("Kontonr: " + String(firma.kontonr || firma.kontonummer), margin, y); y += 4;
+    }
+    if(firma.vipps_nummer){
+      doc.text("Vipps: " + String(firma.vipps_nummer) + (firma.vipps_mottaker ? " - " + String(firma.vipps_mottaker) : ""), margin, y); y += 4;
+    }
+
+    doc.save("faktura-" + fakturaNr + ".pdf");
+    return fakturaNr;
+  }
+
+  async function lagDirekteFaktura(){
+    const kundeId = val("fakturaKunde");
+    if(!kundeId){
+      msg("Velg kunde først.", true);
+      return false;
+    }
+
+    const c = await client();
+    const [firma, kunde, behandlinger] = await Promise.all([
+      hentFirma(c),
+      hentKunde(c, kundeId),
+      hentUfakturerte(c, kundeId)
+    ]);
+
+    if(!behandlinger.length){
+      msg("Ingen ufakturerte behandlinger på valgt kunde.", true);
+      return false;
+    }
+
+    const fakturaNr = lagPdf(firma, kunde, behandlinger);
+
+    const ids = behandlinger.map(b => b.id).filter(Boolean);
+    if(ids.length){
+      const upd = await c.from("beh_behandlinger")
+        .update({ fakturert:true })
+        .in("id", ids);
+      if(upd.error) console.warn("Kunne ikke merke behandlinger fakturert:", upd.error);
+    }
+
+    msg("Faktura laget ✅ " + fakturaNr, false);
+
+    if(typeof window.hentBehandlinger === "function"){
+      try{ await window.hentBehandlinger(); }catch(e){}
+    }
+    if(typeof window.hentFakturaOversikt === "function"){
+      try{ await window.hentFakturaOversikt(); }catch(e){}
+    }
+
+    return false;
+  }
+
+  async function behLagFakturaHardfix(ev){
+    if(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      try{ ev.stopImmediatePropagation(); }catch(e){}
+    }
+
+    if(lager) return false;
+    lager = true;
+
+    const knapp = el("lagFakturaKnapp");
+    const gammel = knapp?.textContent || "Lag faktura PDF";
+    if(knapp){ knapp.disabled = true; knapp.textContent = "Lager faktura ..."; }
+
+    try{
+      // Først: bruk eksisterende faktura-kode hvis den finnes.
+      const eksisterende = await provEksisterendeFakturaFunksjoner(ev);
+      if(eksisterende.brukt){
+        msg("Faktura-funksjon kjørt ✅", false);
+        return false;
+      }
+
+      // Fallback: lag enkel faktura direkte.
+      return await lagDirekteFaktura();
+    }catch(e){
+      console.error("Lag faktura hardfix feilet:", e);
+      msg("Kunne ikke lage faktura: " + (e.message || e), true);
+      alert("Kunne ikke lage faktura: " + (e.message || e));
+      return false;
+    }finally{
+      lager = false;
+      if(knapp){ knapp.disabled = false; knapp.textContent = gammel; }
+    }
+  }
+
+  function bind(){
+    const knapp = el("lagFakturaKnapp");
+    if(!knapp) return;
+    knapp.onclick = behLagFakturaHardfix;
+    if(knapp.dataset.lagFakturaHardfix !== "1"){
+      knapp.dataset.lagFakturaHardfix = "1";
+      knapp.addEventListener("click", behLagFakturaHardfix, true);
+      knapp.addEventListener("touchend", behLagFakturaHardfix, true);
+    }
+  }
+
+  window.behLagFakturaHardfix = behLagFakturaHardfix;
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+
+  window.addEventListener("load", function(){
+    setTimeout(bind,100);
+    setTimeout(bind,800);
+    setTimeout(bind,2000);
+  });
+  window.addEventListener("hashchange", function(){ setTimeout(bind,100); });
 })();
 </script>
 

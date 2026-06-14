@@ -1,0 +1,8 @@
+navn,kategori,pris,mva_sats,aktiv
+Massasje,behandling,950,25,true
+Kiropraktikk,behandling,1200,25,true
+Akupunktur,behandling,1100,25,true
+Laserbehandling,behandling,850,25,true
+Osteopati,behandling,1200,25,true
+Stretching/oppfølging,behandling,750,25,true
+Kjøring per km,kjoring,5.30,25,true
