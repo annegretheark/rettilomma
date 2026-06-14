@@ -122,7 +122,7 @@ function settKlinikkSkjemaLesemodusForVanligVet() {
 }
 
 function fyllKlinikkSkjemaMedAktivKlinikk() {
-  if (vetErSystemAdmin === true || !vetAktivKlinikk) return;
+  if (!vetAktivKlinikk) return;
 
   vetSett("klinikkId", vetAktivKlinikk.id);
   vetSett("klinikkNavn", vetAktivKlinikk.navn);

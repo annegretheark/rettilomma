@@ -417,7 +417,7 @@
         <div><label for="vetVareKategori">Kategori</label><select id="vetVareKategori"><option value="medisin">Medisin</option><option value="bandasje">Bandasje</option><option value="forbruk">Forbruk</option><option value="annet">Annet</option></select></div>
         <div><label for="vetVareEnhet">Enhet</label><input id="vetVareEnhet" placeholder="stk, dose, pakke" value="stk"></div>
         <div><label for="vetVarePris">Utsalgspris eks. mva</label><input id="vetVarePris" type="number" step="0.01" min="0" value="0"></div>
-        <div><label for="vetVareMinimum">Minimum totalt</label><input id="vetVareMinimum" type="number" step="0.01" min="0" value="0"></div>
+        <div><label for="vetVareMinimum">Minimum totalt</label><input id="vetVareMinimum" type="number" step="1" min="0" value="0"></div>
       </div>
       <button id="lagreVetVareKnapp" type="button">Lagre medisin/vare</button>
       <button id="nyVetVareKnapp" type="button" class="secondary">Ny vare</button>
@@ -685,7 +685,7 @@
 <script src="../js/core/config.js"></script>
 <script src="../js/veterinaer/vet-app.js?v=20260611adminokonomi1"></script>
 <script src="../js/veterinaer/vet-klinikk-priser-bilder.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-lager-bil.js?v=20260611safe1"></script>
+<script src="../js/veterinaer/vet-lager-bil.js?v=20260614pdfkunlokal1"></script>
 <script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
 <script src="../js/veterinaer/vet-faktura-okonomi.js?v=20260611split"></script>
 <script src="../js/veterinaer/vet-backup-import-admin.js?v=20260611split"></script>
@@ -1032,6 +1032,93 @@ window.stoppTale = stoppTale;
   }, true);
 })();</script>
 
+
+
+<script>
+/* HARD FIX 2026-06-14: Oppsett-knappen skal ikke kunne bli død/skjult for admin. */
+(function () {
+  function getGlobalBool(name) {
+    try { return Function('return (typeof ' + name + ' !== "undefined" ? ' + name + ' : false)')() === true; }
+    catch(e) { return false; }
+  }
+
+  function tekst(id) {
+    return String(document.getElementById(id)?.textContent || '').toLowerCase();
+  }
+
+  async function erAdminBruker() {
+    try {
+      if (getGlobalBool('vetErSystemAdmin')) return true;
+      if (typeof window.erKlinikkAdmin === 'function' && window.erKlinikkAdmin()) return true;
+    } catch(e) {}
+
+    const rolle = tekst('vetToppRolle');
+    const info = tekst('aktivKlinikkInfo');
+    if (rolle.includes('systemadministrator') || rolle.includes('klinikkadministrator')) return true;
+    if (info.includes('systemadmin') || info.includes('(admin)') || info.includes('(systemadmin)')) return true;
+
+    try {
+      if (window.supabaseClient?.auth) {
+        const { data } = await supabaseClient.auth.getUser();
+        const email = String(data?.user?.email || '').toLowerCase();
+        if (email === 'greknuts@online.no') return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  async function hardKobleOppsett() {
+    const knapp = document.getElementById('vetOppsettKnapp');
+    const meny = document.getElementById('vetOppsettMeny');
+    if (!knapp || !meny) return;
+
+    const admin = await erAdminBruker();
+    if (!admin) {
+      knapp.style.display = 'none';
+      knapp.classList.add('skjult');
+      return;
+    }
+
+    knapp.classList.remove('skjult');
+    knapp.style.display = 'inline-block';
+    knapp.disabled = false;
+    knapp.type = 'button';
+
+    knapp.onclick = function(ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      const vis = meny.classList.contains('skjult') || meny.style.display === 'none' || getComputedStyle(meny).display === 'none';
+      meny.classList.toggle('skjult', !vis);
+      meny.style.display = vis ? 'block' : 'none';
+      return false;
+    };
+  }
+
+  document.addEventListener('click', function(ev) {
+    const knapp = ev.target?.closest?.('#vetOppsettKnapp');
+    if (!knapp) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    try { ev.stopImmediatePropagation(); } catch(e) {}
+    const meny = document.getElementById('vetOppsettMeny');
+    if (meny) {
+      const vis = meny.classList.contains('skjult') || meny.style.display === 'none' || getComputedStyle(meny).display === 'none';
+      meny.classList.toggle('skjult', !vis);
+      meny.style.display = vis ? 'block' : 'none';
+    }
+    hardKobleOppsett();
+    return false;
+  }, true);
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hardKobleOppsett);
+  else hardKobleOppsett();
+  window.addEventListener('load', function(){
+    hardKobleOppsett();
+    setTimeout(hardKobleOppsett, 300);
+    setTimeout(hardKobleOppsett, 1200);
+    setTimeout(hardKobleOppsett, 3000);
+  });
+})();
+</script>
 
 </body>
 </html>

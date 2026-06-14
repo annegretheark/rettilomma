@@ -113,11 +113,36 @@ async function lastVetKlinikkTilgang() {
   }
 
   if (vetErSystemAdmin) {
-    vetAktivKlinikkId = null;
-    vetAktivKlinikk = null;
+    // Systemadmin skal fortsatt se alle klinikker, men må ha en aktiv klinikk_id
+    // når det lagres bil/lager. Hent brukerens egen klinikkkobling hvis den finnes.
+    try {
+      const { data: sysBruker, error: sysErr } = await supabaseClient
+        .from("vet_klinikk_brukere")
+        .select("id, klinikk_id, rolle, navn, epost, auth_user_id, vet_klinikker(*)")
+        .eq("epost", epost)
+        .eq("aktiv", true)
+        .maybeSingle();
+
+      if (!sysErr && sysBruker) {
+        vetAktivKlinikkId = sysBruker.klinikk_id || null;
+        vetAktivKlinikk = sysBruker.vet_klinikker || null;
+        vetInnloggetKlinikkBrukerId = sysBruker.id || "";
+        vetInnloggetBrukerNavn = String(sysBruker.navn || sysBruker.epost || epost || "Systemadmin").trim();
+      } else {
+        vetAktivKlinikkId = null;
+        vetAktivKlinikk = null;
+        vetInnloggetKlinikkBrukerId = "";
+        vetInnloggetBrukerNavn = "Systemadmin";
+      }
+    } catch (e) {
+      console.warn("Kunne ikke hente klinikkkobling for systemadmin:", e);
+      vetAktivKlinikkId = null;
+      vetAktivKlinikk = null;
+      vetInnloggetKlinikkBrukerId = "";
+      vetInnloggetBrukerNavn = "Systemadmin";
+    }
+
     vetKlinikkRolle = "systemadmin";
-    vetInnloggetBrukerNavn = "Systemadmin";
-    vetInnloggetKlinikkBrukerId = "";
     vetAdminCache = true;
     oppdaterAktivKlinikkInfo();
     return;
@@ -331,7 +356,7 @@ function oppdaterAktivKlinikkInfo(tekst = "") {
   }
 
   if (vetErSystemAdmin) {
-    el.textContent = "Systemadmin: viser alle klinikker.";
+    el.textContent = "Systemadmin: viser alle klinikker" + (vetAktivKlinikk?.navn ? " | aktiv klinikk for lagring: " + vetAktivKlinikk.navn : "");
   } else if (vetAktivKlinikk?.navn) {
     el.textContent = "Innlogget på klinikk: " + vetAktivKlinikk.navn +
       (vetKlinikkRolle ? " (" + vetKlinikkRolle + ")" : "");
@@ -510,4 +535,45 @@ async function lastVetData() {
     kobleToppmeny();
   }
   window.addEventListener('load', kobleToppmeny);
+})();
+
+
+/* HARD FIX 2026-06-14: Stabil Oppsett-knapp for admin/systemadmin. */
+(function(){
+  async function hardKobleOppsettKnapp(){
+    const knapp = document.getElementById('vetOppsettKnapp');
+    const meny = document.getElementById('vetOppsettMeny');
+    if (!knapp || !meny) return;
+
+    let admin = false;
+    try { admin = (typeof erKlinikkAdmin === 'function' && erKlinikkAdmin()) || vetErSystemAdmin === true; } catch(e) {}
+    try {
+      if (!admin && window.supabaseClient?.auth) {
+        const { data } = await supabaseClient.auth.getUser();
+        admin = String(data?.user?.email || '').toLowerCase() === 'greknuts@online.no';
+      }
+    } catch(e) {}
+
+    if (!admin) return;
+
+    knapp.classList.remove('skjult');
+    knapp.style.display = 'inline-block';
+    knapp.disabled = false;
+    knapp.onclick = function(ev){
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      const vis = meny.classList.contains('skjult') || meny.style.display === 'none' || getComputedStyle(meny).display === 'none';
+      meny.classList.toggle('skjult', !vis);
+      meny.style.display = vis ? 'block' : 'none';
+      return false;
+    };
+  }
+
+  window.hardKobleOppsettKnapp = hardKobleOppsettKnapp;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hardKobleOppsettKnapp);
+  else hardKobleOppsettKnapp();
+  window.addEventListener('load', function(){
+    hardKobleOppsettKnapp();
+    setTimeout(hardKobleOppsettKnapp, 500);
+    setTimeout(hardKobleOppsettKnapp, 2000);
+  });
 })();

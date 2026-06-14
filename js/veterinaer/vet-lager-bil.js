@@ -124,6 +124,7 @@ function tegnFyllBilFyllListe() {
   }
 
   liste.innerHTML = `
+    ${vetFyllBilTopBar('admin')}
     <div class="vet-linje-liste">
       ${rader.map(r => {
         const v = r.vare;
@@ -135,7 +136,7 @@ function tegnFyllBilFyllListe() {
           <label class="vet-linje-kort" for="fyllbil_velg_${id}" style="grid-template-columns:36px minmax(180px,1.5fr) minmax(110px,.8fr) 120px; cursor:pointer;">
             <input id="fyllbil_velg_${id}" class="fyllbil-velg" data-vare-id="${id}" type="checkbox" style="width:auto;margin:0;">
             <span class="lite" style="font-weight:400 !important;font-size:14px !important;">${navn}</span>
-            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${formaterKr(r.antall)} ${enhet}</span>
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${vetFyllBilHeltall(r.antall)} ${enhet}</span>
             <input id="fyllbil_antall_${id}" class="fyllbil-antall" data-vare-id="${id}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" value="" onclick="event.stopPropagation();" style="margin:0;font-weight:400 !important;">
           </label>
         `;
@@ -448,7 +449,7 @@ function tegnVetVarer() {
           <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v.kategori || "medisin")}</span>
           <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v.enhet || "stk")}</span>
           <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formaterKr(v.utsalgspris)} kr eks. mva</span>
-          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Min: ${formaterKr(v.minimum_antall)}</span>
+          <span class="lite" style="font-size:14px !important;font-weight:400 !important;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Min: ${vetFyllBilHeltall(v.minimum_antall)}</span>
         </button>
       `).join("")}
     </div>
@@ -475,7 +476,7 @@ function tegnHovedlager() {
   liste.innerHTML = vetHovedlager.map(r => {
     const v = r.vet_varer || {};
     const lavt = Number(v.minimum_antall || 0) > 0 && Number(r.antall || 0) <= Number(v.minimum_antall || 0);
-    return `<div class="listekort"><strong>${String(v.navn || vareNavn(r.vare_id)).replaceAll("<", "&lt;")}</strong><br><span class="lite">Hovedlager: ${formaterKr(r.antall)} ${v.enhet || "stk"}${lavt ? " ⚠ lav beholdning" : ""}</span></div>`;
+    return `<div class="listekort"><strong>${String(v.navn || vareNavn(r.vare_id)).replaceAll("<", "&lt;")}</strong><br><span class="lite">Hovedlager: ${vetFyllBilHeltall(r.antall)} ${v.enhet || "stk"}${lavt ? " ⚠ lav beholdning" : ""}</span></div>`;
   }).join("");
 }
 
@@ -494,7 +495,7 @@ function tegnBilLager() {
       <strong>${bilNavn(bilId)}</strong>
       <ul>${rader.map(r => {
         const v = r.vet_varer || {};
-        return `<li>${String(v.navn || vareNavn(r.vare_id)).replaceAll("<", "&lt;")}: ${formaterKr(r.antall)} ${v.enhet || "stk"}</li>`;
+        return `<li>${String(v.navn || vareNavn(r.vare_id)).replaceAll("<", "&lt;")}: ${vetFyllBilHeltall(r.antall)} ${v.enhet || "stk"}</li>`;
       }).join("")}</ul>
     </div>
   `).join("");
@@ -547,10 +548,17 @@ function nullstillVetBil() {
   ["vetBilId", "vetBilNavn", "vetBilRegnr", "vetBilVeterinaer"].forEach(id => vetSett(id, ""));
 }
 
+let vetLagreBilKjorer = false;
+let vetLagreBilSisteSignatur = "";
+let vetLagreBilSisteTid = 0;
+
 async function lagreVetBil() {
+  if (vetLagreBilKjorer) return false;
+
   vetMelding("vetBilMelding", "");
   const klinikkId = hentKlinikkIdForLager();
-  if (!klinikkId) { vetMelding("vetBilMelding", "Velg/lagre klinikk før du lager bil."); return; }
+  if (!klinikkId) { vetMelding("vetBilMelding", "Velg/lagre klinikk før du lager bil."); return false; }
+
   const rad = {
     klinikk_id: klinikkId,
     navn: vetTekst("vetBilNavn"),
@@ -558,14 +566,48 @@ async function lagreVetBil() {
     veterinaer_navn: vetTekst("vetBilVeterinaer") || null,
     aktiv: true
   };
-  if (!rad.navn) { vetMelding("vetBilMelding", "Skriv navn på bilen."); return; }
+  if (!rad.navn) { vetMelding("vetBilMelding", "Skriv navn på bilen."); return false; }
+
   const id = vetTekst("vetBilId");
-  const query = id ? supabaseClient.from("vet_biler").update(rad).eq("id", id) : supabaseClient.from("vet_biler").insert(rad);
-  const { error } = await query;
-  if (error) { vetMelding("vetBilMelding", "Feil ved lagring av bil: " + error.message); return; }
-  nullstillVetBil();
-  vetMelding("vetBilMelding", "Bil lagret.");
-  await lastVetLagerAlt();
+  const signatur = JSON.stringify({ id, ...rad });
+  const naa = Date.now();
+  if (!id && signatur === vetLagreBilSisteSignatur && (naa - vetLagreBilSisteTid) < 2500) {
+    vetMelding("vetBilMelding", "Bilen er allerede lagret. Vent et øyeblikk før du lagrer samme bil igjen.");
+    return false;
+  }
+
+  const knapp = document.getElementById("lagreVetBilKnapp");
+  try {
+    vetLagreBilKjorer = true;
+    if (knapp) {
+      knapp.disabled = true;
+      knapp.dataset.originalText = knapp.dataset.originalText || knapp.textContent || "Lagre bil";
+      knapp.textContent = "Lagrer bil ...";
+    }
+
+    const query = id
+      ? supabaseClient.from("vet_biler").update(rad).eq("id", id)
+      : supabaseClient.from("vet_biler").insert(rad);
+
+    const { error } = await query;
+    if (error) {
+      vetMelding("vetBilMelding", "Feil ved lagring av bil: " + error.message);
+      return false;
+    }
+
+    vetLagreBilSisteSignatur = signatur;
+    vetLagreBilSisteTid = Date.now();
+    nullstillVetBil();
+    vetMelding("vetBilMelding", "Bil lagret.");
+    await lastVetLagerAlt();
+    return true;
+  } finally {
+    vetLagreBilKjorer = false;
+    if (knapp) {
+      knapp.disabled = false;
+      knapp.textContent = knapp.dataset.originalText || "Lagre bil";
+    }
+  }
 }
 
 function redigerVetBil(id) {
@@ -610,62 +652,408 @@ async function oppdaterHovedlager() {
   }
 }
 
+
+/* ===== FYLL BIL: PDF TIL KLINIKKADMIN + LAGRING ETTERPÅ 2026-06-13 =====
+   - Lag PDF og send automatisk henter admin-e-post fra vet_klinikk_brukere per klinikk.
+   - PDF sendes automatisk til admin via Supabase Edge Function.
+   - Lager og lagerlogg oppdateres først når bruker trykker Fyll bil.
+   - Hvis noe mangler, fylles det som finnes og manglene vises i melding/PDF.
+*/
+let vetFyllBilPending = { admin: null, minbil: null };
+
+function vetFyllBilEsc(verdi) {
+  return String(verdi ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#39;');
+}
+
+function vetFyllBilDatoTekst() {
+  try { return new Date().toLocaleString('no-NO'); }
+  catch(e) { return new Date().toISOString(); }
+}
+
+function vetFyllBilDatoFilnavn() {
+  return new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+}
+
+function vetFyllBilHeltall(verdi) {
+  const n = Number(verdi || 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.floor(n);
+}
+
+function vetFyllBilVareObj(vareId, hovedRad) {
+  return hovedRad?.vet_varer || (vetVarer || []).find(v => String(v.id) === String(vareId)) || {};
+}
+
+function vetFyllBilHentValgte(selectorPrefix, bilId) {
+  const inputs = Array.from(document.querySelectorAll('.' + selectorPrefix + '-antall'));
+  const valgte = new Set(Array.from(document.querySelectorAll('.' + selectorPrefix + '-velg:checked')).map(cb => String(cb.dataset.vareId || '')));
+  return inputs
+    .map(input => ({
+      vareId: String(input.dataset.vareId || ''),
+      antall: Number(String(input.value || '').replace(',', '.'))
+    }))
+    .filter(l => l.vareId && (valgte.has(String(l.vareId)) || l.antall > 0))
+    .map(l => {
+      const hoved = (vetHovedlager || []).find(r => String(r.vare_id) === String(l.vareId));
+      const vare = vetFyllBilVareObj(l.vareId, hoved);
+      return {
+        ...l,
+        bilId,
+        varenavn: vare?.navn || vareNavn(l.vareId),
+        enhet: vare?.enhet || 'stk',
+        hovedAntall: vetFyllBilHeltall(hoved?.antall || 0)
+      };
+    });
+}
+
+function vetFyllBilValider(linjer) {
+  if (!linjer.length) return 'Velg minst én vare fra listen og skriv antall.';
+  for (const linje of linjer) {
+    if (!(linje.antall > 0)) return 'Skriv antall på alle varene du har valgt.';
+    if (!Number.isInteger(linje.antall)) return 'Antall må være heltall.';
+  }
+  return '';
+}
+
+function vetFyllBilDelOppLinjer(linjer) {
+  const kanFlyttes = [];
+  const mangler = [];
+  for (const linje of linjer) {
+    const tilgjengelig = vetFyllBilHeltall(linje.hovedAntall);
+    const ønsket = vetFyllBilHeltall(linje.antall);
+    const flyttes = Math.min(ønsket, tilgjengelig);
+    if (flyttes > 0) kanFlyttes.push({ ...linje, antallFlyttes: flyttes, manglerAntall: Math.max(0, ønsket - flyttes) });
+    if (tilgjengelig < ønsket) mangler.push({ ...linje, antallMangler: ønsket - tilgjengelig, tilgjengelig });
+  }
+  return { kanFlyttes, mangler };
+}
+
+function vetFyllBilLagSignatur(linjer, bilId) {
+  return JSON.stringify({ bilId:String(bilId || ''), linjer:linjer.map(l => [String(l.vareId), Number(l.antall)]) });
+}
+
+function vetFyllBilNullstillPending(type, knappId) {
+  if (vetFyllBilPending) vetFyllBilPending[type] = null;
+  const knapp = document.getElementById(knappId);
+  if (knapp) {
+    knapp.dataset.fyllBilPdfKlar = '0';
+    knapp.textContent = type === 'minbil' ? 'Fyll bil' : 'Fyll bil';
+  }
+}
+
+async function vetFyllBilFinnAdminEposter(klinikkId) {
+  if (!klinikkId || !window.supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from('vet_klinikk_brukere')
+      .select('epost, navn, rolle')
+      .eq('klinikk_id', klinikkId)
+      .eq('aktiv', true)
+      .in('rolle', ['admin', 'systemadmin', 'klinikkadmin']);
+    if (error) throw error;
+    return (data || [])
+      .map(r => ({ epost:String(r.epost || '').trim(), navn:String(r.navn || '').trim(), rolle:String(r.rolle || '').trim() }))
+      .filter(r => r.epost);
+  } catch(e) {
+    console.warn('Kunne ikke hente admin-e-post:', e);
+    return [];
+  }
+}
+
+function vetFyllBilPdfFilnavn(type, bilId) {
+  const bil = String(bilNavn(bilId) || 'bil').replace(/[^a-zA-Z0-9æøåÆØÅ_-]+/g, '_').slice(0, 40);
+  return `${type === 'minbil' ? 'fyll_min_bil' : 'fyll_bil'}_${bil}_${vetFyllBilDatoFilnavn()}.pdf`;
+}
+
+function vetFyllBilLastNedBlob(blob, filnavn) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filnavn;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function vetFyllBilBlobTilBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const resultat = String(reader.result || '');
+      resolve(resultat.includes(',') ? resultat.split(',')[1] : resultat);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Kunne ikke lese PDF.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function vetFyllBilSendPdfAutomatisk({ klinikkId, admins, filnavn, blob, type, bilId, linjer, mangler }) {
+  if (!window.supabaseClient?.functions?.invoke) {
+    throw new Error('Supabase Functions er ikke tilgjengelig.');
+  }
+  const pdfBase64 = await vetFyllBilBlobTilBase64(blob);
+  const til = admins.map(a => a.epost).filter(Boolean);
+  const { data, error } = await supabaseClient.functions.invoke('send-vet-fyllbil-pdf', {
+    body: {
+      klinikk_id: klinikkId,
+      to: til,
+      filename: filnavn,
+      pdf_base64: pdfBase64,
+      subject: `Fyll bil til kontroll - ${bilNavn(bilId)}`,
+      metadata: {
+        type,
+        bil: bilNavn(bilId),
+        laget_av: vetInnloggetBrukerNavn || vetInnloggetEpost || '',
+        laget_av_epost: vetInnloggetEpost || '',
+        dato: vetFyllBilDatoTekst(),
+        varelinjer: linjer.map(l => ({
+          vare_id: l.vareId,
+          varenavn: l.varenavn,
+          bestilt: vetFyllBilHeltall(l.antall),
+          lager: vetFyllBilHeltall(l.hovedAntall),
+          kan_fylles: Math.min(vetFyllBilHeltall(l.antall), vetFyllBilHeltall(l.hovedAntall)),
+          enhet: l.enhet || 'stk'
+        })),
+        mangler: mangler.map(m => ({
+          vare_id: m.vareId,
+          varenavn: m.varenavn,
+          mangler: vetFyllBilHeltall(m.antallMangler),
+          tilgjengelig: vetFyllBilHeltall(m.tilgjengelig),
+          enhet: m.enhet || 'stk'
+        }))
+      }
+    }
+  });
+  if (error) throw error;
+  if (data && data.ok === false) throw new Error(data.error || 'E-post ble ikke sendt.');
+  return data || { ok: true };
+}
+
+function vetFyllBilLastScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector('script[src="' + src + '"]')) return resolve();
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Kunne ikke laste PDF-bibliotek.'));
+    document.head.appendChild(s);
+  });
+}
+
+async function vetFyllBilLagPdfBlob(type, bilId, linjer) {
+  if (!window.jspdf?.jsPDF) {
+    await vetFyllBilLastScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const klinikk = vetAktivKlinikk || (vetKlinikker || [])[0] || {};
+  const bruker = vetInnloggetBrukerNavn || vetInnloggetEpost || '';
+  const tittel = type === 'minbil' ? 'Fyll min bil' : 'Fyll bil fra hovedlager';
+  const { mangler } = vetFyllBilDelOppLinjer(linjer);
+  let y = 14;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(tittel, 14, y); y += 9;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Klinikk: ${klinikk.navn || ''}`, 14, y); y += 5;
+  doc.text(`Bil: ${bilNavn(bilId)}`, 14, y); y += 5;
+  doc.text(`Laget av: ${bruker}`, 14, y); y += 5;
+  doc.text(`Dato: ${vetFyllBilDatoTekst()}`, 14, y); y += 9;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Vare', 14, y); doc.text('Lager', 112, y, { align:'right' }); doc.text('Bestilt', 140, y, { align:'right' }); doc.text('Kan fylles', 170, y, { align:'right' }); y += 3;
+  doc.line(14, y, 196, y); y += 5;
+  doc.setFont('helvetica', 'normal');
+
+  linjer.forEach(l => {
+    if (y > 275) { doc.addPage(); y = 14; }
+    const flyttes = Math.min(vetFyllBilHeltall(l.antall), vetFyllBilHeltall(l.hovedAntall));
+    const navn = String(l.varenavn || '').slice(0, 50);
+    doc.text(navn, 14, y);
+    doc.text(String(vetFyllBilHeltall(l.hovedAntall)), 112, y, { align:'right' });
+    doc.text(String(vetFyllBilHeltall(l.antall)), 140, y, { align:'right' });
+    doc.text(String(flyttes), 170, y, { align:'right' });
+    y += 6;
+  });
+
+  if (mangler.length) {
+    y += 5;
+    if (y > 260) { doc.addPage(); y = 14; }
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mangler / delvis fylt', 14, y); y += 6;
+    doc.setFont('helvetica', 'normal');
+    mangler.forEach(m => {
+      if (y > 275) { doc.addPage(); y = 14; }
+      doc.text(`${m.varenavn}: mangler ${m.antallMangler} ${m.enhet}. Tilgjengelig ${m.tilgjengelig}.`, 14, y);
+      y += 6;
+    });
+  }
+
+  y += 8;
+  if (y > 260) { doc.addPage(); y = 14; }
+  doc.setFontSize(9);
+  doc.text('Lager og lagerlogg oppdateres først når bruker trykker Fyll bil i Rett i Lomma.', 14, y);
+  y += 18;
+  doc.line(14, y, 74, y); doc.line(100, y, 160, y); y += 5;
+  doc.text('Signatur', 14, y); doc.text('Kontrollert av', 100, y);
+
+  return doc.output('blob');
+}
+
+async function vetFyllBilPdfOgSendAdmin(type) {
+  const meldingId = type === 'minbil' ? 'minBilMelding' : 'billagerMelding';
+  const bilId = type === 'minbil' ? valgtMinBilId() : vetTekst('fyllBilValg');
+  const prefix = type === 'minbil' ? 'minbil' : 'fyllbil';
+  const klinikkId = hentKlinikkIdForLager();
+
+  vetMelding(meldingId, '');
+  if (!klinikkId || !bilId) { vetMelding(meldingId, 'Velg bil først.'); return false; }
+
+  const linjer = vetFyllBilHentValgte(prefix, bilId);
+  const feil = vetFyllBilValider(linjer);
+  if (feil) { vetMelding(meldingId, feil); return false; }
+
+  const admins = await vetFyllBilFinnAdminEposter(klinikkId);
+  if (!admins.length) {
+    vetMelding(meldingId, 'Fant ingen aktiv admin-e-post på denne klinikken i vet_klinikk_brukere.');
+    return false;
+  }
+
+  try {
+    vetMelding(meldingId, 'Lager PDF og sender automatisk til admin ...');
+    const blob = await vetFyllBilLagPdfBlob(type, bilId, linjer);
+    const filnavn = vetFyllBilPdfFilnavn(type, bilId);
+    const { mangler } = vetFyllBilDelOppLinjer(linjer);
+    const til = admins.map(a => a.epost).join(', ');
+
+    await vetFyllBilSendPdfAutomatisk({ klinikkId, admins, filnavn, blob, type, bilId, linjer, mangler });
+
+    vetFyllBilPending[type] = { signatur: vetFyllBilLagSignatur(linjer, bilId), bilId, linjer, sendtTil: til, filnavn };
+    vetMelding(meldingId, `PDF er sendt automatisk til admin: ${til}. Lager/logg oppdateres først når du trykker Fyll bil.`);
+    return true;
+  } catch(e) {
+    console.error(e);
+    vetMelding(meldingId, 'Kunne ikke sende PDF automatisk: ' + (e.message || e) + '. Sjekk at Edge Function send-vet-fyllbil-pdf er publisert og at e-postnøkler er satt.');
+    return false;
+  }
+}
+
+function vetFyllBilTopBar(type) {
+  return `<div class="lager-ok" style="position:sticky;top:0;z-index:30;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button type="button" class="vet-fyllbil-pdf-knapp" data-fyllbil-type="${type}">Lag PDF og send e-post</button>
+    <button type="button" class="secondary vet-fyllbil-lagre-knapp" data-fyllbil-type="${type}">Fyll bil</button>
+    <span class="lite">PDF sendes automatisk til klinikkadmin. Lager/logg oppdateres først ved Fyll bil.</span>
+  </div>`;
+}
+
+async function vetFyllBilLoggRad({ klinikkId, bilId, vareId, antall, beholdningFor, beholdningEtter, kommentar }) {
+  if (!window.supabaseClient) return;
+  try {
+    await supabaseClient.from('vet_lager_logg').insert({
+      klinikk_id: klinikkId,
+      bil_id: bilId,
+      vare_id: vareId,
+      antall: vetFyllBilHeltall(antall),
+      type: 'fyll_bil',
+      retning: 'inn_bil',
+      beholdning_for: vetFyllBilHeltall(beholdningFor),
+      beholdning_etter: vetFyllBilHeltall(beholdningEtter),
+      opprettet_av_epost: vetInnloggetEpost || null,
+      opprettet_av_navn: vetInnloggetBrukerNavn || null,
+      kommentar: kommentar || null
+    });
+  } catch(e) {
+    console.warn('Kunne ikke skrive lagerlogg:', e);
+  }
+}
+
+async function vetFyllBilUtførLagring(linjer, bilId, meldingId) {
+  const klinikkId = hentKlinikkIdForLager();
+  if (!klinikkId || !bilId) throw new Error('Velg bil først.');
+
+  const { kanFlyttes, mangler } = vetFyllBilDelOppLinjer(linjer);
+  if (!kanFlyttes.length) {
+    const tekst = mangler.length
+      ? 'Ingen varer ble flyttet. Mangler på hovedlager: ' + mangler.map(m => `${m.varenavn} mangler ${m.antallMangler}`).join(', ')
+      : 'Ingen varer kan flyttes.';
+    vetMelding(meldingId, tekst);
+    return { flyttet: [], mangler };
+  }
+
+  const flyttet = [];
+  for (const linje of kanFlyttes) {
+    const hoved = (vetHovedlager || []).find(r => String(r.vare_id) === String(linje.vareId));
+    const hovedAntall = vetFyllBilHeltall(hoved?.antall || 0);
+    const antall = vetFyllBilHeltall(linje.antallFlyttes);
+    if (antall <= 0) continue;
+
+    const bilRad = (vetBilLager || []).find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(linje.vareId));
+    const bilFor = vetFyllBilHeltall(bilRad?.antall || 0);
+    const bilEtter = bilFor + antall;
+    const hovedEtter = Math.max(0, hovedAntall - antall);
+
+    await settLagerAntall('vet_lager', { klinikk_id: klinikkId, vare_id: linje.vareId }, hovedEtter);
+    await settLagerAntall('vet_bil_lager', { klinikk_id: klinikkId, bil_id: bilId, vare_id: linje.vareId }, bilEtter);
+    await vetFyllBilLoggRad({
+      klinikkId,
+      bilId,
+      vareId: linje.vareId,
+      antall,
+      beholdningFor: bilFor,
+      beholdningEtter: bilEtter,
+      kommentar: `Fylte ${antall} ${linje.varenavn} på ${bilNavn(bilId)}`
+    });
+    flyttet.push({ ...linje, antallFlyttet: antall });
+  }
+
+  const manglerTekst = mangler.length
+    ? ' Mangler/delvis ikke fylt: ' + mangler.map(m => `${m.varenavn} mangler ${m.antallMangler} ${m.enhet}`).join(', ') + '.'
+    : '';
+  vetMelding(meldingId, `Fyll bil lagret. ${flyttet.length} varelinje(r) er flyttet til bilen.${manglerTekst}`);
+  return { flyttet, mangler };
+}
+/* ===== SLUTT FYLL BIL PDF TIL ADMIN ===== */
+
 async function flyttTilBil() {
   vetMelding("billagerMelding", "");
   const klinikkId = hentKlinikkIdForLager();
   const bilId = vetTekst("fyllBilValg");
+  const knapp = document.getElementById("flyttTilBilKnapp");
 
   if (!klinikkId || !bilId) {
     vetMelding("billagerMelding", "Velg bil først.");
     return;
   }
 
-  const inputs = Array.from(document.querySelectorAll(".fyllbil-antall"));
-  const valgte = new Set(Array.from(document.querySelectorAll(".fyllbil-velg:checked")).map(cb => String(cb.dataset.vareId || "")));
-  const linjer = inputs
-    .map(input => ({ vareId: input.dataset.vareId, antall: Number(String(input.value || "").replace(",", ".")) }))
-    .filter(l => l.vareId && (valgte.has(String(l.vareId)) || l.antall > 0));
-
-  if (!linjer.length) {
-    vetMelding("billagerMelding", "Velg minst én vare fra listen og skriv antall.");
+  const linjer = vetFyllBilHentValgte('fyllbil', bilId);
+  const feil = vetFyllBilValider(linjer);
+  if (feil) {
+    vetMelding("billagerMelding", feil);
     return;
-  }
-
-  if (linjer.some(l => !(l.antall > 0))) {
-    vetMelding("billagerMelding", "Skriv antall på alle varene du har valgt.");
-    return;
-  }
-
-  for (const linje of linjer) {
-    if (!Number.isInteger(linje.antall)) {
-      vetMelding("billagerMelding", "Antall må være heltall.");
-      return;
-    }
-
-    const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
-    const hovedAntall = Number(hoved?.antall || 0);
-    if (hovedAntall < linje.antall) {
-      vetMelding("billagerMelding", `${vareNavn(linje.vareId)}: ikke nok på hovedlager. Tilgjengelig: ${formaterKr(hovedAntall)}.`);
-      return;
-    }
   }
 
   try {
-    for (const linje of linjer) {
-      const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
-      const hovedAntall = Number(hoved?.antall || 0);
-      const bilRad = vetBilLager.find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(linje.vareId));
-      const bilNytt = Number(bilRad?.antall || 0) + linje.antall;
-
-      await settLagerAntall("vet_lager", { klinikk_id: klinikkId, vare_id: linje.vareId }, hovedAntall - linje.antall);
-      await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: linje.vareId }, bilNytt);
-    }
-
-    vetMelding("billagerMelding", `La ${linjer.length} varelinje(r) på bilen.`);
+    if (knapp) { knapp.disabled = true; knapp.textContent = 'Fyller bil ...'; }
+    await vetFyllBilUtførLagring(linjer, bilId, 'billagerMelding');
+    vetFyllBilNullstillPending('admin', 'flyttTilBilKnapp');
     await lastVetLagerAlt();
     tegnFyllBilFyllListe();
+    if (typeof window.tegnLagerLogg === 'function') window.tegnLagerLogg();
   } catch (e) {
-    vetMelding("billagerMelding", "Feil ved flytting til bil: " + (e.message || e));
+    vetMelding("billagerMelding", "Feil ved fylling av bil: " + (e.message || e));
+  } finally {
+    if (knapp) {
+      knapp.disabled = false;
+      knapp.textContent = 'Fyll bil';
+    }
   }
 }
 
@@ -743,6 +1131,7 @@ function tegnMinBilFyllListe() {
   }
 
   liste.innerHTML = `
+    ${vetFyllBilTopBar('minbil')}
     <div class="vet-linje-liste">
       ${rader.map(r => {
         const v = r.vare;
@@ -754,7 +1143,7 @@ function tegnMinBilFyllListe() {
           <label class="vet-linje-kort" for="minbil_velg_${id}" style="grid-template-columns:36px minmax(180px,1.5fr) minmax(110px,.8fr) 120px; cursor:pointer;">
             <input id="minbil_velg_${id}" class="minbil-velg" data-vare-id="${id}" type="checkbox" style="width:auto;margin:0;">
             <span class="lite" style="font-weight:400 !important;font-size:14px !important;">${navn}</span>
-            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${formaterKr(r.antall)} ${enhet}</span>
+            <span class="lite" style="font-weight:400 !important;font-size:14px !important;">På lager: ${vetFyllBilHeltall(r.antall)} ${enhet}</span>
             <input id="minbil_antall_${id}" class="minbil-antall" data-vare-id="${id}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" value="" onclick="event.stopPropagation();" style="margin:0;font-weight:400 !important;">
           </label>
         `;
@@ -781,7 +1170,7 @@ function tegnMinBilInnhold() {
 
   liste.innerHTML = rader.map(r => {
     const v = r.vet_varer || vetVarer.find(x => String(x.id) === String(r.vare_id)) || {};
-    return `<div class="listekort"><strong>${htmlEscape(v.navn || vareNavn(r.vare_id))}</strong><br><span class="lite">${formaterKr(r.antall)} ${htmlEscape(v.enhet || "stk")}</span></div>`;
+    return `<div class="listekort"><strong>${htmlEscape(v.navn || vareNavn(r.vare_id))}</strong><br><span class="lite">${vetFyllBilHeltall(r.antall)} ${htmlEscape(v.enhet || "stk")}</span></div>`;
   }).join("");
 }
 
@@ -789,56 +1178,34 @@ async function fyllMinBilMedFlereVarer() {
   vetMelding("minBilMelding", "");
   const klinikkId = hentKlinikkIdForLager();
   const bilId = valgtMinBilId();
+  const knapp = document.getElementById("fyllMinBilFlereKnapp");
 
   if (!klinikkId || !bilId) {
     vetMelding("minBilMelding", "Velg bil først.");
     return;
   }
 
-  const inputs = Array.from(document.querySelectorAll(".minbil-antall"));
-  const valgte = new Set(Array.from(document.querySelectorAll(".minbil-velg:checked")).map(cb => String(cb.dataset.vareId || "")));
-  const linjer = inputs
-    .map(input => ({ vareId: input.dataset.vareId, antall: Number(String(input.value || "").replace(",", ".")) }))
-    .filter(l => l.vareId && (valgte.has(String(l.vareId)) || l.antall > 0));
-
-  if (!linjer.length) {
-    vetMelding("minBilMelding", "Velg minst én vare fra listen og skriv antall.");
+  const linjer = vetFyllBilHentValgte('minbil', bilId);
+  const feil = vetFyllBilValider(linjer);
+  if (feil) {
+    vetMelding("minBilMelding", feil);
     return;
-  }
-
-  if (linjer.some(l => !(l.antall > 0))) {
-    vetMelding("minBilMelding", "Skriv antall på alle varene du har valgt.");
-    return;
-  }
-
-  for (const linje of linjer) {
-    if (!Number.isInteger(linje.antall)) {
-      vetMelding("minBilMelding", "Antall må være heltall.");
-      return;
-    }
-    const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
-    if (Number(hoved?.antall || 0) < linje.antall) {
-      vetMelding("minBilMelding", `${vareNavn(linje.vareId)}: ikke nok på hovedlager.`);
-      return;
-    }
   }
 
   try {
-    for (const linje of linjer) {
-      const hoved = vetHovedlager.find(r => String(r.vare_id) === String(linje.vareId));
-      const hovedNytt = Number(hoved?.antall || 0) - linje.antall;
-      const bilRad = vetBilLager.find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(linje.vareId));
-      const bilNytt = Number(bilRad?.antall || 0) + linje.antall;
-
-      await settLagerAntall("vet_lager", { klinikk_id: klinikkId, vare_id: linje.vareId }, hovedNytt);
-      await settLagerAntall("vet_bil_lager", { klinikk_id: klinikkId, bil_id: bilId, vare_id: linje.vareId }, bilNytt);
-    }
-
-    vetMelding("minBilMelding", `La ${linjer.length} varelinje(r) på bilen.`);
+    if (knapp) { knapp.disabled = true; knapp.textContent = 'Fyller bil ...'; }
+    await vetFyllBilUtførLagring(linjer, bilId, 'minBilMelding');
+    vetFyllBilNullstillPending('minbil', 'fyllMinBilFlereKnapp');
     await lastVetLagerAlt();
     fyllMinBilSide();
+    if (typeof window.tegnLagerLogg === 'function') window.tegnLagerLogg();
   } catch (e) {
     vetMelding("minBilMelding", "Feil ved fylling av bil: " + (e.message || e));
+  } finally {
+    if (knapp) {
+      knapp.disabled = false;
+      knapp.textContent = 'Fyll bil';
+    }
   }
 }
 
@@ -851,7 +1218,7 @@ function leggTilJournalVareFraBil() {
   if (antall <= 0 || !Number.isInteger(antall)) { vetMelding("journalMelding", "Antall må være et heltall større enn 0."); return; }
   const lagerRad = vetBilLager.find(r => String(r.bil_id) === String(bilId) && String(r.vare_id) === String(vareId));
   const beholdning = Number(lagerRad?.antall || 0);
-  if (beholdning < antall) { vetMelding("journalMelding", `Ikke nok på bilen. Tilgjengelig: ${formaterKr(beholdning)}.`); return; }
+  if (beholdning < antall) { vetMelding("journalMelding", `Ikke nok på bilen. Tilgjengelig: ${vetFyllBilHeltall(beholdning)}.`); return; }
   const vare = vetVarer.find(v => String(v.id) === String(vareId)) || lagerRad?.vet_varer || {};
   vetJournalVarerTemp.push({
     vare_id: vareId,
@@ -1094,3 +1461,384 @@ window.visFyllBilSide = async function visFyllBilSide() {
   }
   window.addEventListener('load', startTrygt);
 })();
+
+
+/* Reset PDF-klar status hvis bruker endrer bil/antall etter PDF er laget. */
+(function(){
+  function bindReset(){
+    const adminBil = document.getElementById('fyllBilValg');
+    const minBil = document.getElementById('minBilValg');
+    if (adminBil && !adminBil.dataset.pdfResetKoblet) {
+      adminBil.dataset.pdfResetKoblet = '1';
+      adminBil.addEventListener('change', () => vetFyllBilNullstillPending('admin','flyttTilBilKnapp'));
+    }
+    if (minBil && !minBil.dataset.pdfResetKoblet) {
+      minBil.dataset.pdfResetKoblet = '1';
+      minBil.addEventListener('change', () => vetFyllBilNullstillPending('minbil','fyllMinBilFlereKnapp'));
+    }
+    document.querySelectorAll('.fyllbil-antall,.fyllbil-velg').forEach(el => {
+      if (el.dataset.pdfResetKoblet) return;
+      el.dataset.pdfResetKoblet = '1';
+      el.addEventListener('input', () => vetFyllBilNullstillPending('admin','flyttTilBilKnapp'));
+      el.addEventListener('change', () => vetFyllBilNullstillPending('admin','flyttTilBilKnapp'));
+    });
+    document.querySelectorAll('.minbil-antall,.minbil-velg').forEach(el => {
+      if (el.dataset.pdfResetKoblet) return;
+      el.dataset.pdfResetKoblet = '1';
+      el.addEventListener('input', () => vetFyllBilNullstillPending('minbil','fyllMinBilFlereKnapp'));
+      el.addEventListener('change', () => vetFyllBilNullstillPending('minbil','fyllMinBilFlereKnapp'));
+    });
+  }
+  document.addEventListener('click', function(e){
+    if (e.target?.closest?.('#lagerSide')) setTimeout(bindReset, 0);
+  }, true);
+  window.addEventListener('load', () => setTimeout(bindReset, 500));
+})();
+
+
+/* ===== FYLL BIL: knappetekst og bunnknapper ===== */
+(function(){
+  function ryddFyllBilKnapper(){
+    const admin = document.getElementById('flyttTilBilKnapp');
+    if (admin) admin.textContent = 'Fyll bil';
+    const min = document.getElementById('fyllMinBilFlereKnapp');
+    if (min) min.textContent = 'Fyll bil';
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ryddFyllBilKnapper, { once:true });
+  else ryddFyllBilKnapper();
+  window.addEventListener('load', ryddFyllBilKnapper);
+})();
+
+
+/* ===== FYLL BIL: robust kobling for Lag PDF-knapp 2026-06-13 =====
+   Noen nettlesere/lastrekkefølger mister inline onclick på dynamisk HTML.
+   Derfor eksponeres funksjonene på window og knappene kobles også med event delegation.
+*/
+(function(){
+  try { window.vetFyllBilPdfOgSendAdmin = vetFyllBilPdfOgSendAdmin; } catch(e) {}
+  try { window.fyllMinBilMedFlereVarer = fyllMinBilMedFlereVarer; } catch(e) {}
+  try { window.flyttTilBil = flyttTilBil; } catch(e) {}
+  try { window.tegnMinBilFyllListe = tegnMinBilFyllListe; } catch(e) {}
+  try { window.tegnFyllBilFyllListe = tegnFyllBilFyllListe; } catch(e) {}
+
+  document.addEventListener('click', function(ev){
+    const pdfBtn = ev.target && ev.target.closest ? ev.target.closest('.vet-fyllbil-pdf-knapp') : null;
+    if (pdfBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const type = pdfBtn.getAttribute('data-fyllbil-type') || (pdfBtn.closest('#minBilOmrade') ? 'minbil' : 'admin');
+      if (typeof window.vetFyllBilPdfOgSendAdmin === 'function') {
+        window.vetFyllBilPdfOgSendAdmin(type);
+      } else if (typeof vetMelding === 'function') {
+        vetMelding(type === 'minbil' ? 'minBilMelding' : 'billagerMelding', 'PDF-funksjonen er ikke lastet. Trykk Ctrl+F5 og prøv igjen.');
+      }
+      return false;
+    }
+
+    const lagreBtn = ev.target && ev.target.closest ? ev.target.closest('.vet-fyllbil-lagre-knapp') : null;
+    if (lagreBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const type = lagreBtn.getAttribute('data-fyllbil-type') || (lagreBtn.closest('#minBilOmrade') ? 'minbil' : 'admin');
+      if (type === 'minbil' && typeof window.fyllMinBilMedFlereVarer === 'function') window.fyllMinBilMedFlereVarer();
+      else if (typeof window.flyttTilBil === 'function') window.flyttTilBil();
+      return false;
+    }
+  }, true);
+})();
+/* ===== SLUTT ROBUST FYLL BIL-KOBLING ===== */
+
+
+/* ===== FYLL BIL PDF: hard kobling 2026-06-14 =====
+   Sikrer at Lag PDF-knappen reagerer også når HTML tegnes på nytt inne i lagerfaner.
+*/
+(function(){
+  function msg(type, tekst) {
+    try { vetMelding(type === 'minbil' ? 'minBilMelding' : 'billagerMelding', tekst); } catch(e) {}
+  }
+
+  async function startPdf(type, knapp) {
+    type = type === 'minbil' ? 'minbil' : 'admin';
+    if (knapp) {
+      knapp.disabled = true;
+      knapp.dataset.originalText = knapp.dataset.originalText || knapp.textContent || 'Lag PDF og send e-post';
+      knapp.textContent = 'Sender PDF ...';
+    }
+    msg(type, 'Lager PDF og sender e-post til klinikkadmin ...');
+    try {
+      if (typeof vetFyllBilPdfOgSendAdmin !== 'function') {
+        throw new Error('PDF-funksjonen er ikke lastet. Trykk Ctrl+F5 og prøv igjen.');
+      }
+      await vetFyllBilPdfOgSendAdmin(type);
+    } catch(e) {
+      console.error('Lag PDF feilet:', e);
+      msg(type, 'Kunne ikke lage/sende PDF: ' + (e && e.message ? e.message : e));
+    } finally {
+      if (knapp) {
+        knapp.disabled = false;
+        knapp.textContent = knapp.dataset.originalText || 'Lag PDF og send e-post';
+      }
+    }
+    return false;
+  }
+
+  async function startLagre(type, knapp) {
+    type = type === 'minbil' ? 'minbil' : 'admin';
+    if (knapp) {
+      knapp.disabled = true;
+      knapp.dataset.originalText = knapp.dataset.originalText || knapp.textContent || 'Fyll bil';
+      knapp.textContent = 'Fyller bil ...';
+    }
+    try {
+      if (type === 'minbil') await fyllMinBilMedFlereVarer();
+      else await flyttTilBil();
+    } finally {
+      if (knapp) {
+        knapp.disabled = false;
+        knapp.textContent = knapp.dataset.originalText || 'Fyll bil';
+      }
+    }
+    return false;
+  }
+
+  window.vetFyllBilStartPdfFraKnapp = function(knapp, ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); try { ev.stopImmediatePropagation(); } catch(e) {} }
+    const type = knapp?.dataset?.fyllbilType || (knapp?.closest?.('#minBilOmrade') ? 'minbil' : 'admin');
+    return startPdf(type, knapp);
+  };
+
+  window.vetFyllBilStartLagreFraKnapp = function(knapp, ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); try { ev.stopImmediatePropagation(); } catch(e) {} }
+    const type = knapp?.dataset?.fyllbilType || (knapp?.closest?.('#minBilOmrade') ? 'minbil' : 'admin');
+    return startLagre(type, knapp);
+  };
+
+  function bindKnapper() {
+    document.querySelectorAll('.vet-fyllbil-pdf-knapp').forEach(function(knapp){
+      if (knapp.dataset.hardPdfKoblet === '1') return;
+      knapp.dataset.hardPdfKoblet = '1';
+      knapp.removeAttribute('onclick');
+      knapp.addEventListener('click', function(ev){
+        return window.vetFyllBilStartPdfFraKnapp(knapp, ev);
+      }, true);
+    });
+    document.querySelectorAll('.vet-fyllbil-lagre-knapp').forEach(function(knapp){
+      if (knapp.dataset.hardLagreKoblet === '1') return;
+      knapp.dataset.hardLagreKoblet = '1';
+      knapp.removeAttribute('onclick');
+      knapp.addEventListener('click', function(ev){
+        return window.vetFyllBilStartLagreFraKnapp(knapp, ev);
+      }, true);
+    });
+  }
+
+  document.addEventListener('click', function(ev){
+    const pdf = ev.target?.closest?.('.vet-fyllbil-pdf-knapp');
+    if (pdf) return window.vetFyllBilStartPdfFraKnapp(pdf, ev);
+    const lagre = ev.target?.closest?.('.vet-fyllbil-lagre-knapp');
+    if (lagre) return window.vetFyllBilStartLagreFraKnapp(lagre, ev);
+  }, true);
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindKnapper);
+  else bindKnapper();
+  window.addEventListener('load', function(){ setTimeout(bindKnapper, 200); setTimeout(bindKnapper, 1000); });
+  try { new MutationObserver(function(){ bindKnapper(); }).observe(document.documentElement, { childList:true, subtree:true }); } catch(e) {}
+})();
+/* ===== SLUTT HARD KOBLING ===== */
+
+/* ===== FIX 2026-06-14: Lokal PDF + lagre bil + varer i behandlingsbildet =====
+   - E-post er skrudd av. Lag PDF laster ned PDF lokalt.
+   - Lagerknapper kobles trygt uten inline onclick.
+   - Journal/behandlingsbildet henter varer fra valgt bil direkte fra vet_bil_lager hvis cache ikke er klar.
+*/
+
+// Overstyr tekst/knapperekke: ikke e-post.
+function vetFyllBilTopBar(type) {
+  return `<div class="lager-ok" style="position:sticky;top:0;z-index:30;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button type="button" class="vet-fyllbil-pdf-knapp" data-fyllbil-type="${type}">Lag PDF</button>
+    <button type="button" class="secondary vet-fyllbil-lagre-knapp" data-fyllbil-type="${type}">Fyll bil</button>
+    <span class="lite">PDF lastes ned lokalt. Lager/logg oppdateres først ved Fyll bil.</span>
+  </div>`;
+}
+
+// Overstyr PDF-funksjon: ingen Supabase Function, ingen Resend, bare lokal nedlasting.
+async function vetFyllBilPdfOgSendAdmin(type) {
+  const meldingId = type === 'minbil' ? 'minBilMelding' : 'billagerMelding';
+  const bilId = type === 'minbil' ? valgtMinBilId() : vetTekst('fyllBilValg');
+  const prefix = type === 'minbil' ? 'minbil' : 'fyllbil';
+  const klinikkId = hentKlinikkIdForLager();
+
+  vetMelding(meldingId, '');
+  if (!klinikkId || !bilId) { vetMelding(meldingId, 'Velg bil først.'); return false; }
+
+  const linjer = vetFyllBilHentValgte(prefix, bilId);
+  const feil = vetFyllBilValider(linjer);
+  if (feil) { vetMelding(meldingId, feil); return false; }
+
+  try {
+    vetMelding(meldingId, 'Lager PDF ...');
+    const blob = await vetFyllBilLagPdfBlob(type, bilId, linjer);
+    const filnavn = vetFyllBilPdfFilnavn(type, bilId);
+    vetFyllBilLastNedBlob(blob, filnavn);
+    vetFyllBilPending[type] = { signatur: vetFyllBilLagSignatur(linjer, bilId), bilId, linjer, sendtTil: '', filnavn };
+    vetMelding(meldingId, `PDF er laget og lastet ned: ${filnavn}. Lager/logg oppdateres først når du trykker Fyll bil.`);
+    return true;
+  } catch(e) {
+    console.error(e);
+    vetMelding(meldingId, 'Kunne ikke lage PDF: ' + (e.message || e));
+    return false;
+  }
+}
+
+// Overstyr direkte henting av bilvarer i journalen. Bruker både cache og Supabase.
+async function journalHentBilvarer(bilId) {
+  bilId = String(bilId || '').trim();
+  if (!bilId) return [];
+
+  let rader = (vetBilLager || [])
+    .filter(r => String(r.bil_id) === String(bilId) && Number(r.antall || 0) > 0);
+
+  if (rader.length) return rader;
+
+  try {
+    let query = supabaseClient
+      .from('vet_bil_lager')
+      .select('id,klinikk_id,bil_id,vare_id,antall,minimum_antall,created_at,vet_varer(*)')
+      .eq('bil_id', bilId)
+      .gt('antall', 0)
+      .order('created_at', { ascending: true });
+
+    const klinikkId = hentKlinikkIdForLager();
+    if (klinikkId && !vetErSystemAdmin) query = query.eq('klinikk_id', klinikkId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    rader = data || [];
+
+    if (rader.length) {
+      const andre = (vetBilLager || []).filter(r => String(r.bil_id) !== String(bilId));
+      vetBilLager = [...andre, ...rader];
+    }
+  } catch (e) {
+    console.warn('Kunne ikke hente bilvarer til journal:', e);
+    const liste = document.getElementById('journalBilVareListe');
+    if (liste) liste.innerHTML = `<p class="melding">Kunne ikke hente varer fra bilen: ${String(e.message || e)}</p>`;
+    return [];
+  }
+
+  return rader;
+}
+
+// Overstyr visning i behandlingsbildet: tydeligere og sikker ved bilbytte.
+async function fyllJournalBilVareValg() {
+  const liste = document.getElementById('journalBilVareListe');
+  const select = document.getElementById('journalBilVareValg');
+  const bilId = journalHentValgtBilId();
+
+  if (!bilId) {
+    if (select) select.innerHTML = '<option value="">Velg bil først</option>';
+    if (liste) liste.innerHTML = '<p class="lite">Velg bil først.</p>';
+    return;
+  }
+
+  if (liste) liste.innerHTML = '<p class="lite">Henter varer/medisiner fra valgt bil ...</p>';
+
+  const rader = await journalHentBilvarer(bilId);
+
+  if (!rader.length) {
+    if (select) select.innerHTML = '<option value="">Ingen varer i valgt bil</option>';
+    if (liste) liste.innerHTML = '<p class="lite">Ingen varer/medisiner funnet på valgt bil. Sjekk Bil og lager → Min bil / Fyll bil.</p>';
+    return;
+  }
+
+  if (select) {
+    select.innerHTML = '<option value="">Velg medisin/vare</option>' + rader.map(r => {
+      const v = r.vet_varer || r.vare || (vetVarer || []).find(x => String(x.id) === String(r.vare_id)) || {};
+      const navn = journalVarenavn(r.vare_id, v);
+      const pris = journalPrisForVare(v, r);
+      return `<option value="${r.vare_id}">${htmlEscape(navn)} - på bil: ${Math.floor(Number(r.antall || 0))} ${htmlEscape(v.enhet || 'stk')} - ${formaterKr(pris)} kr</option>`;
+    }).join('');
+  }
+
+  if (liste) {
+    liste.innerHTML = `
+      <div class="vet-linje-liste" style="display:grid;gap:4px;">
+        ${rader.map(r => {
+          const v = r.vet_varer || r.vare || (vetVarer || []).find(x => String(x.id) === String(r.vare_id)) || {};
+          const vareId = String(r.vare_id || '');
+          const maks = Math.floor(Number(r.antall || 0));
+          const navn = htmlEscape(journalVarenavn(vareId, v));
+          const enhet = htmlEscape(v.enhet || 'stk');
+          const pris = journalPrisForVare(v, r);
+          return `
+            <label class="vet-linje-kort" style="display:grid;grid-template-columns:34px minmax(150px,1.6fr) minmax(80px,.8fr) minmax(80px,.7fr) 100px;gap:8px;align-items:center;cursor:pointer;border:1px solid #374151;border-radius:8px;padding:6px 8px;background:#22272a;">
+              <input class="journal-bilvare-velg" data-vare-id="${htmlEscape(vareId)}" type="checkbox" style="width:auto;margin:0;">
+              <span class="lite">${navn}</span>
+              <span class="lite">På bil: ${maks} ${enhet}</span>
+              <span class="lite">${formaterKr(pris)} kr</span>
+              <input class="journal-bilvare-antall" data-vare-id="${htmlEscape(vareId)}" type="number" step="1" min="1" max="${maks}" placeholder="Antall" onclick="event.stopPropagation();" style="margin:0;">
+            </label>
+          `;
+        }).join('')}
+      </div>`;
+  }
+}
+
+// Sikker knapp- og selectkobling.
+try { window.lagreVetBil = lagreVetBil; } catch(e) {}
+try { window.nullstillVetBil = nullstillVetBil; } catch(e) {}
+(function(){
+  function bindVetLagerBilFix() {
+    const bilKnapp = document.getElementById('lagreVetBilKnapp');
+    if (bilKnapp && bilKnapp.dataset.kobletBilFix !== '1') {
+      bilKnapp.dataset.kobletBilFix = '1';
+      bilKnapp.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); try { ev.stopImmediatePropagation(); } catch(e) {} return lagreVetBil(); }, true);
+    }
+
+    const nyBil = document.getElementById('nyVetBilKnapp');
+    if (nyBil && nyBil.dataset.kobletBilFix !== '1') {
+      nyBil.dataset.kobletBilFix = '1';
+      nyBil.addEventListener('click', function(ev){ ev.preventDefault(); nullstillVetBil(); vetMelding('vetBilMelding',''); });
+    }
+
+    const vareKnapp = document.getElementById('lagreVetVareKnapp');
+    if (vareKnapp && vareKnapp.dataset.kobletBilFix !== '1') {
+      vareKnapp.dataset.kobletBilFix = '1';
+      vareKnapp.addEventListener('click', function(ev){ ev.preventDefault(); return lagreVetVare(); });
+    }
+
+    const nyVare = document.getElementById('nyVetVareKnapp');
+    if (nyVare && nyVare.dataset.kobletBilFix !== '1') {
+      nyVare.dataset.kobletBilFix = '1';
+      nyVare.addEventListener('click', function(ev){ ev.preventDefault(); nullstillVetVare(); vetMelding('vetVareMelding',''); });
+    }
+
+    const hovedKnapp = document.getElementById('oppdaterHovedlagerKnapp');
+    if (hovedKnapp && hovedKnapp.dataset.kobletBilFix !== '1') {
+      hovedKnapp.dataset.kobletBilFix = '1';
+      hovedKnapp.addEventListener('click', function(ev){ ev.preventDefault(); return oppdaterHovedlager(); });
+    }
+
+    const journalBil = document.getElementById('journalBilValg');
+    if (journalBil && journalBil.dataset.kobletBilFix !== '1') {
+      journalBil.dataset.kobletBilFix = '1';
+      journalBil.addEventListener('change', function(){ fyllJournalBilVareValg(); });
+    }
+
+    const leggBilvarer = document.getElementById('leggTilJournalVarerFraBilListeKnapp');
+    if (leggBilvarer && leggBilvarer.dataset.kobletBilFix !== '1') {
+      leggBilvarer.dataset.kobletBilFix = '1';
+      leggBilvarer.addEventListener('click', function(ev){ ev.preventDefault(); return leggTilJournalVarerFraBilListe(); });
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindVetLagerBilFix);
+  else bindVetLagerBilFix();
+  window.addEventListener('load', function(){ setTimeout(bindVetLagerBilFix, 100); setTimeout(bindVetLagerBilFix, 800); });
+  try { new MutationObserver(bindVetLagerBilFix).observe(document.documentElement, { childList:true, subtree:true }); } catch(e) {}
+
+  try { window.fyllJournalBilVareValg = fyllJournalBilVareValg; } catch(e) {}
+  try { window.journalHentBilvarer = journalHentBilvarer; } catch(e) {}
+})();
+/* ===== SLUTT FIX 2026-06-14 ===== */
