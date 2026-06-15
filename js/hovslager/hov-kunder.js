@@ -38,7 +38,10 @@ async function lagreKunde() {
     return;
   }
 
+  const firmaId = await window.hentAktivHovFirmaId();
+
   const kunde = {
+    firma_id: firmaId,
     navn,
     adresse:
       document.getElementById("kundeAdresse")

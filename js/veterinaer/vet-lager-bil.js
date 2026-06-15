@@ -921,39 +921,28 @@ async function vetFyllBilPdfOgSendAdmin(type) {
   const feil = vetFyllBilValider(linjer);
   if (feil) { vetMelding(meldingId, feil); return false; }
 
-  const admins = await vetFyllBilFinnAdminEposter(klinikkId);
-  if (!admins.length) {
-    vetMelding(meldingId, 'Fant ingen aktiv admin-e-post på denne klinikken i vet_klinikk_brukere.');
-    return false;
-  }
-
   try {
-    vetMelding(meldingId, 'Lager PDF og sender automatisk til admin ...');
+    vetMelding(meldingId, 'Lager PDF ...');
     const blob = await vetFyllBilLagPdfBlob(type, bilId, linjer);
     const filnavn = vetFyllBilPdfFilnavn(type, bilId);
-    const { mangler } = vetFyllBilDelOppLinjer(linjer);
-    const til = admins.map(a => a.epost).join(', ');
 
-    await vetFyllBilSendPdfAutomatisk({ klinikkId, admins, filnavn, blob, type, bilId, linjer, mangler });
+    vetFyllBilLastNedBlob(blob, filnavn);
 
-    // Last også ned PDF lokalt som kopi til brukeren.
-    try { vetFyllBilLastNedBlob(blob, filnavn); } catch(e) { console.warn('Kunne ikke laste ned lokal PDF-kopi:', e); }
-
-    vetFyllBilPending[type] = { signatur: vetFyllBilLagSignatur(linjer, bilId), bilId, linjer, sendtTil: til, filnavn };
-    vetMelding(meldingId, `PDF er sendt automatisk til admin: ${til}, og lastet ned lokalt. Lager/logg oppdateres først når du trykker Fyll bil.`);
+    vetFyllBilPending[type] = { signatur: vetFyllBilLagSignatur(linjer, bilId), bilId, linjer, filnavn };
+    vetMelding(meldingId, `PDF er laget og lastet ned lokalt: ${filnavn}. Lager/logg oppdateres først når du trykker Fyll bil.`);
     return true;
   } catch(e) {
     console.error(e);
-    vetMelding(meldingId, 'Kunne ikke sende PDF automatisk: ' + (e.message || e) + '. Sjekk at Edge Function send-vet-fyllbil-pdf er publisert og at e-postnøkler er satt.');
+    vetMelding(meldingId, 'Kunne ikke lage PDF: ' + (e.message || e));
     return false;
   }
 }
 
 function vetFyllBilTopBar(type) {
   return `<div class="lager-ok" style="position:sticky;top:0;z-index:30;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <button type="button" class="vet-fyllbil-pdf-knapp" data-fyllbil-type="${type}">Lag PDF og send e-post</button>
+    <button type="button" class="vet-fyllbil-pdf-knapp" data-fyllbil-type="${type}">Lag PDF</button>
     <button type="button" class="secondary vet-fyllbil-lagre-knapp" data-fyllbil-type="${type}">Fyll bil</button>
-    <span class="lite">PDF sendes automatisk til klinikkadmin. Lager/logg oppdateres først ved Fyll bil.</span>
+    <span class="lite">PDF lastes ned lokalt. Lager/logg oppdateres først ved Fyll bil.</span>
   </div>`;
 }
 
@@ -1564,10 +1553,10 @@ window.visFyllBilSide = async function visFyllBilSide() {
     type = type === 'minbil' ? 'minbil' : 'admin';
     if (knapp) {
       knapp.disabled = true;
-      knapp.dataset.originalText = knapp.dataset.originalText || knapp.textContent || 'Lag PDF og send e-post';
-      knapp.textContent = 'Sender PDF ...';
+      knapp.dataset.originalText = knapp.dataset.originalText || knapp.textContent || 'Lag PDF';
+      knapp.textContent = 'Lager PDF ...';
     }
-    msg(type, 'Lager PDF og sender e-post til klinikkadmin ...');
+    msg(type, 'Lager PDF ...');
     try {
       if (typeof vetFyllBilPdfOgSendAdmin !== 'function') {
         throw new Error('PDF-funksjonen er ikke lastet. Trykk Ctrl+F5 og prøv igjen.');
@@ -1575,11 +1564,11 @@ window.visFyllBilSide = async function visFyllBilSide() {
       await vetFyllBilPdfOgSendAdmin(type);
     } catch(e) {
       console.error('Lag PDF feilet:', e);
-      msg(type, 'Kunne ikke lage/sende PDF: ' + (e && e.message ? e.message : e));
+      msg(type, 'Kunne ikke lage PDF: ' + (e && e.message ? e.message : e));
     } finally {
       if (knapp) {
         knapp.disabled = false;
-        knapp.textContent = knapp.dataset.originalText || 'Lag PDF og send e-post';
+        knapp.textContent = knapp.dataset.originalText || 'Lag PDF';
       }
     }
     return false;

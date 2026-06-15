@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin-veiledning - HovslagerSystem</title>
+  <style>
+    :root{--bg:#111516;--card:#1b2022;--line:#334155;--text:#f8fafc;--muted:#cbd5e1;--blue:#1f6feb;--green:#0f766e;--warn:#fbbf24;}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.55} .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    header{background:linear-gradient(135deg,#172033,#111516);border:1px solid var(--line);border-radius:18px;padding:26px;margin-bottom:18px} h1{font-size:34px;margin:0 0 8px} h2{font-size:25px;margin:0 0 12px} h3{margin:18px 0 8px}.badge{display:inline-block;background:var(--green);padding:5px 10px;border-radius:999px;font-weight:bold;font-size:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin:18px 0}.toc a{display:block;color:#dbeafe;text-decoration:none;padding:8px 0;border-bottom:1px solid #26313a}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.tip{border-left:5px solid var(--warn);background:#262315;padding:12px 14px;border-radius:10px;color:#fff7d6}.ok{border-left:5px solid #22c55e;background:#13231a;padding:12px 14px;border-radius:10px;color:#dcfce7}.step{background:#111827;border:1px solid #334155;border-radius:12px;padding:14px;margin:10px 0}.step b{color:#bfdbfe}.imgbox{margin:16px 0}.imgbox img{width:100%;border-radius:14px;border:1px solid #475569;box-shadow:0 10px 30px rgba(0,0,0,.35)}.caption{color:var(--muted);font-size:14px;margin-top:6px}.small{color:var(--muted);font-size:14px} code{background:#0f172a;color:#e0f2fe;padding:2px 6px;border-radius:6px} ul{padding-left:22px} .footer{color:var(--muted);font-size:13px;margin:28px 0 10px}
+    @media print{body{background:white;color:#111}.card,header,.step{border:1px solid #ccc;background:white}.toc{display:none}.imgbox img{box-shadow:none}.wrap{max-width:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">Rett i Lomma</div>
+    <h1>Admin-veiledning for HovslagerSystem</h1>
+    <p class="small">For administrator som setter opp firma, kunder, hester, fakturaoversikt og grunnregister. Denne veiledningen bruker skjermbilder fra systemet.</p>
+  </header>
+
+  <section class="card toc">
+    <h2>Innhold</h2>
+    <a href="#firma">1. Firma og oppsett</a>
+    <a href="#kunder">2. Registrere ny kunde</a>
+    <a href="#redigerkunde">3. Redigere kunde</a>
+    <a href="#hester">4. Registrere hest</a>
+    <a href="#faktura">5. Fakturaoversikt, purring og status</a>
+    <a href="#rutine">6. Anbefalt admin-rutine</a>
+  </section>
+
+  <section id="firma" class="card">
+    <h2>1. Firma og oppsett</h2>
+    <p>Start med å fylle ut firmaopplysningene. Disse brukes på faktura, kreditnota og betalingsinformasjon.</p>
+    <div class="imgbox"><img src="bilder/03-firma-oppsett.png" alt="Firma og oppsett i HovslagerSystem"><div class="caption">Firma / oppsett med firmanavn, adresse, telefon, e-post, org.nr, MVA-nr, kontonr, Vipps nummer og Vipps mottaker.</div></div>
+    <div class="grid">
+      <div class="step"><b>Firmanavn og adresse</b><br>Legg inn navn og adresse slik det skal vises på faktura.</div>
+      <div class="step"><b>Kontaktinfo</b><br>Telefon og e-post bør være den kunden kan bruke ved spørsmål.</div>
+      <div class="step"><b>Betaling</b><br>Kontonummer og Vipps-felt brukes på faktura. Sjekk ekstra nøye at tallene er riktige.</div>
+    </div>
+    <p class="tip">Trykk <b>Lagre oppsett</b> etter endringer. Test deretter med en faktura for å se at informasjonen vises riktig.</p>
+  </section>
+
+  <section id="kunder" class="card">
+    <h2>2. Registrere ny kunde</h2>
+    <p>Kunder må registreres før hester og jobber kan kobles riktig.</p>
+    <div class="imgbox"><img src="bilder/05-registrer-kunde.png" alt="Registrere kunde"><div class="caption">Skjema for ny kunde med navn, adresse, e-post, telefon og kontaktperson.</div></div>
+    <ol>
+      <li>Gå til <b>Admin</b> og finn kundeskjemaet.</li>
+      <li>Fyll inn navn, adresse, e-post, telefon og eventuelt kontaktperson.</li>
+      <li>Trykk <b>Lagre kunde</b>.</li>
+      <li>Sjekk at kunden kommer opp i kundelisten under skjemaet.</li>
+    </ol>
+    <p class="ok">Minimum anbefalt: navn og telefon. E-post bør fylles ut hvis faktura eller dokumentasjon skal sendes digitalt.</p>
+  </section>
+
+  <section id="redigerkunde" class="card">
+    <h2>3. Redigere kunde</h2>
+    <p>Når en kunde allerede finnes, kan du bruke <b>Rediger</b> for å endre kundeinformasjon.</p>
+    <div class="imgbox"><img src="bilder/04-rediger-kunde.png" alt="Redigere kunde"><div class="caption">Kundeliste med Rediger-knapp for eksisterende kunder.</div></div>
+    <ol>
+      <li>Finn kunden i listen.</li>
+      <li>Trykk <b>Rediger</b>.</li>
+      <li>Oppdater feltene i skjemaet.</li>
+      <li>Trykk <b>Lagre kunde</b>.</li>
+    </ol>
+    <p class="tip">Unngå å lage samme kunde flere ganger. Rediger heller eksisterende kunde når telefon, adresse eller e-post endres.</p>
+  </section>
+
+  <section id="hester" class="card">
+    <h2>4. Registrere hest</h2>
+    <p>Hester registreres under <b>Hester</b>. Hver hest må kobles til riktig eier/kunde.</p>
+    <div class="imgbox"><img src="bilder/02-registrer-hest.png" alt="Registrere hest"><div class="caption">Hesteskjema med eier/kunde, velg hest å redigere, navn, rase/type, notater, sist skodd og neste besøk.</div></div>
+    <ol>
+      <li>Velg <b>Eier/kunde</b>.</li>
+      <li>Velg <b>Ny hest</b> dersom hesten ikke finnes fra før.</li>
+      <li>Fyll inn navn, rase/type og notater.</li>
+      <li>Sett <b>Sist skodd</b> og <b>Neste besøk</b> når det er relevant.</li>
+      <li>Trykk <b>Lagre hest</b>.</li>
+    </ol>
+    <p class="ok">Når kunden har flere hester, er riktig hestenavn viktig. Da treffer både taleinnlesing, jobbliste og faktura bedre.</p>
+  </section>
+
+  <section id="faktura" class="card">
+    <h2>5. Fakturaoversikt, purring og status</h2>
+    <p>Fakturaoversikten viser fakturanummer, dato, kunde, beløp, fakturastatus, betalingsstatus og purring.</p>
+    <div class="imgbox"><img src="bilder/01-fakturaoversikt.png" alt="Fakturaoversikt"><div class="caption">Fakturaoversikt med søk, filterknapper og purring.</div></div>
+    <div class="grid">
+      <div class="step"><b>Søk</b><br>Søk på kunde, fakturanummer, dato eller status.</div>
+      <div class="step"><b>Filter</b><br>Bruk Alle, Ubetalt, Purret, Betalt og Kreditert for å finne riktige fakturaer.</div>
+      <div class="step"><b>Purring</b><br>Bruk purring når faktura er sendt, men betaling mangler.</div>
+      <div class="step"><b>Eksport</b><br>Eksporter fakturaoversikten til Excel for rapportering eller regnskap.</div>
+    </div>
+    <p class="tip">Fakturaer som er laget skal ikke regnes som ufakturerte jobber. Betalingsstatus er en egen oppfølging etterpå.</p>
+  </section>
+
+  <section id="rutine" class="card">
+    <h2>6. Anbefalt admin-rutine</h2>
+    <ol>
+      <li>Fyll ut firmaoppsett først.</li>
+      <li>Registrer eller kontroller kunden.</li>
+      <li>Registrer hestene på riktig kunde.</li>
+      <li>Kontroller fakturaoversikten jevnlig.</li>
+      <li>Eksporter fakturaoversikt ved månedsslutt eller ved regnskapsavstemming.</li>
+      <li>Ta backup før større endringer.</li>
+    </ol>
+    <p class="ok">God datakvalitet i admin-delen gjør resten av appen raskere: tale, jobbregistrering, faktura og purring får riktige koblinger.</p>
+  </section>
+
+  <div class="footer">Admin-veiledning for HovslagerSystem, Rett i Lomma. Laget for lokal bruk og Vercel-demo.</div>
+</div>
+</body>
+</html>

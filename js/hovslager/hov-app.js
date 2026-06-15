@@ -75,7 +75,6 @@ document.addEventListener("DOMContentLoaded", () => {
   kobleKnapp("leggTilKundeKnapp", "lagreKunde");
   kobleKnapp("lagreHestKnapp", "lagreHest");
   kobleKnapp("lagreJobbKnapp", "lagreJobbMedHestSjekk");
-  kobleKnapp("lagFakturaKnapp", "lagHovFaktura");
   kobleKnapp("lagKreditnotaKnapp", "lagHovKreditnota");
   kobleKnapp("hentFakturaOversiktKnapp", "hentFakturaOversikt");
   kobleKnapp("eksporterFakturaExcelKnapp", "eksporterFakturaOversiktExcel");

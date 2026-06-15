@@ -91,6 +91,73 @@ function hovFjernManglendeKolonne(payload, error) {
   return false;
 }
 
+
+
+async function hentInnloggetHovEpost() {
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  if (userError) throw userError;
+  const epost = String(userData?.user?.email || "").trim().toLowerCase();
+  if (!epost) throw new Error("Fant ikke innlogget e-post.");
+  return epost;
+}
+
+async function opprettHovFirmaForInnloggetBruker(epost) {
+  // Første bruker uten eksisterende firma får automatisk eget firma og adminrolle.
+  // Hvis kolonnene rolle/er_admin ikke finnes ennå, fjernes de automatisk fra payload.
+  let payload = {
+    navn: (window.HOV_FIRMA_NAVN || window.HOV_FIRMA_LINK || "Hovslager"),
+    epost,
+    rolle: "admin",
+    er_admin: true
+  };
+
+  let res;
+  for (let forsok = 0; forsok < 5; forsok++) {
+    res = await supabaseClient
+      .from("hov_firma")
+      .insert([payload])
+      .select("*")
+      .maybeSingle();
+
+    if (!res.error) break;
+    if (!hovFjernManglendeKolonne(payload, res.error)) throw res.error;
+  }
+
+  if (res.error) throw res.error;
+  if (!res.data?.id) throw new Error("Kunne ikke opprette hov_firma for innlogget bruker.");
+
+  window.hovAktivFirmaId = res.data.id;
+  window.hovAktivFirma = res.data;
+  hovFirmaRad = res.data;
+  hovFirmaTabell = "hov_firma";
+  return res.data;
+}
+
+async function hentAktivHovFirmaId() {
+  if (!window.supabaseClient) throw new Error("Mangler Supabase-klient.");
+
+  if (window.hovAktivFirmaId) return window.hovAktivFirmaId;
+
+  const epost = await hentInnloggetHovEpost();
+
+  const { data, error } = await supabaseClient
+    .from("hov_firma")
+    .select("*")
+    .ilike("epost", epost)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const firma = data?.id ? data : await opprettHovFirmaForInnloggetBruker(epost);
+
+  window.hovAktivFirmaId = firma.id;
+  window.hovAktivFirma = firma;
+  hovFirmaRad = firma;
+  hovFirmaTabell = "hov_firma";
+  return firma.id;
+}
+
 async function hovVelgFirmaTabell() {
   if (!window.supabaseClient) throw new Error("Mangler Supabase-klient.");
   if (hovFirmaTabell) return hovFirmaTabell;
@@ -113,6 +180,27 @@ async function hovVelgFirmaTabell() {
 
 async function hentFirmaData() {
   const tabell = await hovVelgFirmaTabell();
+
+  if (tabell === "hov_firma") {
+    const epost = await hentInnloggetHovEpost();
+    const { data, error } = await supabaseClient
+      .from(tabell)
+      .select("*")
+      .ilike("epost", epost)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+
+    const firma = data?.id ? data : await opprettHovFirmaForInnloggetBruker(epost);
+    hovFirmaTabell = tabell;
+    hovFirmaRad = firma || null;
+    if (firma?.id) {
+      window.hovAktivFirmaId = firma.id;
+      window.hovAktivFirma = firma;
+    }
+    return firma || {};
+  }
+
   const { data, error } = await supabaseClient.from(tabell).select("*").limit(1).maybeSingle();
   if (error) throw error;
   hovFirmaTabell = tabell;
@@ -246,7 +334,11 @@ function tegnBrevfotAlleSiderPdf(doc, firma) {
 
 window.kobleHovOppsett = kobleHovOppsett;
 window.sjekkHovOppsett = sjekkHovOppsett;
+window.hentInnloggetHovEpost = hentInnloggetHovEpost;
+window.opprettHovFirmaForInnloggetBruker = opprettHovFirmaForInnloggetBruker;
+window.hentAktivHovFirmaId = hentAktivHovFirmaId;
 window.hentFirmaData = hentFirmaData;
+window.hentAktivHovFirmaId = hentAktivHovFirmaId;
 window.lastHovOppsett = lastHovOppsett;
 window.lagreHovOppsett = lagreHovOppsett;
 window.tegnBrevhodePdf = window.tegnBrevhodePdf || tegnBrevhodePdf;

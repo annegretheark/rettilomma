@@ -35,6 +35,15 @@ async function loggInn() {
     .getElementById("appSide")
     .classList.remove("skjult");
 
+  if (typeof window.hentAktivHovFirmaId === "function") {
+    try { await window.hentAktivHovFirmaId(); }
+    catch (e) {
+      console.error("Kunne ikke opprette/hente hov_firma:", e);
+      melding.textContent = "Kunne ikke opprette/hente firma: " + (e.message || e);
+      return;
+    }
+  }
+
   await hentKunder();
   await hentHester();
   await hentJobber();

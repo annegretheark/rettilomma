@@ -18,6 +18,70 @@ function datoVerdi(v) {
   return String(v).slice(0, 10);
 }
 
+
+function hovHestRentFilnavn(navn) {
+  return String(navn || "hest.jpg")
+    .replaceAll(" ", "_")
+    .replace(/[æøåÆØÅ]/g, b => ({ æ: "ae", ø: "o", å: "a", Æ: "Ae", Ø: "O", Å: "A" }[b] || b))
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+async function lastOppHestBildeHvisValgt(hestNavn) {
+  const fil = document.getElementById("hestBildeFil")?.files?.[0];
+  if (!fil || !window.supabaseClient) return "";
+
+  const firmaId = typeof window.hentAktivHovFirmaId === "function"
+    ? await window.hentAktivHovFirmaId()
+    : "ukjent";
+
+  const filsti = `hov-hester/${firmaId}/${Date.now()}_${hovHestRentFilnavn(fil.name)}`;
+
+  const { error: uploadError } = await window.supabaseClient
+    .storage
+    .from("bilder")
+    .upload(filsti, fil, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) throw new Error("Hestebilde ble ikke lastet opp: " + uploadError.message);
+
+  const { data } = window.supabaseClient.storage.from("bilder").getPublicUrl(filsti);
+  return data?.publicUrl || "";
+}
+
+function visHestBildePreview(url) {
+  const div = document.getElementById("hestBildePreview");
+  if (!div) return;
+
+  if (!url) {
+    div.innerHTML = "";
+    return;
+  }
+
+  div.innerHTML = `<img src="${url}" alt="Hestebilde">`;
+}
+
+function bindHestBildePreview() {
+  const input = document.getElementById("hestBildeFil");
+  if (!input || input.dataset.hestBildeBind === "1") return;
+
+  input.dataset.hestBildeBind = "1";
+  input.addEventListener("change", () => {
+    const fil = input.files?.[0];
+    if (!fil) {
+      const valgt = finnValgtHestFraSkjema();
+      visHestBildePreview(valgt?.bilde_url || "");
+      return;
+    }
+    const url = URL.createObjectURL(fil);
+    visHestBildePreview(url);
+  });
+}
+
+function nullstillHestBildeInput() {
+  const input = document.getElementById("hestBildeFil");
+  if (input) input.value = "";
+  visHestBildePreview("");
+}
+
 function finnValgtHestFraSkjema() {
   const id = document.getElementById("hestVelg")?.value || "";
   if (!id) return null;
@@ -39,7 +103,19 @@ async function lagreHest() {
     return;
   }
 
+  const firmaId = await window.hentAktivHovFirmaId();
+
+  let bildeUrl = "";
+  try {
+    bildeUrl = await lastOppHestBildeHvisValgt(navn);
+  } catch (e) {
+    console.error(e);
+    hestMelding(e.message || e, true);
+    return;
+  }
+
   const hest = {
+    firma_id: firmaId,
     kunde_id: kundeId,
     navn,
     rase: document.getElementById("hestRase")?.value.trim() || "",
@@ -47,6 +123,10 @@ async function lagreHest() {
     sist_skodd: document.getElementById("sistSkodd")?.value || null,
     neste_besok: document.getElementById("nesteBesok")?.value || null
   };
+
+  if (bildeUrl) {
+    hest.bilde_url = bildeUrl;
+  }
 
   let res;
 
@@ -68,6 +148,7 @@ async function lagreHest() {
   }
 
   hestMelding(valgtHestId ? "Hest oppdatert" : "Hest lagret");
+  nullstillHestBildeInput();
 
   await hentHester();
 
@@ -119,13 +200,22 @@ async function hentHester() {
     for (const h of hester) {
       const div = document.createElement("div");
       div.className = "listekort";
+      const bilde = h.bilde_url
+        ? `<img src="${h.bilde_url}" alt="${h.navn || "Hest"}">`
+        : `<div style="width:96px;height:76px;border-radius:10px;border:1px solid #475569;background:#111827;display:grid;place-items:center;font-size:28px;">🐴</div>`;
+
       div.innerHTML = `
-        <b>${h.navn || ""}</b><br>
-        Eier: ${kundeNavn.get(String(h.kunde_id)) || ""}<br>
-        ${h.rase || ""}<br>
-        Sist skodd: ${datoVerdi(h.sist_skodd)}<br>
-        Neste besøk: ${datoVerdi(h.neste_besok)}<br>
-        ${h.notater || ""}
+        <div class="hov-hestkort">
+          ${bilde}
+          <div>
+            <b>${h.navn || ""}</b><br>
+            Eier: ${kundeNavn.get(String(h.kunde_id)) || ""}<br>
+            ${h.rase || ""}<br>
+            Sist skodd: ${datoVerdi(h.sist_skodd)}<br>
+            Neste besøk: ${datoVerdi(h.neste_besok)}<br>
+            ${h.notater || ""}
+          </div>
+        </div>
       `;
       liste.appendChild(div);
     }
@@ -197,6 +287,7 @@ function fyllHestSkjemaFraValg() {
     document.getElementById("hestNotater").value = "";
     document.getElementById("sistSkodd").value = "";
     document.getElementById("nesteBesok").value = "";
+    nullstillHestBildeInput();
     return;
   }
 
@@ -205,9 +296,13 @@ function fyllHestSkjemaFraValg() {
   document.getElementById("hestNotater").value = h.notater || "";
   document.getElementById("sistSkodd").value = datoVerdi(h.sist_skodd);
   document.getElementById("nesteBesok").value = datoVerdi(h.neste_besok);
+  const input = document.getElementById("hestBildeFil");
+  if (input) input.value = "";
+  visHestBildePreview(h.bilde_url || "");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  bindHestBildePreview();
   const jobbKunde = document.getElementById("jobbKunde");
   if (jobbKunde) {
     jobbKunde.addEventListener("change", async () => {
@@ -236,3 +331,7 @@ window.hentHester = hentHester;
 window.fyllHestSelect = fyllHestSelect;
 window.fyllHestVelgForValgtKunde = fyllHestVelgForValgtKunde;
 window.fyllHestSkjemaFraValg = fyllHestSkjemaFraValg;
+
+window.lastOppHestBildeHvisValgt = lastOppHestBildeHvisValgt;
+window.visHestBildePreview = visHestBildePreview;
+window.bindHestBildePreview = bindHestBildePreview;

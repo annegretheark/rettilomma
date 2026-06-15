@@ -1,4 +1,4 @@
-console.log("hov-jobber.js lastet - klikkbar jobbliste med bilder");
+console.log("hov-jobber.js lastet - PRIS/BILDE FIX 20260616");
 
 let hovJobberSiste = [];
 let hovJobbValgt = null;
@@ -136,9 +136,12 @@ async function lastOppHovJobbBilde(jobbId, fil, bildetekst = "") {
 
   const bildeUrl = await lagBildeUrlFraSti(filsti);
 
+  const firmaId = await window.hentAktivHovFirmaId();
+
   const { error: dbError } = await supabaseClient
     .from("hov_jobb_bilder")
     .insert({
+      firma_id: firmaId,
       jobb_id: jobbId,
       filnavn: fil.name,
       filsti,
@@ -248,7 +251,10 @@ async function lagreJobb() {
   const mva = eksMva * 0.25;
   const total = eksMva + mva;
 
+  const firmaId = await window.hentAktivHovFirmaId();
+
   const jobb = {
+    firma_id: firmaId,
     kunde_id: kundeId,
     hest_id: hestId || null,
     dato: document.getElementById("jobbDato")?.value || new Date().toISOString().slice(0, 10),
@@ -325,6 +331,9 @@ async function lagreJobb() {
 
   const jobbType = document.getElementById("jobbType");
   if (jobbType) jobbType.value = "";
+
+  const prisFraPrisliste = document.getElementById("prisFraPrisliste");
+  if (prisFraPrisliste) prisFraPrisliste.value = "0";
 
   const jobbBeskrivelse = document.getElementById("jobbBeskrivelse");
   if (jobbBeskrivelse) jobbBeskrivelse.value = "";
@@ -667,3 +676,146 @@ if (document.readyState === "loading") {
 }
 
 window.bindHovJobblisteKnapp = bindHovJobblisteKnapp;
+
+
+// === RETT I LOMMA FIX: jobbtype -> pris fra hov_priser ===
+// Viser prisfelt på samme linje som jobbtype og fyller Arbeid eks. mva.
+// Robust: bruker Supabase-prisliste først, og lokal fallback hvis RLS/cache gjør at appen ikke får radene.
+const HOV_STANDARD_PRISER = {
+  "fullbeslag": 1200,
+  "forsko": 1100,
+  "baksko": 1100,
+  "barfot verking": 650,
+  "enkeltsko": 350,
+  "saler": 300,
+  "brodder": 150,
+  "vintersko": 1400,
+  "annet": 0,
+  "kjoring pr km": 5.30
+};
+
+function hovNormaliserPrisnavn(v) {
+  return String(v || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/æ/g, "ae")
+    .replace(/ø/g, "o")
+    .replace(/å/g, "a")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function hovSettPrisfelter(pris) {
+  const n = Number(String(pris ?? 0).replace(",", "."));
+  const verdi = Number.isFinite(n) ? n : 0;
+  const prisFelt = document.getElementById("prisFraPrisliste");
+  const arbeidFelt = document.getElementById("arbeidBelop");
+
+  if (prisFelt) {
+    prisFelt.value = verdi.toFixed(2);
+    prisFelt.dispatchEvent(new Event("input", { bubbles: true }));
+    prisFelt.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if (arbeidFelt) {
+    arbeidFelt.value = verdi.toFixed(2);
+    arbeidFelt.dispatchEvent(new Event("input", { bubbles: true }));
+    arbeidFelt.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  return verdi;
+}
+
+async function hovHentOgSettPrisFraJobbtype() {
+  const typeFelt = document.getElementById("jobbType");
+  const melding = document.getElementById("jobbMelding");
+  if (!typeFelt) return;
+
+  const valgtType = String(typeFelt.value || "").trim();
+  const valgtNorm = hovNormaliserPrisnavn(valgtType);
+
+  if (!valgtType) {
+    hovSettPrisfelter(0);
+    return;
+  }
+
+  let prisrad = null;
+  let kilde = "prisliste";
+
+  try {
+    if (window.supabaseClient) {
+      const { data, error } = await window.supabaseClient
+        .from("hov_priser")
+        .select("id, navn, pris, aktiv");
+
+      if (error) throw error;
+
+      const priser = (data || []).filter(p => p.aktiv !== false);
+      prisrad =
+        priser.find(p => hovNormaliserPrisnavn(p.navn) === valgtNorm) ||
+        priser.find(p => {
+          const n = hovNormaliserPrisnavn(p.navn);
+          return n && (n.includes(valgtNorm) || valgtNorm.includes(n));
+        }) || null;
+    }
+  } catch (e) {
+    console.warn("Kunne ikke hente hov_priser, bruker standardpriser:", e);
+    kilde = "standardpris";
+  }
+
+  if (!prisrad && Object.prototype.hasOwnProperty.call(HOV_STANDARD_PRISER, valgtNorm)) {
+    prisrad = { navn: valgtType, pris: HOV_STANDARD_PRISER[valgtNorm] };
+    kilde = "standardpris";
+  }
+
+  if (!prisrad) {
+    hovSettPrisfelter(0);
+    if (melding) {
+      melding.textContent = "Fant ikke pris for " + valgtType + " i prisliste.";
+      melding.style.color = "#fca5a5";
+    }
+    return;
+  }
+
+  const pris = hovSettPrisfelter(prisrad.pris);
+
+  if (melding) {
+    melding.textContent =
+      "Pris hentet: " + (prisrad.navn || valgtType) + " - " +
+      pris.toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+      " kr eks. mva" + (kilde === "standardpris" ? " (standardpris)" : "");
+    melding.style.color = "#86efac";
+  }
+}
+
+function hovBindPrisvalgRobust() {
+  const typeFelt = document.getElementById("jobbType");
+  if (!typeFelt) return;
+
+  // Sett både onchange og eventlistener. Dette tåler gammel cache og andre script som tukler med feltet.
+  typeFelt.onchange = hovHentOgSettPrisFraJobbtype;
+  typeFelt.oninput = hovHentOgSettPrisFraJobbtype;
+
+  if (typeFelt.dataset.hovPrisvalgRobust !== "1") {
+    typeFelt.dataset.hovPrisvalgRobust = "1";
+    typeFelt.addEventListener("change", hovHentOgSettPrisFraJobbtype);
+    typeFelt.addEventListener("input", hovHentOgSettPrisFraJobbtype);
+    typeFelt.addEventListener("click", function () {
+      setTimeout(hovHentOgSettPrisFraJobbtype, 50);
+    });
+  }
+
+  // Hvis nettleseren husker valgt jobbtype etter refresh, hent pris med én gang.
+  setTimeout(hovHentOgSettPrisFraJobbtype, 100);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", hovBindPrisvalgRobust);
+} else {
+  hovBindPrisvalgRobust();
+}
+setTimeout(hovBindPrisvalgRobust, 300);
+setTimeout(hovBindPrisvalgRobust, 1000);
+setTimeout(hovBindPrisvalgRobust, 2500);
+
+window.hovHentOgSettPrisFraJobbtype = hovHentOgSettPrisFraJobbtype;
+window.hovBindPrisvalgRobust = hovBindPrisvalgRobust;

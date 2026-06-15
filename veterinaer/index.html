@@ -1,1799 +1,919 @@
 <!DOCTYPE html>
-
 <html lang="no">
 <head>
-<meta charset="utf-8"/>
-<title>Hestebehandler - Rett i Lomma</title>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #151819; color:#f3f4f6;
-      margin: 0;
-      padding: 20px;
-    }
+  <meta charset="UTF-8">
+  <title>Veterinær - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background:#151819; color:#f3f4f6; margin:0; padding:20px; }
+    .kort { background:#171a1b; max-width:980px; margin:0 auto 18px auto; padding:18px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.22); border:1px solid #2b3135; }
+    h1,h2,h3 { margin-top:0; color:#f8fafc; }
+    label { display:block; margin-top:10px; font-weight:bold; color:#f3f4f6; }
+    input,select,textarea { width:100%; box-sizing:border-box; padding:10px; margin-top:4px; border:1px solid #4b5563; border-radius:8px; background:#f8fafc; color:#111827; }
+    textarea { min-height:90px; }
+    button { padding:11px 14px; margin:6px 4px 6px 0; border:0; border-radius:8px; background:#1f6feb; color:white; cursor:pointer; font-size:15px; }
+    button.secondary { background:#555; }
+    button.danger { background:#b42318; }
+    .rad { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .skjult { display:none; }
+    .melding { margin-top:10px; color:#fca5a5; font-weight:bold; }
+    .listekort { border:1px solid #374151; padding:10px; border-radius:8px; margin-top:8px; background:#22272a; color:#f3f4f6; }
+    .lite { color:#cbd5e1; font-size:13px; }
+    .vet-admin-nav, .vet-systemadmin-nav { display:none; }
+    .vet-toppkort h1 { margin-bottom:4px; }
+    .vet-rollelinje { margin-top:0; font-weight:bold; }
+    .vet-meny { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; align-items:flex-start; }
+    .vet-undermeny { width:100%; margin-top:4px; padding:10px; border:1px solid #374151; border-radius:10px; background:#22272a; }
+    .vet-undermeny button { background:#555; }
+    .vet-faktura-nav, .vet-oppsett-nav, .vet-admin-toggle { display:none; }
+    .minbil-varelinje { display:grid; grid-template-columns:minmax(220px,1fr) 120px; gap:10px; align-items:end; padding:8px 0; border-bottom:1px solid #374151; }
+    .minbil-varelinje input { margin-top:0; }
+    .vare-regneark-wrap { overflow-x:auto; border:1px solid #374151; border-radius:10px; background:#171a1b; margin-top:8px; }
+    .vare-regneark { width:100%; border-collapse:collapse; min-width:620px; font-size:14px; }
+    .vare-regneark th, .vare-regneark td { border-bottom:1px solid #374151; padding:7px 8px; text-align:left; vertical-align:middle; }
+    .vare-regneark th { background:#22272a; color:#f8fafc; position:sticky; top:0; z-index:1; }
+    .vare-regneark tr:last-child td { border-bottom:0; }
+    .vare-regneark input { margin:0; padding:6px 8px; border-radius:6px; max-width:95px; }
+    .vare-regneark .tall { text-align:right; white-space:nowrap; }
+    .lager-varsel { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:10px; padding:10px; margin:10px 0; font-weight:bold; }
+    .lager-ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:10px; padding:10px; margin:10px 0; font-weight:bold; }
+    .lager-faner { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px 0; }
+    .lager-faner button { margin:0; }
 
-    .kort {
-      background: #171a1b;
-      max-width: 900px;
-      margin: 0 auto 18px auto;
-      padding: 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    }
+    /* Lager: bare én knapperekke inne i lagerkortet, ikke dobbelt sett med faner */
+    #lagerSide > .lager-faner { display:none !important; }
 
-    h1, h2 {
-      margin-top: 0;
-    }
 
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
+    .okonomi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px; }
+    .okonomi-boks { background:#22272a; border:1px solid #374151; color:#f3f4f6; border-radius:10px; padding:12px; }
+    .okonomi-boks strong { display:block; font-size:18px; margin-top:4px; }
+    .okonomi-tabell { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    .okonomi-tabell th,.okonomi-tabell td { border-bottom:1px solid #374151; padding:6px; text-align:left; vertical-align:top; }
+    .okonomi-tabell th { background:#22272a; color:#f8fafc; }
+    .okonomi-advarsel { color:#b42318; font-weight:bold; }
 
-    input,
-    select,
-    textarea {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 10px;
-      margin-top: 4px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
+    .vare-regneark td, .okonomi-tabell td { color:#f3f4f6; }
+    .vare-regneark th, .okonomi-tabell th { color:#f8fafc; }
+    .listekort strong, .listekort span, .listekort p, .listekort div { color:#f3f4f6; }
+    hr { border:0; border-top:1px solid #374151; margin:18px 0; }
 
-    button {
-      padding: 11px 14px;
-      margin: 6px 4px 6px 0;
-      border: 0;
-      border-radius: 8px;
-      background: #1f6feb;
-      color: white;
-      cursor: pointer;
-      font-size: 15px;
-    }
 
-    button.secondary {
-      background: #555;
+    /* Kompakt lager-/billiste: ikke store hvite antallfelt under hver vare */
+    #minBilFyllListe .vet-linje-liste,
+    #fyllBilFlerListe .vet-linje-liste,
+    #fyllBilFyllListe .vet-linje-liste {
+      display:grid;
+      gap:2px;
+      margin-top:6px;
     }
-
-    button.danger {
-      background: #b42318;
+    #minBilFyllListe .vet-linje-kort,
+    #fyllBilFlerListe .vet-linje-kort,
+    #fyllBilFyllListe .vet-linje-kort {
+      display:grid !important;
+      grid-template-columns:28px minmax(220px,1.7fr) minmax(130px,.8fr) 96px !important;
+      gap:8px;
+      align-items:center;
+      border:1px solid #374151;
+      border-radius:6px;
+      background:#1f2427;
+      padding:4px 8px !important;
+      margin:0 !important;
+      line-height:1.1;
+      min-height:30px;
     }
-
-    button.voice {
-      width: 100%;
-      font-size: 20px;
-      padding: 18px;
-      background: #0f766e;
+    #minBilFyllListe input[type="checkbox"],
+    #fyllBilFlerListe input[type="checkbox"],
+    #fyllBilFyllListe input[type="checkbox"] {
+      width:auto !important;
+      margin:0 !important;
+      padding:0 !important;
     }
-
-    a.knapp {
-      display: inline-block;
-      padding: 11px 14px;
-      margin: 6px 4px 6px 0;
-      border: 0;
-      border-radius: 8px;
-      background: #1f6feb;
-      color: white;
-      cursor: pointer;
-      font-size: 15px;
-      text-decoration: none;
+    #minBilFyllListe input[type="number"],
+    #fyllBilFlerListe input[type="number"],
+    #fyllBilFyllListe input[type="number"] {
+      width:86px !important;
+      min-width:86px !important;
+      padding:4px 6px !important;
+      margin:0 !important;
+      border-radius:5px !important;
+      font-size:13px !important;
     }
-
-    a.knapp.danger {
-      background: #b42318;
-    }
-
-    body:has(#kundeSide:target) #behandlingSide,
-    body:has(#hesterSide:target) #behandlingSide,
-    body:has(#fakturaSide:target) #behandlingSide,
-    body:has(#firmaSide:target) #behandlingSide,
-    body:has(#adminSide:target) #behandlingSide,
-    body:has(#prislisteSide:target) #behandlingSide {
-      display: none;
-    }
-
-    #kundeSide:target,
-    #hesterSide:target,
-    #fakturaSide:target,
-    #firmaSide:target,
-    #adminSide:target,
-    #prislisteSide:target {
-      display: block !important;
-    }
-
-    .rad {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-    }
-
-    .skjult {
-      display: none;
-    }
-
-    .melding {
-      margin-top: 10px;
-      color: #b42318;
-      font-weight: bold;
-    }
-
-    .info {
-      margin-top: 8px;
-      font-size: 15px;
-      color: #555;
-    }
-
-    .listekort {
-      border: 1px solid #374151;
-      padding: 14px;
-      border-radius: 8px;
-      margin-top: 8px;
-      background: #22272a;
-      color: #f3f4f6;
-    }
-
-    .listekort div,
-    .listekort p,
-    .listekort strong,
-    .listekort span {
-      color: #f3f4f6 !important;
-    }
-
-    .listekort button,
-    .listekort a.knapp {
-      color: white !important;
-    }
-
-    .info {
-      color: #cbd5e1;
-    }
-
-    input,
-    select,
-    textarea {
-      background: #f8fafc;
-      color: #111827;
+    #minBilFyllListe .lite,
+    #fyllBilFlerListe .lite,
+    #fyllBilFyllListe .lite {
+      font-size:13px !important;
+      line-height:1.1 !important;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
 
-    .system-header {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 14px;
-      align-items: center;
-      margin-bottom: 12px;
+    /* Kompakt pasientliste */
+    .pasientliste-tittel { margin-bottom:8px; white-space:nowrap; font-size:20px; }
+    #eierSide { padding-top:12px; }
+    #eierSide label[for="dyreeierVelgForDyr"],
+    #dyreeierVelgForDyr,
+    #eierSide .rad,
+    #eierSide label[for="dyreeierEpost"],
+    #dyreeierEpost,
+    #eierSide label[for="dyreeierAdresse"],
+    #dyreeierAdresse,
+    #eierSide h3,
+    #eierSide > p.lite,
+    #dyreeierDyrValg,
+    #dyreeierDyrInfo,
+    #lagreDyreeierKnapp,
+    #dyreeierMelding { display:none !important; }
+    #dyreeierListe { margin-top:4px; }
+    .vet-klikk-liste { display:grid !important; gap:1px !important; margin-top:4px !important; }
+    #eierSide .vet-klikk-rad,
+    #eierSide .vet-linje-kort,
+    #dyreeierListe .listekort {
+      width:100% !important;
+      box-sizing:border-box !important;
+      min-height:24px !important;
+      padding:3px 8px !important;
+      margin:0 !important;
+      line-height:1.1 !important;
+      font-size:14px !important;
+      border:1px solid rgba(255,255,255,.08) !important;
+      border-radius:0 !important;
+      background:rgba(255,255,255,.025) !important;
+      color:#f3f4f6 !important;
+      align-items:center !important;
     }
-
-    .system-logo {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      background: linear-gradient(135deg, #e0f2fe, #ffffff);
-      color: #0f172a;
-      display: grid;
-      place-items: center;
-      box-shadow: inset 0 0 0 1px #bae6fd, 0 8px 22px rgba(15, 23, 42, 0.25);
-      font-size: 34px;
+    #eierSide .vet-klikk-rad span,
+    #eierSide .vet-linje-kort span,
+    #dyreeierListe .listekort span {
+      font-size:14px !important;
+      line-height:1.1 !important;
+      font-weight:400 !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
     }
-
-    .system-title {
-      margin: 0;
-      font-size: 30px;
-      line-height: 1.05;
-      color: #f8fafc;
-      letter-spacing: -0.02em;
+    #eierSide .vet-klikk-rad button, #eierSide .vet-klikk-rad a {
+      padding:3px 8px !important;
+      margin:0 !important;
+      font-size:13px !important;
+      line-height:1.1 !important;
+      border-radius:4px !important;
     }
-
-    .system-subtitle {
-      margin-top: 5px;
-      color: #cbd5e1;
-      font-size: 14px;
-    }
-
-    .system-badge {
-      display: inline-block;
-      margin-top: 8px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      background: #0f766e;
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-    }
-  
-.behandling-status {
-  display:flex;
-  gap:8px;
-  margin-bottom:10px;
-}
-.behandling-status .listekort {
-  flex:1;
-  padding:8px 10px;
-  margin:0;
-  min-height:auto;
-  font-size:14px;
-}
-.behandling-status .listekort span {
-  font-size:18px;
-  font-weight:bold;
-}
+    .vet-dyr-mini-bilde { width:30px !important; height:24px !important; object-fit:cover !important; border-radius:4px !important; }
+    .vet-meny button[onclick="visVetSide('journalSide')"],
+    .vet-meny button[onclick="visFyllBilSide()"] { display:none !important; }
 
 
-.dyr-liste-bilde {
-  display:block;
-  max-width:140px;
-  max-height:140px;
-  object-fit:cover;
-  border-radius:10px;
-  margin-bottom:10px;
-  border:1px solid #374151;
-}
+    /* Hindrer blink av gamle/feil knapper før rolle er ferdig lastet */
+    body.vet-loading #appSide { visibility:hidden !important; }
+    .vet-bruker-nav, .vet-lagerlogg-nav, .vet-faktura-nav, .vet-admin-toggle, #vetSlettTestdataKnapp { display:none; }
+    #vetFakturaFastKnapp, #vetOversiktFastKnapp { display:none !important; }
 
-/* KNAPPE-RYDD 2026-06-14: jevn høyde og pen linje på knapper */
-button,
-a.knapp {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  line-height: 1.15;
-  vertical-align: middle;
-  white-space: nowrap;
-}
+    /* Vipps på faktura og purring */
+    .vet-vipps-betaling { color:#d40000; font-weight:800; font-size:18px; margin-top:14px; }
+    .vet-vipps-betaling .lite { color:#d40000; font-weight:700; font-size:14px; }
 
-button.voice {
-  display: flex;
-  width: 100%;
-}
-
-#behandlingSide > button,
-#behandlingSide #manuellBehandling button,
-#behandlingSide #oppdaterBehandlingerKnapp,
-#hesterSide button,
-#adminSide button {
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.behandling-knappefelt {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin: 10px 0 12px 0;
-}
-
-.app-meny-linje {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: 12px;
-}
-
-@media (max-width: 640px) {
-  .behandling-knappefelt button,
-  .app-meny-linje a.knapp {
-    flex: 1 1 auto;
-  }
-}
-
-
-/* FELT-RYDD 2026-06-14: justerer input-feltene på samme linje */
-#manuellBehandling .rad > div {
-  display: flex;
-  flex-direction: column;
-}
-
-#manuellBehandling .rad > div > label {
-  min-height: 42px;
-  display: flex;
-  align-items: flex-end;
-  margin-top: 10px;
-  line-height: 1.15;
-}
-
-#manuellBehandling .rad > div > input,
-#manuellBehandling .rad > div > select {
-  margin-top: 4px;
-}
-
-@media (max-width: 640px) {
-  #manuellBehandling .rad > div > label {
-    min-height: auto;
-  }
-}
-
-</style>
+  </style>
 </head>
 <body>
 <script>
-localStorage.setItem("rettilommaValgtModul", "hestebehandler");
-// Start alltid på Behandlinger etter innlogging eller refresh.
-// Menyknappene virker fortsatt etter at siden er lastet.
-if (window.location.hash !== "#behandlingSide") {
-  history.replaceState(null, "", window.location.pathname + window.location.search + "#behandlingSide");
-}
+/* Rydder gammel direkte-lenke som sender veterinær til feil underside */
+(function () {
+  if (window.location.hash === "#behandlingSide") {
+    history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  }
+})();
+localStorage.setItem("rettilommaValgtModul", "veterinar");
 </script>
 <section id="appSide">
-<div class="kort">
-<div class="system-header">
-<div aria-hidden="true" class="system-logo">🐴</div>
-<div>
-<h1 class="system-title">Hestebehandler</h1>
-<div class="system-subtitle">Kunder, dyr, behandlinger, journal, bilder, kjøring og faktura</div>
-<div class="system-badge">Rett i Lomma</div>
-</div>
-</div>
-<div class="app-meny-linje">
-<a class="knapp danger" href="../hestebehandler-login.html" onclick="localStorage.removeItem(\'rettilommaValgtModul\');">Logg ut</a>
-<a class="knapp" href="#behandlingSide">Behandlinger</a>
-<a class="knapp" href="#hesterSide">Dyr</a>
-<a class="knapp" href="#prislisteSide">Prisliste</a>
-<a class="knapp" href="#adminSide">Admin</a>
-</div>
-</div>
-<section class="kort" id="behandlingSide">
-<h2>🎙️ Snakk inn behandling</h2>
-<button class="voice" id="taleBehandlingKnapp" type="button">
+  <div class="kort vet-toppkort">
+    <h1 id="vetToppNavn">Veterinær</h1>
+    <p id="vetToppRolle" class="lite vet-rollelinje">Laster rolle ...</p>
+    <p id="aktivKlinikkInfo" class="lite"></p>
+    <p id="vetVisningInfo" class="lite skjult">Du viser nå systemet som vanlig veterinær.</p>
 
-    🎙️ Snakk inn og lagre behandling
+    <div class="vet-meny">
+      <button id="vetOppsettKnapp" type="button" class="vet-oppsett-nav secondary">Oppsett</button>
 
-  </button>
-<div class="info" id="taleResultat">
+      <button type="button" class="vet-bruker-nav" onclick="visVetSide('eierSide')">Pasienter</button>
+<button type="button" class="vet-bruker-nav" onclick="visVetSide('lagerSide')">Bil og lager</button>
+<button id="vetSlettTestdataKnapp" type="button" class="danger" onclick="slettVetTestdata()" style="display:none;">Slett testdata</button>
+      <button type="button" class="vet-systemadmin-nav" onclick="visVetSide('backupSide')">Backup / Import</button>
+      <button id="vetVisSomVeterinaerKnapp" type="button" class="secondary vet-admin-toggle">Vis som vanlig veterinær</button>
+      <button type="button" class="danger" onclick="loggUtVeterinaer()">Logg ut</button>
 
-    Si for eksempel:
-    Behandlet Quen med massasje 20 kilometer
+      <div id="vetOppsettMeny" class="vet-undermeny skjult">
+        <button type="button" onclick="visVetSide('klinikkSide')">Klinikk og brukere</button>
+        <button type="button" onclick="visVetSide('lagerSide')">Hovedlager og biler</button>
+        <button type="button" onclick="visVetSide('prisSide')">Prisliste</button>
+      </div>
+    </div>
 
+    <p class="lite">Første versjon: journal, behandling og pasienthistorikk. Resept er ikke med ennå.</p>
   </div>
-<hr/>
-<div class="behandling-knappefelt">
-<button class="secondary" id="nyBehandlingKnapp" onclick="nyBehandling()" type="button">Ny behandling</button>
-<button class="secondary" onclick="
-            document
-              .getElementById('manuellBehandling')
-              .classList
-              .toggle('skjult')
-          " type="button">
 
-    Vis/skjul manuell registrering
+  <section id="klinikkSide" class="kort">
+    <h2>Klinikk</h2>
+    <p class="lite">Alle veterinærer hører til en klinikk. Klinikken kan senere kobles til et konsern, f.eks. EMET.</p>
+    <input id="klinikkId" type="hidden">
+    <label for="klinikkNavn">Klinikknavn</label>
+    <input id="klinikkNavn" placeholder="Dyrlegene i Norderhov">
+    <label for="konsernNavn">Konsern / kjede</label>
+    <input id="konsernNavn" placeholder="Valgfritt, f.eks. EMET">
+    <div class="rad">
+      <div><label for="klinikkTelefon">Telefon</label><input id="klinikkTelefon"></div>
+      <div><label for="klinikkEpost">E-post</label><input id="klinikkEpost" type="email"></div>
+    </div>
+    <label for="klinikkAdresse">Adresse</label>
+    <input id="klinikkAdresse">
+
+    <div id="adminKlinikkLogo" class="skjult">
+      <h3>Klinikkoppsett</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin ser dette. Logo brukes på faktura, brevhode og utskrifter.</p>
 
-  </button>
-</div>
-<div class="skjult" id="manuellBehandling">
-<h3>Manuell registrering</h3>
-<p class="info">Forenklet behandlingsjournal: velg kunde, dyr og behandlingstype. Bruk notatfeltet til funn, tiltak, anbefaling og neste oppfølging.</p>
-<div class="rad">
-<div>
-<label for="behandlingDato">
-          Dato
-        </label>
-<input id="behandlingDato" type="date"/>
-</div>
-<div>
-<label for="behandlingKunde">
-          Kunde
-        </label>
-<select id="behandlingKunde">
-<option value="">
-            Velg kunde
-          </option>
-</select>
-</div>
-<div>
-<label for="behandlingHest">
-          Dyr
-        </label>
-<select id="behandlingHest">
-<option value="">
-            Velg dyr
-          </option>
-</select>
-</div>
-</div>
-<label for="behandlingType">
-      Behandlingstype
-    </label>
-<select id="behandlingType">
-<option value="">
-        Velg behandlingstype
-      </option>
-<option value="Massasje">
-        Massasje
-      </option>
-<option value="Kiropraktikk">
-        Kiropraktikk
-      </option>
-<option value="Akupunktur">
-        Akupunktur
-      </option>
-<option value="Laserbehandling">
-        Laserbehandling
-      </option>
-<option value="Osteopati">
-        Osteopati
-      </option>
-<option value="Stretching">
-        Stretching
-      </option>
-<option value="Rehabilitering">
-        Rehabilitering
-      </option>
-<option value="Annet">
-        Annet
-      </option>
-</select>
-<label for="behandlingBeskrivelse">
-      Journalnotat / anbefaling
-    </label>
-<textarea id="behandlingBeskrivelse"></textarea>
-<div class="rad">
-  <div>
-    <label for="behandlingBildeKamera">Ta bilde</label>
-    <input id="behandlingBildeKamera" type="file" accept="image/*" capture="environment">
-  </div>
-  <div>
-    <label for="behandlingBildeGalleri">Velg bilde</label>
-    <input id="behandlingBildeGalleri" type="file" accept="image/*">
-  </div>
-</div>
-<div class="rad">
-<div>
-<label for="arbeidBelop">
-          Arbeid eks. mva
-        </label>
-<input id="arbeidBelop" step="0.01" type="number" value="0"/>
-</div>
-<div>
-<label for="varerBelop">
-          Produkter/utstyr eks. mva
-        </label>
-<input id="varerBelop" step="0.01" type="number" value="0"/>
-</div>
-<div>
-<label for="behandlingKm">
-          Kjøring km
-        </label>
-<input id="behandlingKm" step="0.1" type="number" value="0"/>
-</div>
-<div>
-<label for="behandlingKmPris">
-          Pris pr km
-        </label>
-<input id="behandlingKmPris" step="0.01" type="number" value="5.30"/>
-</div>
-</div>
-<button id="lagreBehandlingKnapp" type="button" onclick="return window.behLagreBehandlingDirekte && window.behLagreBehandlingDirekte(event);">Lagre behandling</button>
-<div class="melding" id="behandlingMelding"></div>
-</div>
-<hr/>
-<h3>Behandlingsliste</h3>
-<div class="behandling-status">
-  <div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div>
-  <div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div>
-  <div class="listekort"><strong>Omsetning:</strong> <span id="behandlingOmsetning">0 kr</span></div>
-</div>
-<button id="oppdaterBehandlingerKnapp" type="button" class="secondary">Oppdater behandlinger</button>
-<div id="behandlingListe"></div>
-
-</section>
-<section class="kort skjult" id="hesterSide">
-<h2>Dyr</h2>
-<label for="hestKunde">Eier/kunde</label>
-<select id="hestKunde">
-<option value="">Velg kunde</option>
-</select>
-<label for="hestVelg">Velg dyr å redigere</label>
-<select id="hestVelg">
-<option value="">Nytt dyr</option>
-</select>
-<label for="hestNavn">Navn</label>
-<input id="hestNavn"/>
-<label for="hestRase">Rase/type</label>
-<input id="hestRase"/>
-<label for="hestNotater">Notater</label>
-<textarea id="hestNotater"></textarea>
-<label for="hestBilde">Bilde av dyr</label>
-<input id="hestBilde" type="file" accept="image/*"/>
-<img id="hestBildePreview" alt="Bilde av dyr" style="display:none;max-width:220px;margin-top:10px;border-radius:8px;"/>
-<div class="rad">
-<div>
-<label for="sistSkodd">Sist behandlet</label>
-<input id="sistSkodd" type="date"/>
-</div>
-<div>
-<label for="nesteBesok">Neste oppfølging</label>
-<input id="nesteBesok" type="date"/>
-</div>
-</div>
-<button id="lagreHestKnapp" type="button">
-      Lagre dyr
-    </button>
-<div class="melding" id="hestMelding"></div>
-<div id="hesteListe"></div>
-</section><section class="kort skjult" id="prislisteSide">
-<h2>Prisliste</h2>
-<p class="info">Priser hentes fra Admin → Behandlingspriser. Beløp vises eks. og inkl. mva.</p>
-
-<button id="oppdaterPrislisteKnapp" type="button" onclick="hentPrislisteTilApp()">Oppdater prisliste</button>
-
-<div id="prislisteAppMelding" class="melding"></div>
-<div id="prislisteApp"></div>
-</section><section class="kort skjult" id="adminSide"><h2>Admin</h2><p class="info">Kunder, faktura, backup og firmaoppsett.</p><section class="kort" id="fakturaSide">
-<h2>Faktura</h2>
-<label for="fakturaKunde">Kunde</label>
-<select id="fakturaKunde">
-<option value="">Velg kunde</option>
-</select>
-<button id="oppdaterFakturaKunderKnapp" class="secondary" onclick="fyllFakturaKunder()" type="button">Oppdater kundeliste</button>
-<button id="lagFakturaKnapp" type="button">
-      Lag faktura PDF
-    </button>
-<p class="info">
-  Lag faktura henter kun <strong>ufakturerte behandlinger</strong>. Ubetalte fakturaer i oversikten er allerede fakturert.
-</p>
-<hr/>
-<h3>Kreditnota</h3>
-<label for="kreditFakturaValg">Velg faktura å kreditere</label>
-<select id="kreditFakturaValg">
-<option value="">Velg faktura</option>
-</select>
-<label for="kreditGrunn">Grunn</label>
-<textarea id="kreditGrunn">Feil beløp på faktura</textarea>
-<button id="lagKreditnotaKnapp" type="button">
-      Lag kreditnota
-    </button>
-<div class="melding" id="fakturaMelding"></div>
-</section><div class="kort">
-<h3>Fakturaoversikt</h3>
-<button id="hentFakturaOversiktKnapp" type="button">Vis fakturaoversikt</button>
-<button id="eksporterFakturaExcelKnapp" type="button">Eksporter fakturaoversikt Excel</button>
-<div id="fakturaOversikt"></div>
-</div><section class="kort" id="kundeSide">
-<h2>Kunder</h2>
-<input id="kundeId" type="hidden"/>
-<label for="kundeNavn">Navn</label>
-<input id="kundeNavn"/>
-<label for="kundeAdresse">Adresse</label>
-<input id="kundeAdresse"/>
-<label for="kundeEpost">E-post</label>
-<input id="kundeEpost"/>
-<label for="kundeTelefon">Telefon</label>
-<input id="kundeTelefon"/>
-<label for="kundeKontaktperson">Kontaktperson</label>
-<input id="kundeKontaktperson"/>
-<button id="nyKundeKnapp" type="button" class="secondary" onclick="nyKunde()">Ny kunde</button>
-<button id="leggTilKundeKnapp" type="button">
-      Lagre kunde
-    </button>
-<div class="melding" id="kundeMelding"></div>
-<div id="kundeListe"></div>
-</section><section class="kort" id="firmaSide">
-<h2>Firma / oppsett</h2>
-<p class="info">
-      Fylles ut ved første oppstart. Kan endres senere her.
-      Logo bør ligge som <strong>bilder/logo.png</strong>.
-    </p>
-<input id="firmaId" type="hidden"/>
-<label for="firmaNavn">Firmanavn</label>
-<input id="firmaNavn" placeholder="Ditt firma"/>
-<label for="firmaAdresse">Adresse</label>
-<input id="firmaAdresse"/>
-<div class="rad">
-<div>
-<label for="firmaTelefon">Telefon</label>
-<input id="firmaTelefon"/>
-</div>
-<div>
-<label for="firmaEpost">E-post</label>
-<input id="firmaEpost" type="email"/>
-</div>
-</div>
-<div class="rad">
-<div>
-<label for="firmaOrgnr">Org.nr</label>
-<input id="firmaOrgnr"/>
-</div>
-<div>
-<label for="firmaMvaNr">MVA-nr</label>
-<input id="firmaMvaNr"/>
-</div>
-<div>
-<label for="firmaKontonr">Kontonr</label>
-<input id="firmaKontonr"/>
-</div>
-</div>
-<div class="rad">
-<div>
-<label for="firmaVippsNummer">Vipps nummer</label>
-<input id="firmaVippsNummer" placeholder="F.eks. 123456"/>
-</div>
-<div>
-<label for="firmaVippsMottaker">Vipps mottaker</label>
-<input id="firmaVippsMottaker" placeholder="F.eks. firmanavn"/>
-</div>
-</div>
-<label for="firmaLogoUrl">Logo URL</label>
-<input id="firmaLogoUrl" placeholder="Supabase URL eller bilder/logo.png"/>
-<label for="firmaLogoFil">Last opp logo til Supabase</label>
-<input accept="image/png,image/jpeg,image/webp" id="firmaLogoFil" type="file"/>
-<div class="info">
-<img alt="Logo" id="firmaLogoForhandsvisning" style="display:none; max-height:80px; max-width:240px; margin-top:8px;"/>
-</div>
-<label for="firmaBrevhodeTekst">Brevhode-tekst</label>
-<textarea id="firmaBrevhodeTekst" placeholder="Valgfri tekst under logo/firmanavn"></textarea>
-<label for="firmaBrevfotTekst">Brevfot-tekst</label>
-<textarea id="firmaBrevfotTekst" placeholder="Valgfri tekst nederst på PDF"></textarea>
-<button id="lagreBehOppsettKnapp" type="button" onclick="return window.lagreBehOppsett && window.lagreBehOppsett();">
-      Lagre oppsett
-    </button>
-<div class="melding" id="firmaMelding"></div>
-</section><div class="kort">
-<h3>Backup / Restore</h3>
-<button id="backupKnapp" type="button">
-    Ta backup
-  </button>
-<label for="importFil" style="font-weight:bold; display:block; margin-top:14px;">
-
-    Restore fra backupfil
-
-  </label>
-<input accept=".json" id="importFil" type="file"/>
-<div class="melding" id="backupMelding"></div>
-</div></section>
-</section>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=5001"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=5001"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=5001"></script>
-<script src="config.js"></script>
-
-<script>
-/* FALLBACK 2026-06-14: sikrer Supabase-klient hvis config.js ikke ble lastet fra riktig mappe */
-(function () {
-  function lagSupabaseFallback() {
-    if (window.supabaseClient) return;
-    if (!window.supabase || typeof window.supabase.createClient !== "function") {
-      console.error("Supabase bibliotek er ikke lastet.");
-      return;
-    }
-
-    const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
-
-    window.supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: window.localStorage
-        }
-      }
-    );
-
-    console.log("Supabase fallback-klient startet for Hestebehandler");
-  }
-
-  lagSupabaseFallback();
-  window.addEventListener("load", lagSupabaseFallback);
-})();
-</script>
-
-<script src="moduler.js"></script>
-<script src="backup.js"></script>
-<script src="state.js"></script>
-<script src="beh-navigation.js"></script>
-<script src="beh-kunder.js"></script>
-<script src="beh-oppsett.js"></script>
-<script src="beh-hester.js?v=20260614-knapper-linje"></script>
-<script src="beh-jobber.js?v=20260614-knapper-linje"></script>
-<script src="beh-faktura.js"></script>
-<script src="beh-kreditnota.js"></script>
-<script src="beh-fakturaoversikt.js"></script>
-<script src="beh-prisliste.js?v=20260614-prisliste-hardfix"></script>
-<script src="beh-app.js"></script>
-
-<script>
-// ROBUST FIX: Snakk inn-knapp for Hestebehandler
-(function () {
-  function skrivTaleMelding(tekst) {
-    const el = document.getElementById("taleResultat");
-    if (el) el.textContent = tekst;
-  }
-
-  async function startBehandlerTaleDirekte() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      skrivTaleMelding("Tale fungerer ikke i denne nettleseren. Bruk Chrome eller Edge.");
-      alert("Tale fungerer ikke i denne nettleseren. Bruk Chrome eller Edge.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "no-NO";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = function () {
-      skrivTaleMelding("Lytter ...");
-    };
-
-    recognition.onerror = function (event) {
-      skrivTaleMelding("Tale feilet: " + (event.error || "ukjent feil"));
-    };
-
-    recognition.onresult = async function (event) {
-      const tekst = event.results && event.results[0] && event.results[0][0]
-        ? event.results[0][0].transcript
-        : "";
-
-      skrivTaleMelding("Hørte: " + tekst);
-
-      if (typeof window.fyllJobbFraTale === "function") {
-        await window.fyllJobbFraTale(tekst);
-        return;
-      }
-
-      // Fallback: fyll manuell registrering så brukeren ser at knappen virker.
-      const manuell = document.getElementById("manuellBehandling");
-      if (manuell) manuell.classList.remove("skjult");
-
-      const notat = document.getElementById("behandlingJournalnotat / anbefaling");
-      if (notat) notat.value = tekst;
-
-      const dato = document.getElementById("behandlingDato");
-      if (dato && !dato.value) dato.value = new Date().toISOString().slice(0, 10);
-
-      const type = document.getElementById("behandlingType");
-      if (type && !type.value) type.value = "Massasje";
-
-      skrivTaleMelding("Teksten er lagt i journalnotatet. Kontroller og trykk Lagre behandling.");
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {
-      skrivTaleMelding("Kunne ikke starte tale: " + (e.message || e));
-    }
-  }
-
-  function bindSnakkInn() {
-    const knapp = document.getElementById("taleJobbKnapp") || document.getElementById("taleBehandlingKnapp");
-    if (!knapp || knapp.dataset.snakkInnFix === "1") return;
-
-    knapp.dataset.snakkInnFix = "1";
-    knapp.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-
-      if (typeof window.startTaleJobb === "function") {
-        try {
-          window.startTaleJobb();
-          return;
-        } catch (e) {
-          console.warn("startTaleJobb feilet, bruker direkte tale-fix:", e);
-        }
-      }
-
-      startBehandlerTaleDirekte();
-    }, true);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindSnakkInn);
-  } else {
-    bindSnakkInn();
-  }
-
-  window.addEventListener("load", function () {
-    setTimeout(bindSnakkInn, 100);
-    setTimeout(bindSnakkInn, 800);
-  });
-})();
-</script>
-
-
-<script>
-// SUPER-HARDFIX 2026-06-14: Lagre oppsett og logo direkte, uavhengig av beh-oppsett.js
-(function(){
-  function el(id){ return document.getElementById(id); }
-  function val(id){ return (el(id)?.value || "").trim(); }
-  function msg(t, error){
-    const m = el("firmaMelding");
-    if (m) { m.textContent = t || ""; m.style.color = error ? "#fca5a5" : "#86efac"; }
-    console.log("OPPSETT:", t);
-  }
-  function setv(id,v){ const e=el(id); if(e) e.value = v || ""; }
-
-  async function uploadLogoDirekte(){
-    const fil = el("firmaLogoFil")?.files?.[0];
-    if (!fil) return "";
-    if (!window.supabaseClient) throw new Error("Mangler Supabase-klient");
-    const navn = String(fil.name || "logo.jpg").replace(/[^a-zA-Z0-9._-]/g,"_");
-    const sti = "beh-logo/" + Date.now() + "_" + navn;
-    const { error } = await supabaseClient.storage.from("bilder").upload(sti, fil, {
-      upsert: true,
-      contentType: fil.type || "image/jpeg"
-    });
-    if (error) throw new Error("Logo-opplasting feilet: " + error.message + " — kjør supabase-behandler-storage-logo-fix.sql hvis bucket/policy mangler");
-    const { data } = supabaseClient.storage.from("bilder").getPublicUrl(sti);
-    return data?.publicUrl || "";
-  }
-
-  async function lagreOppsettDirekte(){
-    try {
-      msg("Lagrer oppsett ...", false);
-      if (!window.supabaseClient) throw new Error("Mangler Supabase-klient. Sjekk config.js.");
-
-      let logoUrl = await uploadLogoDirekte();
-      if (logoUrl) setv("firmaLogoUrl", logoUrl);
-
-      const payload = {
-        navn: val("firmaNavn"),
-        firmanavn: val("firmaNavn"),
-        adresse: val("firmaAdresse"),
-        telefon: val("firmaTelefon"),
-        epost: val("firmaEpost"),
-        orgnr: val("firmaOrgnr"),
-        org_nr: val("firmaOrgnr"),
-        mva_nr: val("firmaMvaNr"),
-        kontonr: val("firmaKontonr"),
-        kontonummer: val("firmaKontonr"),
-        vipps_nummer: val("firmaVippsNummer"),
-        vipps_mottaker: val("firmaVippsMottaker"),
-        logo_url: val("firmaLogoUrl"),
-        brevhode_tekst: val("firmaBrevhodeTekst"),
-        brevfot_tekst: val("firmaBrevfotTekst")
-      };
-
-      const id = val("firmaId");
-      let result;
-      if (id) {
-        result = await supabaseClient.from("beh_firma").update(payload).eq("id", id).select("*").maybeSingle();
-      } else {
-        const existing = await supabaseClient.from("beh_firma").select("id").limit(1).maybeSingle();
-        if (existing.error && existing.error.code !== "PGRST116") throw existing.error;
-        if (existing.data?.id) {
-          result = await supabaseClient.from("beh_firma").update(payload).eq("id", existing.data.id).select("*").maybeSingle();
-        } else {
-          result = await supabaseClient.from("beh_firma").insert([payload]).select("*").maybeSingle();
-        }
-      }
-      if (result.error) throw result.error;
-      if (result.data?.id) setv("firmaId", result.data.id);
-      msg("Oppsett lagret ✅", false);
-      return false;
-    } catch(e) {
-      console.error("Lagre oppsett feilet", e);
-      msg("Kunne ikke lagre oppsett: " + (e.message || e), true);
-      alert("Kunne ikke lagre oppsett: " + (e.message || e));
-      return false;
-    }
-  }
-
-  function bind(){
-    const btn = el("lagreBehOppsettKnapp") || el("lagreHovOppsettKnapp");
-    if (btn) {
-      btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} return lagreOppsettDirekte(); };
-      btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); return lagreOppsettDirekte(); }, true);
-    }
-    const fil = el("firmaLogoFil");
-    if (fil && !fil.dataset.logoHardPreview) {
-      fil.dataset.logoHardPreview = "1";
-      fil.addEventListener("change", function(){
-        const f = fil.files && fil.files[0];
-        if (!f) return;
-        msg("Logo valgt: " + f.name + ". Trykk Lagre oppsett.", false);
-        const img = el("firmaLogoForhandsvisning");
-        if (img) { img.src = URL.createObjectURL(f); img.style.display = "block"; }
-      });
-    }
-  }
-  document.addEventListener("click", function(ev){
-    const b = ev.target && ev.target.closest && ev.target.closest("#lagreBehOppsettKnapp,#lagreHovOppsettKnapp");
-    if (b) { ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){}; return lagreOppsettDirekte(); }
-  }, true);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
-  window.addEventListener("load", function(){ setTimeout(bind,100); setTimeout(bind,1000); });
-  window.lagreOppsettDirekte = lagreOppsettDirekte;
-})();
-</script>
-
-
-
-<script>
-// SUPER-HARDFIX 2026-06-14: Lagre kunde direkte, uavhengig av event-kobling i beh-app.js
-(function(){
-  function el(id){ return document.getElementById(id); }
-  function val(id){ return (el(id)?.value || "").trim(); }
-  function msg(t, error){
-    const m = el("kundeMelding");
-    if (m) { m.textContent = t || ""; m.style.color = error ? "#fca5a5" : "#86efac"; }
-    console.log("KUNDE:", t);
-  }
-  function clear(){
-    ["kundeId","kundeNavn","kundeAdresse","kundeEpost","kundeTelefon","kundeKontaktperson"].forEach(id => {
-      const f = el(id); if (f) f.value = "";
-    });
-  }
-  async function lagreKundeDirekte(){
-    try {
-      if (!window.supabaseClient) throw new Error("Mangler Supabase-klient. Sjekk config.js.");
-      const navn = val("kundeNavn");
-      if (!navn) { msg("Mangler kundenavn", true); alert("Mangler kundenavn"); return false; }
-
-      msg("Lagrer kunde ...", false);
-      const payload = {
-        navn: navn,
-        adresse: val("kundeAdresse"),
-        epost: val("kundeEpost"),
-        telefon: val("kundeTelefon"),
-        kontaktperson: val("kundeKontaktperson")
-      };
-      const id = val("kundeId");
-      let result;
-      if (id) {
-        result = await supabaseClient.from("beh_kunder").update(payload).eq("id", id).select("*").maybeSingle();
-      } else {
-        result = await supabaseClient.from("beh_kunder").insert([payload]).select("*").maybeSingle();
-      }
-      if (result.error) throw result.error;
-      msg(id ? "Kunde oppdatert ✅" : "Kunde lagret ✅", false);
-      clear();
-      if (typeof window.hentKunder === "function") {
-        try { await window.hentKunder(); } catch(e) { console.warn("hentKunder feilet etter lagring", e); }
-      }
-      return false;
-    } catch(e) {
-      console.error("Lagre kunde feilet", e);
-      msg("Kunne ikke lagre kunde: " + (e.message || e), true);
-      alert("Kunne ikke lagre kunde: " + (e.message || e));
-      return false;
-    }
-  }
-  function bind(){
-    const btn = el("leggTilKundeKnapp");
-    if (!btn) return;
-    btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} return lagreKundeDirekte(); };
-    btn.addEventListener("click", function(ev){
-      ev.preventDefault(); ev.stopPropagation();
-      try { ev.stopImmediatePropagation(); } catch(e) {}
-      return lagreKundeDirekte();
-    }, true);
-  }
-  document.addEventListener("click", function(ev){
-    const b = ev.target && ev.target.closest && ev.target.closest("#leggTilKundeKnapp");
-    if (b) { ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){}; return lagreKundeDirekte(); }
-  }, true);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
-  window.addEventListener("load", function(){ setTimeout(bind,100); setTimeout(bind,1000); });
-  window.lagreKundeDirekte = lagreKundeDirekte;
-})();
-</script>
-
-
-<script>
-// FINAL FIX 2026-06-14: Kunde-dropdown for Behandling + Dyr
-// Denne ligger SIST i index.html for å vinne over andre filer som tømmer select-feltene.
-(function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
-  let kunderCache = [];
-  let hesterCache = [];
-  let fyller = false;
-
-  function el(id){ return document.getElementById(id); }
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-  async function ventKlient(){
-    for (let i = 0; i < 60; i++) {
-      if (window.supabaseClient) return window.supabaseClient;
-      if (window.supabase && typeof window.supabase.createClient === "function") {
-        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage: window.localStorage }
-        });
-        return window.supabaseClient;
-      }
-      await sleep(100);
-    }
-    throw new Error("Supabase-klient ble ikke klar");
-  }
-
-  function skrivStatus(tekst, feil){
-    const steder = [el("behandlingMelding"), el("hestMelding")].filter(Boolean);
-    steder.forEach(m => {
-      if (!m.textContent || /kunde|dyr|hest|Supabase|last/i.test(m.textContent)) {
-        m.textContent = tekst || "";
-        m.style.color = feil ? "#fca5a5" : "#86efac";
-      }
-    });
-    if (tekst) console.log("KUNDE-DROPDOWN-FIX:", tekst);
-  }
-
-  function fyllKundeSelect(select, kunder){
-    if (!select) return;
-    const valgt = String(select.value || "");
-    const nyHtml = ['<option value="">Velg kunde</option>'].concat((kunder || []).map(k =>
-      `<option value="${String(k.id).replace(/"/g,'&quot;')}">${String(k.navn || 'Uten navn').replace(/</g,'&lt;')}</option>`
-    )).join('');
-    if (select.innerHTML !== nyHtml) select.innerHTML = nyHtml;
-    if (valgt && (kunder || []).some(k => String(k.id) === valgt)) select.value = valgt;
-  }
-
-  function fyllAlleKunder(){
-    fyllKundeSelect(el("behandlingKunde"), kunderCache);
-    fyllKundeSelect(el("hestKunde"), kunderCache);
-    fyllKundeSelect(el("fakturaKunde"), kunderCache);
-  }
-
-  function fyllDyrForValgtKunde(){
-    const kundeId = String(el("behandlingKunde")?.value || "");
-    const dyrSelect = el("behandlingHest");
-    if (!dyrSelect) return;
-    const valgt = String(dyrSelect.value || "");
-    dyrSelect.innerHTML = '<option value="">Velg dyr</option>';
-    if (!kundeId) return;
-    const dyr = (hesterCache || []).filter(h => String(h.kunde_id) === kundeId);
-    dyr.forEach(h => {
-      const opt = document.createElement("option");
-      opt.value = h.id;
-      opt.textContent = h.navn || "Uten navn";
-      dyrSelect.appendChild(opt);
-    });
-    if (valgt && dyr.some(h => String(h.id) === valgt)) dyrSelect.value = valgt;
-  }
-
-  async function lastKunderOgDyr(){
-    if (fyller) return;
-    fyller = true;
-    try {
-      const client = await ventKlient();
-      const kundeRes = await client.from("beh_kunder").select("id, navn").order("navn", { ascending:true });
-      if (kundeRes.error) throw kundeRes.error;
-      kunderCache = kundeRes.data || [];
-      fyllAlleKunder();
-
-      const hestRes = await client.from("beh_hester").select("id, navn, kunde_id").order("navn", { ascending:true });
-      if (!hestRes.error) hesterCache = hestRes.data || [];
-      fyllDyrForValgtKunde();
-
-      if (kunderCache.length) {
-        document.title = "Hestebehandler - Rett i Lomma";
-        skrivStatus("Kunder lastet: " + kunderCache.length, false);
-      } else {
-        document.title = "Ingen kunder funnet";
-        skrivStatus("Ingen kunder funnet i beh_kunder", true);
-      }
-    } catch(e) {
-      console.error("Kunde-dropdown fix feilet", e);
-      document.title = "Kunder ikke lastet";
-      skrivStatus("Kunder ikke lastet: " + (e.message || e), true);
-    } finally {
-      fyller = false;
-    }
-  }
-
-  function bind(){
-    ["behandlingKunde", "hestKunde", "fakturaKunde"].forEach(id => {
-      const s = el(id);
-      if (!s || s.dataset.kundeDropdownFinalFix === "1") return;
-      s.dataset.kundeDropdownFinalFix = "1";
-      s.addEventListener("focus", lastKunderOgDyr);
-      s.addEventListener("click", function(){ if (this.options.length <= 1) lastKunderOgDyr(); });
-    });
-
-    const behandlingKunde = el("behandlingKunde");
-    if (behandlingKunde && behandlingKunde.dataset.dyrFinalFix !== "1") {
-      behandlingKunde.dataset.dyrFinalFix = "1";
-      behandlingKunde.addEventListener("change", fyllDyrForValgtKunde);
-    }
-
-    // Hvis andre gamle script tømmer dropdownen, fyll den på nytt.
-    ["behandlingKunde", "hestKunde", "fakturaKunde"].forEach(id => {
-      const s = el(id);
-      if (!s || s.dataset.kundeObserverFix === "1") return;
-      s.dataset.kundeObserverFix = "1";
-      const obs = new MutationObserver(() => {
-        if (kunderCache.length && s.options.length <= 1) fyllAlleKunder();
-      });
-      obs.observe(s, { childList:true });
-    });
-  }
-
-  function start(){
-    bind();
-    lastKunderOgDyr();
-    setTimeout(() => { bind(); lastKunderOgDyr(); }, 500);
-    setTimeout(() => { bind(); lastKunderOgDyr(); }, 1500);
-    setTimeout(() => { bind(); lastKunderOgDyr(); }, 3000);
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
-  window.addEventListener("load", start);
-  window.addEventListener("hashchange", start);
-
-  window.lastBehKunderOgDyrFinalFix = lastKunderOgDyr;
-})();
-</script>
-
-
-<script>
-// DYREVALG-SIKRING 2026-06-14: siste script vinner.
-// Fyller kunde + dyr direkte, uten å tømme valgt dyr unødvendig.
-(function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
-  let kunder = [];
-  let dyr = [];
-  let busy = false;
-  let savingDyr = false;
-
-  function el(id){ return document.getElementById(id); }
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-  async function client(){
-    for(let i=0;i<60;i++){
-      if(window.supabaseClient) return window.supabaseClient;
-      if(window.supabase && window.supabase.createClient){
-        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage}
-        });
-        return window.supabaseClient;
-      }
-      await sleep(100);
-    }
-    throw new Error("Supabase-klient ble ikke klar");
-  }
-
-  function fillSelect(select, rows, placeholder){
-    if(!select) return;
-    const before = String(select.value || "");
-    select.innerHTML = '<option value="">' + placeholder + '</option>';
-    (rows || []).forEach(r => {
-      const opt = document.createElement("option");
-      opt.value = r.id;
-      opt.textContent = r.navn || "Uten navn";
-      select.appendChild(opt);
-    });
-    if(before && (rows || []).some(r => String(r.id) === before)) select.value = before;
-  }
-
-  function valgtKundeForDyrSide(){
-    return String(el("hestKunde")?.value || "");
-  }
-
-  function valgtKundeForBehandling(){
-    return String(el("behandlingKunde")?.value || "");
-  }
-
-  function fillDyrSide(){
-    const kundeId = valgtKundeForDyrSide();
-    const select = el("hestVelg");
-    if(!select) return;
-    const before = String(select.value || "");
-    select.innerHTML = '<option value="">Nytt dyr</option>';
-    if(!kundeId) return;
-    const rows = dyr.filter(d => String(d.kunde_id) === kundeId);
-    rows.forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.id;
-      opt.textContent = d.navn || "Uten navn";
-      select.appendChild(opt);
-    });
-    if(before && rows.some(d => String(d.id) === before)) select.value = before;
-  }
-
-  function fillBehandlingDyr(){
-    const kundeId = valgtKundeForBehandling();
-    const select = el("behandlingHest");
-    if(!select) return;
-    const before = String(select.value || "");
-    select.innerHTML = '<option value="">Velg dyr</option>';
-    if(!kundeId) return;
-    const rows = dyr.filter(d => String(d.kunde_id) === kundeId);
-    rows.forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.id;
-      opt.textContent = d.navn || "Uten navn";
-      select.appendChild(opt);
-    });
-    if(before && rows.some(d => String(d.id) === before)) select.value = before;
-  }
-
-  function fillFormFromDyr(){
-    const id = String(el("hestVelg")?.value || "");
-    const d = dyr.find(x => String(x.id) === id);
-    if(!d){
-      ["hestNavn","hestRase","hestNotater","sistSkodd","nesteBesok"].forEach(id => { const f=el(id); if(f) f.value=""; });
-      const img=el("hestBildePreview"); if(img){img.style.display="none"; img.removeAttribute("src");}
-      return;
-    }
-    if(el("hestNavn")) el("hestNavn").value = d.navn || "";
-    if(el("hestRase")) el("hestRase").value = d.rase || "";
-    if(el("hestNotater")) el("hestNotater").value = d.notater || "";
-    if(el("sistSkodd")) el("sistSkodd").value = d.sist_skodd ? String(d.sist_skodd).slice(0,10) : "";
-    if(el("nesteBesok")) el("nesteBesok").value = d.neste_besok ? String(d.neste_besok).slice(0,10) : "";
-    const img=el("hestBildePreview");
-    if(img && d.bilde_url){ img.src=d.bilde_url; img.style.display="block"; }
-    else if(img){ img.style.display="none"; img.removeAttribute("src"); }
-  }
-
-  async function loadAll(){
-    if(busy) return;
-    busy = true;
-    try{
-      const c = await client();
-      const kr = await c.from("beh_kunder").select("id, navn").order("navn");
-      if(kr.error) throw kr.error;
-      kunder = kr.data || [];
-      const dr = await c.from("beh_hester").select("*").order("navn");
-      if(dr.error) throw dr.error;
-      dyr = dr.data || [];
-
-      fillSelect(el("hestKunde"), kunder, "Velg kunde");
-      fillSelect(el("behandlingKunde"), kunder, "Velg kunde");
-      fillSelect(el("fakturaKunde"), kunder, "Velg kunde");
-      fillDyrSide();
-      fillBehandlingDyr();
-
-      window.behDyrCache = dyr;
-      window.behKundeCache = kunder;
-    }catch(e){
-      console.error("Dyrevalg-sikring feilet", e);
-      const m = el("hestMelding") || el("behandlingMelding");
-      if(m){ m.textContent = "Kunne ikke laste kunde/dyr: " + (e.message || e); m.style.color="#fca5a5"; }
-    }finally{
-      busy = false;
-    }
-  }
-
-  async function uploadBilde(){
-    const fil = el("hestBilde")?.files?.[0];
-    if(!fil) return "";
-    const c = await client();
-    const safe = String(fil.name || "dyr.jpg").replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = "beh-dyr/" + Date.now() + "_" + safe;
-    const up = await c.storage.from("bilder").upload(path, fil, {upsert:true, contentType:fil.type || "image/jpeg"});
-    if(up.error) throw up.error;
-    const pub = c.storage.from("bilder").getPublicUrl(path);
-    return pub.data?.publicUrl || "";
-  }
-
-  async function saveDyr(ev){
-    if(ev){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} }
-    if (savingDyr) return false;
-    savingDyr = true;
-    const saveBtn = el("lagreHestKnapp");
-    if (saveBtn) saveBtn.disabled = true;
-    const kundeId = el("hestKunde")?.value || "";
-    const navn = (el("hestNavn")?.value || "").trim();
-    const valgtId = el("hestVelg")?.value || "";
-    const msg = el("hestMelding");
-    if(!kundeId){ if(msg){msg.textContent="Velg kunde/eier først"; msg.style.color="#fca5a5";} savingDyr=false; if(saveBtn) saveBtn.disabled=false; return false; }
-    if(!navn){ if(msg){msg.textContent="Mangler navn på dyr"; msg.style.color="#fca5a5";} savingDyr=false; if(saveBtn) saveBtn.disabled=false; return false; }
-
-    try{
-      const c = await client();
-      let bildeUrl = "";
-      const eksisterende = dyr.find(d => String(d.id) === String(valgtId));
-      if(eksisterende?.bilde_url) bildeUrl = eksisterende.bilde_url;
-      const nyUrl = await uploadBilde();
-      if(nyUrl) bildeUrl = nyUrl;
-
-      const payload = {
-        kunde_id: kundeId,
-        navn,
-        rase: (el("hestRase")?.value || "").trim(),
-        notater: (el("hestNotater")?.value || "").trim(),
-        sist_skodd: el("sistSkodd")?.value || null,
-        neste_besok: el("nesteBesok")?.value || null
-      };
-      if(bildeUrl) payload.bilde_url = bildeUrl;
-
-      let res = valgtId
-        ? await c.from("beh_hester").update(payload).eq("id", valgtId)
-        : await c.from("beh_hester").insert([payload]);
-
-      if(res.error && /bilde_url|schema cache|column/i.test(res.error.message || "")){
-        delete payload.bilde_url;
-        res = valgtId
-          ? await c.from("beh_hester").update(payload).eq("id", valgtId)
-          : await c.from("beh_hester").insert([payload]);
-      }
-      if(res.error) throw res.error;
-
-      if(msg){ msg.textContent = valgtId ? "Dyr oppdatert ✅" : "Dyr lagret ✅"; msg.style.color="#86efac"; }
-      const bildeInp = el("hestBilde"); if(bildeInp) bildeInp.value = "";
-      await loadAll();
-      if(typeof window.hentHester === "function") { try{ await window.hentHester(); }catch(e){} }
-      await loadAll();
-    }catch(e){
-      console.error("Lagre dyr feilet", e);
-      if(msg){ msg.textContent = "Kunne ikke lagre dyr: " + (e.message || e); msg.style.color="#fca5a5"; }
-    }
-    savingDyr = false;
-    if(saveBtn) saveBtn.disabled = false;
-    return false;
-  }
-
-  function bind(){
-    const hk = el("hestKunde");
-    if(hk && hk.dataset.dyretrygg !== "1"){
-      hk.dataset.dyretrygg = "1";
-      hk.addEventListener("change", function(){ fillDyrSide(); fillFormFromDyr(); });
-      hk.addEventListener("focus", loadAll);
-      hk.addEventListener("click", loadAll);
-    }
-    const bk = el("behandlingKunde");
-    if(bk && bk.dataset.dyretrygg !== "1"){
-      bk.dataset.dyretrygg = "1";
-      bk.addEventListener("change", fillBehandlingDyr);
-      bk.addEventListener("focus", loadAll);
-      bk.addEventListener("click", loadAll);
-    }
-    const hv = el("hestVelg");
-    if(hv && hv.dataset.dyretrygg !== "1"){
-      hv.dataset.dyretrygg = "1";
-      hv.addEventListener("focus", fillDyrSide);
-      hv.addEventListener("click", fillDyrSide);
-      hv.addEventListener("change", fillFormFromDyr);
-    }
-    const bh = el("behandlingHest");
-    if(bh && bh.dataset.dyretrygg !== "1"){
-      bh.dataset.dyretrygg = "1";
-      bh.addEventListener("focus", fillBehandlingDyr);
-      bh.addEventListener("click", fillBehandlingDyr);
-    }
-    const save = el("lagreHestKnapp");
-    if(save && save.dataset.dyretryggSave !== "1"){
-      save.dataset.dyretryggSave = "1";
-      save.onclick = saveDyr;
-    } else if (save) {
-      save.onclick = saveDyr;
-    }
-    const imgInput = el("hestBilde");
-    const img = el("hestBildePreview");
-    if(imgInput && img && imgInput.dataset.dyretrygg !== "1"){
-      imgInput.dataset.dyretrygg = "1";
-      imgInput.addEventListener("change", function(){
-        const f = imgInput.files?.[0];
-        if(f){ img.src = URL.createObjectURL(f); img.style.display = "block"; }
-      });
-    }
-  }
-
-  function start(){
-    bind();
-    loadAll();
-    setTimeout(()=>{bind(); loadAll();}, 500);
-    setTimeout(()=>{bind(); loadAll();}, 1500);
-  }
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
-  window.addEventListener("load", start);
-  window.addEventListener("hashchange", start);
-
-  window.behLastKunderDyrTrygg = loadAll;
-  window.behFyllDyrSideTrygg = fillDyrSide;
-  window.behFyllBehandlingDyrTrygg = fillBehandlingDyr;
-})();
-</script>
-
-
-<script>
-// BEHANDLING HARDKOBLET LAGRING 2026-06-14
-// Denne skal gjøre at "Lagre behandling" aldri er død.
-// Den ligger sist og lagrer direkte til beh_behandlinger.
-(function () {
-  let lagrer = false;
-
-  function el(id){ return document.getElementById(id); }
-  function val(id){ return (el(id)?.value || "").trim(); }
-  function num(id){
-    const n = Number(String(el(id)?.value || "0").replace(",", "."));
-    return Number.isFinite(n) ? n : 0;
-  }
-  function msg(t, feil){
-    const m = el("behandlingMelding");
-    if (m) {
-      m.textContent = t || "";
-      m.style.color = feil ? "#fca5a5" : "#86efac";
-    }
-    console.log("BEH-LAGRE-HARDFIX:", t);
-  }
-  async function ventClient(){
-    for(let i=0;i<80;i++){
-      if(window.supabaseClient) return window.supabaseClient;
-      if(window.supabase && typeof window.supabase.createClient === "function"){
-        window.supabaseClient = window.supabase.createClient(
-          "https://pxlbrywowphkczkehmee.supabase.co",
-          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
-          { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage } }
-        );
-        return window.supabaseClient;
-      }
-      await new Promise(r=>setTimeout(r,100));
-    }
-    throw new Error("Supabase-klient ble ikke klar");
-  }
-
-  async function behLagreBehandlingDirekte(ev){
-    if(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      if(typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
-    }
-
-    const knapp = el("lagreBehandlingKnapp");
-    if(lagrer) return false;
-    lagrer = true;
-
-    const gammelTekst = knapp?.textContent || "Lagre behandling";
-    if(knapp){ knapp.disabled = true; knapp.textContent = "Lagrer ..."; }
-    msg("Lagrer behandling ...", false);
-
-    try{
-      const c = await ventClient();
-
-      const kundeId = val("behandlingKunde");
-      const dyrId = val("behandlingHest");
-
-      if(!kundeId){ msg("Velg kunde først", true); return false; }
-      if(!dyrId){ msg("Velg dyr først", true); return false; }
-
-      const dyrSjekk = await c.from("beh_hester")
-        .select("id,kunde_id,navn")
-        .eq("id", dyrId)
-        .maybeSingle();
-
-      if(dyrSjekk.error) throw dyrSjekk.error;
-      if(!dyrSjekk.data){ msg("Fant ikke valgt dyr", true); return false; }
-      if(String(dyrSjekk.data.kunde_id) !== String(kundeId)){
-        msg("Feil dyr/eier: " + (dyrSjekk.data.navn || "valgt dyr") + " tilhører ikke valgt kunde.", true);
-        return false;
-      }
-
-      const km = num("behandlingKm");
-      const kmPris = num("behandlingKmPris");
-      const arbeid = num("arbeidBelop");
-      const varer = num("varerBelop");
-      const eksMva = arbeid + varer + (km * kmPris);
-      const mva = eksMva * 0.25;
-      const total = eksMva + mva;
-      const dato = val("behandlingDato") || new Date().toISOString().slice(0,10);
-
-      const payload = {
-        kunde_id: kundeId,
-        hest_id: dyrId,
-        dato: dato,
-        behandlingtype: val("behandlingType"),
-        beskrivelse: val("behandlingBeskrivelse"),
-        km: km,
-        km_pris: kmPris,
-        arbeid_belop: arbeid,
-        varer_belop: varer,
-        mva: mva,
-        total: total,
-        fakturert: false
-      };
-
-      const res = await c.from("beh_behandlinger").insert([payload]).select("id").maybeSingle();
-      if(res.error) throw res.error;
-
-      await c.from("beh_hester").update({ sist_skodd: dato }).eq("id", dyrId);
-
-      msg("Behandling lagret ✅", false);
-
-      if(el("behandlingType")) el("behandlingType").value = "";
-      if(el("behandlingBeskrivelse")) el("behandlingBeskrivelse").value = "";
-      if(el("arbeidBelop")) el("arbeidBelop").value = "0";
-      if(el("varerBelop")) el("varerBelop").value = "0";
-      if(el("behandlingKm")) el("behandlingKm").value = "0";
-      if(el("behandlingKmPris")) el("behandlingKmPris").value = "5.30";
-      if(el("behandlingDato")) el("behandlingDato").value = new Date().toISOString().slice(0,10);
-
-      if(typeof window.hentBehandlinger === "function"){
-        try{ await window.hentBehandlinger(); }catch(e){ console.warn(e); }
-      }
-      return false;
-    }catch(e){
-      console.error("BEH-LAGRE-HARDFIX FEIL:", e);
-      msg("Kunne ikke lagre behandling: " + (e.message || e), true);
-      return false;
-    }finally{
-      lagrer = false;
-      if(knapp){ knapp.disabled = false; knapp.textContent = gammelTekst; }
-    }
-  }
-
-  function bind(){
-    const knapp = el("lagreBehandlingKnapp");
-    if(!knapp) return;
-    knapp.onclick = behLagreBehandlingDirekte;
-    if(knapp.dataset.behHardBind !== "1"){
-      knapp.dataset.behHardBind = "1";
-      knapp.addEventListener("click", behLagreBehandlingDirekte, true);
-    }
-  }
-
-  window.behLagreBehandlingDirekte = behLagreBehandlingDirekte;
-  window.lagreBehandlingDirekte = behLagreBehandlingDirekte;
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-  else bind();
-
-  window.addEventListener("load", function(){
-    setTimeout(bind,100);
-    setTimeout(bind,800);
-    setTimeout(bind,2000);
-  });
-})();
-</script>
-
-
-<script>
-// PRISLISTE HARDFIX 2026-06-14
-// Viser og redigerer beh_priser selv om beh-prisliste.js ikke rekker å starte.
-(function(){
-  let priser = [];
-  let busy = false;
-
-  function el(id){ return document.getElementById(id); }
-  function val(id){ return (el(id)?.value || "").trim(); }
-  function setv(id, v){ const e = el(id); if(e) e.value = v ?? ""; }
-  function kr(n){
-    return Number(n || 0).toLocaleString("no-NO", { minimumFractionDigits:2, maximumFractionDigits:2 });
-  }
-  function esc(v){
-    return String(v ?? "").replace(/[&<>"']/g, c => ({
-      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
-    }[c]));
-  }
-  function msg(t, feil){
-    const m = el("prislisteAppMelding");
-    if(m){ m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
-    console.log("PRISLISTE:", t);
-  }
-  async function client(){
-    for(let i=0;i<80;i++){
-      if(window.supabaseClient) return window.supabaseClient;
-      await new Promise(r=>setTimeout(r,100));
-    }
-    throw new Error("Supabase-klient ble ikke klar");
-  }
-
-  function sikreSkjema(){
-    const side = el("prislisteSide");
-    const liste = el("prislisteApp");
-    if(!side || !liste) return;
-    if(el("behPrisSkjema")) return;
-
-    const skjema = document.createElement("div");
-    skjema.id = "behPrisSkjema";
-    skjema.className = "listekort";
-    skjema.innerHTML = `
-      <h3 id="prisSkjemaTittel" style="margin-top:0;">Ny pris</h3>
-      <input id="prisId" type="hidden">
       <div class="rad">
         <div>
-          <label for="prisNavn">Behandlingstype</label>
-          <input id="prisNavn" placeholder="F.eks. Massasje">
+          <label for="klinikkKmPris">Km-pris</label>
+          <input id="klinikkKmPris" type="number" step="0.01" min="0" value="5.30">
         </div>
         <div>
-          <label for="prisBelop">Pris eks. mva</label>
-          <input id="prisBelop" type="number" step="0.01" min="0" placeholder="0">
+          <label for="klinikkVippsNr">Vipps nr</label>
+          <input id="klinikkVippsNr" type="text" inputmode="numeric" placeholder="F.eks. 123456">
         </div>
         <div>
-          <label for="prisSortering">Sortering</label>
-          <input id="prisSortering" type="number" step="1" value="0">
+          <label for="klinikkVippsTil">Vipps til</label>
+          <input id="klinikkVippsTil" type="text" placeholder="F.eks. klinikknavn">
+        </div>
+        <div>
+          <label for="klinikkLogoFil">Klinikklogo</label>
+          <input id="klinikkLogoFil" type="file" accept="image/*">
         </div>
       </div>
-      <div class="behandling-knappefelt">
-        <button id="lagrePrisKnapp" type="button">Lagre pris</button>
-        <button id="nyPrisKnapp" type="button" class="secondary">Ny pris</button>
-        <button id="slettPrisKnapp" type="button" class="danger">Slett/deaktiver</button>
+
+      <img id="klinikkLogoPreview" alt="Klinikklogo" class="skjult" style="max-height:120px; margin-top:10px; border:1px solid #ddd; border-radius:8px; padding:6px;">
+    </div>
+
+    
+    <div id="adminKlinikkBrukere" class="skjult">
+      <h3>Brukere på klinikk</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin. Opprett innlogging og velg om brukeren er vanlig veterinær eller klinikkadmin.</p>
+
+      <div class="rad">
+        <div>
+          <label for="nyBrukerNavn">Navn</label>
+          <input id="nyBrukerNavn" placeholder="Navn på bruker">
+        </div>
+        <div>
+          <label for="nyBrukerEpost">E-post</label>
+          <input id="nyBrukerEpost" type="email" placeholder="navn@klinikk.no">
+        </div>
       </div>
-      <p class="info">Klikk på en pris i listen for å redigere den.</p>
-    `;
-    side.insertBefore(skjema, liste);
 
-    el("lagrePrisKnapp").onclick = lagrePris;
-    el("nyPrisKnapp").onclick = nyPris;
-    el("slettPrisKnapp").onclick = slettPris;
+      <div class="rad">
+        <div>
+          <label for="nyBrukerPassord">Midlertidig passord</label>
+          <input id="nyBrukerPassord" type="password" placeholder="Minst 6 tegn">
+        </div>
+        <div>
+          <label for="nyBrukerRolle">Rolle</label>
+          <select id="nyBrukerRolle">
+            <option value="veterinaer">Vanlig bruker</option>
+            <option value="admin">Klinikkadmin</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="opprettKlinikkBrukerKnapp" type="button" class="secondary">Opprett bruker</button>
+
+      <hr>
+
+      <h4>Eksisterende brukere</h4>
+      <div id="klinikkBrukerMelding" class="melding"></div>
+      <div id="klinikkBrukerListe"></div>
+    </div>
+
+    <button id="lagreKlinikkKnapp" type="button">Lagre klinikk</button>
+    <div id="klinikkMelding" class="melding"></div>
+    <div id="klinikkListe"></div>
+  </section>
+
+  <section id="eierSide" class="kort skjult">
+    <h2 class="pasientliste-tittel">Dyreeiere | Pasientliste</h2>
+    <input id="dyreeierId" type="hidden">
+    <label for="dyreeierVelgForDyr">Velg dyreeier</label>
+    <select id="dyreeierVelgForDyr">
+      <option value="">Velg dyreeier</option>
+    </select>
+    <div class="rad">
+      <div><label for="dyreeierNavn">Navn</label><input id="dyreeierNavn"></div>
+      <div><label for="dyreeierTelefon">Telefon</label><input id="dyreeierTelefon"></div>
+    </div>
+    <label for="dyreeierEpost">E-post</label>
+    <input id="dyreeierEpost" type="email">
+    <label for="dyreeierAdresse">Adresse</label>
+    <input id="dyreeierAdresse">
+
+    <h3>Dyr hos valgt dyreeier</h3>
+    <p class="lite">Når du redigerer en dyreeier, vises bare dyrene som tilhører denne eieren her.</p>
+    <select id="dyreeierDyrValg">
+      <option value="">Velg/rediger dyreeier først</option>
+    </select>
+    <p id="dyreeierDyrInfo" class="lite"></p>
+
+    <button id="lagreDyreeierKnapp" type="button">Lagre dyreeier</button>
+    <div id="dyreeierMelding" class="melding"></div>
+    <div id="dyreeierListe"></div>
+  </section>
+
+  <section id="dyrSide" class="kort skjult">
+    <h2>Dyr / pasienter</h2>
+    <input id="dyrId" type="hidden">
+    <label for="dyrEierValg">Eier</label>
+    <select id="dyrEierValg"><option value="">Velg eier</option></select>
+    <div class="rad">
+      <div><label for="dyrNavn">Navn</label><input id="dyrNavn"></div>
+      <div><label for="dyrArt">Art</label><input id="dyrArt" placeholder="Hund, katt, hest ..."></div>
+      <div><label for="dyrRase">Rase</label><input id="dyrRase"></div>
+    </div>
+    <div class="rad">
+      <div><label for="dyrFodselsdato">Fødselsdato</label><input id="dyrFodselsdato" type="date"></div>
+      <div><label for="dyrKjonn">Kjønn</label><select id="dyrKjonn"><option value="">Velg</option><option>Hann</option><option>Hunn</option><option>Vallak</option><option>Ukjent</option></select></div>
+      <div><label for="dyrIdmerking">ID/chip</label><input id="dyrIdmerking"></div>
+    </div>
+    <button id="lagreDyrKnapp" type="button">Lagre dyr</button>
+    <div id="dyrMelding" class="melding"></div>
+    <div id="dyrListe"></div>
+  </section>
+
+
+  <section id="prisSide" class="kort skjult">
+    <h2>Prisliste</h2>
+    <p class="lite">Her kan veterinæren lage både fastpriser og timepriser. Prisene kan senere velges inn i journal/behandling.</p>
+    <input id="prisId" type="hidden">
+    <div class="rad">
+      <div>
+        <label for="prisNavn">Navn på pris</label>
+        <input id="prisNavn" placeholder="Konsultasjon hest, vaksine, akuttvakt ...">
+      </div>
+      <div>
+        <label for="prisType">Pristype</label>
+        <select id="prisType">
+          <option value="fastpris">Fastpris</option>
+          <option value="timepris">Timepris</option>
+          <option value="kmpris">Kjøring per km</option>
+          <option value="annet">Annet</option>
+        </select>
+      </div>
+      <div>
+        <label for="prisBelop">Pris eks. mva</label>
+        <input id="prisBelop" type="number" step="0.01" min="0" placeholder="1200">
+      </div>
+    </div>
+    <label for="prisBeskrivelse">Beskrivelse</label>
+    <input id="prisBeskrivelse" placeholder="Valgfritt">
+    <button id="lagrePrisKnapp" type="button">Lagre pris</button>
+    <button id="nyPrisKnapp" type="button" class="secondary">Ny pris</button>
+    <div id="prisMelding" class="melding"></div>
+    <div id="prisListe"></div>
+  </section>
+
+
+
+  <section id="lagerSide" class="kort skjult">
+    <div class="lager-faner">
+      <button type="button" class="secondary" onclick="visLagerFane('minBilOmrade')">Min bil</button>
+      <button type="button" class="secondary vet-admin-nav" onclick="visLagerFane('adminLagerOmrade')">Hovedlager</button>
+      <button type="button" class="secondary" onclick="visLagerFane('bestillingOmrade')">Bestillingsliste</button>
+</div>
+    <div id="lagerVarselTopp"></div>
+
+    <div id="minBilOmrade">
+      <h2>Min bil</h2>
+      <p class="lite">Velg bil første gang. Den huskes automatisk neste gang. Når du fyller bilen fra hovedlager blir det logget hvem som tok hva.</p>
+      <p class="lite">Her kan veterinæren fylle egen bil fra hovedlager. Skriv antall kun på varene som skal legges i bilen.</p>
+
+      <div id="minBilInfo" class="melding"></div>
+
+      <div class="rad" id="minBilVelgRad">
+        <div>
+          <label for="minBilValg">Bil</label>
+          <select id="minBilValg"><option value="">Velg bil</option></select>
+        </div>
+      </div>
+
+      <h3>Velg varer fra hovedlager</h3>
+      <div id="minBilFyllListe" style="margin-top:10px;"></div>
+      <button id="fyllMinBilFlereKnapp" type="button" class="secondary">Legg valgte varer på bilen</button>
+
+      <h3>Innhold i bilen</h3>
+      <div id="minBilInnholdListe"></div>
+      <div id="minBilMelding" class="melding"></div>
+      <h3>Siste lagerbevegelser for bilen</h3>
+      <div id="minBilLoggListe"></div>
+    </div>
+
+    <div id="adminLagerOmrade">
+      <h2>Varer, lager og biler</h2>
+      <p class="lite">Admin kan opprette varer, redigere hovedlager og administrere biler.</p>
+
+      <h3>Medisin / vare</h3>
+      <input id="vetVareId" type="hidden">
+      <div class="rad">
+        <div><label for="vetVareNavn">Navn</label><input id="vetVareNavn" placeholder="F.eks. Influensavaksine, Sedalin, bandasje"></div>
+        <div><label for="vetVareKategori">Kategori</label><select id="vetVareKategori"><option value="medisin">Medisin</option><option value="bandasje">Bandasje</option><option value="forbruk">Forbruk</option><option value="annet">Annet</option></select></div>
+        <div><label for="vetVareEnhet">Enhet</label><input id="vetVareEnhet" placeholder="stk, dose, pakke" value="stk"></div>
+        <div><label for="vetVarePris">Utsalgspris eks. mva</label><input id="vetVarePris" type="number" step="0.01" min="0" value="0"></div>
+        <div><label for="vetVareMinimum">Minimum totalt</label><input id="vetVareMinimum" type="number" step="0.01" min="0" value="0"></div>
+      </div>
+      <button id="lagreVetVareKnapp" type="button">Lagre medisin/vare</button>
+      <button id="nyVetVareKnapp" type="button" class="secondary">Ny vare</button>
+      <div id="vetVareMelding" class="melding"></div>
+      <div id="vetVareListe"></div>
+
+      <hr>
+
+      <h3>Sentral lager / hovedlager</h3>
+      <p class="lite">Her fyller du lageret på klinikken. Positive tall legger til, negative tall korrigerer ned.</p>
+      <div class="rad">
+        <div><label for="hovedlagerVareValg">Medisin/vare</label><select id="hovedlagerVareValg"><option value="">Velg vare</option></select></div>
+        <div><label for="hovedlagerAntall">Antall inn/ut</label><input id="hovedlagerAntall" type="number" step="1" value="1"></div>
+      </div>
+      <button id="oppdaterHovedlagerKnapp" type="button">Oppdater hovedlager</button>
+      <div id="hovedlagerMelding" class="melding"></div>
+      <div id="hovedlagerListe"></div>
+
+      <hr>
+
+      <h3>Biler</h3>
+      <input id="vetBilId" type="hidden">
+      <div class="rad">
+        <div><label for="vetBilNavn">Bilnavn</label><input id="vetBilNavn" placeholder="Bil Anne"></div>
+        <div><label for="vetBilRegnr">Regnr</label><input id="vetBilRegnr" placeholder="AB12345"></div>
+        <div><label for="vetBilVeterinaer">Veterinær</label><input id="vetBilVeterinaer" placeholder="Navn eller e-post til veterinær"></div>
+      </div>
+      <button id="lagreVetBilKnapp" type="button">Lagre bil</button>
+      <button id="nyVetBilKnapp" type="button" class="secondary">Ny bil</button>
+      <div id="vetBilMelding" class="melding"></div>
+      <div id="vetBilListe"></div>
+
+      <hr>
+
+      <h3>Fyll bil fra hovedlager</h3>
+      <p class="lite">Velg bil, skriv antall på alle varene som skal legges i bilen, og overfør alt i én operasjon.</p>
+      <div class="rad">
+        <div><label for="fyllBilValg">Bil</label><select id="fyllBilValg"><option value="">Velg bil</option></select></div>
+      </div>
+      <div id="fyllBilFlerListe" style="margin-top:10px;"></div>
+      <button id="flyttTilBilKnapp" type="button">Legg valgte varer på bil</button>
+      <div id="billagerMelding" class="melding"></div>
+      <div id="billagerListe"></div>
+
+      <hr>
+      <h3>Siste lagerlogg</h3>
+      <p class="lite">Viser hvem som flyttet eller brukte varer.</p>
+      <div id="lagerLoggListe"></div>
+    </div>
+
+    <div id="bestillingOmrade" style="display:none;">
+      <h2>Bestillingsliste</h2>
+      <p class="lite">Varsler når hovedlager er tomt eller under minimum. Bruk listen som påminnelse til innkjøp.</p>
+      <div id="bestillingVarsel"></div>
+      <div id="bestillingListe"></div>
+    </div>
+</div>
+  </section>
+<section id="journalSide" class="kort skjult">
+    <h2>Journal / behandling</h2>
+
+    <div class="rad">
+      <div>
+        <label for="journalDyreeierValg">Dyreeier</label>
+        <select id="journalDyreeierValg"><option value="">Velg dyreeier</option></select>
+      </div>
+      <div>
+        <label for="journalDyrValg">Dyr</label>
+        <select id="journalDyrValg"><option value="">Velg dyreeier først</option></select>
+      </div>
+      <div>
+        <label for="journalDato">Dato</label>
+        <input id="journalDato" type="date">
+      </div>
+    </div>
+
+    <h3>Behandlinger</h3>
+    <p class="lite">Du kan legge til flere behandlinger på samme journal. Kjøring og varer/medisiner ligger i egne felt under.</p>
+
+    <label for="journalPrisValg">Behandling</label>
+    <select id="journalPrisValg">
+      <option value="">Velg behandling</option>
+    </select>
+    <div class="rad">
+      <div>
+        <label for="journalBehandlingAntall">Antall / timer</label>
+        <input id="journalBehandlingAntall" type="number" step="0.25" min="0" value="1">
+      </div>
+      <div style="align-self:end;">
+        <button id="leggTilJournalBehandlingKnapp" type="button" class="secondary">Legg til behandling</button>
+      </div>
+    </div>
+    <div id="journalBehandlingListe" class="lite">Ingen behandlinger lagt til.</div>
+
+    <h3>Kjøring / timer / fastpris</h3>
+    <div class="rad">
+      <div><label for="journalFastpris">Fastpris eks. mva</label><input id="journalFastpris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimepris">Timepris eks. mva</label><input id="journalTimepris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimer">Antall timer</label><input id="journalTimer" type="number" step="0.25" min="0" placeholder="0"></div>
+      <div><label for="journalKm">Kjøring km</label><input id="journalKm" type="number" step="1" min="0" placeholder="0"></div>
+      <div><label for="journalKmPris">Pris per km</label><input id="journalKmPris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div style="align-self:end;">
+        <button id="leggTilJournalKjoringKnapp" type="button" class="secondary">Legg til kjøring</button>
+      </div>
+    </div>
+    <div id="journalKjoringListe" class="lite">Ingen kjøring lagt til.</div>
+    <p class="lite">Sum eks. mva: <strong id="journalSumVisning">0,00</strong></p>
+    <label for="journalNotat">Journalnotat</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <button type="button" class="secondary" onclick="startTale('journalNotat')">Snakk inn journalnotat</button>
+      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
+    </div>
+    <textarea id="journalNotat" placeholder="Skriv eller snakk inn journalnotat."></textarea>
+    <label for="journalMedisin">Medisin / reseptkladd</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <button type="button" class="secondary" onclick="startTale('journalMedisin')">Snakk inn medisin/reseptkladd</button>
+      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
+    </div>
+    <textarea id="journalMedisin" placeholder="Skriv eller snakk inn medisin / reseptkladd. Ikke e-resept."></textarea>
+
+    <h3>Varer / medisiner til faktura</h3>
+    <p class="lite">Velg helst fra bil-lager. Da trekkes beholdningen fra bilen når journalen lagres. Manuell varelinje kan fortsatt brukes ved behov.</p>
+
+    <h4>Fra bil-lager</h4>
+    <div class="rad">
+      <div><label for="journalBilValg">Bil</label><select id="journalBilValg"><option value="">Velg bil</option></select></div>
+    </div>
+    <div id="journalBilVareListe" class="listekort">Velg bil først.</div>
+    <button id="leggTilJournalVarerFraBilListeKnapp" type="button" class="secondary">Legg inn valgte varer fra bil</button>
+
+    <div style="display:none;">
+      <select id="journalBilVareValg"><option value="">Velg bil først</option></select>
+      <input id="journalBilVareAntall" type="number" step="1" min="1" value="1">
+      <button id="leggTilJournalVareFraBilKnapp" type="button" class="secondary">Legg til fra bil-lager</button>
+    </div>
+
+    <h4>Manuell varelinje</h4>
+    <div class="rad">
+      <div><label for="journalVareNavn">Vare / medisin</label><input id="journalVareNavn" placeholder="F.eks. ormekur, vaksine, bandasjemateriell"></div>
+      <div><label for="journalVareAntall">Antall</label><input id="journalVareAntall" type="number" step="1" min="1" value="1"></div>
+      <div><label for="journalVarePris">Pris per stk eks. mva</label><input id="journalVarePris" type="number" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <button id="leggTilJournalVareKnapp" type="button" class="secondary">Legg til manuell vare</button>
+    <div id="journalVareListe" class="lite">Ingen varer lagt til.</div>
+
+    <h3>Journalbilder</h3>
+    <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
+    <div class="rad">
+      <div><label for="journalBildeGalleri">Velg bilde fra galleri</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
+      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+    </div>
+    <label for="journalBildeTekst">Bildetekst</label>
+    <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
+    <p id="journalBildeInfo" class="lite">Ingen bilder valgt.</p>
+
+    <button id="lagreJournalKnapp" type="button">Lagre journal</button>
+    <div id="journalMelding" class="melding"></div>
+    <div id="journalListe"></div>
+  </section>
+
+
+  <section id="okonomiSide" class="kort skjult">
+    <h2>Oversikt</h2>
+    <p class="lite">Adminoversikt over alle journaler, fakturert og ikke fakturert.</p>
+
+    <div class="rad">
+      <div>
+        <label for="adminOkonomiFilter">Vis</label>
+        <select id="adminOkonomiFilter">
+          <option value="alle">Alle journaler</option>
+          <option value="ikke_fakturert">Ikke fakturert</option>
+          <option value="fakturert">Fakturert</option>
+        </select>
+      </div>
+      <div>
+        <label for="adminOkonomiFraDato">Fra dato</label>
+        <input id="adminOkonomiFraDato" type="date">
+      </div>
+      <div>
+        <label for="adminOkonomiTilDato">Til dato</label>
+        <input id="adminOkonomiTilDato" type="date">
+      </div>
+    </div>
+
+    <button id="oppdaterAdminOkonomiKnapp" type="button" class="secondary">Oppdater oversikt</button>
+
+    <div id="adminOkonomiMelding" class="melding"></div>
+    <div id="adminOkonomiSummer" class="okonomi-grid"></div>
+    <div id="adminOkonomiListe"></div>
+
+    <hr>
+    <h3>MVA-oversikt</h3>
+    <p class="lite">Utgående MVA kommer fra faktura/kreditnota. Inngående MVA kommer fra innkjøp og står foreløpig som 0 til vi legger inn innkjøpsdelen.</p>
+    <div id="adminMvaSummer" class="okonomi-grid"></div>
+    <div id="adminMvaListe"></div>
+  </section>
+
+  <section id="backupSide" class="kort skjult">
+    <h2>Backup / Restore / Import</h2>
+    <p class="lite">Kun systemadmin. Her kan du ta backup og importere behandlinger/varer.</p>
+
+    <h3>Backup</h3>
+    <p class="lite">Lokal backup lastes ned til PC. Supabase-backup lagres i privat Storage-bucket og kan også kjøres automatisk hver natt.</p>
+    <button id="vetBackupKnapp" type="button" onclick="vetLagBackup()">Last ned lokal backup</button>
+    <button id="vetBackupStorageKnapp" type="button" class="secondary" onclick="vetLagBackupTilStorage()">Ta backup nå til Supabase</button>
+    <p id="vetSisteBackupInfo" class="lite"></p>
+
+    <h3>Restore</h3>
+    <label for="vetRestoreFil">Velg backupfil (.json)</label>
+    <input id="vetRestoreFil" type="file" accept=".json,application/json">
+    <button id="vetRestoreKnapp" type="button" class="secondary" onclick="return vetRestoreBackupDirekte(event)">Les inn backup</button>
+    <h3>Importer behandlingspriser</h3>
+    <p class="lite">CSV-kolonner: navn,type,pris,beskrivelse</p>
+    <label for="vetImportPriserFil">Velg CSV-fil med behandlingspriser</label>
+    <input id="vetImportPriserFil" type="file" accept=".csv,text/csv">
+    <button id="vetImportPriserKnapp" type="button" class="secondary" onclick="vetImporterPriserCsv()">Importer behandlingspriser</button>
+
+    <h3>Importer medisiner/varer til lager</h3>
+    <p class="lite">CSV-kolonner: navn,kategori,enhet,utsalgspris,minimum_antall,hovedlager_antall</p>
+    <label for="vetImportVarerFil">Velg CSV-fil med medisiner/varer</label>
+    <input id="vetImportVarerFil" type="file" accept=".csv,text/csv">
+    <button id="vetImportVarerKnapp" type="button" class="secondary" onclick="vetImporterVarerCsv()">Importer medisiner/varer</button>
+    <div id="backupMelding" class="melding"></div>
+  </section>
+
+  <section id="fakturaSide" class="kort skjult">
+    <h2>Faktura veterinær</h2>
+    <p class="lite">Velg dyreeier og lag faktura fra journaler, behandlinger, kjøring og varer/medisiner. Logo hentes fra klinikkoppsettet.</p>
+
+    <label for="fakturaDyreeierValg">Dyreeier / kunde</label>
+    <select id="fakturaDyreeierValg">
+      <option value="">Velg dyreeier</option>
+    </select>
+
+    <div class="rad">
+      <div>
+        <label for="fakturaDato">Fakturadato</label>
+        <input id="fakturaDato" type="date">
+      </div>
+      <div>
+        <label for="fakturaForfallsdato">Forfallsdato</label>
+        <input id="fakturaForfallsdato" type="date">
+      </div>
+    </div>
+
+    <button id="hentFakturaGrunnlagKnapp" type="button" class="secondary">Hent fakturagrunnlag</button>
+    <button id="skrivUtVetFakturaKnapp" type="button">Skriv ut faktura med logo</button>
+
+    <hr>
+    <h3>Kreditnota</h3>
+    <p class="lite">Velg en eksisterende faktura og lag kreditnota. Kreditnota trekkes fra i MVA-oversikten.</p>
+    <label for="kreditnotaFakturaValg">Faktura som skal krediteres</label>
+    <select id="kreditnotaFakturaValg">
+      <option value="">Velg faktura</option>
+    </select>
+    <button id="lagVetKreditnotaKnapp" type="button" class="danger">Lag kreditnota</button>
+
+    <div id="vetVippsFakturaVisning" class="vet-vipps-betaling"></div>
+    <div id="fakturaMelding" class="melding"></div>
+    <div id="fakturaGrunnlagListe"></div>
+  </section>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/core/config.js"></script>
+<script src="../js/veterinaer/vet-app.js?v=20260615stabilmeny1"></script>
+<script src="../js/veterinaer/vet-klinikk-priser-bilder.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-lager-bil.js?v=20260615pdf1"></script>
+<script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-faktura-okonomi.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-backup-import-admin.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-pasient-admin.js?v=20260615stabilmeny1"></script>
+<script src="../js/veterinaer/vet-journal-lager.js?v=20260612minimal"></script>
+<script src="../js/veterinaer/vet-admin-ekstra.js?v=20260615stabilmeny1"></script>
+<script>
+async function loggUtVeterinaer() {
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (e) {
+    console.error(e);
   }
 
-  function nyPris(){
-    sikreSkjema();
-    setv("prisId", "");
-    setv("prisNavn", "");
-    setv("prisBelop", "");
-    setv("prisSortering", "0");
-    if(el("prisSkjemaTittel")) el("prisSkjemaTittel").textContent = "Ny pris";
-    msg("");
-    setTimeout(()=>el("prisNavn")?.focus(), 0);
-    return false;
+  window.location.href = "../veterinaer-login.html";
+}
+</script>
+
+
+
+<script>
+/* Tale til tekst i journalfeltene. Lagrer ingen lydfil. */
+let vetTaleRecognition = null;
+let vetAktivtTaleFelt = null;
+function startTale(feltId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert("Talegjenkjenning støttes ikke i denne nettleseren. Bruk Chrome eller Edge."); return; }
+  if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} }
+  vetAktivtTaleFelt = document.getElementById(feltId);
+  if (!vetAktivtTaleFelt) return;
+  vetTaleRecognition = new SpeechRecognition();
+  vetTaleRecognition.lang = "no-NO";
+  vetTaleRecognition.continuous = true;
+  vetTaleRecognition.interimResults = false;
+  vetTaleRecognition.onresult = function(event) {
+    let tekst = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) tekst += event.results[i][0].transcript + " ";
+    const gammel = vetAktivtTaleFelt.value || "";
+    vetAktivtTaleFelt.value = gammel + (gammel && !gammel.endsWith(" ") ? " " : "") + tekst;
+    vetAktivtTaleFelt.dispatchEvent(new Event("input", { bubbles:true }));
+  };
+  vetTaleRecognition.start();
+}
+function stoppTale() { if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} } }
+window.startTale = startTale;
+window.stoppTale = stoppTale;
+</script>
+
+
+
+<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612NYBEHANDLINGFAST2"></script>
+
+<script>
+/* ENDLIG: Ny behandling fra alle pasientliste-knapper */
+(function () {
+  function getGlobal(name, fallback) {
+    try {
+      const v = Function("return (typeof " + name + " !== 'undefined' ? " + name + " : undefined)")();
+      return v === undefined ? fallback : v;
+    } catch(e) { return fallback; }
   }
 
-  function redigerPris(id){
-    sikreSkjema();
-    const p = priser.find(x => String(x.id) === String(id));
-    if(!p){ msg("Fant ikke prisen.", true); return false; }
-    setv("prisId", p.id);
-    setv("prisNavn", p.navn || "");
-    setv("prisBelop", p.pris ?? 0);
-    setv("prisSortering", p.sortering ?? 0);
-    if(el("prisSkjemaTittel")) el("prisSkjemaTittel").textContent = "Rediger pris";
-    msg("Redigerer: " + (p.navn || "pris"));
-    el("behPrisSkjema")?.scrollIntoView({behavior:"smooth", block:"start"});
-    return false;
+  function setv(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.value = v == null ? "" : v;
   }
 
-  async function hentPrislisteTilApp(){
-    if(busy) return false;
-    busy = true;
-    try{
-      sikreSkjema();
-      const div = el("prislisteApp");
-      if(!div) return false;
-      div.innerHTML = `<div class="listekort">Laster prisliste ...</div>`;
-      const c = await client();
-      const res = await c.from("beh_priser")
-        .select("*")
-        .eq("aktiv", true)
-        .order("sortering", {ascending:true})
-        .order("navn", {ascending:true});
-      if(res.error) throw res.error;
-      priser = res.data || [];
+  function finnEierIdForDyr(d) {
+    return d?.dyreeier_id || d?.eier_id || d?.kunde_id || d?.owner_id || d?.vet_dyreeiere?.id || d?.dyreeier?.id || "";
+  }
 
-      if(!priser.length){
-        div.innerHTML = `<div class="listekort">Ingen priser er lagt inn ennå.</div>`;
-        msg("");
-        return false;
+  function finnDyrIdFraKnapp(btn) {
+    if (!btn) return "";
+    let id = btn.getAttribute("data-dyr-id") || "";
+    if (id) return id;
+
+    const onclick = btn.getAttribute("onclick") || "";
+    const m = onclick.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (m) return m[0];
+
+    const panel = btn.closest("[id^='vetBehandlingPanel_']");
+    if (panel && panel.id) return panel.id.replace("vetBehandlingPanel_", "");
+
+    const kort = btn.closest(".vet-dyr-kort");
+    if (kort) {
+      const b = kort.querySelector("button[data-dyr-id]");
+      if (b) return b.getAttribute("data-dyr-id") || "";
+    }
+    return "";
+  }
+
+  function apneJournalForDyr(dyrId) {
+    const dyrListe = getGlobal("vetDyr", []) || [];
+    const d = dyrListe.find(x => String(x.id || "") === String(dyrId || ""));
+
+    if (!d) {
+      alert("Fant ikke dyret for ny behandling. Trykk Oppdater og prøv igjen.");
+      return false;
+    }
+
+    const eierId = finnEierIdForDyr(d);
+    if (!eierId) {
+      alert("Dyret mangler eierkobling.");
+      return false;
+    }
+
+    try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
+    try { window.vetRedigerJournalId = ""; } catch(e) {}
+
+    document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(function(el) {
+      if (!el) return;
+      el.classList.add("skjult");
+      el.style.display = "none";
+    });
+
+    const side = document.getElementById("journalSide");
+    if (!side) {
+      alert("Fant ikke journalbildet.");
+      return false;
+    }
+    side.classList.remove("skjult");
+    side.style.display = "";
+
+    setTimeout(function () {
+      try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
+      setv("journalDyreeierValg", eierId);
+      const eierValg = document.getElementById("journalDyreeierValg");
+      if (eierValg) {
+        try { eierValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
       }
 
-      const rows = priser.map(p => {
-        const eks = Number(p.pris || 0);
-        const mva = eks * 0.25;
-        const inkl = eks + mva;
-        return `
-          <tr onclick="return window.redigerBehPrisHard('${esc(p.id)}')" style="cursor:pointer;">
-            <td style="padding:8px;border-bottom:1px solid #475569;">${esc(p.navn)}</td>
-            <td style="padding:8px;border-bottom:1px solid #475569;text-align:right;"><input data-pris-id="${esc(p.id)}" data-felt="pris" type="number" step="0.01" value="${esc(p.pris)}" style="max-width:120px;text-align:right;"></td>
-            <td style="padding:8px;border-bottom:1px solid #475569;text-align:right;">${kr(mva)} kr</td>
-            <td style="padding:8px;border-bottom:1px solid #475569;text-align:right;"><b>${kr(inkl)} kr</b></td>
-            <td style="padding:8px;border-bottom:1px solid #475569;text-align:right;">
-              <button type="button" class="secondary" onclick="event.stopPropagation();return window.redigerBehPrisHard('${esc(p.id)}')">Rediger</button>
-            </td>
-          </tr>
-        `;
-      }).join("");
+      setTimeout(function () {
+        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+        setv("journalDyrValg", d.id);
+        const dyrValg = document.getElementById("journalDyrValg");
+        if (dyrValg) {
+          try { dyrValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
+        }
 
-      div.innerHTML = `
-        <div class="listekort">
-          <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;min-width:720px;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid #475569;">Behandlingstype</th>
-                  <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">Eks. mva</th>
-                  <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">MVA</th>
-                  <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">Inkl. mva</th>
-                  <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">Handling</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </div>
-      `;
+        setv("journalDato", new Date().toISOString().slice(0,10));
+        ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
+        ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
 
-      div.querySelectorAll("input[data-pris-id]").forEach(inp => {
-        inp.addEventListener("click", ev => ev.stopPropagation());
-        inp.addEventListener("change", async () => {
-          const id = inp.dataset.prisId;
-          const pris = Number(String(inp.value || "0").replace(",", "."));
-          const c = await client();
-          const r = await c.from("beh_priser").update({pris}).eq("id", id);
-          if(r.error) msg("Kunne ikke hurtiglagre pris: " + r.error.message, true);
-          else { msg("Pris oppdatert."); await hentPrislisteTilApp(); }
-        });
-      });
+        try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
+        try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
+        try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
 
-      msg("");
-      return false;
-    }catch(e){
-      console.error(e);
-      msg("Kunne ikke vise prisliste: " + (e.message || e), true);
-      const div = el("prislisteApp");
-      if(div) div.innerHTML = `<div class="listekort">Prisliste kunne ikke lastes.</div>`;
-      return false;
-    }finally{
-      busy = false;
-    }
-  }
-
-  async function lagrePris(ev){
-    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-    try{
-      sikreSkjema();
-      const c = await client();
-      const id = val("prisId");
-      const navn = val("prisNavn");
-      const pris = Number(String(val("prisBelop") || "0").replace(",", "."));
-      const sortering = Number(val("prisSortering") || "0");
-      if(!navn){ msg("Skriv navn på prisen.", true); return false; }
-
-      const payload = { navn, pris, sortering, aktiv:true };
-      const res = id
-        ? await c.from("beh_priser").update(payload).eq("id", id)
-        : await c.from("beh_priser").insert([payload]);
-
-      if(res.error) throw res.error;
-      msg(id ? "Prisen er oppdatert." : "Ny pris er lagret.");
-      nyPris();
-      await hentPrislisteTilApp();
-    }catch(e){
-      console.error(e);
-      msg("Kunne ikke lagre pris: " + (e.message || e), true);
-    }
+        const lagre = document.getElementById("lagreJournalKnapp");
+        if (lagre) lagre.textContent = "Lagre journal";
+        const h = document.querySelector("#journalSide h2");
+        if (h) h.textContent = "Ny behandling";
+        const msg = document.getElementById("journalMelding");
+        if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
+        side.scrollIntoView({ behavior:"smooth", block:"start" });
+        const notat = document.getElementById("journalNotat");
+        if (notat) notat.focus();
+      }, 100);
+    }, 100);
     return false;
   }
 
-  async function slettPris(ev){
-    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-    const id = val("prisId");
-    if(!id){ msg("Velg en pris først.", true); return false; }
-    if(!confirm("Slette/deaktivere denne prisen?")) return false;
-    try{
-      const c = await client();
-      const res = await c.from("beh_priser").update({aktiv:false}).eq("id", id);
-      if(res.error) throw res.error;
-      msg("Prisen er slettet/deaktivert.");
-      nyPris();
-      await hentPrislisteTilApp();
-    }catch(e){
-      msg("Kunne ikke slette pris: " + (e.message || e), true);
-    }
-    return false;
+  window.vetApneJournalForDyr = apneJournalForDyr;
+
+  document.addEventListener("click", function (ev) {
+    const btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+    if (!btn || !btn.closest("#eierSide")) return;
+
+    const tekst = String(btn.textContent || "").trim().toLowerCase();
+    const erNyBehandling = btn.matches(".vet-nybehandling-radknapp,[data-dyr-id],.vet-nybehandling-direkte") || tekst === "ny behandling";
+    if (!erNyBehandling) return;
+
+    const dyrId = finnDyrIdFraKnapp(btn);
+    if (!dyrId) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    return apneJournalForDyr(dyrId);
+  }, true);
+})();</script>
+
+
+
+
+
+<script>
+/* STABIL MENY 2026-06-15: rolig versjon uten blink og uten Velg modul. */
+(function () {
+  function tekst(id){ var el=document.getElementById(id); return String(el && el.textContent ? el.textContent : "").toLowerCase(); }
+  function epost(){ try { return String(window.vetInnloggetEpost || localStorage.getItem("rettilommaSistEpost") || "").toLowerCase(); } catch(e){ return ""; } }
+  function rolleKlar(){ var r=tekst("vetToppRolle"); return r && !r.includes("laster"); }
+  function erAdmin(){
+    var rolle=tekst("vetToppRolle"), info=tekst("aktivKlinikkInfo"), mail=epost(), globalAdmin=false;
+    try { globalAdmin=(typeof window.erKlinikkAdmin==="function" && window.erKlinikkAdmin()) || window.vetErSystemAdmin===true || String(window.vetKlinikkRolle||"").toLowerCase().includes("admin"); } catch(e){}
+    return !!(globalAdmin || mail==="greknuts@online.no" || rolle.includes("admin") || info.includes("admin") || info.includes("systemadmin"));
   }
-
-  function bind(){
-    sikreSkjema();
-    const oppdater = el("oppdaterPrislisteKnapp");
-    if(oppdater) oppdater.onclick = hentPrislisteTilApp;
-
-    document.querySelectorAll('a[href="#prislisteSide"]').forEach(a => {
-      if(a.dataset.prisHardBind === "1") return;
-      a.dataset.prisHardBind = "1";
-      a.addEventListener("click", () => setTimeout(hentPrislisteTilApp, 150));
-    });
+  function vis(el, synlig, display){ if(!el) return; display=display||"inline-block"; el.style.display=synlig ? display : "none"; el.classList.toggle("skjult", !synlig); }
+  function settMeny(apne){ var meny=document.getElementById("vetOppsettMeny"); if(meny) vis(meny, !!apne, "block"); }
+  function stabiliser(){
+    var admin=erAdmin();
+    document.body.classList.remove("vet-loading");
+    document.querySelectorAll(".vet-bruker-nav").forEach(function(el){ vis(el,true); });
+    document.querySelectorAll(".vet-admin-nav,.vet-systemadmin-nav,.vet-faktura-nav,.vet-lagerlogg-nav,.vet-admin-toggle").forEach(function(el){ vis(el,admin); });
+    var oppsett=document.getElementById("vetOppsettKnapp");
+    if(oppsett){ vis(oppsett,admin); oppsett.disabled=false; oppsett.onclick=toggle; }
+    if(!admin) settMeny(false);
   }
-
-  window.hentPrislisteTilApp = hentPrislisteTilApp;
-  window.redigerBehPrisHard = redigerPris;
-  window.redigerBehPris = redigerPris;
-  window.nyBehPris = nyPris;
-  window.lagreBehPris = lagrePris;
-  window.slettBehPris = slettPris;
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ bind(); setTimeout(hentPrislisteTilApp, 700); });
-  else { bind(); setTimeout(hentPrislisteTilApp, 700); }
-
-  window.addEventListener("load", function(){
-    setTimeout(bind, 100);
-    setTimeout(hentPrislisteTilApp, 1000);
-  });
-  window.addEventListener("hashchange", function(){
-    if(location.hash === "#prislisteSide") setTimeout(hentPrislisteTilApp, 150);
-  });
+  function toggle(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(!erAdmin()) return false;
+    var meny=document.getElementById("vetOppsettMeny"); if(!meny) return false;
+    var synlig=!(meny.classList.contains("skjult") || getComputedStyle(meny).display==="none");
+    settMeny(!synlig); return false;
+  }
+  document.addEventListener("click", function(ev){ var k=ev.target && ev.target.closest ? ev.target.closest("#vetOppsettKnapp") : null; if(k) return toggle(ev); }, true);
+  window.toggleVetOppsettMeny=toggle;
+  window.rettILommaStabiliserVetMeny=stabiliser;
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(stabiliser,50); }); else setTimeout(stabiliser,50);
+  window.addEventListener("load", function(){ setTimeout(stabiliser,100); });
 })();
 </script>
 
