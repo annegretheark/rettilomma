@@ -40,7 +40,7 @@ async function lagreHest() {
   }
 
   const hest = {
-    kunde_id: Number(kundeId),
+    kunde_id: kundeId,
     navn,
     rase: document.getElementById("hestRase")?.value.trim() || "",
     notater: document.getElementById("hestNotater")?.value.trim() || "",

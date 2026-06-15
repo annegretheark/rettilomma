@@ -207,6 +207,33 @@
 </head>
 <body>
 <script>
+// Hovslager startfix 2026-06-15: ikke stopp appen med blind oppstarts-alert.
+(function(){
+  const originalAlert = window.alert.bind(window);
+  window.hovSisteFeil = "";
+  window.addEventListener("error", function(e){
+    window.hovSisteFeil = (e.message || "Ukjent JavaScript-feil") + (e.filename ? " i " + e.filename.split('/').pop() : "");
+    const m = document.getElementById("jobbMelding") || document.getElementById("backupMelding");
+    if(m) m.textContent = "Oppstartsfeil: " + window.hovSisteFeil;
+  });
+  window.addEventListener("unhandledrejection", function(e){
+    const r = e.reason;
+    window.hovSisteFeil = (r && (r.message || r.error_description)) || String(r || "Ukjent oppstartsfeil");
+    const m = document.getElementById("jobbMelding") || document.getElementById("backupMelding");
+    if(m) m.textContent = "Oppstartsfeil: " + window.hovSisteFeil;
+  });
+  window.alert = function(msg){
+    if(String(msg || "").includes("Feil ved oppstart av hovslager-systemet")){
+      const m = document.getElementById("jobbMelding") || document.getElementById("backupMelding");
+      if(m) m.textContent = window.hovSisteFeil ? "Oppstartsfeil: " + window.hovSisteFeil : "Oppstart feilet. Sjekk at alle js/hovslager-filene er publisert.";
+      console.warn("Skjulte blind oppstarts-alert:", msg, window.hovSisteFeil);
+      return;
+    }
+    return originalAlert(msg);
+  };
+})();
+</script>
+<script>
 localStorage.setItem("rettilommaValgtModul", "hovslager");
 // Start alltid på Jobber / timer etter innlogging eller refresh.
 // Menyknappene virker fortsatt etter at siden er lastet.
@@ -525,22 +552,51 @@ if (window.location.hash !== "#jobbSide") {
 <div class="melding" id="backupMelding"></div>
 </div></section>
 </section>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=5001"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=5001"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=5001"></script>
-<script src="../js/hovslager/config.js?v=5001"></script>
-<script src="../js/hovslager/moduler.js?v=5001"></script>
-<script src="../js/hovslager/backup.js?v=5001"></script>
-<script src="../js/hovslager/state.js?v=5001"></script>
-<script src="../js/hovslager/hov-navigation.js?v=5001"></script>
-<script src="../js/hovslager/hov-kunder.js?v=20260608_firma_trygg"></script>
-<script src="../js/hovslager/hov-oppsett.js?v=20260608_firma_trygg"></script>
-<script src="../js/hovslager/hester.js?v=5001"></script>
-<script src="../js/hovslager/hov-jobber.js?v=5001"></script>
-<script src="../js/hovslager/hov-faktura.js?v=5001"></script>
-<script src="../js/hovslager/hov-kreditnota.js?v=5001"></script>
-<script src="../js/hovslager/hov-fakturaoversikt.js?v=20260607_betalingsstatus"></script>
-<script src="../js/hovslager/hov-prisliste.js?v=5001"></script>
-<script src="../js/hovslager/hov-app.js?v=20260608_firma_trygg"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=20260615_startfix"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=20260615_startfix"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/config.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/moduler.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/backup.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/state.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-navigation.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-kunder.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-oppsett.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hester.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-jobber.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-faktura.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-kreditnota.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-fakturaoversikt.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-prisliste.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-app.js?v=20260615_startfix"></script>
+
+<script>
+// Robust start for Vercel uten konsoll. Starter delene som finnes, og lar appen leve selv om én tabell mangler.
+(function(){
+  async function tryRun(name){
+    try { if(typeof window[name] === "function") await window[name](); }
+    catch(e){
+      console.warn(name + " feilet:", e);
+      const m = document.getElementById("jobbMelding") || document.getElementById("hestMelding") || document.getElementById("kundeMelding");
+      if(m) m.textContent = name + " feilet: " + (e.message || e);
+    }
+  }
+  async function startTrygt(){
+    const d = document.getElementById("jobbDato");
+    if(d && !d.value) d.value = new Date().toISOString().slice(0,10);
+    await tryRun("hentKunder");
+    await tryRun("hentHester");
+    await tryRun("hentJobber");
+    await tryRun("fyllFakturaKunder");
+    await tryRun("lastHovOppsett");
+    if(typeof window.startHovslager === "function") {
+      try { await window.startHovslager(); } catch(e) { console.warn("startHovslager feilet etter delstart:", e); }
+    }
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(startTrygt, 300); });
+  else setTimeout(startTrygt, 300);
+  window.addEventListener("load", function(){ setTimeout(startTrygt, 1200); });
+})();
+</script>
 </body>
 </html>

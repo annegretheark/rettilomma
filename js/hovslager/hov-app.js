@@ -222,7 +222,7 @@ async function hentAlleHesterFraBase() {
 
   if (error) {
     console.error("Feil ved henting av hester:", error);
-    alert("Feil ved henting av hester.");
+    const m = document.getElementById("jobbMelding") || document.getElementById("hestMelding"); if (m) m.textContent = "Kunne ikke hente hester: " + error.message;
     return;
   }
 
