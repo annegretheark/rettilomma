@@ -203,7 +203,51 @@
       font-size: 12px;
       font-weight: bold;
     }
-  </style>
+  
+
+.hov-bildeblokk {
+  border: 1px solid #374151;
+  background: #22272a;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+}
+.hov-bildeknapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.hov-bildeknapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #555;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+.hov-bildeinput {
+  display: none;
+}
+.hov-bildepreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.hov-bildepreview img {
+  width: 92px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #475569;
+}
+
+</style>
 </head>
 <body>
 <script>
@@ -270,6 +314,15 @@ if (window.location.hash !== "#jobbSide") {
     Skodde Quen 20 kilometer
 
   </div>
+<div class="hov-bildeblokk" id="hovTaleBildeBlokk">
+  <strong>📷 Bilder til jobben</strong>
+  <div class="info">Én knapp. Velg ett eller flere bilder før tale, eller rett etter at jobben er lest inn.</div>
+  <div class="hov-bildeknapper">
+    <label class="hov-bildeknapp" for="jobbBilder">📷 Velg bilder</label>
+    <input id="jobbBilder" class="hov-bildeinput" type="file" accept="image/*" multiple>
+  </div>
+  <div id="jobbBildePreview" class="hov-bildepreview"></div>
+</div>
 <hr/>
 <button class="secondary" onclick="
             document
@@ -347,6 +400,15 @@ if (window.location.hash !== "#jobbSide") {
       Beskrivelse
     </label>
 <textarea id="jobbBeskrivelse"></textarea>
+<div class="hov-bildeblokk" id="hovManuellBildeBlokk">
+  <strong>📷 Bilder til manuell registrering</strong>
+  <div class="info">Én knapp. Velg ett eller flere bilder. De lagres sammen med jobben når du trykker Lagre jobb.</div>
+  <div class="hov-bildeknapper">
+    <label class="hov-bildeknapp" for="jobbBilderManuell">📷 Velg bilder</label>
+    <input id="jobbBilderManuell" class="hov-bildeinput" type="file" accept="image/*" multiple>
+  </div>
+  <div id="jobbBildePreviewManuell" class="hov-bildepreview"></div>
+</div>
 <div class="rad">
 <div>
 <label for="arbeidBelop">
@@ -563,7 +625,7 @@ if (window.location.hash !== "#jobbSide") {
 <script src="../js/hovslager/hov-kunder.js?v=20260615_startfix"></script>
 <script src="../js/hovslager/hov-oppsett.js?v=20260615_startfix"></script>
 <script src="../js/hovslager/hester.js?v=20260615_startfix"></script>
-<script src="../js/hovslager/hov-jobber.js?v=20260615_startfix"></script>
+<script src="../js/hovslager/hov-jobber.js?v=20260615_bilder_flere"></script>
 <script src="../js/hovslager/hov-faktura.js?v=20260615_startfix"></script>
 <script src="../js/hovslager/hov-kreditnota.js?v=20260615_startfix"></script>
 <script src="../js/hovslager/hov-fakturaoversikt.js?v=20260615_startfix"></script>

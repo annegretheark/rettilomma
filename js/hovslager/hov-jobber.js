@@ -29,18 +29,67 @@ function hovDatoNo(v) {
   return d.length === 3 ? `${d[2]}.${d[1]}.${d[0]}` : String(v);
 }
 
+function hentValgteHovBildeFiler() {
+  const inputIds = [
+    "jobbBilder",
+    "jobbBilderManuell",
+    // gamle id-er beholdes som fallback hvis en gammel index ligger i cache
+    "jobbBildeKamera",
+    "jobbBildeGalleri",
+    "jobbBildeKameraManuell",
+    "jobbBildeGalleriManuell"
+  ];
+
+  const filer = [];
+  const sett = new Set();
+
+  for (const id of inputIds) {
+    const input = document.getElementById(id);
+    for (const fil of Array.from(input?.files || [])) {
+      const key = [fil.name, fil.size, fil.lastModified].join("|");
+      if (sett.has(key)) continue;
+      sett.add(key);
+      filer.push(fil);
+    }
+  }
+
+  return filer;
+}
+
 function hentValgtHovBildeFil() {
-  const kamera = document.getElementById("jobbBildeKamera");
-  const galleri = document.getElementById("jobbBildeGalleri");
-  const filInput = kamera?.files?.length ? kamera : galleri;
-  return filInput?.files?.[0] || null;
+  return hentValgteHovBildeFiler()[0] || null;
 }
 
 function tomHovBildeFelter() {
-  const kamera = document.getElementById("jobbBildeKamera");
-  const galleri = document.getElementById("jobbBildeGalleri");
-  if (kamera) kamera.value = "";
-  if (galleri) galleri.value = "";
+  [
+    "jobbBilder",
+    "jobbBilderManuell",
+    "jobbBildeKamera",
+    "jobbBildeGalleri",
+    "jobbBildeKameraManuell",
+    "jobbBildeGalleriManuell"
+  ].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
+
+  ["jobbBildePreview", "jobbBildePreviewManuell"].forEach(id => {
+    const div = document.getElementById(id);
+    if (div) div.innerHTML = "";
+  });
+}
+
+function hovVisBildePreview() {
+  const filer = hentValgteHovBildeFiler();
+  const html = filer.map(f => {
+    const url = URL.createObjectURL(f);
+    return `<img src="${url}" alt="${hovEsc(f.name)}" title="${hovEsc(f.name)}">`;
+  }).join("");
+
+  ["jobbBildePreview", "jobbBildePreviewManuell"].forEach(id => {
+    const div = document.getElementById(id);
+    if (div) div.innerHTML = html;
+  });
 }
 
 function rentFilnavn(navn) {
@@ -227,15 +276,21 @@ async function lagreJobb() {
   }
 
   const nyJobb = res.data;
-  const valgtBilde = hentValgtHovBildeFil();
+  window.hovSistLagretJobbId = nyJobb?.id || null;
+  window.hovSistLagretJobbTid = Date.now();
+  const valgteBilder = hentValgteHovBildeFiler();
+  let antallBilderLagret = 0;
 
-  if (valgtBilde && nyJobb?.id) {
+  if (valgteBilder.length && nyJobb?.id) {
     try {
-      await lastOppHovJobbBilde(nyJobb.id, valgtBilde, "Bilde fra registrering");
+      for (const fil of valgteBilder) {
+        await lastOppHovJobbBilde(nyJobb.id, fil, "Bilde fra registrering");
+        antallBilderLagret += 1;
+      }
       tomHovBildeFelter();
     } catch (e) {
       console.error("Bildefeil:", e);
-      jobbMelding("Jobb lagret, men bilde feilet: " + (e.message || e), true);
+      jobbMelding("Jobb lagret, men ett eller flere bilder feilet: " + (e.message || e), true);
       await hentJobber();
       return;
     }
@@ -257,7 +312,7 @@ async function lagreJobb() {
     if (typeof window.hentHester === "function") await window.hentHester();
   }
 
-  jobbMelding(valgtBilde ? "Jobb og bilde lagret" : "Jobb lagret");
+  jobbMelding(antallBilderLagret ? `Jobb og ${antallBilderLagret} bilde(r) lagret` : "Jobb lagret");
 
   const jobbDato = document.getElementById("jobbDato");
   if (jobbDato) jobbDato.value = new Date().toISOString().slice(0, 10);
@@ -499,10 +554,95 @@ async function hentJobber() {
   liste.appendChild(table);
 }
 
+async function lastOppValgteBilderPaSisteHovJobb() {
+  const jobbId = window.hovSistLagretJobbId || hovJobbValgt?.id || null;
+  if (!jobbId) {
+    jobbMelding("Ingen siste jobb funnet. Lagre eller åpne en jobb først.", true);
+    return false;
+  }
+
+  const filer = hentValgteHovBildeFiler();
+  if (!filer.length) {
+    jobbMelding("Velg ett eller flere bilder først.", true);
+    return false;
+  }
+
+  const knapp = document.getElementById("leggBilderPaSisteJobbKnapp");
+  const gammelTekst = knapp?.textContent || "Legg bilder på siste jobb";
+  if (knapp) {
+    knapp.disabled = true;
+    knapp.textContent = "Lagrer bilder ...";
+  }
+
+  try {
+    let antall = 0;
+    for (const fil of filer) {
+      await lastOppHovJobbBilde(jobbId, fil, "Bilde lagt til etter tale/registrering");
+      antall += 1;
+    }
+    tomHovBildeFelter();
+    jobbMelding(`${antall} bilde(r) lagt på siste jobb.`);
+    await hentJobber();
+    return false;
+  } catch (e) {
+    console.error(e);
+    jobbMelding("Kunne ikke legge bilder på siste jobb: " + (e.message || e), true);
+    return false;
+  } finally {
+    if (knapp) {
+      knapp.disabled = false;
+      knapp.textContent = gammelTekst;
+    }
+  }
+}
+
+async function hovBildeEndret(ev) {
+  hovVisBildePreview();
+
+  // Hvis bildene velges rett etter tale/lagring, legges de automatisk på siste jobb.
+  // Velges de før lagring, blir de med når Lagre jobb / tale-lagring kjører.
+  const input = ev && ev.target;
+  const erTaleBilde = input && input.id === "jobbBilder";
+  const sistTid = Number(window.hovSistLagretJobbTid || 0);
+  const nyligLagret = window.hovSistLagretJobbId && sistTid && (Date.now() - sistTid < 10 * 60 * 1000);
+  const harFiler = hentValgteHovBildeFiler().length > 0;
+
+  if (erTaleBilde && nyligLagret && harFiler) {
+    await lastOppValgteBilderPaSisteHovJobb();
+  }
+}
+
+function bindHovBildeKnapper() {
+  [
+    "jobbBilder",
+    "jobbBilderManuell",
+    // gamle id-er beholdes som fallback hvis en gammel index ligger i cache
+    "jobbBildeKamera",
+    "jobbBildeGalleri",
+    "jobbBildeKameraManuell",
+    "jobbBildeGalleriManuell"
+  ].forEach(id => {
+    const input = document.getElementById(id);
+    if (input && input.dataset.hovBildeBind !== "1") {
+      input.dataset.hovBildeBind = "1";
+      input.addEventListener("change", hovBildeEndret);
+    }
+  });
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindHovBildeKnapper);
+} else {
+  bindHovBildeKnapper();
+}
+window.addEventListener("load", bindHovBildeKnapper);
+
+
 window.lagreJobb = lagreJobb;
 window.hentJobber = hentJobber;
 window.visHovJobbDetalj = visHovJobbDetalj;
 window.lagreBildePaValgtHovJobb = lagreBildePaValgtHovJobb;
+window.lastOppValgteBilderPaSisteHovJobb = lastOppValgteBilderPaSisteHovJobb;
+window.hovVisBildePreview = hovVisBildePreview;
 
 
 // Sikker kobling: Oppdater jobber-knappen skal alltid vise jobblista.
