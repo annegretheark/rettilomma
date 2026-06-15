@@ -3203,5 +3203,206 @@ if (window.location.hash !== "#behandlingSide") {
 })();
 </script>
 
+
+
+<script>
+// ENDELIG TALESTYRING 2026-06-15
+// Behandlingstale fyller/lager behandling. Journal-tale skriver kun i journalnotat.
+// Denne ligger aller sist og kloner behandling-knappen, slik at gamle lyttere fjernes.
+(function(){
+  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+
+  function el(id){ return document.getElementById(id); }
+  function setv(id,v){ const e=el(id); if(e){ e.value = v == null ? "" : String(v); e.dispatchEvent(new Event("change", {bubbles:true})); } }
+  function msg(t, feil){ const m=el("taleResultat") || el("behandlingMelding"); if(m){ m.textContent=t||""; m.style.color=feil?"#fca5a5":"#86efac"; } }
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  async function client(){
+    for(let i=0;i<80;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      if(window.supabase && window.supabase.createClient){
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+        return window.supabaseClient;
+      }
+      await sleep(100);
+    }
+    throw new Error("Supabase-klient ble ikke klar");
+  }
+  function norm(v){
+    return String(v||"").toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
+      .replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+  }
+  function levenshtein(a,b){
+    a=norm(a); b=norm(b); if(a===b) return 0; if(!a) return b.length; if(!b) return a.length;
+    const dp=Array.from({length:a.length+1},(_,i)=>[i]);
+    for(let j=1;j<=b.length;j++) dp[0][j]=j;
+    for(let i=1;i<=a.length;i++){
+      for(let j=1;j<=b.length;j++){
+        dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+      }
+    }
+    return dp[a.length][b.length];
+  }
+  function finnKm(tekst){
+    const t=norm(tekst);
+    const patterns=[
+      /(?:kjorte|kjort|kort|kjoerte|kjoret|koyrte|kjore|koert)\s+(\d+(?:[,.]\d+)?)/i,
+      /(\d+(?:[,.]\d+)?)\s*(?:km|kilometer)/i
+    ];
+    for(const p of patterns){ const m=t.match(p); if(m) return Number(String(m[1]).replace(",",".")); }
+    const tall=[...String(tekst).matchAll(/\d+(?:[,.]\d+)?/g)].map(m=>Number(m[0].replace(",","."))).filter(Number.isFinite);
+    return tall.length ? tall[tall.length-1] : 0;
+  }
+  function finnBehandling(tekst, priser){
+    const t=norm(tekst);
+    const alias={
+      "osteopati":["osteopati","ostiopati","osteopathi","ostiopathi"],
+      "massasje":["massasje","masasje","massere","masserte"],
+      "kiropraktikk":["kiropraktikk","kiro","kiropraktor"],
+      "akupunktur":["akupunktur","akupunkt"],
+      "laserbehandling":["laserbehandling","laser"],
+      "stretching":["stretching","streching","stretch"],
+      "rehabilitering":["rehabilitering","rehab"]
+    };
+    const prisnavn=(priser||[]).map(p=>p.navn).filter(Boolean);
+    for(const navn of prisnavn){
+      const n=norm(navn);
+      if(t.includes(n)) return navn;
+      const al=alias[n]||[];
+      if(al.some(a=>t.includes(norm(a)))) return navn;
+    }
+    // fallback mot kjente valg hvis prislisten ikke er lastet
+    const kjente=["Osteopati","Massasje","Kiropraktikk","Akupunktur","Laserbehandling","Stretching","Rehabilitering"];
+    for(const navn of kjente){
+      const n=norm(navn);
+      if(t.includes(n) || (alias[n]||[]).some(a=>t.includes(norm(a)))) return navn;
+    }
+    return "";
+  }
+  function finnDyr(tekst, dyr){
+    const t=norm(tekst);
+    const kompakt=t.replace(/\s+/g,"");
+    const kandidater=[];
+    for(const d of dyr||[]){
+      const navn=norm(d.navn);
+      if(!navn) continue;
+      const kompaktNavn=navn.replace(/\s+/g,"");
+      let score=999;
+      if(t.includes(navn) || kompakt.includes(kompaktNavn)) score=0;
+      else {
+        const ord=t.split(" ").filter(o=>o.length>=3);
+        for(const o of ord){
+          const dist=levenshtein(o, navn);
+          const grense = navn.length <= 5 ? 1 : 2;
+          if(dist <= grense) score=Math.min(score, dist+1);
+          if(navn.includes(o) || o.includes(navn)) score=Math.min(score,2);
+        }
+      }
+      if(score<999) kandidater.push({d,score});
+    }
+    kandidater.sort((a,b)=>a.score-b.score || String(a.d.navn).localeCompare(String(b.d.navn)));
+    if(!kandidater.length) return {dyr:null, flere:[]};
+    const besteScore=kandidater[0].score;
+    const beste=kandidater.filter(k=>k.score===besteScore);
+    if(beste.length>1){
+      // Hvis samme navn finnes flere ganger, stopp. Folk kan ha flere dyr, og vi skal ikke gjette.
+      return {dyr:null, flere:beste.map(x=>x.d)};
+    }
+    return {dyr:beste[0].d, flere:[]};
+  }
+  async function hentData(){
+    const c=await client();
+    const [dyrRes, prisRes]=await Promise.all([
+      c.from("beh_hester").select("id,navn,kunde_id").order("navn",{ascending:true}),
+      c.from("beh_priser").select("id,navn,pris,aktiv,sortering").order("sortering",{ascending:true}).order("navn",{ascending:true})
+    ]);
+    if(dyrRes.error) throw dyrRes.error;
+    const priser = prisRes.error ? [] : (prisRes.data||[]).filter(p=>p.aktiv!==false);
+    return {dyr:dyrRes.data||[], priser};
+  }
+  async function fyllFraTale(tekst){
+    const manuell=el("manuellBehandling"); if(manuell) manuell.classList.remove("skjult");
+    const {dyr, priser}=await hentData();
+    const funn=finnDyr(tekst, dyr);
+    if(funn.flere.length){
+      msg("Fant flere dyr som kan passe: " + funn.flere.map(d=>d.navn).join(", ") + ". Velg dyr manuelt.", true);
+      return false;
+    }
+    if(!funn.dyr){
+      msg("Fant ikke dyret i basen. Si dyrenavnet tydelig, f.eks. 'Sissy osteopati kjørte 20'.", true);
+      return false;
+    }
+    const behandling=finnBehandling(tekst, priser);
+    if(!behandling){
+      msg("Fant dyret " + funn.dyr.navn + ", men fant ikke behandlingstype. Velg behandlingstype manuelt.", true);
+    }
+    const km=finnKm(tekst);
+
+    setv("behandlingKunde", funn.dyr.kunde_id);
+    if(typeof window.fyllBehandlingHesterForValgtKunde === "function"){
+      try{ await window.fyllBehandlingHesterForValgtKunde(); }catch(e){ console.warn(e); }
+    }
+    // sørg for at dyret finnes i dropdown selv om gammel fylling ikke rakk det
+    const dyrSelect=el("behandlingHest");
+    if(dyrSelect && !Array.from(dyrSelect.options).some(o=>String(o.value)===String(funn.dyr.id))){
+      const o=document.createElement("option"); o.value=funn.dyr.id; o.textContent=funn.dyr.navn||"Uten navn"; dyrSelect.appendChild(o);
+    }
+    setv("behandlingHest", funn.dyr.id);
+    if(behandling) setv("behandlingType", behandling);
+    if(km) setv("behandlingKm", km);
+    const kmPris=el("behandlingKmPris"); if(kmPris && !kmPris.value) kmPris.value="5.30";
+    const dato=el("behandlingDato"); if(dato && !dato.value) dato.value=new Date().toISOString().slice(0,10);
+
+    // VIKTIG: behandlingstale skal ikke skrive i journalnotat.
+    if(typeof window.behOppdaterPrisUltimate === "function") { try{ await window.behOppdaterPrisUltimate(false); }catch(e){} }
+    if(typeof window.behSettPrisHard4 === "function") { try{ await window.behSettPrisHard4({target:el("behandlingType")}); }catch(e){} }
+
+    const oppsummering="Dyr: " + funn.dyr.navn + (behandling ? " | Behandling: "+behandling : "") + " | Km: " + (km||0);
+    msg("Tolket: " + oppsummering + ". Lagrer ...", false);
+
+    if(!behandling){ return false; }
+    if(typeof window.behLagreBehandlingDirekte === "function"){
+      await window.behLagreBehandlingDirekte({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}});
+      msg("Lagret: " + oppsummering, false);
+    } else {
+      msg("Klar til lagring: " + oppsummering, false);
+    }
+    return false;
+  }
+  function startBehandlingTale(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} }
+    const SpeechRecognition=window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition){ alert("Tale fungerer ikke i denne nettleseren. Bruk Chrome eller Edge."); return false; }
+    const r=new SpeechRecognition();
+    r.lang="no-NO"; r.continuous=false; r.interimResults=false; r.maxAlternatives=1;
+    r.onstart=function(){ msg("Lytter etter behandling ...", false); };
+    r.onerror=function(e){ msg("Tale feilet: " + ((e&&e.error)||"ukjent feil"), true); };
+    r.onresult=async function(e){
+      const tekst=e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : "";
+      msg("Hørte: " + tekst, false);
+      try{ await fyllFraTale(tekst); }catch(err){ console.error(err); msg("Kunne ikke tolke behandling: " + (err.message||err), true); }
+    };
+    try{ r.start(); }catch(e){ msg("Kunne ikke starte tale: " + (e.message||e), true); }
+    return false;
+  }
+  function bindEndelig(){
+    const gammel=el("taleBehandlingKnapp");
+    if(!gammel || gammel.dataset.endeligBehandlingTale === "1") return;
+    const ny=gammel.cloneNode(true);
+    ny.dataset.endeligBehandlingTale="1";
+    ny.onclick=startBehandlingTale;
+    gammel.parentNode.replaceChild(ny,gammel);
+  }
+  window.startBehandlingTaleEndelig=startBehandlingTale;
+  window.fyllBehandlingFraTaleEndelig=fyllFraTale;
+  function start(){ bindEndelig(); setTimeout(bindEndelig,200); setTimeout(bindEndelig,1000); setTimeout(bindEndelig,3000); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.addEventListener("load", start);
+  window.addEventListener("hashchange", start);
+})();
+</script>
+
 </body>
 </html>
