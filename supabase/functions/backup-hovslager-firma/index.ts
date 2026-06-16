@@ -25,6 +25,8 @@ const corsHeaders = {
 // Kun tabellene som faktisk finnes i hovslager-prosjektet ditt.
 const HOV_TABLES = [
   "hov_firma",
+  "kunder",
+  "hester",
   "hov_jobber",
   "hov_jobb_bilder",
   "hov_priser",

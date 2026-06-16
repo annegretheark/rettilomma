@@ -1,117 +1,117 @@
-console.log("auth.js innlogget bruker patch aktiv");
+console.log("auth.js rolig login aktiv");
+
+let hovAuthStartet = false;
+let hovLoginKjorer = false;
 
 function settInnloggetBrukerAuth(email) {
   const el = document.getElementById("innloggetBruker");
   if (el) el.textContent = email ? ("Innlogget: " + email) : "Ikke innlogget";
-  if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(email || "");
 }
 
-console.log("mini auth lastet");
+function visLoginMelding(tekst, feil = false) {
+  const melding = document.getElementById("loginMelding");
+  if (!melding) return;
+  melding.textContent = tekst || "";
+  melding.style.color = feil ? "#fca5a5" : "#86efac";
+}
 
-async function loggInn() {
+async function startInnloggetApp(email) {
+  if (hovAuthStartet) return;
+  hovAuthStartet = true;
 
-  const epost =
-    document.getElementById("loginEpost").value;
+  document.getElementById("loginSide")?.classList.add("skjult");
+  document.getElementById("appSide")?.classList.remove("skjult");
+  settInnloggetBrukerAuth(email || "");
 
-  const passord =
-    document.getElementById("loginPassord").value;
+  try { if (typeof window.hentAktivHovFirmaId === "function") await window.hentAktivHovFirmaId(); } catch(e) { console.warn("Firmafeil:", e); }
+  try { if (typeof window.startHovslager === "function") await window.startHovslager(); } catch(e) { console.warn("Startfeil:", e); }
+  try { if (typeof window.hovOppdaterSystemadminSynlighet === "function") await window.hovOppdaterSystemadminSynlighet(); } catch(e) { console.warn("Adminvisning feilet:", e); }
+}
 
-  const melding =
-    document.getElementById("loginMelding");
+async function loggInn(ev) {
+  if (ev) ev.preventDefault();
+  if (hovLoginKjorer) return;
+  hovLoginKjorer = true;
 
-  melding.textContent = "";
+  const epost = (document.getElementById("loginEpost")?.value || "").trim();
+  const passord = document.getElementById("loginPassord")?.value || "";
 
-  const res = await supabaseClient.auth.signInWithPassword({
-    email: epost,
-    password: passord
-  });
+  try {
+    visLoginMelding("Logger inn...");
 
-  if (res.error) {
-    console.error(res.error);
-
-    melding.textContent =
-      res.error.message;
-
-    return;
-  }
-
-  document
-    .getElementById("loginSide")
-    .classList.add("skjult");
-
-  document
-    .getElementById("appSide")
-    .classList.remove("skjult");
-
-  settInnloggetBrukerAuth(res.data?.user?.email || epost);
-
-  if (typeof window.hentAktivHovFirmaId === "function") {
-    try { await window.hentAktivHovFirmaId(); }
-    catch (e) {
-      console.error("Kunne ikke opprette/hente hov_firma:", e);
-      melding.textContent = "Kunne ikke opprette/hente firma: " + (e.message || e);
+    if (!epost || !passord) {
+      visLoginMelding("Skriv e-post og passord.", true);
       return;
     }
-  }
 
-  await hentKunder();
-  await hentHester();
-  await hentJobber();
+    if (!window.supabaseClient) {
+      visLoginMelding("Supabase er ikke lastet. Sjekk config.js.", true);
+      return;
+    }
+
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+      email: epost,
+      password: passord
+    });
+
+    if (error) {
+      visLoginMelding("Login-feil: " + error.message, true);
+      return;
+    }
+
+    visLoginMelding("");
+    await startInnloggetApp(data?.user?.email || epost);
+  } catch (e) {
+    console.error(e);
+    visLoginMelding("Teknisk feil: " + (e.message || e), true);
+  } finally {
+    hovLoginKjorer = false;
+  }
 }
 
 async function loggUt() {
-
-  await supabaseClient.auth.signOut();
-
+  try { await window.supabaseClient?.auth?.signOut(); } catch(e) { console.warn(e); }
+  hovAuthStartet = false;
   location.reload();
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  const loginKnapp =
-    document.getElementById("loginKnapp");
-
-  if (loginKnapp) {
-    loginKnapp.addEventListener(
-      "click",
-      loggInn
-    );
-  }
-
-  const loggUtKnapp =
-    document.getElementById("loggUtKnapp");
-
-  if (loggUtKnapp) {
-    loggUtKnapp.addEventListener(
-      "click",
-      loggUt
-    );
-  }
-});
 
 async function authAutoStartInnloggetBruker() {
   try {
     if (!window.supabaseClient) return;
     const { data } = await window.supabaseClient.auth.getSession();
-    if (data && data.session) {
-      document.getElementById("loginSide")?.classList.add("skjult");
-      document.getElementById("appSide")?.classList.remove("skjult");
-      settInnloggetBrukerAuth(data.session.user?.email || "");
-      if (typeof window.hentAktivHovFirmaId === "function") {
-        try { await window.hentAktivHovFirmaId(); } catch(e) { console.warn(e); }
-      }
-      if (typeof window.startHovslager === "function") {
-        try { await window.startHovslager(); } catch(e) { console.warn(e); }
-      }
+    if (data?.session) {
+      await startInnloggetApp(data.session.user?.email || "");
     } else {
       settInnloggetBrukerAuth("");
+      document.getElementById("loginSide")?.classList.remove("skjult");
+      document.getElementById("appSide")?.classList.add("skjult");
     }
   } catch(e) {
-    console.warn("Autostart innlogget bruker feilet:", e);
+    console.warn("Autostart feilet:", e);
   }
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  setTimeout(authAutoStartInnloggetBruker, 300);
-  setTimeout(authAutoStartInnloggetBruker, 1200);
-});
+function kobleAuthKnapper() {
+  const loginKnapp = document.getElementById("loginKnapp");
+  if (loginKnapp) {
+    loginKnapp.onclick = loggInn;
+  }
+
+  const loggUtKnapp = document.getElementById("loggUtKnapp");
+  if (loggUtKnapp) {
+    loggUtKnapp.onclick = loggUt;
+  }
+
+  setTimeout(authAutoStartInnloggetBruker, 100);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", kobleAuthKnapper, { once: true });
+} else {
+  kobleAuthKnapper();
+}
+
+window.loggInn = loggInn;
+window.loggUt = loggUt;
+window.authAutoStartInnloggetBruker = authAutoStartInnloggetBruker;
+window.hovSettInnloggetBruker = settInnloggetBrukerAuth;

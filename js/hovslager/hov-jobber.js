@@ -391,8 +391,8 @@ async function visHovJobbDetalj(jobbId) {
 
     <div class="rad" style="margin-top:12px;">
       <div><strong>Dato:</strong><br>${hovEsc(hovDatoNo(jobb.dato))}</div>
-      <div><strong>Kunde:</strong><br>${hovEsc(jobb.kunder?.navn || "")}</div>
-      <div><strong>Hest:</strong><br>${hovEsc(jobb.hester?.navn || "Uten hest")}</div>
+      <div><strong>Kunde:</strong><br>${hovEsc(jobb._kunde_navn || jobb.kunder?.navn || "")}</div>
+      <div><strong>Hest:</strong><br>${hovEsc(jobb._hest_navn || jobb.hester?.navn || "Uten hest")}</div>
       <div><strong>Jobb:</strong><br>${hovEsc(jobb.jobbtype || "")}</div>
       <div><strong>Kjøring:</strong><br>${hovEsc(jobb.km || 0)} km x ${hovEsc(jobb.km_pris || 0)}</div>
       <div><strong>Total inkl. mva:</strong><br>${Number(jobb.total || 0).toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr</div>
@@ -473,6 +473,45 @@ async function lagreBildePaValgtHovJobb(jobbId) {
   }
 }
 
+
+// === RETT I LOMMA FIX V2: Stabilt oppslag av hest/kunde-navn i jobblista ===
+// Supabase-relasjonen hester(navn) kan noen ganger returnere tomt i GUI selv om hest_id finnes.
+// Derfor henter vi hester/kunder separat og lager lokale oppslagstabeller.
+async function hentHovNavneOppslag() {
+  const hestMap = new Map();
+  const kundeMap = new Map();
+
+  try {
+    const firmaId = typeof window.hentAktivHovFirmaId === "function" ? await window.hentAktivHovFirmaId() : null;
+
+    let hq = window.supabaseClient.from("hester").select("id, navn, firma_id");
+    if (firmaId) hq = hq.eq("firma_id", firmaId);
+    const { data: hesterData, error: hesterError } = await hq;
+    if (hesterError) throw hesterError;
+    (hesterData || []).forEach(h => hestMap.set(String(h.id), h.navn || ""));
+
+    let kq = window.supabaseClient.from("kunder").select("id, navn, firma_id");
+    if (firmaId) kq = kq.eq("firma_id", firmaId);
+    const { data: kunderData, error: kunderError } = await kq;
+    if (kunderError) throw kunderError;
+    (kunderData || []).forEach(k => kundeMap.set(String(k.id), k.navn || ""));
+  } catch (e) {
+    console.warn("Kunne ikke bygge navn-oppslag for jobber:", e);
+  }
+
+  return { hestMap, kundeMap };
+}
+
+function hovJobbHestNavn(jobb, hestMap) {
+  const fraMap = jobb?.hest_id ? hestMap.get(String(jobb.hest_id)) : "";
+  return fraMap || jobb?.hester?.navn || "Uten hest";
+}
+
+function hovJobbKundeNavn(jobb, kundeMap) {
+  const fraMap = jobb?.kunde_id ? kundeMap.get(String(jobb.kunde_id)) : "";
+  return fraMap || jobb?.kunder?.navn || "";
+}
+
 async function hentJobber() {
   const res = await supabaseClient
     .from("hov_jobber")
@@ -489,6 +528,14 @@ async function hentJobber() {
   if (!liste) return;
 
   const data = res.data || [];
+  const { hestMap, kundeMap } = await hentHovNavneOppslag();
+
+  // Legg robuste navn direkte på jobbobjektene, slik at detaljvisning og tabell bruker samme fasit.
+  data.forEach(j => {
+    j._hest_navn = hovJobbHestNavn(j, hestMap);
+    j._kunde_navn = hovJobbKundeNavn(j, kundeMap);
+  });
+
   await hentBildeAntallForJobber(data);
   hovJobberSiste = data;
 
@@ -546,8 +593,8 @@ async function hentJobber() {
 
     tr.innerHTML = `
       <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(hovDatoNo(j.dato))}</td>
-      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j.hester?.navn || "Uten hest")}</td>
-      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j.kunder?.navn || "")}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j._hest_navn || hovJobbHestNavn(j, hestMap))}</td>
+      <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${hovEsc(j._kunde_navn || hovJobbKundeNavn(j, kundeMap))}</td>
       <td style="padding:8px;border-bottom:1px solid #374151;">${hovEsc(j.jobbtype || "")}</td>
       <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${Number(j.total || 0).toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr</td>
       <td style="padding:8px;border-bottom:1px solid #374151;text-align:center;white-space:nowrap;">📷 ${Number(j._bilde_antall || 0)}</td>
@@ -652,6 +699,9 @@ window.visHovJobbDetalj = visHovJobbDetalj;
 window.lagreBildePaValgtHovJobb = lagreBildePaValgtHovJobb;
 window.lastOppValgteBilderPaSisteHovJobb = lastOppValgteBilderPaSisteHovJobb;
 window.hovVisBildePreview = hovVisBildePreview;
+window.hentHovNavneOppslag = hentHovNavneOppslag;
+window.hovJobbHestNavn = hovJobbHestNavn;
+window.hovJobbKundeNavn = hovJobbKundeNavn;
 
 
 // Sikker kobling: Oppdater jobber-knappen skal alltid vise jobblista.
@@ -974,8 +1024,8 @@ async function visAlleHovBilder(filterFelt, filterVerdi, tittel) {
           <a href="${hovEsc(bilde.url)}" target="_blank" style="color:inherit;text-decoration:none;background:#1f2937;border:1px solid #374151;border-radius:12px;padding:10px;display:block;">
             <img src="${hovEsc(bilde.url)}" alt="Bilde" style="width:100%;height:150px;object-fit:cover;border-radius:10px;border:1px solid #475569;background:#111827;">
             <div style="margin-top:8px;font-weight:bold;">${hovEsc(hovDatoNo(jobb.dato))}</div>
-            <div>${hovEsc(jobb.hester?.navn || "Uten hest")}</div>
-            <div>${hovEsc(jobb.kunder?.navn || "")}</div>
+            <div>${hovEsc(jobb._hest_navn || jobb.hester?.navn || "Uten hest")}</div>
+            <div>${hovEsc(jobb._kunde_navn || jobb.kunder?.navn || "")}</div>
             <div>${hovEsc(jobb.jobbtype || "")}${bilde._kilde === "hest" ? " direkte på hest" : ""}</div>
             ${bilde.bildetekst ? `<small>${hovEsc(bilde.bildetekst)}</small>` : ""}
           </a>

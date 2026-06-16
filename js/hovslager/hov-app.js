@@ -70,7 +70,7 @@ function hovStartKunderMedRetry() {
 document.addEventListener("DOMContentLoaded", () => {
 
   kobleHovMenyOgLogout();
-  hovStartKunderMedRetry();
+  hovSettDatoHvisTom();
 
   kobleKnapp("leggTilKundeKnapp", "lagreKunde");
   kobleKnapp("lagreHestKnapp", "lagreHest");
@@ -135,10 +135,6 @@ async function startHovslager() {
   try {
 
     hovSettDatoHvisTom();
-
-    if (typeof hentKunder === "function") {
-      try { await hentKunder(); } catch (e) { console.warn("Tidlig henting av kunder feilet, fortsetter:", e); }
-    }
 
     // Firma/oppsett skal aldri stoppe resten av appen.
     // Hvis firma-tabellen eller logo/Vipps feiler, skal kunder, hester og jobber likevel lastes.
@@ -696,9 +692,7 @@ function hovBindFakturaKnappDirekte() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(hovBindFakturaKnappDirekte, 100);
-  setTimeout(hovBindFakturaKnappDirekte, 800);
-  setTimeout(hovBindFakturaKnappDirekte, 1800);
+  hovBindFakturaKnappDirekte();
 });
 
 window.hovBindFakturaKnappDirekte = hovBindFakturaKnappDirekte;

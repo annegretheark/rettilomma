@@ -292,7 +292,6 @@ function kobleHovOppsett() {
     logoFelt.addEventListener("input", () => hovOppsettLogoPreview(logoFelt.value));
   }
 
-  setTimeout(lastHovOppsett, 200);
 }
 
 async function sjekkHovOppsett() {
@@ -569,13 +568,9 @@ function hovBindAdminKundeFelter() {
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", function(){
-    hovBindAdminKundeFelter();
-    setTimeout(hovLastHovKundeliste, 1200);
-  });
+  document.addEventListener("DOMContentLoaded", hovBindAdminKundeFelter);
 } else {
   hovBindAdminKundeFelter();
-  setTimeout(hovLastHovKundeliste, 1200);
 }
 
 window.hovLastHovKundeliste = hovLastHovKundeliste;

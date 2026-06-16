@@ -122,10 +122,79 @@
 <script src="/rettilomma/js/hovslager/config.js"></script><script src="/rettilomma/js/hovslager/moduler.js"></script><script src="/rettilomma/js/hovslager/backup.js"></script><script src="/rettilomma/js/hovslager/state.js"></script><script src="/rettilomma/js/hovslager/hov-navigation.js"></script><script src="/rettilomma/js/hovslager/hov-kunder.js"></script><script src="/rettilomma/js/hovslager/hov-oppsett.js"></script><script src="/rettilomma/js/hovslager/hester.js?v=hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-jobber.js?v=pris-bilde-hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-faktura.js"></script><script src="/rettilomma/js/hovslager/hov-kreditnota.js"></script><script src="/rettilomma/js/hovslager/hov-fakturaoversikt.js"></script><script src="/rettilomma/js/hovslager/hov-prisliste.js"></script><script src="/rettilomma/js/hovslager/hov-app.js"></script><script src="/rettilomma/js/hovslager/auth.js"></script>
 <script>
 (function(){
- const info=document.getElementById('kundeLinkInfo');
- if(info) info.textContent=window.HOV_FIRMA_NAVN ? 'Kundelink: '+window.HOV_FIRMA_NAVN : 'Hovslager';
+ const info=document.getElementById('kundeLinkInfo'); if(info) info.textContent=window.HOV_FIRMA_NAVN ? 'Kundelink: '+window.HOV_FIRMA_NAVN : 'Hovslager';
+ async function autoStart(){
+   if(!window.supabaseClient) return;
+   const {data}=await supabaseClient.auth.getSession();
+   if(data && data.session){
+     document.getElementById('loginSide')?.classList.add('skjult');
+     document.getElementById('appSide')?.classList.remove('skjult');
+     try { if(window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.session?.user?.email || ''); } catch(e){}
+      try { if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.user?.email || email); } catch(e){}
+     try { if(window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId(); } catch(e){ const m=document.getElementById('jobbMelding'); if(m) m.textContent='Firmafeil: '+(e.message||e); }
+     try { if(window.startHovslager) await window.startHovslager(); } catch(e){ console.warn(e); }
+     try { if(window.hovOppdaterSystemadminSynlighet) await window.hovOppdaterSystemadminSynlighet(); } catch(e){ console.warn(e); }
+   }
+ }
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(autoStart,300)); else setTimeout(autoStart,300);
 })();
 </script>
+
+<script>
+(function(){
+  async function hovLoginDirekte(){
+    const melding = document.getElementById('loginMelding');
+    try {
+      if (melding) melding.textContent = 'Logger inn...';
+      if (!window.supabaseClient) {
+        if (melding) melding.textContent = 'Supabase er ikke lastet. Sjekk config.js-stien.';
+        alert('Supabase er ikke lastet. Sjekk config.js-stien.');
+        return;
+      }
+      const email = (document.getElementById('loginEpost')?.value || '').trim();
+      const password = document.getElementById('loginPassord')?.value || '';
+      if (!email || !password) {
+        if (melding) melding.textContent = 'Skriv e-post og passord.';
+        return;
+      }
+      const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (melding) melding.textContent = error.message;
+        alert('Login-feil: ' + error.message);
+        return;
+      }
+      document.getElementById('loginSide')?.classList.add('skjult');
+      document.getElementById('appSide')?.classList.remove('skjult');
+      if (melding) melding.textContent = '';
+      try { if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.user?.email || email); } catch(e){ console.warn(e); }
+      try { if (window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId(); } catch(e){ console.warn(e); }
+      try { if (window.startHovslager) await window.startHovslager(); } catch(e){ console.warn(e); }
+      try { if (window.hovOppdaterSystemadminSynlighet) await window.hovOppdaterSystemadminSynlighet(); } catch(e){ console.warn(e); }
+      try { if (window.hentKunder) await window.hentKunder(); } catch(e){ console.warn(e); }
+      try { if (window.hentHester) await window.hentHester(); } catch(e){ console.warn(e); }
+      try { if (window.hentJobber) await window.hentJobber(); } catch(e){ console.warn(e); }
+    } catch (e) {
+      console.error(e);
+      if (melding) melding.textContent = 'Teknisk feil: ' + (e.message || e);
+      alert('Teknisk feil: ' + (e.message || e));
+    }
+  }
+
+  function kobleLogin(){
+    const btn = document.getElementById('loginKnapp');
+    if (!btn) return;
+    btn.onclick = hovLoginDirekte;
+    btn.addEventListener('click', function(ev){ ev.preventDefault(); hovLoginDirekte(); });
+    console.log('Hovslager direkte-login koblet');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kobleLogin);
+  else kobleLogin();
+  setTimeout(kobleLogin, 500);
+})();
+</script>
+
+
 <script>
 /* Produksjonsfix for kundelink, Auth-bruker og passord */
 (function(){
@@ -305,24 +374,78 @@
 
 
 <script>
-/* Rett i Lomma - systemadmin kundeliste */
+/* Rett i Lomma - robust visning av innlogget bruker */
 (function(){
-  function hovErSystemadminEpost(email){
-    return String(email || "").trim().toLowerCase() === "greknuts@online.no";
+  function settInnloggetBrukerTekst(email){
+    var el = document.getElementById("innloggetBruker");
+    if (!el) return;
+    el.textContent = email ? ("Innlogget: " + email) : "Ikke innlogget";
   }
 
+  async function oppdaterInnloggetBrukerFraSession(){
+    try {
+      if (!window.supabaseClient || !window.supabaseClient.auth) return;
+      var svar = await window.supabaseClient.auth.getSession();
+      var email = svar && svar.data && svar.data.session && svar.data.session.user
+        ? svar.data.session.user.email
+        : "";
+      settInnloggetBrukerTekst(email || "");
+    } catch(e) {
+      console.warn("Kunne ikke vise innlogget bruker:", e);
+    }
+  }
+
+  window.hovSettInnloggetBruker = settInnloggetBrukerTekst;
+  window.hovOppdaterInnloggetBrukerFraSession = oppdaterInnloggetBrukerFraSession;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function(){
+      setTimeout(oppdaterInnloggetBrukerFraSession, 200);
+      setTimeout(oppdaterInnloggetBrukerFraSession, 800);
+      setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
+    });
+  } else {
+    setTimeout(oppdaterInnloggetBrukerFraSession, 200);
+    setTimeout(oppdaterInnloggetBrukerFraSession, 800);
+    setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
+  }
+
+  window.addEventListener("focus", oppdaterInnloggetBrukerFraSession);
+})();
+</script>
+
+
+<script>
+/* Rett i Lomma - systemadmin kundeliste uten hardkodet e-post */
+(function(){
   async function hovOppdaterSystemadminSynlighet(){
     try {
+      if (window.hovOppdaterSystemadminSynlighet && window.hovOppdaterSystemadminSynlighet._fraOppsett === true) {
+        await window.hovOppdaterSystemadminSynlighet();
+        return;
+      }
+
       if (!window.supabaseClient) return;
       const { data } = await window.supabaseClient.auth.getSession();
-      const email = data?.session?.user?.email || "";
-      const admin = hovErSystemadminEpost(email);
+      const email = String(data?.session?.user?.email || "").trim().toLowerCase();
+      const uid = String(data?.session?.user?.id || "").trim();
+      let rad = null;
+
+      if (uid) {
+        const svar = await window.supabaseClient.from("hov_firma").select("*").eq("auth_user_id", uid).limit(1).maybeSingle();
+        if (!svar.error && svar.data) rad = svar.data;
+      }
+
+      if (!rad && email) {
+        const svar = await window.supabaseClient.from("hov_firma").select("*").ilike("epost", email).limit(1).maybeSingle();
+        if (!svar.error && svar.data) rad = svar.data;
+      }
+
+      const rolle = String(rad?.rolle || "").trim().toLowerCase();
+      const admin = rad?.er_admin === true || rolle === "systemadmin";
 
       const adminBlokk = document.getElementById("hovSystemadminBlokk");
       if (adminBlokk) adminBlokk.classList.toggle("skjult", !admin);
-
-      const linkBlokk = document.getElementById("hovKundelinkBlokk");
-      if (linkBlokk) linkBlokk.classList.toggle("skjult", !admin);
 
       const innlogget = document.getElementById("innloggetBruker");
       if (innlogget && email) innlogget.textContent = "Innlogget: " + email;
@@ -335,17 +458,33 @@
     }
   }
 
-  window.hovOppdaterSystemadminSynlighet = hovOppdaterSystemadminSynlighet;
+  function hovPlanleggSystemadminSynlighet(){
+    [100, 500, 1200, 2500].forEach(function(ms){
+      setTimeout(hovOppdaterSystemadminSynlighet, ms);
+    });
+  }
+
+  if (!window.hovOppdaterSystemadminSynlighet) {
+    window.hovOppdaterSystemadminSynlighet = hovOppdaterSystemadminSynlighet;
+  }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function(){
-      setTimeout(hovOppdaterSystemadminSynlighet, 500);
-      setTimeout(hovOppdaterSystemadminSynlighet, 1500);
-    });
+    document.addEventListener("DOMContentLoaded", hovPlanleggSystemadminSynlighet);
   } else {
-    setTimeout(hovOppdaterSystemadminSynlighet, 500);
-    setTimeout(hovOppdaterSystemadminSynlighet, 1500);
+    hovPlanleggSystemadminSynlighet();
   }
+
+  window.addEventListener("focus", hovOppdaterSystemadminSynlighet);
+
+  setTimeout(function(){
+    try {
+      if (window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.auth.onAuthStateChange) {
+        window.supabaseClient.auth.onAuthStateChange(function(){
+          hovPlanleggSystemadminSynlighet();
+        });
+      }
+    } catch(e) {}
+  }, 700);
 })();
 </script>
 
