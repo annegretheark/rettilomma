@@ -26,15 +26,38 @@ function hovHestRentFilnavn(navn) {
     .replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-async function lastOppHestBildeHvisValgt(hestNavn) {
-  const fil = document.getElementById("hestBildeFil")?.files?.[0];
-  if (!fil || !window.supabaseClient) return "";
+function hentValgteHestBildeFiler() {
+  const input = document.getElementById("hestBildeFil");
+  return Array.from(input?.files || []);
+}
 
-  const firmaId = typeof window.hentAktivHovFirmaId === "function"
-    ? await window.hentAktivHovFirmaId()
-    : "ukjent";
+async function lagHestBildeUrlFraSti(filsti) {
+  if (!filsti || !window.supabaseClient) return "";
 
-  const filsti = `hov-hester/${firmaId}/${Date.now()}_${hovHestRentFilnavn(fil.name)}`;
+  try {
+    const { data, error } = await window.supabaseClient
+      .storage
+      .from("bilder")
+      .createSignedUrl(filsti, 60 * 60 * 24 * 7);
+
+    if (!error && data?.signedUrl) return data.signedUrl;
+  } catch (e) {
+    console.warn("Kunne ikke lage signert hestebilde-url:", e);
+  }
+
+  try {
+    const { data } = window.supabaseClient.storage.from("bilder").getPublicUrl(filsti);
+    return data?.publicUrl || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+async function lastOppOgKobleHestBilde(hestId, firmaId, fil, bildetekst = "") {
+  if (!hestId) throw new Error("Mangler hest-id.");
+  if (!fil) throw new Error("Velg et bilde først.");
+
+  const filsti = `hov-hester/${firmaId || "ukjent"}/${hestId}/${Date.now()}_${hovHestRentFilnavn(fil.name)}`;
 
   const { error: uploadError } = await window.supabaseClient
     .storage
@@ -43,20 +66,63 @@ async function lastOppHestBildeHvisValgt(hestNavn) {
 
   if (uploadError) throw new Error("Hestebilde ble ikke lastet opp: " + uploadError.message);
 
-  const { data } = window.supabaseClient.storage.from("bilder").getPublicUrl(filsti);
-  return data?.publicUrl || "";
+  const bildeUrl = await lagHestBildeUrlFraSti(filsti);
+
+  const { error: dbError } = await window.supabaseClient
+    .from("hov_hest_bilder")
+    .insert({
+      firma_id: firmaId || null,
+      hest_id: hestId,
+      filnavn: fil.name,
+      filsti,
+      bilde_url: bildeUrl || null,
+      bildetekst: bildetekst || ""
+    });
+
+  if (dbError) {
+    throw new Error("Bildet ble lastet opp, men ikke koblet til hesten. Har du laget tabellen hov_hest_bilder? " + dbError.message);
+  }
+
+  return { filsti, bilde_url: bildeUrl };
+}
+
+async function lastOppValgteHestBilder(hestId, firmaId, hestNavn) {
+  const filer = hentValgteHestBildeFiler();
+  const lagret = [];
+
+  for (let i = 0; i < filer.length; i += 1) {
+    const fil = filer[i];
+    const res = await lastOppOgKobleHestBilde(
+      hestId,
+      firmaId,
+      fil,
+      `Bilde av ${hestNavn || "hest"}`
+    );
+    lagret.push(res);
+  }
+
+  return lagret;
+}
+
+async function lastOppHestBildeHvisValgt(hestNavn) {
+  // Beholdes for bakoverkompatibilitet. Ny lagring skjer i lastOppValgteHestBilder()
+  // etter at hesten har fått id, slik at alle bilder kan kobles kronologisk til hesten.
+  const fil = hentValgteHestBildeFiler()[0];
+  if (!fil || !window.supabaseClient) return "";
+  return "";
 }
 
 function visHestBildePreview(url) {
   const div = document.getElementById("hestBildePreview");
   if (!div) return;
 
-  if (!url) {
+  if (!url || (Array.isArray(url) && url.length === 0)) {
     div.innerHTML = "";
     return;
   }
 
-  div.innerHTML = `<img src="${url}" alt="Hestebilde">`;
+  const urls = Array.isArray(url) ? url : [url];
+  div.innerHTML = urls.map(u => `<img src="${u}" alt="Hestebilde">`).join("");
 }
 
 function bindHestBildePreview() {
@@ -65,14 +131,13 @@ function bindHestBildePreview() {
 
   input.dataset.hestBildeBind = "1";
   input.addEventListener("change", () => {
-    const fil = input.files?.[0];
-    if (!fil) {
+    const filer = hentValgteHestBildeFiler();
+    if (!filer.length) {
       const valgt = finnValgtHestFraSkjema();
       visHestBildePreview(valgt?.bilde_url || "");
       return;
     }
-    const url = URL.createObjectURL(fil);
-    visHestBildePreview(url);
+    visHestBildePreview(filer.map(f => URL.createObjectURL(f)));
   });
 }
 
@@ -104,15 +169,7 @@ async function lagreHest() {
   }
 
   const firmaId = await window.hentAktivHovFirmaId();
-
-  let bildeUrl = "";
-  try {
-    bildeUrl = await lastOppHestBildeHvisValgt(navn);
-  } catch (e) {
-    console.error(e);
-    hestMelding(e.message || e, true);
-    return;
-  }
+  const valgteBilder = hentValgteHestBildeFiler();
 
   const hest = {
     firma_id: firmaId,
@@ -124,21 +181,21 @@ async function lagreHest() {
     neste_besok: document.getElementById("nesteBesok")?.value || null
   };
 
-  if (bildeUrl) {
-    hest.bilde_url = bildeUrl;
-  }
-
   let res;
 
   if (valgtHestId) {
-    res = await supabaseClient
+    res = await window.supabaseClient
       .from("hester")
       .update(hest)
-      .eq("id", valgtHestId);
+      .eq("id", valgtHestId)
+      .select("*")
+      .single();
   } else {
-    res = await supabaseClient
+    res = await window.supabaseClient
       .from("hester")
-      .insert([hest]);
+      .insert([hest])
+      .select("*")
+      .single();
   }
 
   if (res.error) {
@@ -147,7 +204,35 @@ async function lagreHest() {
     return;
   }
 
-  hestMelding(valgtHestId ? "Hest oppdatert" : "Hest lagret");
+  const lagretHest = res.data;
+  let antallBilderLagret = 0;
+
+  if (valgteBilder.length && lagretHest?.id) {
+    try {
+      const lagredeBilder = await lastOppValgteHestBilder(lagretHest.id, firmaId, navn);
+      antallBilderLagret = lagredeBilder.length;
+
+      // Første nye bilde blir hovedbilde på hestekortet.
+      const hovedbilde = lagredeBilder[0]?.bilde_url || "";
+      if (hovedbilde) {
+        await window.supabaseClient
+          .from("hester")
+          .update({ bilde_url: hovedbilde })
+          .eq("id", lagretHest.id);
+      }
+    } catch (e) {
+      console.error(e);
+      hestMelding((valgtHestId ? "Hest oppdatert" : "Hest lagret") + ", men bildehistorikk feilet: " + (e.message || e), true);
+      await hentHester();
+      return;
+    }
+  }
+
+  hestMelding(
+    antallBilderLagret
+      ? (valgtHestId ? `Hest oppdatert og ${antallBilderLagret} bilde(r) lagret` : `Hest lagret med ${antallBilderLagret} bilde(r)`)
+      : (valgtHestId ? "Hest oppdatert" : "Hest lagret")
+  );
   nullstillHestBildeInput();
 
   await hentHester();
@@ -213,7 +298,9 @@ async function hentHester() {
             ${h.rase || ""}<br>
             Sist skodd: ${datoVerdi(h.sist_skodd)}<br>
             Neste besøk: ${datoVerdi(h.neste_besok)}<br>
-            ${h.notater || ""}
+            ${h.notater || ""}<br>
+            <button type="button" class="secondary" onclick="window.visAlleHovBilderForHest && window.visAlleHovBilderForHest('${String(h.id).replace(/'/g, "\\'")}')">📷 Vis alle bilder</button>
+            <button type="button" class="secondary" onclick="window.visAlleHovBilderForKunde && window.visAlleHovBilderForKunde('${String(h.kunde_id).replace(/'/g, "\\'")}')">📷 Vis alle bilder for eier</button>
           </div>
         </div>
       `;
@@ -335,3 +422,6 @@ window.fyllHestSkjemaFraValg = fyllHestSkjemaFraValg;
 window.lastOppHestBildeHvisValgt = lastOppHestBildeHvisValgt;
 window.visHestBildePreview = visHestBildePreview;
 window.bindHestBildePreview = bindHestBildePreview;
+window.hentValgteHestBildeFiler = hentValgteHestBildeFiler;
+window.lastOppOgKobleHestBilde = lastOppOgKobleHestBilde;
+window.lastOppValgteHestBilder = lastOppValgteHestBilder;

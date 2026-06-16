@@ -819,3 +819,187 @@ setTimeout(hovBindPrisvalgRobust, 2500);
 
 window.hovHentOgSettPrisFraJobbtype = hovHentOgSettPrisFraJobbtype;
 window.hovBindPrisvalgRobust = hovBindPrisvalgRobust;
+
+
+// === RETT I LOMMA: Vis alle bilder kronologisk for hest/kunde ===
+function sikreHovAlleBilderPanel() {
+  let panel = document.getElementById("hovAlleBilderPanel");
+  const jobbSide = document.getElementById("jobbSide");
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "hovAlleBilderPanel";
+    panel.className = "listekort";
+    panel.style.display = "none";
+    panel.style.marginBottom = "12px";
+    panel.style.background = "#111827";
+
+    const jobbListe = document.getElementById("jobbListe");
+    if (jobbListe?.parentNode) jobbListe.parentNode.insertBefore(panel, jobbListe);
+    else jobbSide?.appendChild(panel);
+  }
+
+  return panel;
+}
+
+async function hentAlleHovBilderKronologisk(filterFelt, filterVerdi) {
+  if (!window.supabaseClient) throw new Error("Supabase er ikke lastet.");
+  if (!filterVerdi) return [];
+
+  const firmaId = typeof window.hentAktivHovFirmaId === "function"
+    ? await window.hentAktivHovFirmaId()
+    : null;
+
+  let query = window.supabaseClient
+    .from("hov_jobber")
+    .select("id, dato, jobbtype, beskrivelse, kunde_id, hest_id, kunder(navn), hester(navn)")
+    .eq(filterFelt, filterVerdi)
+    .order("dato", { ascending: true });
+
+  if (firmaId) query = query.eq("firma_id", firmaId);
+
+  const { data: jobber, error } = await query;
+  if (error) throw error;
+
+  const alle = [];
+  for (const jobb of jobber || []) {
+    const bilder = await hentBilderForHovJobb(jobb.id);
+    for (const bilde of bilder || []) {
+      alle.push({ jobb, bilde });
+    }
+  }
+
+  // Ta også med bilder som er lagt direkte på hesten fra Hester-siden.
+  const direkteHestBilder = await hentDirekteHestBilderKronologisk(filterFelt, filterVerdi, firmaId);
+  alle.push(...direkteHestBilder);
+
+  alle.sort((a, b) => {
+    const ad = String(a.jobb?.dato || "");
+    const bd = String(b.jobb?.dato || "");
+    if (ad !== bd) return ad.localeCompare(bd);
+    return String(a.bilde?.created_at || "").localeCompare(String(b.bilde?.created_at || ""));
+  });
+
+  return alle;
+}
+
+
+async function hentDirekteHestBilderKronologisk(filterFelt, filterVerdi, firmaId) {
+  if (!window.supabaseClient || !filterVerdi) return [];
+
+  try {
+    let hesterQuery = window.supabaseClient
+      .from("hester")
+      .select("id, navn, kunde_id, kunder(navn)");
+
+    if (filterFelt === "hest_id") {
+      hesterQuery = hesterQuery.eq("id", filterVerdi);
+    } else if (filterFelt === "kunde_id") {
+      hesterQuery = hesterQuery.eq("kunde_id", filterVerdi);
+    } else {
+      return [];
+    }
+
+    if (firmaId) hesterQuery = hesterQuery.eq("firma_id", firmaId);
+
+    const { data: hesterData, error: hesterError } = await hesterQuery;
+    if (hesterError) throw hesterError;
+
+    const hester = hesterData || [];
+    const hestIds = hester.map(h => h.id).filter(Boolean);
+    if (!hestIds.length) return [];
+
+    const hestMap = new Map(hester.map(h => [String(h.id), h]));
+
+    let bildeQuery = window.supabaseClient
+      .from("hov_hest_bilder")
+      .select("id, hest_id, filsti, bilde_url, bildetekst, created_at")
+      .in("hest_id", hestIds)
+      .order("created_at", { ascending: true });
+
+    if (firmaId) bildeQuery = bildeQuery.eq("firma_id", firmaId);
+
+    const { data: bildeData, error: bildeError } = await bildeQuery;
+    if (bildeError) throw bildeError;
+
+    const ut = [];
+    for (const b of bildeData || []) {
+      const hest = hestMap.get(String(b.hest_id)) || {};
+      const url = b.filsti ? await lagBildeUrlFraSti(b.filsti) : (b.bilde_url || "");
+      if (!url) continue;
+
+      ut.push({
+        jobb: {
+          id: "hestbilde-" + b.id,
+          dato: b.created_at,
+          jobbtype: "Hestebilde",
+          beskrivelse: b.bildetekst || "",
+          kunde_id: hest.kunde_id || "",
+          hest_id: b.hest_id,
+          kunder: hest.kunder || {},
+          hester: { navn: hest.navn || "Hest" }
+        },
+        bilde: { ...b, url, _kilde: "hest" }
+      });
+    }
+
+    return ut;
+  } catch (e) {
+    // Ikke stopp jobbbilde-galleriet hvis tabellen ikke finnes ennå.
+    console.warn("Hoppet over direkte hestebilder:", e);
+    return [];
+  }
+}
+
+async function visAlleHovBilder(filterFelt, filterVerdi, tittel) {
+  const panel = sikreHovAlleBilderPanel();
+  panel.style.display = "block";
+  panel.innerHTML = `<h3>${hovEsc(tittel || "Vis alle bilder")}</h3><div class="info">Henter bilder...</div>`;
+
+  try {
+    if (typeof window.visSide === "function") window.visSide("jobbSide");
+
+    const alle = await hentAlleHovBilderKronologisk(filterFelt, filterVerdi);
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;">${hovEsc(tittel || "Vis alle bilder")}</h3>
+          <div class="info">Sortert kronologisk etter dato. Antall bilder: ${alle.length}</div>
+        </div>
+        <button type="button" class="secondary" id="lukkHovAlleBilderKnapp">Lukk</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px;">
+        ${alle.length ? alle.map(({ jobb, bilde }) => `
+          <a href="${hovEsc(bilde.url)}" target="_blank" style="color:inherit;text-decoration:none;background:#1f2937;border:1px solid #374151;border-radius:12px;padding:10px;display:block;">
+            <img src="${hovEsc(bilde.url)}" alt="Bilde" style="width:100%;height:150px;object-fit:cover;border-radius:10px;border:1px solid #475569;background:#111827;">
+            <div style="margin-top:8px;font-weight:bold;">${hovEsc(hovDatoNo(jobb.dato))}</div>
+            <div>${hovEsc(jobb.hester?.navn || "Uten hest")}</div>
+            <div>${hovEsc(jobb.kunder?.navn || "")}</div>
+            <div>${hovEsc(jobb.jobbtype || "")}${bilde._kilde === "hest" ? " direkte på hest" : ""}</div>
+            ${bilde.bildetekst ? `<small>${hovEsc(bilde.bildetekst)}</small>` : ""}
+          </a>
+        `).join("") : `<div class="info">Ingen bilder funnet.</div>`}
+      </div>
+    `;
+
+    const lukk = document.getElementById("lukkHovAlleBilderKnapp");
+    if (lukk) lukk.onclick = () => {
+      panel.style.display = "none";
+      panel.innerHTML = "";
+    };
+
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    console.error(e);
+    panel.innerHTML = `<h3>${hovEsc(tittel || "Vis alle bilder")}</h3><div class="melding">Feil: ${hovEsc(e.message || e)}</div>`;
+  }
+}
+
+window.visAlleHovBilderForHest = function(hestId) {
+  return visAlleHovBilder("hest_id", hestId, "📷 Vis alle bilder for hest");
+};
+
+window.visAlleHovBilderForKunde = function(kundeId) {
+  return visAlleHovBilder("kunde_id", kundeId, "📷 Vis alle bilder for kunde/eier");
+};

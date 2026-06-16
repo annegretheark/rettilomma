@@ -35,7 +35,8 @@
 
 <section id="appSide" class="skjult">
 <div class="kort">
-  <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Kunder, hester, jobber, kjøring og faktura</div><div class="system-badge">Rett i Lomma</div></div></div>
+  <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Kunder, hester, jobber, kjøring og faktura</div>
+    <div id="innloggetBruker" class="system-badge">Ikke innlogget</div><div class="system-badge">Rett i Lomma</div></div></div>
   <button id="loggUtKnapp" class="danger" type="button">Logg ut</button>
   <button id="visJobberKnapp" type="button">Jobber / timer</button>
   <button id="visHesterKnapp" type="button">Hester</button>
@@ -62,9 +63,9 @@
 <section class="kort skjult" id="hesterSide"><h2>Hester</h2><label for="hestKunde">Eier/kunde</label><select id="hestKunde"><option value="">Velg kunde</option></select><label for="hestVelg">Velg hest å redigere</label><select id="hestVelg"><option value="">Ny hest</option></select><label for="hestNavn">Navn</label><input id="hestNavn"><label for="hestRase">Rase/type</label><input id="hestRase"><label for="hestNotater">Notater</label><textarea id="hestNotater"></textarea>
 <div class="hov-bildeblokk">
   <strong>📷 Bilde av hesten</strong>
-  <div class="info">Velg bilde når du oppretter eller redigerer hesten.</div>
-  <label class="hov-bildeknapp" for="hestBildeFil">📷 Velg bilde</label>
-  <input id="hestBildeFil" class="hov-bildeinput" type="file" accept="image/*">
+  <div class="info">Velg eller ta ett eller flere bilder når du oppretter eller redigerer hesten.</div>
+  <label class="hov-bildeknapp" for="hestBildeFil">📷 Velg / ta bilder</label>
+  <input id="hestBildeFil" class="hov-bildeinput" type="file" accept="image/*" capture="environment" multiple>
   <div id="hestBildePreview" class="hov-hestbilde-preview"></div>
 </div><div class="rad"><div><label for="sistSkodd">Sist skodd</label><input id="sistSkodd" type="date"></div><div><label for="nesteBesok">Neste besøk</label><input id="nesteBesok" type="date"></div></div><button id="lagreHestKnapp" type="button">Lagre hest</button><div class="melding" id="hestMelding"></div><div id="hesteListe"></div></section>
 
@@ -73,7 +74,42 @@
 <section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><label for="fakturaKunde">Kunde</label><select id="fakturaKunde"><option value="">Velg kunde</option></select><button id="oppdaterFakturaKunderKnapp" class="secondary" onclick="fyllFakturaKunder()" type="button">Oppdater kundeliste</button><button id="lagFakturaKnapp" type="button">Lag faktura PDF</button><hr><h3>Kreditnota</h3><label for="kreditFakturaValg">Velg faktura å kreditere</label><select id="kreditFakturaValg"><option value="">Velg faktura</option></select><label for="kreditGrunn">Grunn</label><textarea id="kreditGrunn">Feil beløp på faktura</textarea><button id="lagKreditnotaKnapp" type="button">Lag kreditnota</button><div class="melding" id="fakturaMelding"></div><h3>Fakturaoversikt</h3><button id="hentFakturaOversiktKnapp" type="button">Vis fakturaoversikt</button><button id="eksporterFakturaExcelKnapp" type="button">Eksporter fakturaoversikt Excel</button><div id="fakturaOversikt"></div></section>
 
 <section class="kort skjult" id="firmaSide"><h2>Firma / oppsett</h2>
-<!-- Systemadmin-blokk for oppretting av nye hovslagerkunder er fjernet fra vanlig firmaoppsett. --><input id="firmaId" type="hidden"><label for="firmaNavn">Firmanavn</label><input id="firmaNavn"><label for="firmaAdresse">Adresse</label><input id="firmaAdresse"><div class="rad"><div><label for="firmaTelefon">Telefon</label><input id="firmaTelefon"></div><div><label for="firmaEpost">E-post</label><input id="firmaEpost" type="email"></div></div><div class="rad"><div><label for="firmaOrgnr">Org.nr</label><input id="firmaOrgnr"></div><div><label for="firmaMvaNr">MVA-nr</label><input id="firmaMvaNr"></div><div><label for="firmaKontonr">Kontonr</label><input id="firmaKontonr"></div></div><div class="rad"><div><label for="firmaVippsNummer">Vipps nummer</label><input id="firmaVippsNummer"></div><div><label for="firmaVippsMottaker">Vipps mottaker</label><input id="firmaVippsMottaker"></div></div><label for="firmaLogoUrl">Logo URL</label><input id="firmaLogoUrl"><label for="firmaLogoFil">Last opp logo</label><input accept="image/png,image/jpeg,image/webp" id="firmaLogoFil" type="file"><img alt="Logo" id="firmaLogoForhandsvisning" style="display:none;max-height:80px;max-width:240px;margin-top:8px"><label for="firmaBrevhodeTekst">Brevhode-tekst</label><textarea id="firmaBrevhodeTekst"></textarea><label for="firmaBrevfotTekst">Brevfot-tekst</label><textarea id="firmaBrevfotTekst"></textarea><button id="lagreHovOppsettKnapp" type="button">Lagre oppsett</button><div class="melding" id="firmaMelding"></div></section>
+
+<div id="hovSystemadminBlokk" class="listekort skjult" style="border-color:#0f766e;margin-bottom:14px;">
+  <h3>Systemadmin: Opprett ny hovslagerkunde</h3>
+  <div class="info">Vises bare for systemadmin.</div>
+
+  <input id="redigerHovKundeId" type="hidden">
+
+  <label for="nyHovKundeNavn">Firmanavn</label>
+  <input id="nyHovKundeNavn" placeholder="F.eks. Kjetil Hovslager">
+
+  <label for="nyHovKundeEpost">E-post til kunde/admin</label>
+  <input id="nyHovKundeEpost" type="email" placeholder="kunde@example.no">
+
+  <label for="nyHovKundeLinknavn">Linknavn</label>
+  <input id="nyHovKundeLinknavn" placeholder="f.eks. kjetil">
+
+  <label for="nyHovKundePassord">Midlertidig passord</label>
+  <input id="nyHovKundePassord" type="text" placeholder="Minst 6 tegn">
+
+  <label for="nyHovKundeLink">Kundelink</label>
+  <input id="nyHovKundeLink" readonly>
+
+  <button type="button" onclick="hovOpprettKundeDirekte()">Opprett hovslagerkunde</button>
+  <button type="button" class="secondary" onclick="hovLagreRedigertHovKunde()">Lagre endringer</button>
+  <button type="button" class="secondary" onclick="hovNullstillKundeSkjema()">Ny/tøm skjema</button>
+  <button type="button" class="secondary" onclick="hovSendPassordopprettingDirekte()">Send passordoppretting</button>
+  <button type="button" class="secondary" onclick="hovKopierKundelinkDirekte('nyHovKundeLink','nyHovKundeMelding')">Kopier kundelink</button>
+
+  <div id="nyHovKundeMelding" class="melding"></div>
+
+  <hr>
+  <h3>Hovslagerkunder</h3>
+  <button type="button" class="secondary" onclick="hovLastHovKundeliste()">Oppdater kundeliste</button>
+  <div id="hovKundeAdminListe" class="info">Ingen kunder lastet ennå.</div>
+</div>
+<input id="firmaId" type="hidden"><label for="firmaNavn">Firmanavn</label><input id="firmaNavn"><label for="firmaAdresse">Adresse</label><input id="firmaAdresse"><div class="rad"><div><label for="firmaTelefon">Telefon</label><input id="firmaTelefon"></div><div><label for="firmaEpost">E-post</label><input id="firmaEpost" type="email"></div></div><div class="rad"><div><label for="firmaOrgnr">Org.nr</label><input id="firmaOrgnr"></div><div><label for="firmaMvaNr">MVA-nr</label><input id="firmaMvaNr"></div><div><label for="firmaKontonr">Kontonr</label><input id="firmaKontonr"></div></div><div class="rad"><div><label for="firmaVippsNummer">Vipps nummer</label><input id="firmaVippsNummer"></div><div><label for="firmaVippsMottaker">Vipps mottaker</label><input id="firmaVippsMottaker"></div></div><label for="firmaLogoUrl">Logo URL</label><input id="firmaLogoUrl"><label for="firmaLogoFil">Last opp logo</label><input accept="image/png,image/jpeg,image/webp" id="firmaLogoFil" type="file"><img alt="Logo" id="firmaLogoForhandsvisning" style="display:none;max-height:80px;max-width:240px;margin-top:8px"><label for="firmaBrevhodeTekst">Brevhode-tekst</label><textarea id="firmaBrevhodeTekst"></textarea><label for="firmaBrevfotTekst">Brevfot-tekst</label><textarea id="firmaBrevfotTekst"></textarea><button id="lagreHovOppsettKnapp" type="button">Lagre oppsett</button><div class="melding" id="firmaMelding"></div></section>
 
 <section class="kort skjult" id="prislisteSide"><h2>Prisliste</h2><button id="oppdaterPrislisteKnapp" type="button" onclick="hentPrislisteTilApp()">Oppdater prisliste</button><div id="prislisteAppMelding" class="melding"></div><div id="prislisteApp"></div></section>
 
@@ -83,7 +119,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/rettilomma/js/hovslager/config.js"></script><script src="/rettilomma/js/hovslager/moduler.js"></script><script src="/rettilomma/js/hovslager/backup.js"></script><script src="/rettilomma/js/hovslager/state.js"></script><script src="/rettilomma/js/hovslager/hov-navigation.js"></script><script src="/rettilomma/js/hovslager/hov-kunder.js"></script><script src="/rettilomma/js/hovslager/hov-oppsett.js"></script><script src="/rettilomma/js/hovslager/hester.js"></script><script src="/rettilomma/js/hovslager/hov-jobber.js?v=pris-bilde-20260616"></script><script src="/rettilomma/js/hovslager/hov-faktura.js"></script><script src="/rettilomma/js/hovslager/hov-kreditnota.js"></script><script src="/rettilomma/js/hovslager/hov-fakturaoversikt.js"></script><script src="/rettilomma/js/hovslager/hov-prisliste.js"></script><script src="/rettilomma/js/hovslager/hov-app.js"></script><script src="/rettilomma/js/hovslager/auth.js"></script>
+<script src="/rettilomma/js/hovslager/config.js"></script><script src="/rettilomma/js/hovslager/moduler.js"></script><script src="/rettilomma/js/hovslager/backup.js"></script><script src="/rettilomma/js/hovslager/state.js"></script><script src="/rettilomma/js/hovslager/hov-navigation.js"></script><script src="/rettilomma/js/hovslager/hov-kunder.js"></script><script src="/rettilomma/js/hovslager/hov-oppsett.js"></script><script src="/rettilomma/js/hovslager/hester.js?v=hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-jobber.js?v=pris-bilde-hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-faktura.js"></script><script src="/rettilomma/js/hovslager/hov-kreditnota.js"></script><script src="/rettilomma/js/hovslager/hov-fakturaoversikt.js"></script><script src="/rettilomma/js/hovslager/hov-prisliste.js"></script><script src="/rettilomma/js/hovslager/hov-app.js"></script><script src="/rettilomma/js/hovslager/auth.js"></script>
 <script>
 (function(){
  const info=document.getElementById('kundeLinkInfo'); if(info) info.textContent=window.HOV_FIRMA_NAVN ? 'Kundelink: '+window.HOV_FIRMA_NAVN : 'Hovslager';
@@ -93,6 +129,8 @@
    if(data && data.session){
      document.getElementById('loginSide')?.classList.add('skjult');
      document.getElementById('appSide')?.classList.remove('skjult');
+     try { if(window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.session?.user?.email || ''); } catch(e){}
+      try { if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.user?.email || email); } catch(e){}
      try { if(window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId(); } catch(e){ const m=document.getElementById('jobbMelding'); if(m) m.textContent='Firmafeil: '+(e.message||e); }
      try { if(window.startHovslager) await window.startHovslager(); } catch(e){ console.warn(e); }
    }
@@ -328,6 +366,94 @@
     updateNyLink();
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+
+
+<script>
+/* Rett i Lomma - robust visning av innlogget bruker */
+(function(){
+  function settInnloggetBrukerTekst(email){
+    var el = document.getElementById("innloggetBruker");
+    if (!el) return;
+    el.textContent = email ? ("Innlogget: " + email) : "Ikke innlogget";
+  }
+
+  async function oppdaterInnloggetBrukerFraSession(){
+    try {
+      if (!window.supabaseClient || !window.supabaseClient.auth) return;
+      var svar = await window.supabaseClient.auth.getSession();
+      var email = svar && svar.data && svar.data.session && svar.data.session.user
+        ? svar.data.session.user.email
+        : "";
+      settInnloggetBrukerTekst(email || "");
+    } catch(e) {
+      console.warn("Kunne ikke vise innlogget bruker:", e);
+    }
+  }
+
+  window.hovSettInnloggetBruker = settInnloggetBrukerTekst;
+  window.hovOppdaterInnloggetBrukerFraSession = oppdaterInnloggetBrukerFraSession;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function(){
+      setTimeout(oppdaterInnloggetBrukerFraSession, 200);
+      setTimeout(oppdaterInnloggetBrukerFraSession, 800);
+      setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
+    });
+  } else {
+    setTimeout(oppdaterInnloggetBrukerFraSession, 200);
+    setTimeout(oppdaterInnloggetBrukerFraSession, 800);
+    setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
+  }
+
+  window.addEventListener("focus", oppdaterInnloggetBrukerFraSession);
+})();
+</script>
+
+
+<script>
+/* Rett i Lomma - systemadmin kundeliste */
+(function(){
+  function hovErSystemadminEpost(email){
+    return String(email || "").trim().toLowerCase() === "greknuts@online.no";
+  }
+
+  async function hovOppdaterSystemadminSynlighet(){
+    try {
+      if (!window.supabaseClient) return;
+      const { data } = await window.supabaseClient.auth.getSession();
+      const email = data?.session?.user?.email || "";
+      const admin = hovErSystemadminEpost(email);
+
+      const adminBlokk = document.getElementById("hovSystemadminBlokk");
+      if (adminBlokk) adminBlokk.classList.toggle("skjult", !admin);
+
+      const linkBlokk = document.getElementById("hovKundelinkBlokk");
+      if (linkBlokk) linkBlokk.classList.toggle("skjult", !admin);
+
+      const innlogget = document.getElementById("innloggetBruker");
+      if (innlogget && email) innlogget.textContent = "Innlogget: " + email;
+
+      if (admin && typeof window.hovLastHovKundeliste === "function") {
+        await window.hovLastHovKundeliste();
+      }
+    } catch(e) {
+      console.warn("Systemadmin-sjekk feilet:", e);
+    }
+  }
+
+  window.hovOppdaterSystemadminSynlighet = hovOppdaterSystemadminSynlighet;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function(){
+      setTimeout(hovOppdaterSystemadminSynlighet, 500);
+      setTimeout(hovOppdaterSystemadminSynlighet, 1500);
+    });
+  } else {
+    setTimeout(hovOppdaterSystemadminSynlighet, 500);
+    setTimeout(hovOppdaterSystemadminSynlighet, 1500);
+  }
 })();
 </script>
 

@@ -349,3 +349,237 @@ if (document.readyState === "loading") {
 } else {
   kobleHovOppsett();
 }
+
+
+// === RETT I LOMMA: Systemadmin kundeliste og redigering av hovslagerkunder ===
+function hovAdminEsc(v) {
+  return String(v ?? "").replace(/[&<>'"]/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+  }[c]));
+}
+
+function hovAdminGet(id) {
+  return (document.getElementById(id)?.value || "").trim();
+}
+
+function hovAdminSet(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value || "";
+}
+
+function hovAdminMsg(text, feil = false) {
+  const el = document.getElementById("nyHovKundeMelding") || document.getElementById("firmaMelding");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = feil ? "#fca5a5" : "#86efac";
+}
+
+function hovAdminSlugify(v) {
+  return String(v || "").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function hovAdminAppBase() {
+  const p = location.pathname.toLowerCase();
+  if (p.includes("/rettilomma/")) return location.origin + "/rettilomma/hovslager/";
+  if (p.includes("/hovslager/")) return location.origin + "/hovslager/";
+  return location.origin + "/hovslager/";
+}
+
+function hovAdminKundelink(slug) {
+  return hovAdminAppBase() + "?firma=" + encodeURIComponent(slug || "");
+}
+
+function hovNullstillKundeSkjema() {
+  hovAdminSet("redigerHovKundeId", "");
+  hovAdminSet("nyHovKundeNavn", "");
+  hovAdminSet("nyHovKundeEpost", "");
+  hovAdminSet("nyHovKundeLinknavn", "");
+  hovAdminSet("nyHovKundePassord", "");
+  hovAdminSet("nyHovKundeLink", "");
+  hovAdminMsg("Klar for ny kunde.");
+}
+
+async function hovLastHovKundeliste() {
+  const liste = document.getElementById("hovKundeAdminListe");
+  if (!liste) return;
+
+  try {
+    if (!window.supabaseClient) {
+      liste.innerHTML = `<div class="melding">Supabase er ikke lastet.</div>`;
+      return;
+    }
+
+    liste.innerHTML = `<div class="info">Henter kunder...</div>`;
+
+    const { data, error } = await window.supabaseClient
+      .from("hov_firma")
+      .select("id, navn, epost, telefon, linknavn, rolle, er_admin, auth_user_id, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const kunder = data || [];
+    if (!kunder.length) {
+      liste.innerHTML = `<div class="info">Ingen hovslagerkunder funnet.</div>`;
+      return;
+    }
+
+    liste.innerHTML = `
+      <div style="overflow:auto;margin-top:10px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Firma</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">E-post</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Link</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Rolle</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid #374151;">Handling</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${kunder.map(k => {
+              const slug = k.linknavn || "";
+              const link = slug ? hovAdminKundelink(slug) : "";
+              return `
+                <tr>
+                  <td style="padding:8px;border-bottom:1px solid #374151;">${hovAdminEsc(k.navn || "")}</td>
+                  <td style="padding:8px;border-bottom:1px solid #374151;">${hovAdminEsc(k.epost || "")}</td>
+                  <td style="padding:8px;border-bottom:1px solid #374151;">
+                    ${link ? `<a href="${hovAdminEsc(link)}" target="_blank" style="color:#93c5fd;">${hovAdminEsc(slug)}</a>` : `<span class="info">Mangler</span>`}
+                  </td>
+                  <td style="padding:8px;border-bottom:1px solid #374151;">${hovAdminEsc(k.rolle || "")}${k.er_admin ? " / admin" : ""}</td>
+                  <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">
+                    <button type="button" class="secondary" onclick="hovRedigerHovKunde('${hovAdminEsc(k.id)}')">Rediger</button>
+                    ${link ? `<button type="button" class="secondary" onclick="hovKopierTekst('${hovAdminEsc(link)}')">Kopier link</button>` : ""}
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    window.hovAdminKunder = kunder;
+  } catch (e) {
+    console.error(e);
+    liste.innerHTML = `<div class="melding">Kunne ikke hente kunder: ${hovAdminEsc(e.message || e)}</div>`;
+  }
+}
+
+function hovRedigerHovKunde(id) {
+  const kunder = window.hovAdminKunder || [];
+  const k = kunder.find(x => String(x.id) === String(id));
+  if (!k) {
+    hovAdminMsg("Fant ikke valgt kunde i listen.", true);
+    return;
+  }
+
+  hovAdminSet("redigerHovKundeId", k.id || "");
+  hovAdminSet("nyHovKundeNavn", k.navn || "");
+  hovAdminSet("nyHovKundeEpost", k.epost || "");
+  hovAdminSet("nyHovKundeLinknavn", k.linknavn || "");
+  hovAdminSet("nyHovKundePassord", "");
+  hovAdminSet("nyHovKundeLink", k.linknavn ? hovAdminKundelink(k.linknavn) : "");
+
+  hovAdminMsg("Redigerer: " + (k.navn || k.epost || k.id));
+  document.getElementById("nyHovKundeNavn")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function hovLagreRedigertHovKunde() {
+  const id = hovAdminGet("redigerHovKundeId");
+  const navn = hovAdminGet("nyHovKundeNavn");
+  const epost = hovAdminGet("nyHovKundeEpost").toLowerCase();
+  let linknavn = hovAdminSlugify(hovAdminGet("nyHovKundeLinknavn") || navn);
+
+  if (!id) {
+    hovAdminMsg("Velg en kunde fra listen først, eller bruk Opprett hovslagerkunde for ny.", true);
+    return;
+  }
+  if (!navn) {
+    hovAdminMsg("Firmanavn mangler.", true);
+    return;
+  }
+  if (!epost) {
+    hovAdminMsg("E-post mangler.", true);
+    return;
+  }
+
+  try {
+    hovAdminMsg("Lagrer endringer...");
+
+    const payload = { navn, epost, linknavn };
+
+    const { data, error } = await window.supabaseClient
+      .from("hov_firma")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) throw error;
+
+    hovAdminSet("nyHovKundeLinknavn", data?.linknavn || linknavn);
+    hovAdminSet("nyHovKundeLink", hovAdminKundelink(data?.linknavn || linknavn));
+
+    hovAdminMsg("Kunde oppdatert.");
+    await hovLastHovKundeliste();
+  } catch (e) {
+    console.error(e);
+    hovAdminMsg("Kunne ikke lagre kunde: " + (e.message || e), true);
+  }
+}
+
+async function hovKopierTekst(tekst) {
+  try {
+    await navigator.clipboard.writeText(tekst || "");
+    hovAdminMsg("Kopiert.");
+  } catch (e) {
+    hovAdminMsg("Kopier manuelt: " + tekst);
+  }
+}
+
+// Oppdater linkfelt mens man skriver navn/linknavn
+function hovBindAdminKundeFelter() {
+  const navn = document.getElementById("nyHovKundeNavn");
+  const slug = document.getElementById("nyHovKundeLinknavn");
+
+  function oppdater() {
+    const s = hovAdminSlugify(hovAdminGet("nyHovKundeLinknavn") || hovAdminGet("nyHovKundeNavn"));
+    if (s) {
+      hovAdminSet("nyHovKundeLinknavn", s);
+      hovAdminSet("nyHovKundeLink", hovAdminKundelink(s));
+    }
+  }
+
+  if (navn && navn.dataset.hovAdminBind !== "1") {
+    navn.dataset.hovAdminBind = "1";
+    navn.addEventListener("input", function(){
+      if (!hovAdminGet("nyHovKundeLinknavn")) oppdater();
+    });
+  }
+
+  if (slug && slug.dataset.hovAdminBind !== "1") {
+    slug.dataset.hovAdminBind = "1";
+    slug.addEventListener("input", oppdater);
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function(){
+    hovBindAdminKundeFelter();
+    setTimeout(hovLastHovKundeliste, 1200);
+  });
+} else {
+  hovBindAdminKundeFelter();
+  setTimeout(hovLastHovKundeliste, 1200);
+}
+
+window.hovLastHovKundeliste = hovLastHovKundeliste;
+window.hovRedigerHovKunde = hovRedigerHovKunde;
+window.hovLagreRedigertHovKunde = hovLagreRedigertHovKunde;
+window.hovNullstillKundeSkjema = hovNullstillKundeSkjema;
+window.hovKopierTekst = hovKopierTekst;
