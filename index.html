@@ -17,7 +17,8 @@ body{
 }
 .box{
   text-align:center;
-  max-width:700px;
+  max-width:720px;
+  padding:24px;
 }
 .knapp{
   display:inline-block;
@@ -30,9 +31,16 @@ body{
   font-weight:bold;
   margin-top:20px;
 }
+.knapp:hover{ background:#0284c7; }
 ul{
   text-align:left;
   display:inline-block;
+  line-height:1.7;
+}
+.liten{
+  color:#cbd5e1;
+  font-size:14px;
+  margin-top:18px;
 }
 </style>
 </head>
@@ -40,7 +48,9 @@ ul{
 <div class="box">
   <h1>🐴 Rett i Lomma</h1>
   <h2>Hovslager Demo</h2>
+
   <p>En enkel app for hovslagere som ønsker mindre papirarbeid og mer tid ute hos kundene.</p>
+
   <ul>
     <li>Kunder og hester</li>
     <li>Bilder på hest og jobb</li>
@@ -49,8 +59,14 @@ ul{
     <li>Fakturagrunnlag</li>
     <li>Mobilvennlig</li>
   </ul>
+
   <br>
-  <a class="knapp" href="hovslager-login.html">Prøv Hovslager Demo</a>
+
+  <a class="knapp" href="/hovslager-login.html">Prøv Hovslager Demo</a>
+
+  <div class="liten">
+    Hvis knappen ikke åpner: gå direkte til /hovslager-login.html
+  </div>
 </div>
 </body>
 </html>
