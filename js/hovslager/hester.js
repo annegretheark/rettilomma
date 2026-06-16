@@ -272,6 +272,24 @@ async function hentHester() {
   const kunder = kundeRes.data || [];
   const kundeNavn = new Map(kunder.map(k => [String(k.id), k.navn || ""]));
   const hester = hestRes.data || [];
+
+  const bildeRes = await supabaseClient
+    .from("hov_hest_bilder")
+    .select("hest_id, bilde_url, created_at")
+    .order("created_at", { ascending: false });
+
+  const bildeMap = new Map();
+
+  for (const b of (bildeRes.data || [])) {
+    if (!bildeMap.has(String(b.hest_id))) {
+      bildeMap.set(String(b.hest_id), b.bilde_url);
+    }
+  }
+
+  for (const h of hester) {
+    h.bilde_url = h.bilde_url || bildeMap.get(String(h.id)) || "";
+  }
+
   sisteHester = hester;
 
   const liste = document.getElementById("hesteListe");

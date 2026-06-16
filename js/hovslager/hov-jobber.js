@@ -29,6 +29,74 @@ function hovDatoNo(v) {
   return d.length === 3 ? `${d[2]}.${d[1]}.${d[0]}` : String(v);
 }
 
+
+function hovDetaljJobbtypeOptionsHtml(valgt) {
+  const typer = [
+    "Fullbeslag",
+    "Forsko",
+    "Baksko",
+    "Barfot verking",
+    "Enkeltsko",
+    "Saler",
+    "Brodder",
+    "Vintersko",
+    "Annet"
+  ];
+  const v = String(valgt || "").trim();
+  const finnes = typer.some(t => hovNormaliserPrisnavn(t) === hovNormaliserPrisnavn(v));
+  let html = `<option value="">Velg jobbtype</option>`;
+  if (v && !finnes) html += `<option value="${hovEsc(v)}" selected>${hovEsc(v)}</option>`;
+  for (const t of typer) {
+    const sel = hovNormaliserPrisnavn(t) === hovNormaliserPrisnavn(v) ? " selected" : "";
+    html += `<option value="${hovEsc(t)}"${sel}>${hovEsc(t)}</option>`;
+  }
+  return html;
+}
+
+async function hovSettDetaljPrisFraJobbtype() {
+  const typeFelt = document.getElementById("hovDetaljJobbtype");
+  const arbeidFelt = document.getElementById("hovDetaljArbeid");
+  const melding = document.getElementById("hovDetaljJobbMelding");
+  if (!typeFelt || !arbeidFelt) return;
+
+  const valgtType = String(typeFelt.value || "").trim();
+  const valgtNorm = hovNormaliserPrisnavn(valgtType);
+  if (!valgtNorm) return;
+
+  let prisrad = null;
+
+  try {
+    if (window.supabaseClient) {
+      const { data, error } = await window.supabaseClient
+        .from("hov_priser")
+        .select("navn, pris, aktiv");
+      if (error) throw error;
+
+      const priser = (data || []).filter(p => p.aktiv !== false);
+      prisrad =
+        priser.find(p => hovNormaliserPrisnavn(p.navn) === valgtNorm) ||
+        priser.find(p => {
+          const n = hovNormaliserPrisnavn(p.navn);
+          return n && (n.includes(valgtNorm) || valgtNorm.includes(n));
+        }) || null;
+    }
+  } catch (e) {
+    console.warn("Kunne ikke hente pris til redigering, bruker standardpris:", e);
+  }
+
+  if (!prisrad && Object.prototype.hasOwnProperty.call(HOV_STANDARD_PRISER, valgtNorm)) {
+    prisrad = { navn: valgtType, pris: HOV_STANDARD_PRISER[valgtNorm] };
+  }
+
+  if (!prisrad) return;
+
+  const pris = Number(String(prisrad.pris ?? 0).replace(",", "."));
+  if (Number.isFinite(pris)) {
+    arbeidFelt.value = pris.toFixed(2);
+    if (melding) melding.textContent = `Pris satt fra prisliste: ${pris.toLocaleString("no-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr eks. mva`;
+  }
+}
+
 function hentValgteHovBildeFiler() {
   const inputIds = [
     "jobbBilder",
@@ -401,6 +469,19 @@ async function visHovJobbDetalj(jobbId) {
 
     ${jobb.beskrivelse ? `<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${hovEsc(jobb.beskrivelse)}</div>` : ""}
 
+    <h4>Rediger jobb og kjøring</h4>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end;">
+      <label>Dato<br><input type="date" id="hovDetaljDato" value="${hovEsc(String(jobb.dato || '').slice(0, 10))}"></label>
+      <label>Jobbtype<br><select id="hovDetaljJobbtype">${hovDetaljJobbtypeOptionsHtml(jobb.jobbtype || '')}</select></label>
+      <label>Km<br><input type="number" step="0.1" id="hovDetaljKm" value="${hovEsc(jobb.km || 0)}"></label>
+      <label>Km-pris<br><input type="number" step="0.01" id="hovDetaljKmPris" value="${hovEsc(jobb.km_pris || 0)}"></label>
+      <label>Arbeid eks. mva<br><input type="number" step="0.01" id="hovDetaljArbeid" value="${hovEsc(jobb.arbeid_belop || 0)}"></label>
+      <label>Varer eks. mva<br><input type="number" step="0.01" id="hovDetaljVarer" value="${hovEsc(jobb.varer_belop || 0)}"></label>
+    </div>
+    <label style="display:block;margin-top:8px;">Beskrivelse<br><textarea id="hovDetaljBeskrivelse" rows="3" style="width:100%;">${hovEsc(jobb.beskrivelse || '')}</textarea></label>
+    <button type="button" id="lagreHovDetaljJobbKnapp" style="margin-top:8px;">Lagre endringer på jobben</button>
+    <div id="hovDetaljJobbMelding" class="melding"></div>
+
     <h4>Bilder (${bilder.length})</h4>
     <div id="hovJobbBildeGalleri" style="display:flex;gap:10px;flex-wrap:wrap;">
       ${bilder.length ? bilder.map(b => `
@@ -413,7 +494,7 @@ async function visHovJobbDetalj(jobbId) {
 
     <h4>Legg til bilde på denne jobben</h4>
     <div style="display:grid;gap:8px;max-width:440px;">
-      <input type="file" id="hovDetaljBildeFil" accept="image/*">
+      <input type="file" id="hovDetaljBildeFil" accept="image/*" multiple>
       <input type="text" id="hovDetaljBildeTekst" placeholder="Bildetekst, valgfritt">
       <button type="button" id="lagreHovDetaljBildeKnapp">Lagre bilde på jobben</button>
       <div id="hovDetaljBildeMelding" class="melding"></div>
@@ -428,6 +509,19 @@ async function visHovJobbDetalj(jobbId) {
     };
   }
 
+  const lagreJobbDetaljKnapp = document.getElementById("lagreHovDetaljJobbKnapp");
+  if (lagreJobbDetaljKnapp) {
+    lagreJobbDetaljKnapp.onclick = async () => {
+      await oppdaterHovJobbFraDetalj(jobb.id);
+    };
+  }
+
+  const detaljJobbtype = document.getElementById("hovDetaljJobbtype");
+  if (detaljJobbtype && detaljJobbtype.dataset.hovDetaljPrisBind !== "1") {
+    detaljJobbtype.dataset.hovDetaljPrisBind = "1";
+    detaljJobbtype.addEventListener("change", hovSettDetaljPrisFraJobbtype);
+  }
+
   const lagreKnapp = document.getElementById("lagreHovDetaljBildeKnapp");
   if (lagreKnapp) {
     lagreKnapp.onclick = async () => {
@@ -438,17 +532,82 @@ async function visHovJobbDetalj(jobbId) {
   detalj.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+
+async function oppdaterHovJobbFraDetalj(jobbId) {
+  if (!jobbId) {
+    jobbMelding("Fant ikke jobben som skal oppdateres.", true);
+    return;
+  }
+
+  const melding = document.getElementById("hovDetaljJobbMelding");
+  const knapp = document.getElementById("lagreHovDetaljJobbKnapp");
+  if (melding) melding.textContent = "";
+
+  const km = tall(document.getElementById("hovDetaljKm")?.value);
+  const kmPris = tall(document.getElementById("hovDetaljKmPris")?.value);
+  const arbeid = tall(document.getElementById("hovDetaljArbeid")?.value);
+  const varer = tall(document.getElementById("hovDetaljVarer")?.value);
+  const eksMva = arbeid + varer + (km * kmPris);
+  const mva = eksMva * 0.25;
+  const total = eksMva + mva;
+
+  const endringer = {
+    dato: document.getElementById("hovDetaljDato")?.value || new Date().toISOString().slice(0, 10),
+    jobbtype: document.getElementById("hovDetaljJobbtype")?.value || "",
+    beskrivelse: document.getElementById("hovDetaljBeskrivelse")?.value.trim() || "",
+    km,
+    km_pris: kmPris,
+    arbeid_belop: arbeid,
+    varer_belop: varer,
+    mva,
+    total
+  };
+
+  try {
+    if (knapp) knapp.disabled = true;
+    if (melding) melding.textContent = "Lagrer endringer...";
+
+    const { error } = await supabaseClient
+      .from("hov_jobber")
+      .update(endringer)
+      .eq("id", jobbId);
+
+    if (error) throw error;
+
+    const gammelJobb = hovJobberSiste.find(j => String(j.id) === String(jobbId));
+    if (gammelJobb?.hest_id && endringer.dato) {
+      const { error: hestError } = await supabaseClient
+        .from("hester")
+        .update({ sist_skodd: endringer.dato })
+        .eq("id", gammelJobb.hest_id);
+      if (hestError) console.warn("Kunne ikke oppdatere sist skodd:", hestError);
+    }
+
+    if (melding) melding.textContent = "Jobben er oppdatert.";
+    jobbMelding("Jobben er oppdatert.");
+    await hentJobber();
+    await visHovJobbDetalj(jobbId);
+    if (typeof window.hentHester === "function") await window.hentHester();
+  } catch (e) {
+    console.error("Feil ved oppdatering av jobb:", e);
+    if (melding) melding.textContent = "Jobben ble ikke oppdatert: " + (e.message || e);
+    jobbMelding("Jobben ble ikke oppdatert: " + (e.message || e), true);
+  } finally {
+    if (knapp) knapp.disabled = false;
+  }
+}
+
 async function lagreBildePaValgtHovJobb(jobbId) {
   const filInput = document.getElementById("hovDetaljBildeFil");
   const tekstInput = document.getElementById("hovDetaljBildeTekst");
   const melding = document.getElementById("hovDetaljBildeMelding");
   const knapp = document.getElementById("lagreHovDetaljBildeKnapp");
-  const fil = filInput?.files?.[0];
+  const filer = Array.from(filInput?.files || []);
 
   if (melding) melding.textContent = "";
 
-  if (!fil) {
-    if (melding) melding.textContent = "Velg et bilde først.";
+  if (!filer.length) {
+    if (melding) melding.textContent = "Velg ett eller flere bilder først.";
     return;
   }
 
@@ -456,7 +615,9 @@ async function lagreBildePaValgtHovJobb(jobbId) {
     if (knapp) knapp.disabled = true;
     if (melding) melding.textContent = "Lagrer bilde...";
 
-    await lastOppHovJobbBilde(jobbId, fil, tekstInput?.value || "");
+    for (const fil of filer) {
+      await lastOppHovJobbBilde(jobbId, fil, tekstInput?.value || "");
+    }
 
     if (filInput) filInput.value = "";
     if (tekstInput) tekstInput.value = "";
@@ -697,6 +858,8 @@ window.lagreJobb = lagreJobb;
 window.hentJobber = hentJobber;
 window.visHovJobbDetalj = visHovJobbDetalj;
 window.lagreBildePaValgtHovJobb = lagreBildePaValgtHovJobb;
+window.oppdaterHovJobbFraDetalj = oppdaterHovJobbFraDetalj;
+window.hovSettDetaljPrisFraJobbtype = hovSettDetaljPrisFraJobbtype;
 window.lastOppValgteBilderPaSisteHovJobb = lastOppValgteBilderPaSisteHovJobb;
 window.hovVisBildePreview = hovVisBildePreview;
 window.hentHovNavneOppslag = hentHovNavneOppslag;
