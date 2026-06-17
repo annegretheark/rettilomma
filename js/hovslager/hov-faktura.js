@@ -67,59 +67,119 @@ async function fyllFakturaKunder() {
   }
 }
 
+
+async function hovFinnKundeForFaktura(kundeVerdi) {
+  const verdi = String(kundeVerdi || "").trim();
+  if (!verdi) return null;
+
+  // Først prøv som id. Hvis knappen sender kundenavn fra demo-oversikten,
+  // faller vi tilbake til navn/epost/telefon uten å endre resten av appen.
+  let res = await supabaseClient
+    .from("kunder")
+    .select("*")
+    .eq("id", verdi)
+    .maybeSingle();
+
+  if (!res.error && res.data) return res.data;
+
+  res = await supabaseClient
+    .from("kunder")
+    .select("*")
+    .or(`navn.eq.${verdi},epost.eq.${verdi},telefon.eq.${verdi}`)
+    .limit(1);
+
+  if (res.error) throw res.error;
+  return (res.data || [])[0] || null;
+}
+
+async function hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId) {
+  let jobbQuery = supabaseClient
+    .from("hov_jobber")
+    .select("*, hester(navn,kunde_id), kunder(navn)")
+    .or("fakturert.is.false,fakturert.is.null")
+    .order("dato", { ascending: true });
+
+  if (aktivFirmaId) jobbQuery = jobbQuery.eq("firma_id", aktivFirmaId);
+
+  const jobbRes = await jobbQuery;
+  if (jobbRes.error) throw jobbRes.error;
+
+  const alleJobber = jobbRes.data || [];
+
+  let jobber = alleJobber.filter(j =>
+    String(j.kunde_id || "") === String(kundeId) ||
+    String(j.hester?.kunde_id || "") === String(kundeId)
+  );
+
+  // Ekstra sikkerhet: noen demo-rader har hest_id, men Supabase-relasjonen
+  // hester(kunde_id) kommer ikke alltid med. Da henter vi hestene separat.
+  if (!jobber.length) {
+    let hesteQuery = supabaseClient
+      .from("hester")
+      .select("id, navn, kunde_id")
+      .eq("kunde_id", kundeId);
+    if (aktivFirmaId) hesteQuery = hesteQuery.eq("firma_id", aktivFirmaId);
+
+    const hesteRes = await hesteQuery;
+    if (!hesteRes.error) {
+      const hestIds = new Set((hesteRes.data || []).map(h => String(h.id)));
+      const hestMap = new Map((hesteRes.data || []).map(h => [String(h.id), h]));
+      jobber = alleJobber.filter(j => hestIds.has(String(j.hest_id || "")));
+      jobber.forEach(j => {
+        const h = hestMap.get(String(j.hest_id || ""));
+        if (h && !j.hester) j.hester = { navn: h.navn, kunde_id: h.kunde_id };
+      });
+    }
+  }
+
+  return jobber;
+}
+
+function hovHentKundeVerdiFraFakturaRad(knapp) {
+  const tr = knapp?.closest?.("tr");
+  if (!tr) return "";
+
+  const direkte = tr.dataset.kundeId || tr.getAttribute("data-kunde-id") || "";
+  if (direkte) return direkte;
+
+  // Demo-oversikten har kolonnene: Fakturanr, Kunde, Jobber, Beløp, Status.
+  const celler = Array.from(tr.querySelectorAll("td"));
+  return String(celler[1]?.textContent || "").trim();
+}
+
 async function lagHovFaktura(kundeIdDirekte = "") {
 
   try {
 
     const kundeFelt = document.getElementById("fakturaKunde");
-    const kundeId = String(kundeIdDirekte || (kundeFelt ? kundeFelt.value : "") || "").trim();
+    const kundeVerdi = String(kundeIdDirekte || (kundeFelt ? kundeFelt.value : "") || "").trim();
 
-    if (kundeFelt && kundeId) kundeFelt.value = kundeId;
-
-    if (!kundeId) {
+    if (!kundeVerdi) {
       fakturaMelding("Velg kunde først.", true);
       return;
     }
 
     fakturaMelding("Henter kunde og ufakturerte jobber...");
 
-    const kundeRes = await supabaseClient
-      .from("kunder")
-      .select("*")
-      .eq("id", kundeId)
-      .single();
+    const kundeData = await hovFinnKundeForFaktura(kundeVerdi);
 
-    if (kundeRes.error) {
-      fakturaMelding(kundeRes.error.message, true);
+    if (!kundeData?.id) {
+      fakturaMelding("Fant ikke kunde: " + kundeVerdi, true);
       return;
     }
 
-    let jobbQuery = supabaseClient
-      .from("hov_jobber")
-      .select("*, hester(navn,kunde_id), kunder(navn)")
-      .or("fakturert.is.false,fakturert.is.null")
-      .order("dato", { ascending: true });
+    const kundeId = String(kundeData.id);
+    const kundeRes = { data: kundeData };
+
+    if (kundeFelt && kundeId) kundeFelt.value = kundeId;
 
     // Hold faktureringen innenfor aktivt firma når appen kjører med firma/RLS.
     let aktivFirmaId = null;
     if (typeof window.hentAktivHovFirmaId === "function") {
       try { aktivFirmaId = await window.hentAktivHovFirmaId(); } catch (e) { aktivFirmaId = null; }
     }
-    if (aktivFirmaId) jobbQuery = jobbQuery.eq("firma_id", aktivFirmaId);
 
-    const jobbRes = await jobbQuery;
-
-    if (jobbRes.error) {
-      fakturaMelding(jobbRes.error.message, true);
-      return;
-    }
-
-    const alleJobber = jobbRes.data || [];
-
-    const jobber = alleJobber.filter(j =>
-      String(j.kunde_id || "") === String(kundeId) ||
-      String(j.hester?.kunde_id || "") === String(kundeId)
-    );
+    const jobber = await hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId);
 
     if (!jobber.length) {
       fakturaMelding("Ingen ufakturerte jobber funnet på valgt kunde. Sjekk at jobbene ligger på samme kunde/eier som du valgte i faktura.", true);
@@ -385,18 +445,25 @@ async function lagDemoFaktura(kundeId) {
 }
 
 function bindHovFakturaKnapperRobust() {
-  document.querySelectorAll("[data-kunde-id]").forEach(knapp => {
-    const tekst = (knapp.textContent || "").toLowerCase();
+  document.querySelectorAll("button, input[type='button'], input[type='submit']").forEach(knapp => {
+    const tekst = (knapp.textContent || knapp.value || "").toLowerCase();
     if (!tekst.includes("faktura")) return;
     if (knapp.dataset.hovFakturaBind === "1") return;
     knapp.dataset.hovFakturaBind = "1";
+
     knapp.addEventListener("click", ev => {
-      const id = knapp.dataset.kundeId || knapp.getAttribute("data-kunde-id") || "";
-      if (id) {
+      const direkte = knapp.dataset.kundeId || knapp.getAttribute("data-kunde-id") || "";
+      const fraRad = hovHentKundeVerdiFraFakturaRad(knapp);
+      const valgt = document.getElementById("fakturaKunde")?.value || "";
+      const verdi = direkte || fraRad || valgt;
+
+      // Bare overstyr gamle demo-knapper når vi faktisk finner kunde fra rad/knapp/valg.
+      if (verdi) {
         ev.preventDefault();
-        lagHovFaktura(id);
+        ev.stopPropagation();
+        lagHovFaktura(verdi);
       }
-    });
+    }, true);
   });
 }
 
@@ -411,3 +478,5 @@ window.lagFakturaForKunde = lagFakturaForKunde;
 window.lagFaktura = lagFaktura;
 window.lagDemoFaktura = lagDemoFaktura;
 window.bindHovFakturaKnapperRobust = bindHovFakturaKnapperRobust;
+window.hovFinnKundeForFaktura = hovFinnKundeForFaktura;
+window.hovHentUfakturerteJobberForKunde = hovHentUfakturerteJobberForKunde;
