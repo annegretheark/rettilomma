@@ -62,6 +62,7 @@ table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}
     <div><label>Pris pr km</label><input id="jobbKmPris" type="number" value="5.30"></div>
   </div>
   <label>Beskrivelse</label><textarea id="jobbBeskrivelse"></textarea>
+  <button type="button" id="snakkDemoBeskrivelseKnapp" class="secondary" onclick="startDemoBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
   <button onclick="lagreDemoJobb()">Lagre jobb</button>
   <div id="jobbMelding" class="melding"></div>
 
@@ -261,6 +262,41 @@ function tegnFakturaOversikt(){
 function tegnKunderOgHester(){
   document.getElementById("kundeListe").innerHTML = kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse)}</div>`).join("");
   document.getElementById("hesteListe").innerHTML = hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase)}<br>Eier: ${esc(kundeNavn(h.kunde_id))}</div>`).join("");
+}
+
+
+function startDemoBeskrivelseTale(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const felt = document.getElementById("jobbBeskrivelse");
+  if(!SR){
+    alert("Talegjenkjenning støttes ikke i denne nettleseren. Prøv Chrome eller Edge, og bruk https.");
+    return;
+  }
+  const rec = new SR();
+  rec.lang = "no-NO";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  const knapp = document.getElementById("snakkDemoBeskrivelseKnapp");
+  if(knapp) knapp.textContent = "🎙️ Lytter ...";
+
+  rec.onresult = function(e){
+    const tekst = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : "";
+    if(felt && tekst){
+      felt.value = (felt.value ? felt.value + " " : "") + tekst;
+      felt.focus();
+    }
+  };
+
+  rec.onerror = function(e){
+    alert("Tale feilet: " + (e.error || "ukjent feil") + ". Sjekk at mikrofon er tillatt i nettleseren.");
+  };
+
+  rec.onend = function(){
+    if(knapp) knapp.textContent = "🎙️ Snakk inn beskrivelse";
+  };
+
+  rec.start();
 }
 
 function demoMelding(t){ document.getElementById("jobbMelding").textContent=t; }
