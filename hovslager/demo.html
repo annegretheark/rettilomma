@@ -249,47 +249,63 @@ async function lagFakturaForValgtKunde(){
     return;
   }
 
-  // Hent ferske ufakturerte jobber rett fra databasen, ikke bare fra skjermen.
-  // Det hindrer dobbeltfakturering hvis listen på skjermen er gammel.
+  if(melding){melding.textContent="Henter ufakturerte jobber...";}
+
+  // Må ta med både false og null.
+  // Oversikten teller !j.fakturert, og da vises null som "Ikke fakturert".
+  // Den gamle faktureringen hentet bare fakturert=false, derfor fant den 0 jobber.
   const {data: uf, error: hentError}=await supabaseClient
     .from("hov_jobber")
-    .select("*")
+    .select("id,total,arbeid_belop,varer_belop,km,km_pris")
     .eq("firma_id",DEMO_FIRMA_ID)
     .eq("kunde_id",kunde_id)
-    .eq("fakturert",false);
+    .or("fakturert.is.false,fakturert.is.null");
 
   if(hentError){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
     return;
   }
 
-  if(!uf || !uf.length){
-    if(melding){melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
+  const ids=(uf||[]).map(j=>j.id).filter(Boolean);
+  if(!ids.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
     await lastData();
     return;
   }
 
   const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);
 
-  // Oppdater bare jobber som fortsatt er ufakturert.
-  // Hvis en jobb allerede er fakturert, blir den ikke med på nytt.
-  const ids=uf.map(j=>j.id);
-  const {data: oppdatert, error: updateError}=await supabaseClient
+  // Oppdater kun de jobbene som faktisk ble hentet som ufakturerte.
+  // Ikke bruk .eq("fakturert",false) her, for da ryker rader der fakturert er null.
+  const {error: updateError}=await supabaseClient
     .from("hov_jobber")
     .update({fakturert:true,fakturanr:nr})
-    .in("id",ids)
     .eq("firma_id",DEMO_FIRMA_ID)
-    .eq("fakturert",false)
-    .select("id");
+    .in("id",ids);
 
   if(updateError){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateError.message;}
     return;
   }
 
-  const antall=(oppdatert||[]).length;
+  // Sjekk rett fra databasen at jobbene faktisk fikk fakturanummer.
+  const {data: sjekk, error: sjekkError}=await supabaseClient
+    .from("hov_jobber")
+    .select("id")
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("kunde_id",kunde_id)
+    .eq("fakturanr",nr)
+    .eq("fakturert",true);
+
+  if(sjekkError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men kontroll feilet: "+sjekkError.message;}
+    await lastData();
+    return;
+  }
+
+  const antall=(sjekk||[]).length;
   if(!antall){
-    if(melding){melding.textContent="Ingen jobber ble fakturert. De kan allerede være fakturert.";}
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen jobber ble fakturert. Sjekk RLS/update-policy for hov_jobber.";}
     await lastData();
     return;
   }
