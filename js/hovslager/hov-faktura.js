@@ -515,3 +515,161 @@ window.lagDemoFaktura = lagDemoFaktura;
 window.bindHovFakturaKnapperRobust = bindHovFakturaKnapperRobust;
 window.hovFinnKundeForFaktura = hovFinnKundeForFaktura;
 window.hovHentUfakturerteJobberForKunde = hovHentUfakturerteJobberForKunde;
+// === RETT I LOMMA FIX 4: Ta kontroll over demo-fakturaknapper uten å røre annet ===
+// Problem: demo.html kan ha egne inline-funksjoner og radoppsett uten <tr>.
+// Denne blokken finner kunden fra selve raden/teksten og stopper gammel demokode før den viser
+// "Ingen jobber ble fakturert".
+function hovFakturaNormaliserTekst(v) {
+  return String(v || "").replace(/\s+/g, " ").trim();
+}
+
+function hovFakturaKundeFraTekstlinje(tekst) {
+  const t = hovFakturaNormaliserTekst(tekst);
+  if (!t) return "";
+
+  // Typisk rad: "- Anne Lunde 1 1 632,50 kr Ikke fakturert Lag faktura"
+  let m = t.match(/^[-–—]?\s*(.*?)\s+\d+\s+[\d\s.,]+\s*kr\s+Ikke\s+fakturert/i);
+  if (m && m[1]) return hovFakturaNormaliserTekst(m[1]);
+
+  // Alternativ: "Anne Lunde 1 1 632,50 kr Ikke fakturert Lag faktura"
+  m = t.match(/^(.*?)\s+\d+\s+[\d\s.,]+\s*kr\s+Ikke\s+fakturert/i);
+  if (m && m[1]) return hovFakturaNormaliserTekst(m[1].replace(/^[-–—]\s*/, ""));
+
+  return "";
+}
+
+function hovFakturaKundeFraOnclick(knapp) {
+  const s = String(knapp?.getAttribute?.("onclick") || "");
+  if (!s) return "";
+
+  // Hent første argument i anførselstegn, f.eks. lagFaktura('Anne Lunde')
+  const m = s.match(/\((?:\s*)['"]([^'"]+)['"]/);
+  if (m && m[1]) return hovFakturaNormaliserTekst(m[1]);
+
+  return "";
+}
+
+function hovHentKundeVerdiFraFakturaRadRobust(knapp) {
+  if (!knapp) return "";
+
+  const dataVerdi =
+    knapp.dataset?.kundeId ||
+    knapp.dataset?.kunde ||
+    knapp.dataset?.kundenavn ||
+    knapp.getAttribute?.("data-kunde-id") ||
+    knapp.getAttribute?.("data-kunde") ||
+    knapp.getAttribute?.("data-kundenavn") ||
+    "";
+  if (dataVerdi) return hovFakturaNormaliserTekst(dataVerdi);
+
+  const fraOnclick = hovFakturaKundeFraOnclick(knapp);
+  if (fraOnclick) return fraOnclick;
+
+  const tr = knapp.closest?.("tr");
+  if (tr) {
+    const direkte = tr.dataset?.kundeId || tr.getAttribute?.("data-kunde-id") || "";
+    if (direkte) return hovFakturaNormaliserTekst(direkte);
+    const celler = Array.from(tr.querySelectorAll("td"));
+    if (celler[1]) return hovFakturaNormaliserTekst(celler[1].textContent || "");
+  }
+
+  // Demo-oversikten kan være bygget med div/grid, ikke tabell.
+  let el = knapp.parentElement;
+  for (let i = 0; el && i < 8; i += 1, el = el.parentElement) {
+    const tekst = hovFakturaKundeFraTekstlinje(el.textContent || "");
+    if (tekst && !/^fakturanr kunde jobber beløp status/i.test(tekst)) return tekst;
+  }
+
+  return "";
+}
+
+async function hovLagFakturaFraKnapp(knapp, ev) {
+  const tekst = (knapp?.textContent || knapp?.value || "").toLowerCase();
+  if (!tekst.includes("lag") || !tekst.includes("faktura")) return false;
+
+  const verdi =
+    hovHentKundeVerdiFraFakturaRadRobust(knapp) ||
+    document.getElementById("fakturaKunde")?.value ||
+    "";
+
+  if (!verdi) return false;
+
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+  }
+
+  await lagHovFaktura(verdi);
+  return false;
+}
+
+function hovBindFakturaKnapperFix4() {
+  document.querySelectorAll("button, input[type='button'], input[type='submit']").forEach(knapp => {
+    const tekst = (knapp.textContent || knapp.value || "").toLowerCase();
+    if (!tekst.includes("lag") || !tekst.includes("faktura")) return;
+
+    // Fjern gammel inline onclick på akkurat faktura-lage-knapper.
+    // Andre knapper, f.eks. oversikt, røres ikke.
+    if (knapp.getAttribute("onclick")) {
+      knapp.dataset.gammelOnclick = knapp.getAttribute("onclick");
+      knapp.removeAttribute("onclick");
+    }
+
+    if (knapp.dataset.hovFakturaFix4 === "1") return;
+    knapp.dataset.hovFakturaFix4 = "1";
+    knapp.addEventListener("click", function(ev) {
+      hovLagFakturaFraKnapp(knapp, ev);
+    }, true);
+  });
+}
+
+function hovInstallerFakturaFunksjonerFix4() {
+  window.lagHovFaktura = lagHovFaktura;
+  window.lagHovFakturaForKunde = function(kundeId) { return lagHovFaktura(kundeId); };
+  window.lagFakturaForKunde = function(kundeId) { return lagHovFaktura(kundeId); };
+  window.lagFaktura = function(kundeId) { return lagHovFaktura(kundeId); };
+  window.lagFakturaKunde = function(kundeId) { return lagHovFaktura(kundeId); };
+  window.lagKundeFaktura = function(kundeId) { return lagHovFaktura(kundeId); };
+  window.lagDemoFaktura = function(kundeId) {
+    const valgt = kundeId || document.getElementById("fakturaKunde")?.value || "";
+    return lagHovFaktura(valgt);
+  };
+  window.hovLagFakturaFraKnapp = hovLagFakturaFraKnapp;
+  window.hovHentKundeVerdiFraFakturaRadRobust = hovHentKundeVerdiFraFakturaRadRobust;
+}
+
+// Capture helt øverst i klikkflyten. Dette stopper gammel demo-kode før den rekker å skrive feil melding.
+document.addEventListener("click", function(ev) {
+  const knapp = ev.target?.closest?.("button, input[type='button'], input[type='submit']");
+  if (!knapp) return;
+  const tekst = (knapp.textContent || knapp.value || "").toLowerCase();
+  if (tekst.includes("lag") && tekst.includes("faktura")) {
+    hovLagFakturaFraKnapp(knapp, ev);
+  }
+}, true);
+
+hovInstallerFakturaFunksjonerFix4();
+hovBindFakturaKnapperFix4();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function() {
+    hovInstallerFakturaFunksjonerFix4();
+    hovBindFakturaKnapperFix4();
+  });
+}
+
+[100, 400, 900, 1600, 3000, 5000].forEach(ms => {
+  setTimeout(function() {
+    hovInstallerFakturaFunksjonerFix4();
+    hovBindFakturaKnapperFix4();
+  }, ms);
+});
+
+try {
+  const obs = new MutationObserver(function() {
+    hovInstallerFakturaFunksjonerFix4();
+    hovBindFakturaKnapperFix4();
+  });
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+} catch (e) {}
