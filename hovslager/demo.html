@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
 </section>
 
-<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: kopi-knapp klikk fix 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: faktura/kopi utskrift fix 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -238,6 +238,75 @@ async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const 
   <div id="jobbDetaljBildeMelding" class="melding"></div>
 </div>`;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
+
+function demoFakturaLinjeHtml(j){
+  return `
+    <tr>
+      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td>
+      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td>
+      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype||'')}</td>
+      <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(totalJobb(j))} kr</td>
+    </tr>`;
+}
+
+function visDemoFakturaPanel(kunde_id, fakturanr, kopi=false){
+  const melding=document.getElementById("fakturaMelding");
+  const nr=String(fakturanr||"Fakturert");
+  const rader=jobber.filter(j=>
+    j.fakturert &&
+    String(j.kunde_id)===String(kunde_id) &&
+    String(j.fakturanr||"Fakturert")===nr
+  );
+
+  if(!rader.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturerte jobber å vise.";}
+    return false;
+  }
+
+  const tittel=kopi ? "📄 KOPI FAKTURA" : "FAKTURA";
+  const visNr=kopi ? nr+"-KOPI" : nr;
+  const kunde=kundeNavn(kunde_id);
+  const sum=rader.reduce((s,j)=>s+totalJobb(j),0);
+  const linjer=rader.map(demoFakturaLinjeHtml).join("");
+
+  const panel=document.createElement("div");
+  panel.id="demoFakturaUtskriftPanel";
+  panel.className="listekort";
+  panel.style.marginTop="14px";
+  panel.style.border="3px solid #86efac";
+  panel.style.background="#111827";
+  panel.innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <h3 style="margin:0;color:${kopi ? '#fca5a5' : '#86efac'};font-size:28px;">${tittel}</h3>
+        ${kopi ? '<div class="info">Dette er en kopi. Ingen jobber blir fakturert på nytt.</div>' : '<div class="info">Fakturaen er laget og jobbene er merket fakturert.</div>'}
+      </div>
+      <button type="button" class="secondary" onclick="document.getElementById('demoFakturaUtskriftPanel')?.remove()">Lukk</button>
+    </div>
+    <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(visNr)}</div>
+    <div><b>Kunde:</b> ${esc(kunde)}</div>
+    <div><b>Dato:</b> ${new Date().toISOString().slice(0,10)}</div>
+    <div style="overflow-x:auto;margin-top:12px;">
+      <table style="width:100%;border-collapse:collapse;min-width:520px;">
+        <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Hest</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th></tr></thead>
+        <tbody>${linjer}</tbody>
+        <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum)} kr</b></td></tr></tfoot>
+      </table>
+    </div>
+    <button type="button" style="margin-top:12px;background:#0f766e;font-weight:bold;" onclick="window.print()">🖨️ Skriv ut</button>
+  `;
+
+  document.getElementById("demoFakturaUtskriftPanel")?.remove();
+  const oversikt=document.getElementById("fakturaOversikt");
+  if(oversikt && oversikt.parentNode) oversikt.parentNode.insertBefore(panel, oversikt);
+  else (document.getElementById("fakturaSide")||document.body).appendChild(panel);
+
+  if(melding){melding.style.color="#86efac"; melding.textContent=(kopi?"Kopi klar: ":"Faktura klar: ")+visNr;}
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+  return false;
+}
+window.visDemoFakturaPanel=visDemoFakturaPanel;
+
 async function lagFakturaForValgtKunde(){
   const melding=document.getElementById("fakturaMelding");
   const kunde_id=document.getElementById("fakturaKunde").value;
@@ -246,7 +315,7 @@ async function lagFakturaForValgtKunde(){
 
   if(!kunde_id){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg kunde først.";}
-    return;
+    return false;
   }
 
   if(melding){melding.textContent="Henter ufakturerte jobber...";}
@@ -260,15 +329,15 @@ async function lagFakturaForValgtKunde(){
 
   if(hentError){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
-    return;
+    return false;
   }
 
   const ids=(uf||[]).map(j=>j.id).filter(Boolean);
   if(!ids.length){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde. Bruk Kopi faktura-knappen på fakturert rad.";}
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde. Bruk Kopi faktura på fakturert rad.";}
     await lastData();
     tegnFakturaOversikt();
-    return;
+    return false;
   }
 
   const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);
@@ -282,124 +351,27 @@ async function lagFakturaForValgtKunde(){
 
   if(updateRes.error){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateRes.error.message;}
-    return;
-  }
-
-  let antall=Array.isArray(updateRes.data) ? updateRes.data.length : 0;
-
-  // Supabase/RLS kan noen ganger tillate update, men ikke returnere rader fra .select().
-  // Derfor kontrollerer vi mot fakturanummeret før vi sier at det feilet.
-  if(!antall){
-    const sjekkRes=await supabaseClient
-      .from("hov_jobber")
-      .select("id")
-      .eq("firma_id",DEMO_FIRMA_ID)
-      .eq("kunde_id",kunde_id)
-      .eq("fakturanr",nr);
-
-    if(sjekkRes.error){
-      if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men kontroll feilet: "+sjekkRes.error.message;}
-      await lastData();
-      return;
-    }
-
-    antall=Array.isArray(sjekkRes.data) ? sjekkRes.data.length : 0;
-  }
-
-  if(!antall){
-    if(melding){
-      melding.style.color="#fca5a5";
-      melding.textContent="Ingen jobber ble fakturert. Databasen stopper update på hov_jobber for åpen demo. Kjør SQL-filen rls-hov-jobber-demo-fix.sql i Supabase.";
-    }
-    await lastData();
-    return;
-  }
-
-  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
-  await lastData();
-  tegnFakturaOversikt();
-}
-function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").value=kunde_id;lagFakturaForValgtKunde();}
-
-function visKopiFaktura(kunde_id, fakturanr){
-  const melding=document.getElementById("fakturaMelding");
-  const nr=String(fakturanr||"Fakturert");
-
-  // Robust: finn fakturerte jobber fra minnet først. Hvis fakturanr mangler eller ikke matcher,
-  // vis likevel kopi for kundens fakturerte jobber. Dette gjør knappen trygg i demoen.
-  let rader=jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && String(j.fakturanr||"Fakturert")===nr);
-  if(!rader.length){
-    rader=jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id));
-  }
-
-  if(!rader.length){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturerte jobber å lage kopi av.";}
     return false;
   }
 
-  const kunde=kundeNavn(kunde_id);
-  const sum=rader.reduce((s,j)=>s+totalJobb(j),0);
-  const linjer=rader.map(j=>`
-    <tr>
-      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td>
-      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td>
-      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(j.jobbtype||'')}</td>
-      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(totalJobb(j))} kr</td>
-    </tr>`).join("");
-
-  const panel=document.createElement("div");
-  panel.id="kopiFakturaPanel";
-  panel.className="listekort";
-  panel.style.marginTop="12px";
-  panel.style.border="2px solid #86efac";
-  panel.style.background="#111827";
-  panel.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-      <div>
-        <h3 style="margin:0;color:#86efac;font-size:26px;">📄 KOPI faktura</h3>
-        <div class="info">Dette er en kopi. Ingen jobber blir fakturert på nytt.</div>
-      </div>
-      <button type="button" class="secondary" onclick="document.getElementById('kopiFakturaPanel') && document.getElementById('kopiFakturaPanel').remove()">Lukk</button>
-    </div>
-    <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(nr)}-KOPI</div>
-    <div><b>Kunde:</b> ${esc(kunde)}</div>
-    <div><b>Dato:</b> ${new Date().toISOString().slice(0,10)}</div>
-    <div style="overflow-x:auto;margin-top:12px;">
-      <table style="width:100%;border-collapse:collapse;min-width:520px;">
-        <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Hest</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th></tr></thead>
-        <tbody>${linjer}</tbody>
-        <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum)} kr</b></td></tr></tfoot>
-      </table>
-    </div>
-    <button type="button" onclick="window.print()">Skriv ut kopi</button>
-  `;
-
-  const oversikt=document.getElementById("fakturaOversikt");
-  const side=document.getElementById("fakturaSide") || document.body;
-  const gammel=document.getElementById("kopiFakturaPanel");
-  if(gammel) gammel.remove();
-
-  // Legg panelet rett over oversikten, ikke inni en boks som kan rendres på nytt.
-  if(oversikt && oversikt.parentNode){
-    oversikt.parentNode.insertBefore(panel, oversikt);
-  } else {
-    side.appendChild(panel);
-  }
-
-  if(melding){melding.style.color="#86efac"; melding.textContent="Kopi klar: "+nr+"-KOPI";}
-  panel.scrollIntoView({behavior:"smooth",block:"start"});
+  await lastData();
+  tegnFakturaOversikt();
+  visDemoFakturaPanel(kunde_id,nr,false);
   return false;
 }
-window.visKopiFaktura=visKopiFaktura;
+window.lagFakturaForValgtKunde=lagFakturaForValgtKunde;
 
-// Ekstra trygg klikk-kobling. Virker selv om inline onclick ikke fyrer.
-document.addEventListener("click", function(e){
-  const knapp=e.target && e.target.closest ? e.target.closest("[data-kopi-faktura]") : null;
-  if(!knapp) return;
-  e.preventDefault();
-  e.stopPropagation();
-  visKopiFaktura(knapp.getAttribute("data-kunde-id"), knapp.getAttribute("data-fakturanr"));
-}, true);
+function lagFakturaForKunde(kunde_id){
+  const sel=document.getElementById("fakturaKunde");
+  if(sel) sel.value=kunde_id;
+  return lagFakturaForValgtKunde();
+}
+window.lagFakturaForKunde=lagFakturaForKunde;
+
+function visKopiFaktura(kunde_id, fakturanr){
+  return visDemoFakturaPanel(kunde_id,fakturanr,true);
+}
+window.visKopiFaktura=visKopiFaktura;
 
 function tegnFakturaOversikt(){
   const oversikt=document.getElementById("fakturaOversikt");
@@ -431,44 +403,31 @@ function tegnFakturaOversikt(){
         <div>Kunde: ${esc(g.kunde)}</div>
         <div>Jobber: ${g.antall} &nbsp; Beløp: ${kr(g.sum)} kr</div>
       </div>
-      <button type="button" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')">Lag faktura</button>
+      <button type="button" onclick="return lagFakturaForKunde('${esc(g.kunde_id)}')">Lag faktura</button>
     </div>
   `).join("");
 
   const kopiHtml=Object.values(faktGrupper).map(f=>`
-    <div class="listekort kopi-faktura-kort" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="display:block;margin-top:10px;border-left:6px solid #86efac;cursor:pointer;position:relative;z-index:20;">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-        <div>
-          <div><b>Fakturert</b></div>
-          <div>Fakturanr: ${esc(f.fakturanr)}</div>
-          <div>Kunde: ${esc(f.kunde)}</div>
-          <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
-        </div>
-        <button type="button" class="secondary kopi-faktura-knapp" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;min-width:190px;min-height:54px;font-size:16px;position:relative;z-index:50;pointer-events:auto;">📄 Kopi faktura</button>
+    <div class="listekort" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:10px;border-left:6px solid #86efac;">
+      <div>
+        <div><b>Fakturert</b></div>
+        <div>Fakturanr: ${esc(f.fakturanr)}</div>
+        <div>Kunde: ${esc(f.kunde)}</div>
+        <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
       </div>
-      <div class="info" style="color:#86efac;margin-top:6px;">Klikk her eller på knappen for å vise kopi.</div>
+      <button type="button" class="secondary" style="background:#0f766e;font-weight:bold;min-width:170px;min-height:50px;" onclick="return visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
     </div>
   `).join("");
 
   oversikt.innerHTML=`
     <div class="listekort" style="margin-top:12px;background:#111827;">
       <h3 style="margin-bottom:6px;">Fakturaoversikt</h3>
-      <div class="info">Oppdatert visning. Kopi-knappen ligger nå synlig på fakturerte rader.</div>
+      <div class="info">Lag faktura viser faktura. Kopi faktura viser kopi uten ny fakturering.</div>
       ${ikkeHtml || ""}
       ${kopiHtml || ""}
       ${(!ikkeHtml && !kopiHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
     </div>
   `;
-
-  // Direkte kobling etter at HTML er tegnet. Dette er robust selv om inline onclick ikke virker.
-  oversikt.querySelectorAll('[data-kopi-faktura="1"]').forEach(el=>{
-    el.onclick=function(ev){
-      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-      const kid=this.getAttribute('data-kunde-id') || '';
-      const nr=this.getAttribute('data-fakturanr') || '';
-      return visKopiFaktura(kid,nr);
-    };
-  });
 }
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
