@@ -67,12 +67,14 @@ async function fyllFakturaKunder() {
   }
 }
 
-async function lagHovFaktura() {
+async function lagHovFaktura(kundeIdDirekte = "") {
 
   try {
 
     const kundeFelt = document.getElementById("fakturaKunde");
-    const kundeId = kundeFelt ? kundeFelt.value : "";
+    const kundeId = String(kundeIdDirekte || (kundeFelt ? kundeFelt.value : "") || "").trim();
+
+    if (kundeFelt && kundeId) kundeFelt.value = kundeId;
 
     if (!kundeId) {
       fakturaMelding("Velg kunde først.", true);
@@ -92,11 +94,20 @@ async function lagHovFaktura() {
       return;
     }
 
-    const jobbRes = await supabaseClient
+    let jobbQuery = supabaseClient
       .from("hov_jobber")
-      .select("*, hester(navn,kunde_id)")
+      .select("*, hester(navn,kunde_id), kunder(navn)")
       .or("fakturert.is.false,fakturert.is.null")
       .order("dato", { ascending: true });
+
+    // Hold faktureringen innenfor aktivt firma når appen kjører med firma/RLS.
+    let aktivFirmaId = null;
+    if (typeof window.hentAktivHovFirmaId === "function") {
+      try { aktivFirmaId = await window.hentAktivHovFirmaId(); } catch (e) { aktivFirmaId = null; }
+    }
+    if (aktivFirmaId) jobbQuery = jobbQuery.eq("firma_id", aktivFirmaId);
+
+    const jobbRes = await jobbQuery;
 
     if (jobbRes.error) {
       fakturaMelding(jobbRes.error.message, true);
@@ -261,15 +272,26 @@ async function lagHovFaktura() {
       }
     }
 
-    const fakturaRes = await supabaseClient
+    const fakturaPayload = {
+      fakturanr,
+      kunde_id: kundeId,
+      eks_mva: eksMva,
+      mva,
+      inkl_mva: inklMva
+    };
+    if (aktivFirmaId) fakturaPayload.firma_id = aktivFirmaId;
+
+    let fakturaRes = await supabaseClient
       .from("hov_fakturaer")
-      .insert([{
-        fakturanr,
-        kunde_id: kundeId,
-        eks_mva: eksMva,
-        mva,
-        inkl_mva: inklMva
-      }]);
+      .insert([fakturaPayload]);
+
+    // Tåler eldre demo-tabell uten firma_id, uten å endre noe annet.
+    if (fakturaRes.error && aktivFirmaId && /firma_id|schema cache|column/i.test(fakturaRes.error.message || "")) {
+      delete fakturaPayload.firma_id;
+      fakturaRes = await supabaseClient
+        .from("hov_fakturaer")
+        .insert([fakturaPayload]);
+    }
 
     if (fakturaRes.error) {
       fakturaMelding(fakturaRes.error.message, true);
@@ -302,6 +324,12 @@ async function lagHovFaktura() {
     if (typeof hentJobber === "function") {
       await hentJobber();
     }
+    if (typeof window.visFakturaOversikt === "function") {
+      await window.visFakturaOversikt();
+    }
+    if (typeof window.hentFakturaOversikt === "function") {
+      await window.hentFakturaOversikt();
+    }
 
   } catch (e) {
     console.error("Feil i lagHovFaktura:", e);
@@ -312,6 +340,8 @@ async function lagHovFaktura() {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(fyllFakturaKunder, 300);
   setTimeout(fyllFakturaKunder, 1200);
+  setTimeout(bindHovFakturaKnapperRobust, 500);
+  setTimeout(bindHovFakturaKnapperRobust, 1500);
 
   const sel = document.getElementById("fakturaKunde");
   if (sel) {
@@ -323,8 +353,61 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
+// Bakoverkompatible navn brukt av demo.html / gamle knapper.
+async function lagHovFakturaForKunde(kundeId) {
+  return lagHovFaktura(kundeId);
+}
+async function lagFakturaForKunde(kundeId) {
+  return lagHovFaktura(kundeId);
+}
+async function lagFaktura(kundeId) {
+  return lagHovFaktura(kundeId);
+}
+async function lagDemoFaktura(kundeId) {
+  // I demo skal knappen lage faktura for valgt kunde. Hvis ingen er valgt,
+  // brukes første kunde med ufakturert jobb. Ingen ferdigfakturerte jobber røres.
+  let id = kundeId || document.getElementById("fakturaKunde")?.value || "";
+  if (!id && window.supabaseClient) {
+    try {
+      let q = supabaseClient
+        .from("hov_jobber")
+        .select("kunde_id, hester(kunde_id)")
+        .or("fakturert.is.false,fakturert.is.null")
+        .limit(20);
+      const { data } = await q;
+      const rad = (data || []).find(j => j.kunde_id || j.hester?.kunde_id);
+      id = rad?.kunde_id || rad?.hester?.kunde_id || "";
+    } catch (e) {
+      console.warn("Kunne ikke finne demokunde automatisk:", e);
+    }
+  }
+  return lagHovFaktura(id);
+}
+
+function bindHovFakturaKnapperRobust() {
+  document.querySelectorAll("[data-kunde-id]").forEach(knapp => {
+    const tekst = (knapp.textContent || "").toLowerCase();
+    if (!tekst.includes("faktura")) return;
+    if (knapp.dataset.hovFakturaBind === "1") return;
+    knapp.dataset.hovFakturaBind = "1";
+    knapp.addEventListener("click", ev => {
+      const id = knapp.dataset.kundeId || knapp.getAttribute("data-kunde-id") || "";
+      if (id) {
+        ev.preventDefault();
+        lagHovFaktura(id);
+      }
+    });
+  });
+}
+
+
 window.lagHovFaktura =
   lagHovFaktura;
 
 window.fyllFakturaKunder =
   fyllFakturaKunder;
+window.lagHovFakturaForKunde = lagHovFakturaForKunde;
+window.lagFakturaForKunde = lagFakturaForKunde;
+window.lagFaktura = lagFaktura;
+window.lagDemoFaktura = lagDemoFaktura;
+window.bindHovFakturaKnapperRobust = bindHovFakturaKnapperRobust;
