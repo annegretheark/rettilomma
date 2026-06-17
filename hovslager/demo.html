@@ -266,9 +266,43 @@ function tegnFakturaOversikt(){
     </div>`;
 }
 
+
+function visDemoJobbBilderForHest(hestId){
+  const h = hester.find(x => x.id === hestId);
+  const rader = jobber
+    .filter(j => j.hest_id === hestId)
+    .sort((a,b) => String(a.dato).localeCompare(String(b.dato)));
+
+  let panel = document.getElementById("demoHestBildePanel");
+  if(!panel){
+    panel = document.createElement("div");
+    panel.id = "demoHestBildePanel";
+    panel.className = "listekort";
+    document.getElementById("hesterSide").prepend(panel);
+  }
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+      <h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn || "Hest")}</h3>
+      <button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button>
+    </div>
+    <div class="info">Demoen viser jobbhistorikk kronologisk. I produksjon vises faktiske bilder fra jobbene.</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+      <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th><th style="text-align:center">Bilder</th></tr></thead>
+      <tbody>${rader.map((j,i)=>`<tr>
+        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.dato)}</td>
+        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td>
+        <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td>
+        <td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${i % 2 === 0 ? 2 : 0}</td>
+      </tr>`).join("") || `<tr><td colspan="4" style="padding:10px;">Ingen jobber på denne hesten ennå.</td></tr>`}</tbody>
+    </table>
+  `;
+  panel.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
 function tegnKunderOgHester(){
   document.getElementById("kundeListe").innerHTML = kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse)}</div>`).join("");
-  document.getElementById("hesteListe").innerHTML = hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase)}<br>Eier: ${esc(kundeNavn(h.kunde_id))}</div>`).join("");
+  document.getElementById("hesteListe").innerHTML = hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase)}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button class="secondary" onclick="visDemoJobbBilderForHest(\`${h.id}\`)">📷 Vis alle jobbilder kronologisk</button></div>`).join("");
 }
 
 

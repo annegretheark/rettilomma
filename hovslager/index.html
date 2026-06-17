@@ -65,7 +65,8 @@
 <hr><h3>Jobbliste</h3><div class="rad"><div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div><div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div><div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div></div><button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button><div id="jobbListe"></div>
 </section>
 
-<section class="kort skjult" id="hesterSide"><h2>Hester</h2><label for="hestKunde">Eier/kunde</label><select id="hestKunde"><option value="">Velg kunde</option></select><label for="hestVelg">Velg hest å redigere</label><select id="hestVelg"><option value="">Ny hest</option></select><label for="hestNavn">Navn</label><input id="hestNavn"><label for="hestRase">Rase/type</label><input id="hestRase"><label for="hestNotater">Notater</label><textarea id="hestNotater"></textarea>
+<section class="kort skjult" id="hesterSide"><h2>Hester</h2><label for="hestKunde">Eier/kunde</label><select id="hestKunde"><option value="">Velg kunde</option></select><label for="hestVelg">Velg hest å redigere</label><select id="hestVelg"><option value="">Ny hest</option></select>
+<button type="button" id="visAlleJobbBilderValgtHestKnapp" class="secondary" onclick="hovVisJobbBilderForValgtHest()">📷 Vis alle jobbilder kronologisk for valgt hest</button><label for="hestNavn">Navn</label><input id="hestNavn"><label for="hestRase">Rase/type</label><input id="hestRase"><label for="hestNotater">Notater</label><textarea id="hestNotater"></textarea>
 <div class="hov-bildeblokk">
   <strong>📷 Bilde av hesten</strong>
   <div class="info">Velg eller ta ett eller flere bilder når du oppretter eller redigerer hesten.</div>
@@ -373,6 +374,69 @@ function startBeskrivelseTale(){
     }
   };
 }
+</script>
+
+
+<script>
+/* Rett i Lomma - knapper for kronologiske jobbilder på hest */
+function hovVisJobbBilderForValgtHest(){
+  const sel = document.getElementById("hestVelg");
+  const hestId = sel ? sel.value : "";
+  if(!hestId){
+    alert("Velg en hest først.");
+    return;
+  }
+  if(typeof window.visAlleHovBilderForHest === "function"){
+    window.visAlleHovBilderForHest(hestId);
+  } else {
+    alert("Bildevisning er ikke lastet ennå. Gå til Jobber og prøv igjen.");
+  }
+}
+
+function hovSettInnBildeknapperPaHestekort(){
+  const liste = document.getElementById("hesteListe");
+  const sel = document.getElementById("hestVelg");
+  if(!liste || !sel || typeof window.visAlleHovBilderForHest !== "function") return;
+
+  const options = Array.from(sel.options || [])
+    .filter(o => o.value)
+    .map(o => ({ id:o.value, navn:String(o.textContent || "").trim().toLowerCase() }));
+
+  const kort = Array.from(liste.querySelectorAll(".listekort, .hov-hestkort, div"));
+  for(const el of kort){
+    if(el.dataset.hovBildeKnapp === "1") continue;
+    const tekst = String(el.textContent || "").trim().toLowerCase();
+    if(!tekst) continue;
+
+    const funnet = options.find(o => o.navn && tekst.includes(o.navn));
+    if(!funnet) continue;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.style.marginTop = "8px";
+    btn.textContent = "📷 Vis alle jobbilder kronologisk";
+    btn.onclick = function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.visAlleHovBilderForHest(funnet.id);
+    };
+    el.appendChild(btn);
+    el.dataset.hovBildeKnapp = "1";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  setTimeout(hovSettInnBildeknapperPaHestekort, 800);
+  setTimeout(hovSettInnBildeknapperPaHestekort, 1800);
+  const liste = document.getElementById("hesteListe");
+  if(liste){
+    const obs = new MutationObserver(function(){ setTimeout(hovSettInnBildeknapperPaHestekort, 100); });
+    obs.observe(liste, { childList:true, subtree:true });
+  }
+});
+window.hovVisJobbBilderForValgtHest = hovVisJobbBilderForValgtHest;
+window.hovSettInnBildeknapperPaHestekort = hovSettInnBildeknapperPaHestekort;
 </script>
 
 </body></html>
