@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
 </section>
 
-<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: kopi-knapp synlig 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: kopi-knapp klikk fix 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -324,11 +324,17 @@ function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").va
 function visKopiFaktura(kunde_id, fakturanr){
   const melding=document.getElementById("fakturaMelding");
   const nr=String(fakturanr||"Fakturert");
-  const rader=jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && String(j.fakturanr||"Fakturert")===nr);
+
+  // Robust: finn fakturerte jobber fra minnet først. Hvis fakturanr mangler eller ikke matcher,
+  // vis likevel kopi for kundens fakturerte jobber. Dette gjør knappen trygg i demoen.
+  let rader=jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && String(j.fakturanr||"Fakturert")===nr);
+  if(!rader.length){
+    rader=jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id));
+  }
 
   if(!rader.length){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturerte jobber å lage kopi av.";}
-    return;
+    return false;
   }
 
   const kunde=kundeNavn(kunde_id);
@@ -345,13 +351,15 @@ function visKopiFaktura(kunde_id, fakturanr){
   panel.id="kopiFakturaPanel";
   panel.className="listekort";
   panel.style.marginTop="12px";
+  panel.style.border="2px solid #86efac";
+  panel.style.background="#111827";
   panel.innerHTML=`
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
       <div>
-        <h3 style="margin:0;color:#fca5a5;">KOPI faktura</h3>
+        <h3 style="margin:0;color:#86efac;font-size:26px;">📄 KOPI faktura</h3>
         <div class="info">Dette er en kopi. Ingen jobber blir fakturert på nytt.</div>
       </div>
-      <button type="button" class="secondary" onclick="document.getElementById('kopiFakturaPanel')?.remove()">Lukk</button>
+      <button type="button" class="secondary" onclick="document.getElementById('kopiFakturaPanel') && document.getElementById('kopiFakturaPanel').remove()">Lukk</button>
     </div>
     <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(nr)}-KOPI</div>
     <div><b>Kunde:</b> ${esc(kunde)}</div>
@@ -367,11 +375,31 @@ function visKopiFaktura(kunde_id, fakturanr){
   `;
 
   const oversikt=document.getElementById("fakturaOversikt");
-  document.getElementById("kopiFakturaPanel")?.remove();
-  oversikt?.prepend(panel);
+  const side=document.getElementById("fakturaSide") || document.body;
+  const gammel=document.getElementById("kopiFakturaPanel");
+  if(gammel) gammel.remove();
+
+  // Legg panelet rett over oversikten, ikke inni en boks som kan rendres på nytt.
+  if(oversikt && oversikt.parentNode){
+    oversikt.parentNode.insertBefore(panel, oversikt);
+  } else {
+    side.appendChild(panel);
+  }
+
   if(melding){melding.style.color="#86efac"; melding.textContent="Kopi klar: "+nr+"-KOPI";}
   panel.scrollIntoView({behavior:"smooth",block:"start"});
+  return false;
 }
+window.visKopiFaktura=visKopiFaktura;
+
+// Ekstra trygg klikk-kobling. Virker selv om inline onclick ikke fyrer.
+document.addEventListener("click", function(e){
+  const knapp=e.target && e.target.closest ? e.target.closest("[data-kopi-faktura]") : null;
+  if(!knapp) return;
+  e.preventDefault();
+  e.stopPropagation();
+  visKopiFaktura(knapp.getAttribute("data-kunde-id"), knapp.getAttribute("data-fakturanr"));
+});
 
 function tegnFakturaOversikt(){
   const oversikt=document.getElementById("fakturaOversikt");
@@ -415,7 +443,7 @@ function tegnFakturaOversikt(){
         <div>Kunde: ${esc(f.kunde)}</div>
         <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
       </div>
-      <button type="button" class="secondary" style="background:#0f766e;font-weight:bold;min-width:150px;" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
+      <button type="button" class="secondary" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;min-width:150px;position:relative;z-index:5;" onclick="return visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
     </div>
   `).join("");
 
