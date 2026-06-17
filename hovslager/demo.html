@@ -399,7 +399,7 @@ document.addEventListener("click", function(e){
   e.preventDefault();
   e.stopPropagation();
   visKopiFaktura(knapp.getAttribute("data-kunde-id"), knapp.getAttribute("data-fakturanr"));
-});
+}, true);
 
 function tegnFakturaOversikt(){
   const oversikt=document.getElementById("fakturaOversikt");
@@ -436,14 +436,17 @@ function tegnFakturaOversikt(){
   `).join("");
 
   const kopiHtml=Object.values(faktGrupper).map(f=>`
-    <div class="listekort" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:10px;border-left:5px solid #86efac;">
-      <div>
-        <div><b>Fakturert</b></div>
-        <div>Fakturanr: ${esc(f.fakturanr)}</div>
-        <div>Kunde: ${esc(f.kunde)}</div>
-        <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
+    <div class="listekort kopi-faktura-kort" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="display:block;margin-top:10px;border-left:6px solid #86efac;cursor:pointer;position:relative;z-index:20;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <div><b>Fakturert</b></div>
+          <div>Fakturanr: ${esc(f.fakturanr)}</div>
+          <div>Kunde: ${esc(f.kunde)}</div>
+          <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
+        </div>
+        <button type="button" class="secondary kopi-faktura-knapp" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;min-width:190px;min-height:54px;font-size:16px;position:relative;z-index:50;pointer-events:auto;">📄 Kopi faktura</button>
       </div>
-      <button type="button" class="secondary" data-kopi-faktura="1" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;min-width:150px;position:relative;z-index:5;" onclick="return visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
+      <div class="info" style="color:#86efac;margin-top:6px;">Klikk her eller på knappen for å vise kopi.</div>
     </div>
   `).join("");
 
@@ -456,6 +459,16 @@ function tegnFakturaOversikt(){
       ${(!ikkeHtml && !kopiHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
     </div>
   `;
+
+  // Direkte kobling etter at HTML er tegnet. Dette er robust selv om inline onclick ikke virker.
+  oversikt.querySelectorAll('[data-kopi-faktura="1"]').forEach(el=>{
+    el.onclick=function(ev){
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      const kid=this.getAttribute('data-kunde-id') || '';
+      const nr=this.getAttribute('data-fakturanr') || '';
+      return visKopiFaktura(kid,nr);
+    };
+  });
 }
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
