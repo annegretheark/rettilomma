@@ -393,4 +393,27 @@ function hovVisJobbBilderForValgtHest(){
 }
 </script>
 
+
+<script>
+/* Sikker fallback: jobbrader skal være klikkbare */
+function hovBindKlikkbareJobbraderFallback(){
+  const liste = document.getElementById("jobbListe");
+  if(!liste || typeof window.visHovJobbDetalj !== "function") return;
+
+  liste.querySelectorAll("tr[data-jobb-id]").forEach(tr => {
+    if(tr.dataset.klikkbarJobb === "1") return;
+    tr.dataset.klikkbarJobb = "1";
+    tr.style.cursor = "pointer";
+    tr.title = "Klikk for jobbdetaljer og bilder";
+    tr.addEventListener("click", function(){
+      window.visHovJobbDetalj(tr.dataset.jobbId);
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  setInterval(hovBindKlikkbareJobbraderFallback, 1200);
+});
+</script>
+
 </body></html>
