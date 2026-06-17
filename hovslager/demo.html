@@ -90,7 +90,6 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
 </section>
 
 <section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button class="secondary" onclick="tegnFakturaOversikt()">Vis fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -241,7 +240,7 @@ async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const 
 function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
 async function lagFakturaForValgtKunde(){
   const melding=document.getElementById("fakturaMelding");
-  const kunde_id=document.getElementById("fakturaKunde")?.value || "";
+  const kunde_id=document.getElementById("fakturaKunde").value;
 
   if(melding){melding.textContent=""; melding.style.color="#86efac";}
 
@@ -250,94 +249,72 @@ async function lagFakturaForValgtKunde(){
     return;
   }
 
-  const kunde=kunder.find(k=>String(k.id)===String(kunde_id)) || {id:kunde_id, navn:kundeNavn(kunde_id)};
-  const erUfakturert=j=>String(j.kunde_id||"")===String(kunde_id) && j.fakturert!==true && !j.fakturanr && !j.faktura_id;
-  let uf=(jobber||[]).filter(erUfakturert);
-
   if(melding){melding.textContent="Henter ufakturerte jobber...";}
 
-  // Hvis skjermlisten er gammel eller tom, hent fra databasen.
-  if(!uf.length){
-    const {data, error}=await supabaseClient
-      .from("hov_jobber")
-      .select("*")
-      .eq("firma_id",DEMO_FIRMA_ID)
-      .eq("kunde_id",kunde_id)
-      .or("fakturert.is.false,fakturert.is.null");
+  const {data: uf, error: hentError}=await supabaseClient
+    .from("hov_jobber")
+    .select("id,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr")
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("kunde_id",kunde_id)
+    .or("fakturert.is.false,fakturert.is.null");
 
-    if(error){
-      if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+error.message;}
-      return;
-    }
-    uf=(data||[]).filter(j=>!j.fakturanr && !j.faktura_id);
+  if(hentError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
+    return;
   }
 
-  if(!uf.length){
+  const ids=(uf||[]).map(j=>j.id).filter(Boolean);
+  if(!ids.length){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
     await lastData();
     return;
   }
 
   const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);
-  const ids=uf.map(j=>j.id).filter(Boolean);
-  const eks=uf.reduce((sum,j)=>sum+Number(j.arbeid_belop||0)+Number(j.varer_belop||0)+(Number(j.km||0)*Number(j.km_pris||0)),0);
-  const mva=eks*0.25;
-  const inkl=eks+mva;
 
-  // Lag selve fakturaen først. Ikke stopp på tom update-return, for Supabase/RLS kan oppdatere uten å returnere rader.
-  try{
-    const jsPDF=window.jspdf?.jsPDF;
-    if(jsPDF){
-      const doc=new jsPDF();
-      let y=22;
-      doc.setFontSize(18); doc.text("FAKTURA",20,y); y+=10;
-      doc.setFontSize(10); doc.text("Fakturanr: "+nr,20,y); y+=7;
-      doc.text("Dato: "+new Date().toISOString().slice(0,10),20,y); y+=12;
-      doc.setFontSize(12); doc.text("Kunde:",20,y); y+=7;
-      doc.setFontSize(10); doc.text(String(kunde.navn||""),20,y); y+=6;
-      if(kunde.adresse){doc.text(String(kunde.adresse),20,y); y+=6;}
-      if(kunde.epost){doc.text(String(kunde.epost),20,y); y+=6;}
-      y+=8;
-      doc.text("Dato",20,y); doc.text("Beskrivelse",45,y); doc.text("Beløp",160,y); y+=6;
-      doc.line(20,y,190,y); y+=8;
-      for(const j of uf){
-        if(y>260){doc.addPage(); y=20;}
-        const linjeEks=Number(j.arbeid_belop||0)+Number(j.varer_belop||0)+(Number(j.km||0)*Number(j.km_pris||0));
-        doc.text(String(j.dato||"").slice(0,10),20,y);
-        doc.text(String((hestNavn(j.hest_id)||"Hovslagerjobb")+" - "+(j.jobbtype||"Skoing")).slice(0,55),45,y);
-        doc.text(kr(linjeEks)+" kr",160,y); y+=6;
-        if(Number(j.km||0)>0){doc.setFontSize(9); doc.text(`Kjøring ${j.km} km x ${kr(j.km_pris)} kr`,45,y); y+=5; doc.setFontSize(10);}
-      }
-      y+=6; doc.line(120,y,190,y); y+=8;
-      doc.text("Sum eks. mva",120,y); doc.text(kr(eks)+" kr",160,y); y+=7;
-      doc.text("MVA 25%",120,y); doc.text(kr(mva)+" kr",160,y); y+=8;
-      doc.setFontSize(12); doc.text("Sum inkl. mva",120,y); doc.text(kr(inkl)+" kr",160,y);
-      doc.save(nr+".pdf");
-    }else{
-      const html=`<html><head><title>${nr}</title></head><body><h1>FAKTURA</h1><p>Fakturanr: ${nr}</p><p>Kunde: ${esc(kunde.navn||"")}</p><p>Sum inkl. mva: ${kr(inkl)} kr</p></body></html>`;
-      const w=window.open("","_blank"); if(w){w.document.write(html); w.document.close(); w.print();}
-    }
-  }catch(pdfFeil){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke lage PDF: "+(pdfFeil.message||pdfFeil);}
+  const updateRes=await supabaseClient
+    .from("hov_jobber")
+    .update({fakturert:true,fakturanr:nr})
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .in("id",ids)
+    .select("id");
+
+  if(updateRes.error){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateRes.error.message;}
     return;
   }
 
-  // Merk jobbene fakturert etter at fakturaen er laget. Ikke bruk antall returnerte rader som feilkriterium.
-  if(ids.length){
-    const {error:updateError}=await supabaseClient
-      .from("hov_jobber")
-      .update({fakturert:true,fakturanr:nr})
-      .eq("firma_id",DEMO_FIRMA_ID)
-      .in("id",ids);
+  let antall=Array.isArray(updateRes.data) ? updateRes.data.length : 0;
 
-    if(updateError){
-      if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men jobbene ble ikke merket fakturert: "+updateError.message;}
+  // Supabase/RLS kan noen ganger tillate update, men ikke returnere rader fra .select().
+  // Derfor kontrollerer vi mot fakturanummeret før vi sier at det feilet.
+  if(!antall){
+    const sjekkRes=await supabaseClient
+      .from("hov_jobber")
+      .select("id")
+      .eq("firma_id",DEMO_FIRMA_ID)
+      .eq("kunde_id",kunde_id)
+      .eq("fakturanr",nr);
+
+    if(sjekkRes.error){
+      if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men kontroll feilet: "+sjekkRes.error.message;}
       await lastData();
       return;
     }
+
+    antall=Array.isArray(sjekkRes.data) ? sjekkRes.data.length : 0;
   }
 
-  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${uf.length} jobb(er))`;}
+  if(!antall){
+    if(melding){
+      melding.style.color="#fca5a5";
+      melding.textContent="Ingen jobber ble fakturert. Databasen stopper update på hov_jobber for åpen demo. Kjør SQL-filen rls-hov-jobber-demo-fix.sql i Supabase.";
+    }
+    await lastData();
+    return;
+  }
+
+  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
   await lastData();
   tegnFakturaOversikt();
 }
