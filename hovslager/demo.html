@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
 </section>
 
-<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: purring/kreditnota synlig 20260617-2</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button type="button" onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><button type="button" class="secondary" onclick="visSisteKopiForValgtKunde()">📄 Kopi siste faktura</button><button type="button" class="secondary" onclick="visSistePurringForValgtKunde()">Purring siste faktura</button><button type="button" class="danger" onclick="visSisteKreditnotaForValgtKunde()">Kreditnota siste faktura</button></div><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: kopi-knapp synlig 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -240,7 +240,7 @@ async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const 
 function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
 async function lagFakturaForValgtKunde(){
   const melding=document.getElementById("fakturaMelding");
-  const kunde_id=document.getElementById("fakturaKunde")?.value || "";
+  const kunde_id=document.getElementById("fakturaKunde").value;
 
   if(melding){melding.textContent=""; melding.style.color="#86efac";}
 
@@ -251,22 +251,21 @@ async function lagFakturaForValgtKunde(){
 
   if(melding){melding.textContent="Henter ufakturerte jobber...";}
 
-  const hentRes=await supabaseClient
+  const {data: uf, error: hentError}=await supabaseClient
     .from("hov_jobber")
-    .select("id,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr,dato,jobbtype,hest_id,kunde_id")
+    .select("id,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr")
     .eq("firma_id",DEMO_FIRMA_ID)
     .eq("kunde_id",kunde_id)
     .or("fakturert.is.false,fakturert.is.null");
 
-  if(hentRes.error){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentRes.error.message;}
+  if(hentError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
     return;
   }
 
-  const uf=hentRes.data||[];
-  const ids=uf.map(j=>j.id).filter(Boolean);
+  const ids=(uf||[]).map(j=>j.id).filter(Boolean);
   if(!ids.length){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde. Bruk Kopi faktura på en fakturert rad.";}
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde. Bruk Kopi faktura-knappen på fakturert rad.";}
     await lastData();
     tegnFakturaOversikt();
     return;
@@ -278,130 +277,118 @@ async function lagFakturaForValgtKunde(){
     .from("hov_jobber")
     .update({fakturert:true,fakturanr:nr})
     .eq("firma_id",DEMO_FIRMA_ID)
-    .in("id",ids);
+    .in("id",ids)
+    .select("id");
 
   if(updateRes.error){
     if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateRes.error.message;}
     return;
   }
 
-  // Ikke vent på refresh for å vise faktura. Bruk radene vi akkurat fakturerte.
-  const fakturaRader=uf.map(j=>({...j,fakturert:true,fakturanr:nr}));
-  visFakturaDokumentFraRader(kunde_id,nr,"FAKTURA",fakturaRader);
-  if(melding){melding.style.color="#86efac"; melding.textContent=`Faktura laget: ${nr} (${fakturaRader.length} jobb(er)).`;}
+  let antall=Array.isArray(updateRes.data) ? updateRes.data.length : 0;
 
+  // Supabase/RLS kan noen ganger tillate update, men ikke returnere rader fra .select().
+  // Derfor kontrollerer vi mot fakturanummeret før vi sier at det feilet.
+  if(!antall){
+    const sjekkRes=await supabaseClient
+      .from("hov_jobber")
+      .select("id")
+      .eq("firma_id",DEMO_FIRMA_ID)
+      .eq("kunde_id",kunde_id)
+      .eq("fakturanr",nr);
+
+    if(sjekkRes.error){
+      if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men kontroll feilet: "+sjekkRes.error.message;}
+      await lastData();
+      return;
+    }
+
+    antall=Array.isArray(sjekkRes.data) ? sjekkRes.data.length : 0;
+  }
+
+  if(!antall){
+    if(melding){
+      melding.style.color="#fca5a5";
+      melding.textContent="Ingen jobber ble fakturert. Databasen stopper update på hov_jobber for åpen demo. Kjør SQL-filen rls-hov-jobber-demo-fix.sql i Supabase.";
+    }
+    await lastData();
+    return;
+  }
+
+  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
   await lastData();
   tegnFakturaOversikt();
-  visFakturaDokumentFraRader(kunde_id,nr,"FAKTURA",fakturaRader);
 }
+function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").value=kunde_id;lagFakturaForValgtKunde();}
 
-function lagFakturaForKunde(kunde_id){
-  const sel=document.getElementById("fakturaKunde");
-  if(sel) sel.value=kunde_id;
-  lagFakturaForValgtKunde();
-}
-
-function hentFakturaJobber(kunde_id, fakturanr){
+function finnDemoFakturaJobber(kunde_id, fakturanr){
   const nr=String(fakturanr||"Fakturert");
   return jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && String(j.fakturanr||"Fakturert")===nr);
 }
 
-function visFakturaDokumentFraRader(kunde_id, fakturanr, type, rader){
+function visDemoFakturaPanel(kunde_id, fakturanr, type){
   const melding=document.getElementById("fakturaMelding");
   const nr=String(fakturanr||"Fakturert");
-  const dokumentType=String(type||"FAKTURA");
-  const liste=(rader||[]).filter(Boolean);
+  const rader=finnDemoFakturaJobber(kunde_id,nr);
 
-  if(!liste.length){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen jobber for "+nr+".";}
+  if(!rader.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturerte jobber.";}
     return;
   }
 
-  const kunde=kundeNavn(kunde_id) || "Kunde";
-  const sum=liste.reduce((s,j)=>s+totalJobb(j),0);
-  const linjer=liste.map(j=>`
+  const kunde=kundeNavn(kunde_id);
+  const sum=rader.reduce((s,j)=>s+totalJobb(j),0);
+  const tittel = type==="purring" ? "PURRING" : type==="kreditnota" ? "KREDITNOTA" : type==="kopi" ? "KOPI faktura" : "FAKTURA";
+  const fakturaNrVis = type==="kreditnota" ? nr+"-KREDITNOTA" : type==="purring" ? nr+"-PURRING" : type==="kopi" ? nr+"-KOPI" : nr;
+  const fortegn = type==="kreditnota" ? -1 : 1;
+
+  const linjer=rader.map(j=>`
     <tr>
       <td style="padding:6px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td>
       <td style="padding:6px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td>
       <td style="padding:6px;border-bottom:1px solid #374151;">${esc(j.jobbtype||'')}</td>
-      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(totalJobb(j))} kr</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(totalJobb(j)*fortegn)} kr</td>
     </tr>`).join("");
 
-  const tittel = dokumentType==="KOPI" ? "KOPI faktura" : dokumentType==="PURRING" ? "PURRING" : dokumentType==="KREDITNOTA" ? "KREDITNOTA" : "FAKTURA";
-  const visNr = dokumentType==="KOPI" ? nr+"-KOPI" : dokumentType==="PURRING" ? nr+"-PURRING" : dokumentType==="KREDITNOTA" ? nr+"-KREDITNOTA" : nr;
-  const forklaring = dokumentType==="KOPI" ? "Dette er en kopi. Ingen jobber blir fakturert på nytt." :
-    dokumentType==="PURRING" ? "Dette er en purring på tidligere faktura. Ingen jobber blir fakturert på nytt." :
-    dokumentType==="KREDITNOTA" ? "Dette er en kreditnota-visning for tidligere faktura. Ingen jobber endres i databasen." :
-    "Faktura er laget. Jobbene er merket som fakturert.";
-
   const panel=document.createElement("div");
-  panel.id="fakturaDokumentPanel";
+  panel.id="demoFakturaPanel";
   panel.className="listekort";
   panel.style.marginTop="12px";
-  panel.style.borderLeft=dokumentType==="KREDITNOTA" ? "6px solid #fca5a5" : "6px solid #86efac";
   panel.innerHTML=`
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
       <div>
-        <h3 style="margin:0;color:${dokumentType==='KREDITNOTA' ? '#fca5a5' : '#86efac'};">${esc(tittel)}</h3>
-        <div class="info">${esc(forklaring)}</div>
+        <h3 style="margin:0;color:${type==="kreditnota"?'#fca5a5':'#86efac'};">${tittel}</h3>
+        <div class="info">${type==="kopi" ? "Dette er en kopi. Ingen jobber blir fakturert på nytt." : type==="kreditnota" ? "Dette er en kreditnota. Beløp vises i minus." : type==="purring" ? "Dette er en purring på eksisterende faktura." : "Faktura laget."}</div>
       </div>
-      <button type="button" class="secondary" data-faktura-lukk="1">Lukk</button>
+      <button type="button" class="secondary" onclick="document.getElementById('demoFakturaPanel')?.remove()">Lukk</button>
     </div>
-    <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(visNr)}</div>
+    <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(fakturaNrVis)}</div>
     <div><b>Kunde:</b> ${esc(kunde)}</div>
     <div><b>Dato:</b> ${new Date().toISOString().slice(0,10)}</div>
     <div style="overflow-x:auto;margin-top:12px;">
       <table style="width:100%;border-collapse:collapse;min-width:520px;">
         <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Hest</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th></tr></thead>
         <tbody>${linjer}</tbody>
-        <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum)} kr</b></td></tr></tfoot>
+        <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum*fortegn)} kr</b></td></tr></tfoot>
       </table>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-      <button type="button" onclick="window.print()" data-faktura-print="1" style="background:#0f766e;font-weight:bold;">Skriv ut</button>
-      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="secondary" onclick="visPurringFaktura('${esc(kunde_id)}','${esc(nr)}')" style="font-weight:bold;min-width:120px;">Purring</button>`}
-      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="danger" onclick="visKreditnotaFaktura('${esc(kunde_id)}','${esc(nr)}')" style="font-weight:bold;min-width:120px;">Kreditnota</button>`}
-      ${dokumentType==='KOPI' ? '' : `<button type="button" class="secondary" onclick="visKopiFaktura('${esc(kunde_id)}','${esc(nr)}')">Kopi faktura</button>`}
-    </div>
+    <button type="button" onclick="window.print()">Skriv ut</button>
   `;
 
   const oversikt=document.getElementById("fakturaOversikt");
-  document.getElementById("fakturaDokumentPanel")?.remove();
+  document.getElementById("demoFakturaPanel")?.remove();
   oversikt?.prepend(panel);
-  if(melding){melding.style.color="#86efac"; melding.textContent=tittel+" klar: "+visNr;}
+  if(melding){melding.style.color="#86efac"; melding.textContent=tittel+" klar: "+fakturaNrVis;}
   panel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-function visFakturaDokument(kunde_id, fakturanr, type){
-  const rader=hentFakturaJobber(kunde_id,fakturanr);
-  visFakturaDokumentFraRader(kunde_id,fakturanr,type,rader);
-}
-
-function visKopiFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "KOPI"); }
-function visPurringFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "PURRING"); }
-function visKreditnotaFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "KREDITNOTA"); }
-
-
-function finnSisteFakturaForKunde(kunde_id){
-  const liste=jobber
-    .filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && (j.fakturanr || "Fakturert"))
-    .sort((a,b)=>String(b.dato||"").localeCompare(String(a.dato||"")));
-  if(!liste.length) return "";
-  return String(liste[0].fakturanr || "Fakturert");
-}
-
-function visDokumentForValgtKunde(type){
+function visKopiFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "kopi"); }
+function visPurringFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "purring"); }
+function visKreditnotaFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "kreditnota"); }
+function settDemoFakturaBetalt(kunde_id, fakturanr){
   const melding=document.getElementById("fakturaMelding");
-  const kunde_id=document.getElementById("fakturaKunde")?.value || "";
-  if(!kunde_id){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg kunde først.";} return; }
-  const nr=finnSisteFakturaForKunde(kunde_id);
-  if(!nr){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturert faktura på valgt kunde.";} return; }
-  visFakturaDokument(kunde_id,nr,type);
+  if(melding){melding.style.color="#86efac"; melding.textContent="Faktura "+String(fakturanr||"Fakturert")+" er markert som betalt i demo-visningen.";}
 }
-
-function visSisteKopiForValgtKunde(){ visDokumentForValgtKunde("KOPI"); }
-function visSistePurringForValgtKunde(){ visDokumentForValgtKunde("PURRING"); }
-function visSisteKreditnotaForValgtKunde(){ visDokumentForValgtKunde("KREDITNOTA"); }
 
 function tegnFakturaOversikt(){
   const oversikt=document.getElementById("fakturaOversikt");
@@ -433,22 +420,23 @@ function tegnFakturaOversikt(){
         <div>Kunde: ${esc(g.kunde)}</div>
         <div>Jobber: ${g.antall} &nbsp; Beløp: ${kr(g.sum)} kr</div>
       </div>
-      <button type="button" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')" data-lag-faktura="1" data-kunde-id="${esc(g.kunde_id)}">Lag faktura</button>
+      <button type="button" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')">Lag faktura</button>
     </div>
   `).join("");
 
-  const faktHtml=Object.values(faktGrupper).map(f=>`
-    <div class="listekort" style="display:grid;grid-template-columns:1fr;gap:10px;align-items:center;margin-top:10px;border-left:5px solid #86efac;">
-      <div>
-        <div><b>Fakturert</b></div>
-        <div>Fakturanr: ${esc(f.fakturanr)}</div>
-        <div>Kunde: ${esc(f.kunde)}</div>
-        <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
+  const fakturaHtml=Object.values(faktGrupper).map(f=>`
+    <div class="listekort" style="margin-top:10px;border-left:5px solid #86efac;">
+      <div><b>Faktura ${esc(f.fakturanr)}</b></div>
+      <div>Kunde: ${esc(f.kunde)}</div>
+      <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button type="button" class="secondary" onclick="visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">Purring</button>
+        <button type="button" class="secondary" onclick="settDemoFakturaBetalt('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">Sett betalt</button>
+        <button type="button" class="secondary" style="background:#0f766e;font-weight:bold;" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KOPI" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;">📄 Kopi faktura</button>
-        <button type="button" onclick="visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="PURRING" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="secondary" style="font-weight:bold;min-width:120px;">Purring</button>
-        <button type="button" onclick="visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KREDITNOTA" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="danger" style="font-weight:bold;min-width:120px;">Kreditnota</button>
+      <div style="margin-top:10px;padding:10px;border:1px solid #7f1d1d;border-radius:8px;background:#111827;">
+        <b>Kreditnota</b><br>
+        <button type="button" class="danger" onclick="visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">Lag kreditnota</button>
       </div>
     </div>
   `).join("");
@@ -456,30 +444,13 @@ function tegnFakturaOversikt(){
   oversikt.innerHTML=`
     <div class="listekort" style="margin-top:12px;background:#111827;">
       <h3 style="margin-bottom:6px;">Fakturaoversikt</h3>
-      <div class="info">Lag faktura, kopi, purring og kreditnota ligger synlig på kortene.</div>
+      <div class="info">Fakturaraden har Purring, Sett betalt og Kopi faktura. Kreditnota ligger i eget felt under fakturaen.</div>
       ${ikkeHtml || ""}
-      ${faktHtml || ""}
-      ${(!ikkeHtml && !faktHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
+      ${fakturaHtml || ""}
+      ${(!ikkeHtml && !fakturaHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
     </div>
   `;
 }
-
-if(!window.demoFakturaDelegertKlikk){
-  window.demoFakturaDelegertKlikk=true;
-  document.addEventListener("click", function(e){
-    const t=e.target;
-    if(!t) return;
-    const lag=t.closest?.("[data-lag-faktura]");
-    if(lag){ e.preventDefault(); lagFakturaForKunde(lag.dataset.kundeId||""); return; }
-    const dok=t.closest?.("[data-faktura-action]");
-    if(dok){ e.preventDefault(); visFakturaDokument(dok.dataset.kundeId||"", dok.dataset.fakturanr||"", dok.dataset.fakturaAction||"KOPI"); return; }
-    const print=t.closest?.("[data-faktura-print]");
-    if(print){ e.preventDefault(); window.print(); return; }
-    const lukk=t.closest?.("[data-faktura-lukk]");
-    if(lukk){ e.preventDefault(); document.getElementById("fakturaDokumentPanel")?.remove(); return; }
-  });
-}
-
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
 function startDemoBeskrivelseTale(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){demoMelding("Tale til tekst støttes ikke i denne nettleseren.",true);return;}const r=new SR();r.lang="nb-NO";r.interimResults=false;r.onresult=e=>{document.getElementById("jobbBeskrivelse").value+=(document.getElementById("jobbBeskrivelse").value?" ":"")+e.results[0][0].transcript;};r.onerror=e=>demoMelding("Tale feilet: "+e.error,true);r.start();}
