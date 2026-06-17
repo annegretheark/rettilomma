@@ -264,36 +264,8 @@ async function lagFakturaForValgtKunde(){
   }
 
   const ids=(uf||[]).map(j=>j.id).filter(Boolean);
-
-  // Ingen nye jobber: ikke lag ny faktura. Vis/merk som kopi av siste faktura.
   if(!ids.length){
-    const kopiRes=await supabaseClient
-      .from("hov_jobber")
-      .select("fakturanr,dato")
-      .eq("firma_id",DEMO_FIRMA_ID)
-      .eq("kunde_id",kunde_id)
-      .not("fakturanr","is",null)
-      .order("dato",{ascending:false})
-      .limit(1);
-
-    if(kopiRes.error){
-      if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke sjekke tidligere faktura: "+kopiRes.error.message;}
-      return;
-    }
-
-    const siste=(kopiRes.data||[])[0];
-    if(siste?.fakturanr){
-      if(melding){
-        melding.style.color="#86efac";
-        melding.textContent="KOPI: Ingen nye jobber. Bruk kopi av faktura "+siste.fakturanr+". Ingen ny faktura ble laget.";
-      }
-      await lastData();
-      tegnFakturaOversikt();
-      return;
-    }
-
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
-    await lastData();
+    await lagKopiAvSisteDemoFaktura(kunde_id);
     return;
   }
 
@@ -342,6 +314,44 @@ async function lagFakturaForValgtKunde(){
   }
 
   if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
+  await lastData();
+  tegnFakturaOversikt();
+}
+
+async function lagKopiAvSisteDemoFaktura(kunde_id){
+  const melding=document.getElementById("fakturaMelding");
+  if(melding){melding.textContent="Sjekker tidligere faktura..."; melding.style.color="#86efac";}
+
+  const {data,error}=await supabaseClient
+    .from("hov_jobber")
+    .select("id,total,arbeid_belop,varer_belop,km,km_pris,fakturanr,fakturert")
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("kunde_id",kunde_id)
+    .not("fakturanr","is",null)
+    .order("dato",{ascending:false});
+
+  if(error){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente tidligere faktura: "+error.message;}
+    return;
+  }
+
+  const fakturerte=(data||[]).filter(j=>j.fakturanr);
+  if(!fakturerte.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
+    await lastData();
+    return;
+  }
+
+  const sisteNr=fakturerte[0].fakturanr;
+  const kopiJobber=fakturerte.filter(j=>String(j.fakturanr)===String(sisteNr));
+  const kopiNr=String(sisteNr).includes("KOPI") ? String(sisteNr) : String(sisteNr)+"-KOPI";
+  const sum=kopiJobber.reduce((s,j)=>s+totalJobb(j),0);
+
+  if(melding){
+    melding.style.color="#86efac";
+    melding.textContent=`Ingen nye jobber. ${kopiNr} laget som kopi av ${sisteNr}. Ingen jobber ble fakturert på nytt. Sum ${kr(sum)} kr.`;
+  }
+
   await lastData();
   tegnFakturaOversikt();
 }
