@@ -30,7 +30,18 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   <div class="info">Klikk på en jobb i listen for detaljer og bilder.</div><div id="jobbListe"></div>
 </section>
 <section class="kort skjult" id="hesterSide"><h2>Hester</h2><div id="hesteListe"></div></section>
-<section class="kort skjult" id="kunderSide"><h2>Kunder</h2><div id="kundeListe"></div></section>
+<section class="kort skjult" id="kunderSide"><h2>Kunder</h2>
+  <div class="listekort">
+    <h3>Legg til kunde</h3>
+    <label>Navn</label><input id="demoKundeNavn">
+    <label>Adresse</label><input id="demoKundeAdresse">
+    <label>Telefon</label><input id="demoKundeTelefon">
+    <label>E-post</label><input id="demoKundeEpost" type="email">
+    <button type="button" onclick="lagreDemoKunde()">Lagre kunde</button>
+    <div id="demoKundeMelding" class="melding"></div>
+  </div>
+  <div id="kundeListe"></div>
+</section>
 <section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button class="secondary" onclick="tegnFakturaOversikt()">Vis fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -94,6 +105,40 @@ async function hentBildeAntall(){const ids=jobber.map(j=>j.id).filter(Boolean);j
 async function lastOppJobbBilder(jobbId){const filer=Array.from(document.getElementById("jobbBilderDemo")?.files||[]);let antall=0;for(const fil of filer){const filsti=`demo/hov-jobber/${DEMO_FIRMA_ID}/${jobbId}/${Date.now()}_${rentFilnavn(fil.name)}`;const up=await supabaseClient.storage.from("bilder").upload(filsti,fil,{cacheControl:"3600",upsert:false});if(up.error)throw new Error("Opplasting feilet: "+up.error.message);const url=await bildeUrl(filsti);const ins=await supabaseClient.from("hov_jobb_bilder").insert({firma_id:DEMO_FIRMA_ID,jobb_id:jobbId,filnavn:fil.name,filsti,bilde_url:url||null,bildetekst:"Demo bilde"});if(ins.error)throw new Error("Bildet ble lastet opp, men ikke koblet til jobben: "+ins.error.message);antall++;}document.getElementById("jobbBilderDemo").value="";document.getElementById("jobbBildePreviewDemo").innerHTML="";return antall;}
 async function lastData(){status("Henter demodata...");const [kr,hj,jb]=await Promise.all([supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID).order("dato",{ascending:false})]);if(kr.error)throw kr.error;if(hj.error)throw hj.error;if(jb.error)throw jb.error;kunder=kr.data||[];hester=hj.data||[];jobber=jb.data||[];if(!kunder.length){await seedDemo();return lastData();}await hentBildeAntall();fyllSelects();tegnJobber();tegnKunderOgHester();tegnFakturaOversikt();status("Demo er koblet til Supabase og lagrer i eget demo-firma.");}
 async function seedDemo(){status("Oppretter første demodata...");const k=await supabaseClient.from("kunder").insert([{firma_id:DEMO_FIRMA_ID,navn:"Anne Lunde",adresse:"Stallveien 10"},{firma_id:DEMO_FIRMA_ID,navn:"Mari Nilsen",adresse:"Hestejordet 4"},{firma_id:DEMO_FIRMA_ID,navn:"Ole Berg",adresse:"Gårdsveien 7"}]).select("id,navn");if(k.error)throw k.error;const a=k.data.find(x=>x.navn==="Anne Lunde"),m=k.data.find(x=>x.navn==="Mari Nilsen"),o=k.data.find(x=>x.navn==="Ole Berg");const h=await supabaseClient.from("hester").insert([{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Quen",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Topsy",rase:"Fjording"},{firma_id:DEMO_FIRMA_ID,kunde_id:m.id,navn:"Dingdoria",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:o.id,navn:"Kingen",rase:"Varmblods"}]).select("id,navn,kunde_id");if(h.error)throw h.error;const quen=h.data.find(x=>x.navn==="Quen"),ding=h.data.find(x=>x.navn==="Dingdoria"),king=h.data.find(x=>x.navn==="Kingen");const rows=[{kunde_id:a.id,hest_id:quen.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Fullbeslag",arbeid_belop:1200,km:20,km_pris:5.30},{kunde_id:m.id,hest_id:ding.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Brodder",arbeid_belop:150,km:12,km_pris:5.30},{kunde_id:o.id,hest_id:king.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Vintersko",arbeid_belop:1400,km:30,km_pris:5.30}].map(r=>{const eks=Number(r.arbeid_belop)+Number(r.km)*Number(r.km_pris);return {...r,firma_id:DEMO_FIRMA_ID,varer_belop:0,mva:eks*.25,total:eks*1.25,fakturert:false};});const j=await supabaseClient.from("hov_jobber").insert(rows);if(j.error)throw j.error;}
+
+async function lagreDemoKunde(){
+  const navn=(document.getElementById("demoKundeNavn")?.value||"").trim();
+  const adresse=(document.getElementById("demoKundeAdresse")?.value||"").trim();
+  const telefon=(document.getElementById("demoKundeTelefon")?.value||"").trim();
+  const epost=(document.getElementById("demoKundeEpost")?.value||"").trim();
+  const melding=document.getElementById("demoKundeMelding");
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+  if(!navn){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Skriv kundenavn først.";}
+    return;
+  }
+  try{
+    if(melding) melding.textContent="Lagrer kunde...";
+    const {error}=await supabaseClient.from("kunder").insert({
+      firma_id:DEMO_FIRMA_ID,
+      navn,
+      adresse,
+      telefon,
+      epost,
+      kontaktperson:navn
+    });
+    if(error) throw error;
+    ["demoKundeNavn","demoKundeAdresse","demoKundeTelefon","demoKundeEpost"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value="";
+    });
+    if(melding) melding.textContent="Kunde lagret.";
+    await lastData();
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunden ble ikke lagret: "+(e.message||e);}
+  }
+}
+
 function fyllSelects(){const opts='<option value="">Velg kunde</option>'+kunder.map(k=>`<option value="${k.id}">${esc(k.navn)}</option>`).join("");document.getElementById("jobbKunde").innerHTML=opts;document.getElementById("fakturaKunde").innerHTML=opts;document.getElementById("jobbKunde").onchange=()=>{const kid=document.getElementById("jobbKunde").value;document.getElementById("jobbHest").innerHTML='<option value="">Velg hest</option>'+hester.filter(h=>String(h.kunde_id)===String(kid)).map(h=>`<option value="${h.id}">${esc(h.navn)}</option>`).join("");};}
 async function lagreDemoJobb(){const kunde_id=document.getElementById("jobbKunde").value,hest_id=document.getElementById("jobbHest").value;if(!kunde_id||!hest_id){demoMelding("Velg kunde og hest først.",true);return;}const km=Number(document.getElementById("jobbKm").value||0),km_pris=Number(document.getElementById("jobbKmPris").value||5.30),arbeid=Number(document.getElementById("arbeidBelop").value||0),eks=arbeid+(km*km_pris),mva=eks*.25,total=eks+mva;demoMelding("Lagrer jobb...");const {data,error}=await supabaseClient.from("hov_jobber").insert({firma_id:DEMO_FIRMA_ID,kunde_id,hest_id,dato:document.getElementById("jobbDato").value||new Date().toISOString().slice(0,10),jobbtype:document.getElementById("jobbType").value||"Annet",beskrivelse:document.getElementById("jobbBeskrivelse").value.trim(),km,km_pris,arbeid_belop:arbeid,varer_belop:0,mva,total,fakturert:false}).select("*").single();if(error){demoMelding(error.message,true);return;}try{const ant=await lastOppJobbBilder(data.id);demoMelding(ant?`Demojobb og ${ant} bilde(r) lagret.`:"Demojobb lagret.");}catch(e){demoMelding("Jobb lagret, men bilde feilet: "+(e.message||e),true);}await lastData();}
 async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const j=jobber.find(x=>String(x.id)===String(jobbId));if(!j)return;const bilder=await hentBilderForJobb(j.id);let panel=document.getElementById("demoJobbDetaljPanel");if(!panel){panel=document.createElement("div");panel.id="demoJobbDetaljPanel";panel.className="listekort";const liste=document.getElementById("jobbListe");liste.parentNode.insertBefore(panel,liste);}panel.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">Jobbdetalj</h3><button class="secondary" onclick="document.getElementById('demoJobbDetaljPanel').remove()">Lukk</button></div><div class="rad" style="margin-top:12px;"><div><strong>Dato:</strong><br>${esc(j.dato)}</div><div><strong>Kunde:</strong><br>${esc(kundeNavn(j.kunde_id))}</div><div><strong>Hest:</strong><br>${esc(hestNavn(j.hest_id))}</div><div><strong>Jobb:</strong><br>${esc(j.jobbtype)}</div><div><strong>Kjøring:</strong><br>${esc(j.km||0)} km x ${esc(j.km_pris||0)}</div><div><strong>Beløp inkl. mva:</strong><br>${kr(totalJobb(j))} kr</div><div><strong>Status:</strong><br>${j.fakturert?"Fakturert":"Ikke fakturert"}</div></div>${j.beskrivelse?`<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${esc(j.beskrivelse)}</div>`:""}<h4>Bilder (${bilder.length})</h4><div class="galleri">${bilder.length?bilder.map(b=>`<div style="display:inline-block"><a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"><small>${esc(b.bildetekst||"Åpne bilde")}</small></a><br><button class="danger" onclick="slettDemoBilde('${b.id}','${b.filsti||""}')">🗑️ Slett</button></div>`).join(""):'<div class="info">Ingen bilder på denne jobben ennå.</div>'}</div><button class="secondary" style="margin-top:10px;" onclick="visDemoJobbBilderForHest('${j.hest_id}')">📷 Vis alle jobbilder for denne hesten</button>
