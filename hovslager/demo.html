@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
 </section>
 
-<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: faktura stabil fix 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: purring/kreditnota synlig 20260617-2</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button type="button" onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><button type="button" class="secondary" onclick="visSisteKopiForValgtKunde()">📄 Kopi siste faktura</button><button type="button" class="secondary" onclick="visSistePurringForValgtKunde()">Purring siste faktura</button><button type="button" class="danger" onclick="visSisteKreditnotaForValgtKunde()">Kreditnota siste faktura</button></div><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -359,8 +359,8 @@ function visFakturaDokumentFraRader(kunde_id, fakturanr, type, rader){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
       <button type="button" onclick="window.print()" data-faktura-print="1" style="background:#0f766e;font-weight:bold;">Skriv ut</button>
-      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="secondary" onclick="visPurringFaktura('${esc(kunde_id)}','${esc(nr)}')">Purring</button>`}
-      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="danger" onclick="visKreditnotaFaktura('${esc(kunde_id)}','${esc(nr)}')">Kreditnota</button>`}
+      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="secondary" onclick="visPurringFaktura('${esc(kunde_id)}','${esc(nr)}')" style="font-weight:bold;min-width:120px;">Purring</button>`}
+      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="danger" onclick="visKreditnotaFaktura('${esc(kunde_id)}','${esc(nr)}')" style="font-weight:bold;min-width:120px;">Kreditnota</button>`}
       ${dokumentType==='KOPI' ? '' : `<button type="button" class="secondary" onclick="visKopiFaktura('${esc(kunde_id)}','${esc(nr)}')">Kopi faktura</button>`}
     </div>
   `;
@@ -380,6 +380,28 @@ function visFakturaDokument(kunde_id, fakturanr, type){
 function visKopiFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "KOPI"); }
 function visPurringFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "PURRING"); }
 function visKreditnotaFaktura(kunde_id, fakturanr){ visFakturaDokument(kunde_id, fakturanr, "KREDITNOTA"); }
+
+
+function finnSisteFakturaForKunde(kunde_id){
+  const liste=jobber
+    .filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && (j.fakturanr || "Fakturert"))
+    .sort((a,b)=>String(b.dato||"").localeCompare(String(a.dato||"")));
+  if(!liste.length) return "";
+  return String(liste[0].fakturanr || "Fakturert");
+}
+
+function visDokumentForValgtKunde(type){
+  const melding=document.getElementById("fakturaMelding");
+  const kunde_id=document.getElementById("fakturaKunde")?.value || "";
+  if(!kunde_id){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg kunde først.";} return; }
+  const nr=finnSisteFakturaForKunde(kunde_id);
+  if(!nr){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturert faktura på valgt kunde.";} return; }
+  visFakturaDokument(kunde_id,nr,type);
+}
+
+function visSisteKopiForValgtKunde(){ visDokumentForValgtKunde("KOPI"); }
+function visSistePurringForValgtKunde(){ visDokumentForValgtKunde("PURRING"); }
+function visSisteKreditnotaForValgtKunde(){ visDokumentForValgtKunde("KREDITNOTA"); }
 
 function tegnFakturaOversikt(){
   const oversikt=document.getElementById("fakturaOversikt");
@@ -425,8 +447,8 @@ function tegnFakturaOversikt(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button type="button" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KOPI" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;">📄 Kopi faktura</button>
-        <button type="button" onclick="visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="PURRING" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="secondary">Purring</button>
-        <button type="button" onclick="visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KREDITNOTA" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="danger">Kreditnota</button>
+        <button type="button" onclick="visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="PURRING" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="secondary" style="font-weight:bold;min-width:120px;">Purring</button>
+        <button type="button" onclick="visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KREDITNOTA" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="danger" style="font-weight:bold;min-width:120px;">Kreditnota</button>
       </div>
     </div>
   `).join("");
