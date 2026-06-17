@@ -265,13 +265,17 @@ async function lagFakturaForValgtKunde(){
 
   const ids=(uf||[]).map(j=>j.id).filter(Boolean);
   if(!ids.length){
-    // Ingen nye jobber: ikke lag ny faktura. Vis kopi av siste faktura for kunden.
+    // Ingen nye jobber: ikke lag ny faktura.
+    // Vis automatisk KOPI av siste fakturerte jobb/faktura for kunden.
+    // Dette er bevisst robust: noen demo-rader kan være markert fakturert uten fakturanr.
+    let kopiJobber=[];
+    let sisteNr="";
+
     const kopiRes=await supabaseClient
       .from("hov_jobber")
-      .select("id,dato,jobbtype,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr")
+      .select("id,dato,jobbtype,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr,kunde_id")
       .eq("firma_id",DEMO_FIRMA_ID)
       .eq("kunde_id",kunde_id)
-      .not("fakturanr","is",null)
       .order("dato",{ascending:false});
 
     if(kopiRes.error){
@@ -280,10 +284,39 @@ async function lagFakturaForValgtKunde(){
       return;
     }
 
-    const fakturerte=(kopiRes.data||[]).filter(j=>j.fakturanr);
+    const alleKundeJobber=(kopiRes.data||[]);
+    const fakturerte=alleKundeJobber.filter(j=>j.fakturert===true || String(j.fakturanr||"").trim());
+
     if(fakturerte.length){
-      const sisteNr=fakturerte[0].fakturanr;
-      const kopiJobber=fakturerte.filter(j=>String(j.fakturanr)===String(sisteNr));
+      const medNr=fakturerte.find(j=>String(j.fakturanr||"").trim());
+      sisteNr=medNr ? medNr.fakturanr : "Fakturert";
+      kopiJobber = medNr
+        ? fakturerte.filter(j=>String(j.fakturanr||"")===String(sisteNr))
+        : fakturerte;
+    }
+
+    // Ekstra fallback fra skjermens jobber-array. Dette dekker tilfeller der RLS/cache gjør at
+    // statusen vises annerledes i GUI enn i direkte spørring.
+    if(!kopiJobber.length){
+      const lokale=(jobber||[]).filter(j=>String(j.kunde_id)===String(kunde_id));
+      const lokaleFakturerte=lokale.filter(j=>j.fakturert===true || String(j.fakturanr||"").trim());
+      if(lokaleFakturerte.length){
+        const medNr=lokaleFakturerte.find(j=>String(j.fakturanr||"").trim());
+        sisteNr=medNr ? medNr.fakturanr : "Fakturert";
+        kopiJobber = medNr
+          ? lokaleFakturerte.filter(j=>String(j.fakturanr||"")===String(sisteNr))
+          : lokaleFakturerte;
+      }
+    }
+
+    // Hvis databasen sier at det ikke finnes ufakturerte jobber, men vi ikke finner fakturanr,
+    // viser vi likevel kopi av kundens siste jobber og fakturerer ikke på nytt.
+    if(!kopiJobber.length && alleKundeJobber.length){
+      sisteNr="KOPI";
+      kopiJobber=alleKundeJobber;
+    }
+
+    if(kopiJobber.length){
       if(melding){melding.style.color="#86efac"; melding.textContent=`Ingen nye jobber. Viser KOPI av faktura ${sisteNr}.`;}
       await lastData();
       tegnFakturaOversikt();
@@ -291,7 +324,7 @@ async function lagFakturaForValgtKunde(){
       return;
     }
 
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde, og fant ingen tidligere faktura å kopiere.";}
     await lastData();
     return;
   }
