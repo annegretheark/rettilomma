@@ -3,70 +3,52 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rett i Lomma - Hovslager Demo</title>
+<title>Rett i Lomma - Hovslager</title>
 <style>
 body{
   font-family:Arial,sans-serif;
   background:#151819;
   color:white;
+  margin:0;
+  min-height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:100vh;
-  margin:0;
+  padding:20px;
 }
 .box{
+  max-width:700px;
   text-align:center;
-  max-width:720px;
-  padding:24px;
+  background:#1f2427;
+  padding:40px;
+  border-radius:20px;
 }
+h1{margin-top:0}
 .knapp{
-  display:inline-block;
-  background:#0ea5e9;
-  color:white;
-  text-decoration:none;
-  padding:18px 35px;
+  display:block;
+  margin:15px auto;
+  padding:18px;
+  max-width:350px;
   border-radius:10px;
-  font-size:24px;
+  text-decoration:none;
+  font-size:20px;
   font-weight:bold;
-  margin-top:20px;
+  color:white;
+  background:#1f6feb;
 }
-.knapp:hover{ background:#0284c7; }
-ul{
-  text-align:left;
-  display:inline-block;
-  line-height:1.7;
-}
-.liten{
-  color:#cbd5e1;
-  font-size:14px;
-  margin-top:18px;
-}
+.dok{background:#0f766e}
 </style>
 </head>
 <body>
 <div class="box">
-  <h1>🐴 Rett i Lomma</h1>
-  <h2>Hovslager Demo</h2>
+  <h1>🐴 Rett i Lomma Hovslager</h1>
+  <p>Velkommen til Hovslager.</p>
 
-  <p>En enkel app for hovslagere som ønsker mindre papirarbeid og mer tid ute hos kundene.</p>
+  <a class="knapp" href="hovslager/">🔐 Logg inn</a>
 
-  <ul>
-    <li>Kunder og hester</li>
-    <li>Bilder på hest og jobb</li>
-    <li>Jobbregistrering</li>
-    <li>Prislister</li>
-    <li>Fakturagrunnlag</li>
-    <li>Mobilvennlig</li>
-  </ul>
-
-  <br>
-
-  <a class="knapp" href="/hovslager-login.html">Prøv Hovslager Demo</a>
-
-  <div class="liten">
-    Hvis knappen ikke åpner: gå direkte til /hovslager-login.html
-  </div>
+  <a class="knapp dok" href="hovslager/bruker/" target="_blank" rel="noopener">
+    📖 Brukerdokumentasjon
+  </a>
 </div>
 </body>
 </html>

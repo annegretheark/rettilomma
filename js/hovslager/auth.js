@@ -1,117 +1,219 @@
-console.log("auth.js rolig login aktiv");
+// Rett i Lomma Hovslager - Magic Link innlogging
+// Erstatter passord / glemt passord med Supabase Magic Link.
+// Krever at /js/hovslager/config.js lager window.supabaseClient.
 
-let hovAuthStartet = false;
-let hovLoginKjorer = false;
+(function () {
+  function $(id) {
+    return document.getElementById(id);
+  }
 
-function settInnloggetBrukerAuth(email) {
-  const el = document.getElementById("innloggetBruker");
-  if (el) el.textContent = email ? ("Innlogget: " + email) : "Ikke innlogget";
-}
+  function settMelding(tekst, erOk) {
+    const el = $("loginMelding");
+    if (!el) return;
+    el.textContent = tekst || "";
+    el.style.color = erOk ? "#86efac" : "#fca5a5";
+  }
 
-function visLoginMelding(tekst, feil = false) {
-  const melding = document.getElementById("loginMelding");
-  if (!melding) return;
-  melding.textContent = tekst || "";
-  melding.style.color = feil ? "#fca5a5" : "#86efac";
-}
+  function finnRedirectUrl() {
+    // Sender brukeren tilbake til samme hovslager-side etter klikk i e-posten.
+    const url = new URL(window.location.href);
+    url.hash = "";
+    return url.toString();
+  }
 
-async function startInnloggetApp(email) {
-  if (hovAuthStartet) return;
-  hovAuthStartet = true;
+  function visApp() {
+    const loginSide = $("loginSide");
+    const appSide = $("appSide");
+    if (loginSide) loginSide.classList.add("skjult");
+    if (appSide) appSide.classList.remove("skjult");
+  }
 
-  document.getElementById("loginSide")?.classList.add("skjult");
-  document.getElementById("appSide")?.classList.remove("skjult");
-  settInnloggetBrukerAuth(email || "");
+  function visLogin() {
+    const loginSide = $("loginSide");
+    const appSide = $("appSide");
+    if (appSide) appSide.classList.add("skjult");
+    if (loginSide) loginSide.classList.remove("skjult");
+  }
 
-  try { if (typeof window.hentAktivHovFirmaId === "function") await window.hentAktivHovFirmaId(); } catch(e) { console.warn("Firmafeil:", e); }
-  try { if (typeof window.startHovslager === "function") await window.startHovslager(); } catch(e) { console.warn("Startfeil:", e); }
-  try { if (typeof window.hovOppdaterSystemadminSynlighet === "function") await window.hovOppdaterSystemadminSynlighet(); } catch(e) { console.warn("Adminvisning feilet:", e); }
-}
-
-async function loggInn(ev) {
-  if (ev) ev.preventDefault();
-  if (hovLoginKjorer) return;
-  hovLoginKjorer = true;
-
-  const epost = (document.getElementById("loginEpost")?.value || "").trim();
-  const passord = document.getElementById("loginPassord")?.value || "";
-
-  try {
-    visLoginMelding("Logger inn...");
-
-    if (!epost || !passord) {
-      visLoginMelding("Skriv e-post og passord.", true);
-      return;
+  async function startAppEtterLogin(session) {
+    const email = session?.user?.email || "";
+    try {
+      if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(email);
+    } catch (e) {
+      console.warn("Kunne ikke sette innlogget bruker", e);
     }
 
-    if (!window.supabaseClient) {
-      visLoginMelding("Supabase er ikke lastet. Sjekk config.js.", true);
-      return;
+    try {
+      const bruker = $("innloggetBruker");
+      if (bruker && email) bruker.textContent = email;
+    } catch (e) {}
+
+    visApp();
+
+    try {
+      if (window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId();
+    } catch (e) {
+      const m = $("jobbMelding");
+      if (m) m.textContent = "Firmafeil: " + (e.message || e);
+      console.warn(e);
     }
 
-    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-      email: epost,
-      password: passord
-    });
+    try {
+      if (window.startHovslager) await window.startHovslager();
+    } catch (e) {
+      console.warn("startHovslager feilet", e);
+    }
 
+    // Prøv å friske opp hovedlister hvis funksjonene finnes.
+    for (const fn of ["hentKunder", "hentHester", "hentJobber", "hentPrislisteTilApp"]) {
+      try {
+        if (typeof window[fn] === "function") await window[fn]();
+      } catch (e) {
+        console.warn(fn + " feilet", e);
+      }
+    }
+  }
+
+  async function sendMagicLink() {
+    try {
+      if (!window.supabaseClient || !window.supabaseClient.auth) {
+        settMelding("Supabase er ikke lastet. Sjekk config.js.");
+        return;
+      }
+
+      const email = ($("loginEpost")?.value || "").trim().toLowerCase();
+      if (!email) {
+        settMelding("Skriv e-post først.");
+        return;
+      }
+
+      settMelding("Sender innloggingslenke...");
+
+      const { error } = await window.supabaseClient.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: finnRedirectUrl(),
+          shouldCreateUser: false
+        }
+      });
+
+      if (error) {
+        settMelding("Feil: " + error.message);
+        return;
+      }
+
+      settMelding("Innloggingslenke er sendt. Åpne e-posten og trykk på lenken.", true);
+    } catch (e) {
+      settMelding("Teknisk feil: " + (e.message || e));
+    }
+  }
+
+  async function loggUt() {
+    try {
+      if (window.supabaseClient?.auth) await window.supabaseClient.auth.signOut();
+    } catch (e) {
+      console.warn("Logout-feil", e);
+    }
+
+    try {
+      localStorage.removeItem("aktivBilId");
+      localStorage.removeItem("aktivBilNavn");
+    } catch (e) {}
+
+    visLogin();
+    settMelding("");
+  }
+
+  function ryddLoginSkjema() {
+    // Passordfeltet beholdes ikke i bruk. Vi skjuler det så gammel HTML kan stå urørt.
+    const passordLabel = document.querySelector('label[for="loginPassord"]');
+    const passordInput = $("loginPassord");
+    const glemtKnapp = $("glemtPassordKnapp");
+    const loginKnapp = $("loginKnapp");
+
+    if (passordLabel) passordLabel.style.display = "none";
+    if (passordInput) passordInput.style.display = "none";
+
+    if (loginKnapp) {
+      loginKnapp.textContent = "Send innloggingslenke";
+      loginKnapp.onclick = function (ev) {
+        ev.preventDefault();
+        sendMagicLink();
+        return false;
+      };
+    }
+
+    if (glemtKnapp) {
+      glemtKnapp.textContent = "Send innloggingslenke på nytt";
+      glemtKnapp.onclick = function (ev) {
+        ev.preventDefault();
+        sendMagicLink();
+        return false;
+      };
+    }
+
+    const loginSide = $("loginSide");
+    if (loginSide && !$("magicLinkInfo")) {
+      const info = document.createElement("div");
+      info.id = "magicLinkInfo";
+      info.className = "info";
+      info.textContent = "Skriv e-post og få innloggingslenke. Ingen passord trengs.";
+      const melding = $("loginMelding");
+      loginSide.insertBefore(info, melding || null);
+    }
+  }
+
+  async function sjekkSessionOgStart() {
+    if (!window.supabaseClient?.auth) return;
+
+    const { data, error } = await window.supabaseClient.auth.getSession();
     if (error) {
-      visLoginMelding("Login-feil: " + error.message, true);
+      console.warn("Kunne ikke lese session", error);
+      visLogin();
       return;
     }
 
-    visLoginMelding("");
-    await startInnloggetApp(data?.user?.email || epost);
-  } catch (e) {
-    console.error(e);
-    visLoginMelding("Teknisk feil: " + (e.message || e), true);
-  } finally {
-    hovLoginKjorer = false;
-  }
-}
-
-async function loggUt() {
-  try { await window.supabaseClient?.auth?.signOut(); } catch(e) { console.warn(e); }
-  hovAuthStartet = false;
-  location.reload();
-}
-
-async function authAutoStartInnloggetBruker() {
-  try {
-    if (!window.supabaseClient) return;
-    const { data } = await window.supabaseClient.auth.getSession();
     if (data?.session) {
-      await startInnloggetApp(data.session.user?.email || "");
+      await startAppEtterLogin(data.session);
     } else {
-      settInnloggetBrukerAuth("");
-      document.getElementById("loginSide")?.classList.remove("skjult");
-      document.getElementById("appSide")?.classList.add("skjult");
+      visLogin();
     }
-  } catch(e) {
-    console.warn("Autostart feilet:", e);
-  }
-}
-
-function kobleAuthKnapper() {
-  const loginKnapp = document.getElementById("loginKnapp");
-  if (loginKnapp) {
-    loginKnapp.onclick = loggInn;
   }
 
-  const loggUtKnapp = document.getElementById("loggUtKnapp");
-  if (loggUtKnapp) {
-    loggUtKnapp.onclick = loggUt;
+  function kobleAlt() {
+    ryddLoginSkjema();
+
+    const loggUtKnapp = $("loggUtKnapp");
+    if (loggUtKnapp) {
+      loggUtKnapp.onclick = function (ev) {
+        ev.preventDefault();
+        loggUt();
+        return false;
+      };
+    }
+
+    if (window.supabaseClient?.auth) {
+      window.supabaseClient.auth.onAuthStateChange(async function (event, session) {
+        if (event === "SIGNED_IN" && session) await startAppEtterLogin(session);
+        if (event === "SIGNED_OUT") visLogin();
+      });
+    }
+
+    sjekkSessionOgStart();
   }
 
-  setTimeout(authAutoStartInnloggetBruker, 100);
-}
+  window.hovSendMagicLink = sendMagicLink;
+  window.hovMagicLinkLogin = sendMagicLink;
+  window.hovLoggUt = loggUt;
+  window.loggUt = loggUt;
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", kobleAuthKnapper, { once: true });
-} else {
-  kobleAuthKnapper();
-}
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", kobleAlt);
+  } else {
+    kobleAlt();
+  }
 
-window.loggInn = loggInn;
-window.loggUt = loggUt;
-window.authAutoStartInnloggetBruker = authAutoStartInnloggetBruker;
-window.hovSettInnloggetBruker = settInnloggetBrukerAuth;
+  // Litt ekstra lim, fordi index ofte har inline-script som også prøver å koble knappene.
+  setTimeout(kobleAlt, 300);
+  setTimeout(kobleAlt, 1000);
+})();

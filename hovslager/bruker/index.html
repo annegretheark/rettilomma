@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brukerveiledning – HovslagerSystem</title>
+  <style>
+    :root { --bg:#111617; --card:#1b2023; --card2:#22282c; --text:#f8fafc; --muted:#cbd5e1; --line:#374151; --blue:#1f6feb; --green:#0f766e; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial, sans-serif; background:var(--bg); color:var(--text); line-height:1.55; }
+    header { background:linear-gradient(135deg,#0f766e,#1f2937); padding:28px 18px; border-bottom:1px solid var(--line); }
+    .wrap { max-width:980px; margin:0 auto; padding:0 16px; }
+    h1 { margin:0 0 8px; font-size:34px; letter-spacing:-.02em; }
+    h2 { margin-top:0; font-size:26px; }
+    h3 { margin-bottom:6px; }
+    p { color:var(--muted); }
+    .badge { display:inline-block; background:#0f172a; color:#fff; padding:5px 10px; border-radius:999px; font-weight:bold; font-size:13px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin:18px 0; box-shadow:0 12px 30px rgba(0,0,0,.18); }
+    .step { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:start; }
+    .step img { width:100%; border-radius:14px; border:1px solid var(--line); background:#000; }
+    .note { background:#0b2f2b; border:1px solid #0f766e; border-radius:12px; padding:12px 14px; color:#e6fffb; }
+    .quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .quick div { background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:14px; }
+    ol, ul { color:var(--muted); padding-left:22px; }
+    li { margin:6px 0; }
+    kbd { background:#0f172a; border:1px solid #475569; padding:2px 6px; border-radius:6px; color:#fff; }
+    footer { padding:28px 0 40px; color:var(--muted); font-size:14px; }
+    @media (max-width:760px) { .step { grid-template-columns:1fr; } h1{font-size:28px;} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <span class="badge">Rett i Lomma</span>
+      <h1>Brukerveiledning – HovslagerSystem</h1>
+      <p>Mobilvennlig veiledning for kunder, hester, jobber, bilder, kjøring og faktura.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Kom raskt i gang</h2>
+      <div class="quick">
+        <div><strong>1. Registrer kunde</strong><br>Legg inn navn, adresse, telefon og e-post.</div>
+        <div><strong>2. Registrer hest</strong><br>Knytt hesten til riktig kunde/eier.</div>
+        <div><strong>3. Registrer jobb</strong><br>Bruk tale eller manuell registrering.</div>
+        <div><strong>4. Legg til bilder</strong><br>Velg ett eller flere bilder til jobben.</div>
+        <div><strong>5. Lag faktura</strong><br>Faktura henter ufakturerte jobber for valgt kunde.</div>
+      </div>
+    </section>
+
+    <section class="card step">
+      <div>
+        <h2>Snakk inn en jobb</h2>
+        <p>På forsiden kan du bruke knappen <strong>Snakk inn og lagre jobb</strong>. Si hestenavn, jobbtype og kjøring.</p>
+        <p>Eksempel:</p>
+        <p class="note">«Skodde Kingen fullbeslag, kjørte 20 kilometer.»</p>
+        <p>Systemet prøver å fylle inn kunde, hest, jobbtype, km og beløp automatisk.</p>
+      </div>
+      <img src="bilder/01-snakk-inn-jobb-ta-bilde.jpeg" alt="Snakk inn jobb og bildevalg i HovslagerSystem">
+    </section>
+
+    <section class="card step">
+      <div>
+        <h2>Legg til bilder</h2>
+        <p>Bruk bildeknappen for å legge til dokumentasjon på jobben. På mobil kan du vanligvis velge mellom kamera og bildebibliotek.</p>
+        <ul>
+          <li><strong>Ta bilde</strong> brukes når du vil fotografere direkte.</li>
+          <li><strong>Bildebibliotek / Velg filer</strong> brukes når bildene allerede ligger på telefonen.</li>
+          <li>Du kan legge inn flere bilder på samme jobb.</li>
+        </ul>
+      </div>
+      <img src="bilder/02-velg-bilde-etter-tale.jpeg" alt="Velg bilde fra mobil etter taleinnlesing">
+    </section>
+
+    <section class="card step">
+      <div>
+        <h2>Manuell registrering</h2>
+        <p>Velg <strong>Vis/skjul manuell registrering</strong> dersom du vil registrere jobben uten tale.</p>
+        <ol>
+          <li>Velg kunde.</li>
+          <li>Velg hest.</li>
+          <li>Velg jobbtype.</li>
+          <li>Skriv eventuell beskrivelse.</li>
+          <li>Legg inn beløp og kjøring.</li>
+          <li>Legg til bilder hvis du ønsker dokumentasjon.</li>
+          <li>Trykk <strong>Lagre jobb</strong>.</li>
+        </ol>
+      </div>
+      <img src="bilder/03-velg-kunde-manuell-jobb.jpeg" alt="Manuell registrering med kundevalg, hest og jobbtype">
+    </section>
+
+    <section class="card step">
+      <div>
+        <h2>Jobbliste og status</h2>
+        <p>Jobblisten viser registrerte jobber og summer.</p>
+        <ul>
+          <li><strong>Ikke fakturert</strong> viser jobber som kan tas med på ny faktura.</li>
+          <li><strong>Fakturert</strong> viser jobber som allerede er sendt på faktura.</li>
+          <li><strong>Omsetning</strong> viser samlet registrert beløp.</li>
+        </ul>
+        <p>Bruk <strong>Oppdater jobber</strong> hvis listen ikke viser siste endring.</p>
+      </div>
+      <img src="bilder/04-jobbliste-og-status.jpeg" alt="Jobbliste med fakturert, ikke fakturert og omsetning">
+    </section>
+
+    <section class="card step">
+      <div>
+        <h2>Legg bilder på en eksisterende jobb</h2>
+        <p>Hvis jobben allerede er lagret, kan du åpne jobben i listen og legge til bilder etterpå.</p>
+        <ol>
+          <li>Klikk på jobben i jobblisten.</li>
+          <li>Velg bilde eller ta bilde.</li>
+          <li>Skriv eventuell bildetekst.</li>
+          <li>Trykk <strong>Legg til bilde</strong>.</li>
+        </ol>
+      </div>
+      <img src="bilder/05-legg-til-bilde-pa-jobb.jpeg" alt="Legg til bilde på eksisterende jobb">
+    </section>
+
+    <section class="card">
+      <h2>Faktura</h2>
+      <ol>
+        <li>Gå til <strong>Admin</strong> og åpne <strong>Faktura</strong>.</li>
+        <li>Velg kunde.</li>
+        <li>Trykk <strong>Lag faktura PDF</strong>.</li>
+        <li>Systemet tar med ufakturerte jobber på valgt kunde.</li>
+      </ol>
+      <p class="note">Kontroller alltid faktura før den sendes. Når en jobb er fakturert, skal den ikke komme med på ny faktura.</p>
+    </section>
+
+    <section class="card">
+      <h2>Tips ved feil</h2>
+      <ul>
+        <li>Ser du ikke nye jobber? Trykk <strong>Oppdater jobber</strong>.</li>
+        <li>Finner ikke systemet hesten ved tale? Si hestenavnet tydelig og bruk manuell registrering ved behov.</li>
+        <li>Bildemenyen på mobil styres av telefonen. Den kan vise «Ta bilde», «Bildebibliotek», «Velg fil» eller lignende.</li>
+        <li>Hvis en kunde ikke vises, gå til kunder og sjekk at kunden er lagret.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Brukerveiledning for HovslagerSystem – Rett i Lomma.
+  </footer>
+</body>
+</html>
