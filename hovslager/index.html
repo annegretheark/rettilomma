@@ -30,6 +30,7 @@
   <label for="loginPassord">Passord</label><input id="loginPassord" type="password" autocomplete="current-password">
   <button id="loginKnapp" type="button">Logg inn</button>
   <a id="apenDemoKnapp" class="knapp" href="./demo.html">Prøv demo uten innlogging</a>
+  <button type="button" class="secondary" onclick="installerApp()">📱 Installer på mobil</button>
   <button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
   <a id="brukerDokLoginKnapp" class="knapp secondary" href="./docs/hovslager/index.html" target="_blank" rel="noopener">Brukerdokumentasjon</a>
   <div id="loginMelding" class="melding"></div>
@@ -414,6 +415,23 @@ function hovBindKlikkbareJobbraderFallback(){
 document.addEventListener("DOMContentLoaded", function(){
   setInterval(hovBindKlikkbareJobbraderFallback, 1200);
 });
+</script>
+
+
+<script>
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+async function installerApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+  } else {
+    alert("Android:\nMeny → Installer app\n\niPhone/iPad:\nSafari → Del → Legg til på Hjem-skjerm");
+  }
+}
 </script>
 
 </body></html>
