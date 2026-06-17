@@ -130,7 +130,7 @@
       const { error } = await window.supabaseClient.auth.signInWithOtp({
         email: email,
         options: {
-          emailRedirectTo: finnRedirectUrl(),
+          emailRedirectTo: window.location.origin + "/reset.html",
           shouldCreateUser: false
         }
       });
