@@ -63,6 +63,13 @@ table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}
   </div>
   <label>Beskrivelse</label><textarea id="jobbBeskrivelse"></textarea>
   <button type="button" id="snakkDemoBeskrivelseKnapp" class="secondary" onclick="startDemoBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
+  <div class="listekort" style="margin-top:10px;">
+    <strong>📷 Bilder</strong>
+    <div class="info">Velg eller ta ett eller flere bilder. I demo vises de bare på skjermen og lagres ikke.</div>
+    <label class="knapp secondary" for="jobbBilderDemo">📷 Velg / ta bilder</label>
+    <input id="jobbBilderDemo" type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="visDemoBilder()">
+    <div id="jobbBildePreviewDemo" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+  </div>
   <button onclick="lagreDemoJobb()">Lagre jobb</button>
   <div id="jobbMelding" class="melding"></div>
 
@@ -264,6 +271,25 @@ function tegnKunderOgHester(){
   document.getElementById("hesteListe").innerHTML = hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase)}<br>Eier: ${esc(kundeNavn(h.kunde_id))}</div>`).join("");
 }
 
+
+
+function visDemoBilder(){
+  const input = document.getElementById("jobbBilderDemo");
+  const preview = document.getElementById("jobbBildePreviewDemo");
+  if(!input || !preview) return;
+  preview.innerHTML = "";
+  Array.from(input.files || []).forEach(f => {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(f);
+    img.alt = f.name;
+    img.style.width = "92px";
+    img.style.height = "72px";
+    img.style.objectFit = "cover";
+    img.style.borderRadius = "8px";
+    img.style.border = "1px solid #475569";
+    preview.appendChild(img);
+  });
+}
 
 function startDemoBeskrivelseTale(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
