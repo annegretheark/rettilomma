@@ -11,32 +11,98 @@ body{background:#151819;color:#f3f4f6;font-family:Arial,sans-serif;display:flex;
 <body>
 <div class="kort">
 <h1>Sett nytt passord</h1>
-<p>Skriv nytt passord for HovslagerSystem.</p>
+<p>Magic Link har åpnet denne siden. Skriv nytt passord for Hovslager.</p>
+
 <label for="nyttPassord">Nytt passord</label>
 <input id="nyttPassord" type="password" autocomplete="new-password">
+
 <label for="gjentaPassord">Gjenta passord</label>
 <input id="gjentaPassord" type="password" autocomplete="new-password">
+
 <button id="lagrePassordKnapp" type="button">Lagre nytt passord</button>
 <div id="melding" class="melding"></div>
 <a id="tilbakeLink" href="/hovslager-login.html">Tilbake til Hovslager</a>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/hovslager/config.js"></script>
 <script>
 (function(){
-  const melding=document.getElementById('melding');
-  async function lagre(){
-    melding.className='melding';
-    const p1=document.getElementById('nyttPassord').value||'';
-    const p2=document.getElementById('gjentaPassord').value||'';
-    if(p1.length<6){ melding.textContent='Passord må være minst 6 tegn.'; melding.className='melding feil'; return; }
-    if(p1!==p2){ melding.textContent='Passordene er ikke like.'; melding.className='melding feil'; return; }
-    if(!window.supabaseClient){ melding.textContent='Supabase er ikke lastet.'; melding.className='melding feil'; return; }
-    const { error } = await window.supabaseClient.auth.updateUser({ password:p1 });
-    if(error){ melding.textContent='Feil: '+error.message; melding.className='melding feil'; return; }
-    melding.textContent='Passordet er lagret. Du kan logge inn nå.';
+  const melding = document.getElementById('melding');
+
+  function vis(tekst, feil){
+    melding.textContent = tekst || '';
+    melding.className = feil ? 'melding feil' : 'melding';
   }
+
+  async function ventPaSession(){
+    if(!window.supabaseClient || !window.supabaseClient.auth){
+      vis('Supabase er ikke lastet. Sjekk at /js/hovslager/config.js finnes på Vercel.', true);
+      return null;
+    }
+
+    // Supabase v2 leser access_token i URL hash automatisk, men vi gir den et lite øyeblikk.
+    for(let i=0; i<10; i++){
+      const { data } = await window.supabaseClient.auth.getSession();
+      if(data && data.session) return data.session;
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    return null;
+  }
+
+  async function lagre(){
+    const p1 = document.getElementById('nyttPassord').value || '';
+    const p2 = document.getElementById('gjentaPassord').value || '';
+
+    if(p1.length < 6){
+      vis('Passord må være minst 6 tegn.', true);
+      return;
+    }
+
+    if(p1 !== p2){
+      vis('Passordene er ikke like.', true);
+      return;
+    }
+
+    vis('Sjekker Magic Link...');
+
+    const session = await ventPaSession();
+    if(!session){
+      vis('Fant ikke aktiv Magic Link-session. Send en ny Magic Link og åpne den nyeste e-posten med en gang.', true);
+      return;
+    }
+
+    vis('Lagrer nytt passord...');
+
+    const { error } = await window.supabaseClient.auth.updateUser({ password: p1 });
+
+    if(error){
+      vis('Feil: ' + error.message, true);
+      return;
+    }
+
+    vis('Passordet er lagret. Du kan logge inn med e-post og nytt passord nå.');
+    setTimeout(function(){
+      window.location.href = '/hovslager-login.html';
+    }, 1800);
+  }
+
   document.getElementById('lagrePassordKnapp').addEventListener('click', lagre);
+
+  // Vis nyttig status når siden åpnes fra Magic Link.
+  setTimeout(async function(){
+    if(!window.supabaseClient || !window.supabaseClient.auth){
+      vis('Supabase er ikke lastet. Sjekk /js/hovslager/config.js.', true);
+      return;
+    }
+    const session = await ventPaSession();
+    if(session){
+      vis('Magic Link er aktiv. Skriv nytt passord og trykk Lagre.');
+    } else {
+      vis('Venter på gyldig Magic Link. Hvis du åpnet en gammel lenke, send en ny.', true);
+    }
+  }, 400);
 })();
 </script>
 </body>

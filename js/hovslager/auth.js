@@ -140,7 +140,7 @@
         return;
       }
 
-      settMelding("Magic Link er sendt. Åpne e-posten og trykk på lenken.", true);
+      settMelding("Magic Link er sendt. Åpne e-posten og trykk på lenken. Du kommer til siden for å sette nytt passord.", true);
     } catch (e) {
       settMelding("Teknisk feil ved Magic Link: " + (e.message || e));
     }
