@@ -190,7 +190,11 @@ function sikreFakturaDetalj() {
     detalj.className = "listekort";
     detalj.style.display = "none";
     detalj.style.marginBottom = "12px";
-    oversikt?.parentNode?.insertBefore(detalj, oversikt);
+    if (oversikt?.parentNode) {
+      oversikt.parentNode.insertBefore(detalj, oversikt);
+    } else {
+      document.getElementById("fakturaSide")?.appendChild(detalj);
+    }
   }
 
   return detalj;
@@ -356,7 +360,7 @@ async function visHovFakturaDetaljMedJobber(fakturanr) {
         <td style="padding:5px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(hovDatoNo(j.dato || ""))}</td>
         <td style="padding:5px;border-bottom:1px solid #374151;">${safeText(j.hester?.navn || "Uten hest")}</td>
         <td style="padding:5px;border-bottom:1px solid #374151;">${safeText(j.jobbtype || "")}</td>
-        <td style="padding:5px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${oversiktKr(j.total)} kr</td>
+        <td style="padding:5px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${oversiktKr(j.total || (Number(j.arbeid_belop || 0) + Number(j.varer_belop || 0) + (Number(j.km || 0) * Number(j.km_pris || 0))) * 1.25)} kr</td>
       </tr>
     `).join("");
 
@@ -482,7 +486,7 @@ async function tegnFakturaOversikt() {
         <b>Betalt:</b> ${oversiktKr(sumBetalt)} kr<br>
         <b>Utestående:</b> ${oversiktKr(sumUtestaende)} kr<br>
         <b>Ikke fakturert:</b> ${oversiktKr(sumIkkeFakturert)} kr<br>
-        <small>Klikk på en faktura for detaljer og jobblinjer.</small>
+        <small>Klikk på en faktura for detaljer og jobblinjer. Bruk Sett betalt eller Purring direkte i tabellen.</small>
       </div>
 
       <div style="overflow-x:auto; margin-top:12px; max-width:100%;">
@@ -541,11 +545,16 @@ async function settHovFakturaSok(verdi) {
 }
 
 async function markerHovFakturaBetalt(fakturanr, belop) {
+  if (!fakturanr) {
+    alert("Mangler fakturanummer.");
+    return;
+  }
+
   const res = await supabaseClient
     .from("hov_fakturaer")
     .update({
       betalingsstatus: "betalt",
-      betalt_belop: belop,
+      betalt_belop: Number(belop || 0),
       betalt_dato: new Date().toISOString().slice(0, 10)
     })
     .eq("fakturanr", fakturanr);
@@ -556,7 +565,17 @@ async function markerHovFakturaBetalt(fakturanr, belop) {
   }
 
   await hentFakturaOversikt();
-  visHovFakturaDetalj(fakturanr);
+
+  const oppdatert = sisteHovFakturaOversikt.find(x => String(x.fakturanr) === String(fakturanr));
+  if (oppdatert) {
+    await visHovFakturaDetaljMedJobber(fakturanr);
+  }
+
+  const melding = document.getElementById("fakturaMelding");
+  if (melding) {
+    melding.textContent = "Faktura er satt betalt: " + fakturanr;
+    melding.style.color = "#86efac";
+  }
 }
 
 async function lagHovPurring(fakturanr) {
@@ -641,7 +660,13 @@ async function lagHovPurring(fakturanr) {
 
     doc.save("Purring-" + String(fakturanr || "faktura") + ".pdf");
     await hentFakturaOversikt();
-    visHovFakturaDetalj(fakturanr);
+    await visHovFakturaDetaljMedJobber(fakturanr);
+
+    const melding = document.getElementById("fakturaMelding");
+    if (melding) {
+      melding.textContent = "Purring laget og faktura er merket som purret: " + fakturanr;
+      melding.style.color = "#86efac";
+    }
   } catch (e) {
     console.error("Feil ved purring:", e);
     alert("Kunne ikke lage purring: " + (e.message || e));
