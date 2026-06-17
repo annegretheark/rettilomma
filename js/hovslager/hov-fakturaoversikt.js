@@ -169,7 +169,7 @@ function statusKnappHtml(f) {
   if (status === "betalt") return `<span title="Betalt">✓ Betalt</span>`;
   if (status === "kreditert") return `<span title="Kreditert">Kreditert</span>`;
 
-  return `<button type="button" class="secondary" title="Klikk for å markere som betalt" style="padding:4px 7px;font-size:11px;white-space:nowrap;" onclick="event.stopPropagation(); markerHovFakturaBetalt('${fakturanr}', ${belop})">${safeText(tekst)}</button>`;
+  return `<button type="button" class="secondary" title="Sett faktura som betalt" style="padding:4px 7px;font-size:11px;white-space:nowrap;" onclick="event.stopPropagation(); markerHovFakturaBetalt(\'${fakturanr}\', ${belop})">Sett betalt</button>`;
 }
 
 function purringKnappHtml(f, liten = false) {
@@ -249,7 +249,141 @@ function lukkHovFakturaDetalj() {
   hovFakturaValgt = null;
 }
 
-function tegnFakturaOversikt() {
+
+async function hentIkkeFakturerteJobberPrKunde() {
+  if (!window.supabaseClient) return [];
+  try {
+    let q = window.supabaseClient
+      .from("hov_jobber")
+      .select("id, kunde_id, dato, jobbtype, total, fakturert, kunder(navn), hester(navn,kunde_id)")
+      .or("fakturert.is.false,fakturert.is.null")
+      .order("dato", { ascending: false });
+
+    if (typeof window.hentAktivHovFirmaId === "function") {
+      const firmaId = await window.hentAktivHovFirmaId();
+      if (firmaId) q = q.eq("firma_id", firmaId);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const map = new Map();
+    for (const j of data || []) {
+      const kundeId = String(j.kunde_id || j.hester?.kunde_id || "");
+      const kundeNavn = j.kunder?.navn || "Ukjent kunde";
+      if (!kundeId) continue;
+      if (!map.has(kundeId)) {
+        map.set(kundeId, { kunde_id: kundeId, kunde_navn: kundeNavn, antall: 0, sum: 0, jobber: [] });
+      }
+      const rad = map.get(kundeId);
+      rad.antall += 1;
+      rad.sum += Number(j.total || 0);
+      rad.jobber.push(j);
+    }
+
+    return [...map.values()].sort((a, b) => String(a.kunde_navn).localeCompare(String(b.kunde_navn), "no"));
+  } catch (e) {
+    console.warn("Kunne ikke hente ufakturerte jobber pr kunde:", e);
+    return [];
+  }
+}
+
+function tegnIkkeFakturerteJobberPrKunde(grupper) {
+  if (!Array.isArray(grupper) || !grupper.length) {
+    return `<div class="listekort" style="margin-top:12px;"><h3>Ikke fakturerte jobber pr kunde</h3><div class="info">Ingen ufakturerte jobber.</div></div>`;
+  }
+
+  const rader = grupper.map(g => `
+    <tr>
+      <td style="padding:6px;border-bottom:1px solid #374151;">${safeText(g.kunde_navn)}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;">${g.antall}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${oversiktKr(g.sum)} kr</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;">
+        <button type="button" onclick="velgHovKundeOgLagFaktura('${safeText(g.kunde_id)}')" style="padding:5px 8px;font-size:12px;white-space:nowrap;">Lag faktura</button>
+      </td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="listekort" style="margin-top:12px;overflow-x:auto;">
+      <h3>Ikke fakturerte jobber pr kunde</h3>
+      <table style="width:100%;border-collapse:collapse;min-width:520px;font-size:12px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;border-bottom:1px solid #475569;padding:6px;">Kunde</th>
+            <th style="text-align:right;border-bottom:1px solid #475569;padding:6px;">Jobber</th>
+            <th style="text-align:right;border-bottom:1px solid #475569;padding:6px;">Sum</th>
+            <th style="text-align:right;border-bottom:1px solid #475569;padding:6px;">Handling</th>
+          </tr>
+        </thead>
+        <tbody>${rader}</tbody>
+      </table>
+      <div class="info">Denne viser kunder som fortsatt har jobber som ikke er fakturert.</div>
+    </div>
+  `;
+}
+
+async function velgHovKundeOgLagFaktura(kundeId) {
+  const sel = document.getElementById("fakturaKunde");
+  if (typeof window.fyllFakturaKunder === "function") await window.fyllFakturaKunder();
+  if (sel) sel.value = kundeId;
+  if (typeof window.lagHovFaktura === "function") await window.lagHovFaktura();
+  if (typeof window.hentFakturaOversikt === "function") await window.hentFakturaOversikt();
+}
+window.velgHovKundeOgLagFaktura = velgHovKundeOgLagFaktura;
+
+async function visHovFakturaDetaljMedJobber(fakturanr) {
+  const f = sisteHovFakturaOversikt.find(x => String(x.fakturanr) === String(fakturanr));
+  if (!f) return;
+
+  visHovFakturaDetalj(fakturanr);
+
+  const detalj = document.getElementById("hovFakturaDetalj");
+  if (!detalj) return;
+
+  try {
+    let q = window.supabaseClient
+      .from("hov_jobber")
+      .select("id, dato, jobbtype, total, km, km_pris, arbeid_belop, varer_belop, hester(navn), kunder(navn)")
+      .eq("fakturanr", fakturanr)
+      .order("dato", { ascending: true });
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const jobbrader = (data || []).map(j => `
+      <tr>
+        <td style="padding:5px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(hovDatoNo(j.dato || ""))}</td>
+        <td style="padding:5px;border-bottom:1px solid #374151;">${safeText(j.hester?.navn || "Uten hest")}</td>
+        <td style="padding:5px;border-bottom:1px solid #374151;">${safeText(j.jobbtype || "")}</td>
+        <td style="padding:5px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${oversiktKr(j.total)} kr</td>
+      </tr>
+    `).join("");
+
+    detalj.innerHTML += `
+      <h4 style="margin-top:14px;">Jobber på fakturaen</h4>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;min-width:520px;font-size:12px;">
+          <thead>
+            <tr>
+              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;">Dato</th>
+              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;">Hest</th>
+              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;">Jobb</th>
+              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;">Beløp</th>
+            </tr>
+          </thead>
+          <tbody>${jobbrader || `<tr><td colspan="4" style="padding:8px;">Ingen jobblinjer funnet.</td></tr>`}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {
+    detalj.innerHTML += `<div class="melding">Kunne ikke hente jobblinjer: ${safeText(e.message || e)}</div>`;
+  }
+}
+window.visHovFakturaDetaljMedJobber = visHovFakturaDetaljMedJobber;
+
+
+async function tegnFakturaOversikt() {
   const div = document.getElementById("fakturaOversikt");
   if (!div) return;
 
@@ -272,7 +406,7 @@ function tegnFakturaOversikt() {
     const fakturanr = safeText(f.fakturanr || "");
 
     return `
-      <tr onclick="visHovFakturaDetalj('${fakturanr}')" style="cursor:pointer;">
+      <tr onclick="visHovFakturaDetaljMedJobber('${fakturanr}')" style="cursor:pointer;">
         <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;max-width:115px;overflow:hidden;text-overflow:ellipsis;">${fakturanr}</td>
         <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(hovDatoNo(f.dato || ""))}</td>
         <td style="padding:6px;border-bottom:1px solid #374151;max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeText(kunde)}</td>
@@ -327,6 +461,7 @@ function tegnFakturaOversikt() {
         <b>Utestående:</b> ${oversiktKr(sumUtestaende)} kr<br>
         <small>Klikk på en faktura for detaljer.</small>
       </div>
+      ${tegnIkkeFakturerteJobberPrKunde(await hentIkkeFakturerteJobberPrKunde())}
     </div>
   `;
 }
@@ -344,17 +479,17 @@ async function hentFakturaOversikt() {
   }
 
   sisteHovFakturaOversikt = res.data || [];
-  tegnFakturaOversikt();
+  await tegnFakturaOversikt();
 }
 
-function settHovFakturaFilter(filter) {
+async function settHovFakturaFilter(filter) {
   hovFakturaFilter = filter || "alle";
-  tegnFakturaOversikt();
+  await tegnFakturaOversikt();
 }
 
-function settHovFakturaSok(verdi) {
+async function settHovFakturaSok(verdi) {
   hovFakturaSok = verdi || "";
-  tegnFakturaOversikt();
+  await tegnFakturaOversikt();
 
   const input = document.getElementById("fakturaOversiktSok");
   if (input) {
