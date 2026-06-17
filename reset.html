@@ -18,15 +18,13 @@ body{background:#151819;color:#f3f4f6;font-family:Arial,sans-serif;display:flex;
 <input id="gjentaPassord" type="password" autocomplete="new-password">
 <button id="lagrePassordKnapp" type="button">Lagre nytt passord</button>
 <div id="melding" class="melding"></div>
-<a id="tilbakeLink" href="/rettilomma/hovslager/">Tilbake til Hovslager</a>
+<a id="tilbakeLink" href="/hovslager-login.html">Tilbake til Hovslager</a>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/rettilomma/js/hovslager/config.js"></script>
+<script src="/js/hovslager/config.js"></script>
 <script>
 (function(){
   const melding=document.getElementById('melding');
-  const tilbake=document.getElementById('tilbakeLink');
-  if(!location.pathname.toLowerCase().includes('/rettilomma/')) tilbake.href='/hovslager/';
   async function lagre(){
     melding.className='melding';
     const p1=document.getElementById('nyttPassord').value||'';
