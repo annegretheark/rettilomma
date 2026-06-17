@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
 </section>
 
-<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button type="button" onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" id="oppdaterFakturaOversiktKnapp" onclick="oppdaterFakturaOversiktManuelt(event)">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: kopi-knapp synlig 20260617</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
@@ -373,86 +373,61 @@ function visKopiFaktura(kunde_id, fakturanr){
   panel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-async function oppdaterFakturaOversiktManuelt(ev){
-  if(ev && typeof ev.preventDefault === "function") ev.preventDefault();
-  const melding=document.getElementById("fakturaMelding");
-  if(melding){melding.style.color="#86efac"; melding.textContent="Oppdaterer fakturaoversikt...";}
-  try{
-    await lastData();
-    visSide("fakturaSide");
-    tegnFakturaOversikt();
-    if(melding){melding.style.color="#86efac"; melding.textContent="Fakturaoversikt oppdatert.";}
-  }catch(e){
-    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke oppdatere fakturaoversikt: "+(e.message||e);}
-  }
-  return false;
-}
-
 function tegnFakturaOversikt(){
-  const grupper={};
+  const oversikt=document.getElementById("fakturaOversikt");
+  if(!oversikt) return;
+
+  const ikkeGrupper={};
   jobber.filter(j=>!j.fakturert).forEach(j=>{
-    grupper[j.kunde_id]||={kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),antall:0,sum:0};
-    grupper[j.kunde_id].antall++;
-    grupper[j.kunde_id].sum+=totalJobb(j);
+    const kid=String(j.kunde_id||"");
+    if(!kid) return;
+    ikkeGrupper[kid] ||= {kunde_id:kid,kunde:kundeNavn(kid),antall:0,sum:0};
+    ikkeGrupper[kid].antall++;
+    ikkeGrupper[kid].sum += totalJobb(j);
   });
 
   const faktGrupper={};
   jobber.filter(j=>j.fakturert).forEach(j=>{
-    const nr=j.fakturanr||"Fakturert";
-    const key=String(j.kunde_id||"")+"|"+String(nr);
-    faktGrupper[key]||={fakturanr:nr,kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),sum:0,antall:0};
-    faktGrupper[key].sum+=totalJobb(j);
+    const nr=String(j.fakturanr||"Fakturert");
+    const kid=String(j.kunde_id||"");
+    const key=nr+"|"+kid;
+    faktGrupper[key] ||= {fakturanr:nr,kunde_id:kid,kunde:kundeNavn(kid),antall:0,sum:0};
     faktGrupper[key].antall++;
+    faktGrupper[key].sum += totalJobb(j);
   });
 
-  const ufakturerteRader=Object.values(grupper).map(g=>`
-    <tr>
-      <td style="padding:7px;border-bottom:1px solid #374151;">-</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(g.kunde)}</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;text-align:right">${g.antall}</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(g.sum)} kr</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;">Ikke fakturert<br><button type="button" onclick="lagFakturaForKunde('${g.kunde_id}')">Lag faktura</button></td>
-    </tr>`);
-
-  const fakturerte=Object.values(faktGrupper);
-  const fakturerteRader=fakturerte.map(f=>`
-    <tr>
-      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(f.fakturanr)}</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;">${esc(f.kunde)}</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;text-align:right">${f.antall}</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(f.sum)} kr</td>
-      <td style="padding:7px;border-bottom:1px solid #374151;white-space:nowrap;">Fakturert<br><button type="button" class="secondary" style="margin-top:4px;" onclick="visKopiFaktura('${f.kunde_id}','${esc(f.fakturanr)}')">Kopi faktura</button></td>
-    </tr>`);
-
-  const kopiKnapper=fakturerte.length ? `
-    <div class="listekort" style="margin-top:12px;background:#111827;">
-      <h3 style="margin-bottom:8px;">Kopi av faktura</h3>
-      <div class="info">Bruk disse knappene for å skrive ut kopi. Ingen jobber faktureres på nytt.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-        ${fakturerte.map(f=>`<button type="button" class="secondary" onclick="visKopiFaktura('${f.kunde_id}','${esc(f.fakturanr)}')">Kopi ${esc(f.fakturanr)} - ${esc(f.kunde)}</button>`).join("")}
+  const ikkeHtml=Object.values(ikkeGrupper).map(g=>`
+    <div class="listekort" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:10px;">
+      <div>
+        <div><b>Ikke fakturert</b></div>
+        <div>Kunde: ${esc(g.kunde)}</div>
+        <div>Jobber: ${g.antall} &nbsp; Beløp: ${kr(g.sum)} kr</div>
       </div>
-    </div>` : "";
+      <button type="button" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')">Lag faktura</button>
+    </div>
+  `).join("");
 
-  const rader=[...ufakturerteRader,...fakturerteRader];
-  const html=`
-    ${kopiKnapper}
-    <div style="overflow-x:auto;margin-top:12px;">
-      <table style="width:100%;border-collapse:collapse;min-width:520px;">
-        <thead>
-          <tr>
-            <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Fakturanr</th>
-            <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Kunde</th>
-            <th style="text-align:right;padding:7px;border-bottom:1px solid #475569;">Jobber</th>
-            <th style="text-align:right;padding:7px;border-bottom:1px solid #475569;">Beløp</th>
-            <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Status / handling</th>
-          </tr>
-        </thead>
-        <tbody>${rader.join("")||'<tr><td colspan="5" style="padding:8px;">Ingen fakturaer ennå.</td></tr>'}</tbody>
-      </table>
-    </div>`;
+  const kopiHtml=Object.values(faktGrupper).map(f=>`
+    <div class="listekort" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:10px;border-left:5px solid #86efac;">
+      <div>
+        <div><b>Fakturert</b></div>
+        <div>Fakturanr: ${esc(f.fakturanr)}</div>
+        <div>Kunde: ${esc(f.kunde)}</div>
+        <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
+      </div>
+      <button type="button" class="secondary" style="background:#0f766e;font-weight:bold;min-width:150px;" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')">📄 Kopi faktura</button>
+    </div>
+  `).join("");
 
-  const el=document.getElementById("fakturaOversikt");
-  if(el) el.innerHTML=html;
+  oversikt.innerHTML=`
+    <div class="listekort" style="margin-top:12px;background:#111827;">
+      <h3 style="margin-bottom:6px;">Fakturaoversikt</h3>
+      <div class="info">Oppdatert visning. Kopi-knappen ligger nå synlig på fakturerte rader.</div>
+      ${ikkeHtml || ""}
+      ${kopiHtml || ""}
+      ${(!ikkeHtml && !kopiHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
+    </div>
+  `;
 }
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
@@ -592,7 +567,6 @@ async function restoreDemoBackup(){
 }
 
 
-document.addEventListener("click", function(e){ if(e.target && e.target.id==="oppdaterFakturaOversiktKnapp"){ oppdaterFakturaOversiktManuelt(e); } });
 document.getElementById("jobbDato").value=new Date().toISOString().slice(0,10);lastData().catch(e=>{console.error(e);status("Demo kunne ikke lagre i Supabase: "+(e.message||e),true);demoMelding("Supabase/RLS stopper demo-lagring. Sjekk policy for demo-firma.",true);});
 </script>
 
