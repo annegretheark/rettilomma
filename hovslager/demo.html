@@ -238,7 +238,66 @@ async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const 
   <div id="jobbDetaljBildeMelding" class="melding"></div>
 </div>`;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
-function lagFakturaForValgtKunde(){const kunde_id=document.getElementById("fakturaKunde").value;if(!kunde_id){document.getElementById("fakturaMelding").textContent="Velg kunde først.";return;}const uf=jobber.filter(j=>String(j.kunde_id)===String(kunde_id)&&!j.fakturert);if(!uf.length){document.getElementById("fakturaMelding").textContent="Ingen ufakturerte jobber på valgt kunde.";return;}const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);Promise.all(uf.map(j=>supabaseClient.from("hov_jobber").update({fakturert:true,fakturanr:nr}).eq("id",j.id))).then(async()=>{document.getElementById("fakturaMelding").textContent="Demofaktura laget: "+nr;await lastData();});}
+async function lagFakturaForValgtKunde(){
+  const melding=document.getElementById("fakturaMelding");
+  const kunde_id=document.getElementById("fakturaKunde").value;
+
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+
+  if(!kunde_id){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg kunde først.";}
+    return;
+  }
+
+  // Hent ferske ufakturerte jobber rett fra databasen, ikke bare fra skjermen.
+  // Det hindrer dobbeltfakturering hvis listen på skjermen er gammel.
+  const {data: uf, error: hentError}=await supabaseClient
+    .from("hov_jobber")
+    .select("*")
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("kunde_id",kunde_id)
+    .eq("fakturert",false);
+
+  if(hentError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
+    return;
+  }
+
+  if(!uf || !uf.length){
+    if(melding){melding.textContent="Ingen ufakturerte jobber på valgt kunde.";}
+    await lastData();
+    return;
+  }
+
+  const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);
+
+  // Oppdater bare jobber som fortsatt er ufakturert.
+  // Hvis en jobb allerede er fakturert, blir den ikke med på nytt.
+  const ids=uf.map(j=>j.id);
+  const {data: oppdatert, error: updateError}=await supabaseClient
+    .from("hov_jobber")
+    .update({fakturert:true,fakturanr:nr})
+    .in("id",ids)
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("fakturert",false)
+    .select("id");
+
+  if(updateError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateError.message;}
+    return;
+  }
+
+  const antall=(oppdatert||[]).length;
+  if(!antall){
+    if(melding){melding.textContent="Ingen jobber ble fakturert. De kan allerede være fakturert.";}
+    await lastData();
+    return;
+  }
+
+  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
+  await lastData();
+  tegnFakturaOversikt();
+}
 function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").value=kunde_id;lagFakturaForValgtKunde();}
 function tegnFakturaOversikt(){const grupper={};jobber.filter(j=>!j.fakturert).forEach(j=>{grupper[j.kunde_id]||={kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),antall:0,sum:0};grupper[j.kunde_id].antall++;grupper[j.kunde_id].sum+=totalJobb(j);});const faktGrupper={};jobber.filter(j=>j.fakturert).forEach(j=>{const nr=j.fakturanr||"Fakturert";faktGrupper[nr]||={fakturanr:nr,kunde:kundeNavn(j.kunde_id),sum:0,antall:0};faktGrupper[nr].sum+=totalJobb(j);faktGrupper[nr].antall++;});const rader=[...Object.values(grupper).map(g=>`<tr><td>-</td><td>${esc(g.kunde)}</td><td style="text-align:right">${g.antall}</td><td style="text-align:right">${kr(g.sum)} kr</td><td>Ikke fakturert</td><td style="text-align:right"><button onclick="lagFakturaForKunde('${g.kunde_id}')">Lag faktura</button></td></tr>`),...Object.values(faktGrupper).map(f=>`<tr><td>${esc(f.fakturanr)}</td><td>${esc(f.kunde)}</td><td style="text-align:right">${f.antall}</td><td style="text-align:right">${kr(f.sum)} kr</td><td>Fakturert</td><td></td></tr>`)];document.getElementById("fakturaOversikt").innerHTML=`<div style="overflow-x:auto;margin-top:12px;"><table style="width:100%;border-collapse:collapse;min-width:650px;"><thead><tr><th>Fakturanr</th><th>Kunde</th><th style="text-align:right">Jobber</th><th style="text-align:right">Beløp</th><th>Status</th><th></th></tr></thead><tbody>${rader.join("")||'<tr><td colspan="6">Ingen fakturaer ennå.</td></tr>'}</tbody></table></div>`;}
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
