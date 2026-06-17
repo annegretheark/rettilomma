@@ -378,7 +378,6 @@ function startBeskrivelseTale(){
 
 
 <script>
-/* Rett i Lomma - knapper for kronologiske jobbilder på hest */
 function hovVisJobbBilderForValgtHest(){
   const sel = document.getElementById("hestVelg");
   const hestId = sel ? sel.value : "";
@@ -392,51 +391,6 @@ function hovVisJobbBilderForValgtHest(){
     alert("Bildevisning er ikke lastet ennå. Gå til Jobber og prøv igjen.");
   }
 }
-
-function hovSettInnBildeknapperPaHestekort(){
-  const liste = document.getElementById("hesteListe");
-  const sel = document.getElementById("hestVelg");
-  if(!liste || !sel || typeof window.visAlleHovBilderForHest !== "function") return;
-
-  const options = Array.from(sel.options || [])
-    .filter(o => o.value)
-    .map(o => ({ id:o.value, navn:String(o.textContent || "").trim().toLowerCase() }));
-
-  const kort = Array.from(liste.querySelectorAll(".listekort, .hov-hestkort, div"));
-  for(const el of kort){
-    if(el.dataset.hovBildeKnapp === "1") continue;
-    const tekst = String(el.textContent || "").trim().toLowerCase();
-    if(!tekst) continue;
-
-    const funnet = options.find(o => o.navn && tekst.includes(o.navn));
-    if(!funnet) continue;
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "secondary";
-    btn.style.marginTop = "8px";
-    btn.textContent = "📷 Vis alle jobbilder kronologisk";
-    btn.onclick = function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      window.visAlleHovBilderForHest(funnet.id);
-    };
-    el.appendChild(btn);
-    el.dataset.hovBildeKnapp = "1";
-  }
-}
-
-document.addEventListener("DOMContentLoaded", function(){
-  setTimeout(hovSettInnBildeknapperPaHestekort, 800);
-  setTimeout(hovSettInnBildeknapperPaHestekort, 1800);
-  const liste = document.getElementById("hesteListe");
-  if(liste){
-    const obs = new MutationObserver(function(){ setTimeout(hovSettInnBildeknapperPaHestekort, 100); });
-    obs.observe(liste, { childList:true, subtree:true });
-  }
-});
-window.hovVisJobbBilderForValgtHest = hovVisJobbBilderForValgtHest;
-window.hovSettInnBildeknapperPaHestekort = hovSettInnBildeknapperPaHestekort;
 </script>
 
 </body></html>

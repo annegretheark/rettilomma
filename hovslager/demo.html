@@ -286,77 +286,42 @@ function visDemoJobbBilderForHest(hestId){
       <h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn || "Hest")}</h3>
       <button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button>
     </div>
-    <div class="info">Demoen viser jobbhistorikk kronologisk. I produksjon vises faktiske bilder fra jobbene.</div>
+    <div class="info">I produksjon vises faktiske bilder fra jobbene. I demoen viser vi jobbhistorikk og bildeantall.</div>
     <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-      <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th><th style="text-align:center">Bilder</th></tr></thead>
-      <tbody>${rader.map((j,i)=>`<tr>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.dato)}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${i % 2 === 0 ? 2 : 0}</td>
-      </tr>`).join("") || `<tr><td colspan="4" style="padding:10px;">Ingen jobber på denne hesten ennå.</td></tr>`}</tbody>
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Dato</th>
+          <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Jobb</th>
+          <th style="text-align:right;padding:7px;border-bottom:1px solid #475569;">Beløp</th>
+          <th style="text-align:center;padding:7px;border-bottom:1px solid #475569;">Bilder</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rader.map((j,i)=>`<tr>
+          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.dato)}</td>
+          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td>
+          <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td>
+          <td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${i % 2 === 0 ? 2 : 0}</td>
+        </tr>`).join("") || `<tr><td colspan="4" style="padding:10px;">Ingen jobber på denne hesten ennå.</td></tr>`}
+      </tbody>
     </table>
   `;
   panel.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 function tegnKunderOgHester(){
-  document.getElementById("kundeListe").innerHTML = kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse)}</div>`).join("");
-  document.getElementById("hesteListe").innerHTML = hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase)}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button class="secondary" onclick="visDemoJobbBilderForHest(\`${h.id}\`)">📷 Vis alle jobbilder kronologisk</button></div>`).join("");
-}
+  document.getElementById("kundeListe").innerHTML = kunder.map(k =>
+    `<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse)}</div>`
+  ).join("");
 
-
-
-function visDemoBilder(){
-  const input = document.getElementById("jobbBilderDemo");
-  const preview = document.getElementById("jobbBildePreviewDemo");
-  if(!input || !preview) return;
-  preview.innerHTML = "";
-  Array.from(input.files || []).forEach(f => {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(f);
-    img.alt = f.name;
-    img.style.width = "92px";
-    img.style.height = "72px";
-    img.style.objectFit = "cover";
-    img.style.borderRadius = "8px";
-    img.style.border = "1px solid #475569";
-    preview.appendChild(img);
-  });
-}
-
-function startDemoBeskrivelseTale(){
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const felt = document.getElementById("jobbBeskrivelse");
-  if(!SR){
-    alert("Talegjenkjenning støttes ikke i denne nettleseren. Prøv Chrome eller Edge, og bruk https.");
-    return;
-  }
-  const rec = new SR();
-  rec.lang = "no-NO";
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-
-  const knapp = document.getElementById("snakkDemoBeskrivelseKnapp");
-  if(knapp) knapp.textContent = "🎙️ Lytter ...";
-
-  rec.onresult = function(e){
-    const tekst = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : "";
-    if(felt && tekst){
-      felt.value = (felt.value ? felt.value + " " : "") + tekst;
-      felt.focus();
-    }
-  };
-
-  rec.onerror = function(e){
-    alert("Tale feilet: " + (e.error || "ukjent feil") + ". Sjekk at mikrofon er tillatt i nettleseren.");
-  };
-
-  rec.onend = function(){
-    if(knapp) knapp.textContent = "🎙️ Snakk inn beskrivelse";
-  };
-
-  rec.start();
+  document.getElementById("hesteListe").innerHTML = hester.map(h => `
+    <div class="listekort">
+      <b>${esc(h.navn)}</b><br>
+      ${esc(h.rase)}<br>
+      Eier: ${esc(kundeNavn(h.kunde_id))}<br>
+      <button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button>
+    </div>
+  `).join("");
 }
 
 function demoMelding(t){ document.getElementById("jobbMelding").textContent=t; }
