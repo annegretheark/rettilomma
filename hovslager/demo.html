@@ -5,374 +5,71 @@
 <title>Åpen demo - HovslagerSystem</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}
-.kort{background:#171a1b;max-width:1100px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
-h1,h2,h3{margin-top:0}
-label{display:block;margin-top:10px;font-weight:bold}
-input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}
-button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block}
-.secondary{background:#555}.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}
-.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-.skjult{display:none!important}.melding{margin-top:10px;color:#86efac;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}
-.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}
-.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}
-.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}
-.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}
-.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}
-table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}
+body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}.kort{background:#171a1b;max-width:1100px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}h1,h2,h3{margin-top:0}label{display:block;margin-top:10px;font-weight:bold}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block}.secondary{background:#555}.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.skjult{display:none!important}.melding{margin-top:10px;color:#86efac;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}.preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.preview img{width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #475569}.galleri{display:flex;gap:10px;flex-wrap:wrap}.galleri img{width:150px;height:115px;object-fit:cover;border-radius:10px;border:1px solid #374151;display:block}.statusok{color:#86efac}.statusfeil{color:#fca5a5}
 </style>
 </head>
 <body>
 <div class="kort">
-  <div class="system-header">
-    <div class="system-logo">♞</div>
-    <div>
-      <h1 class="system-title">HovslagerSystem</h1>
-      <div class="system-subtitle">Åpen demo uten innlogging</div>
-      <div class="system-badge">Rett i Lomma demo</div>
-    </div>
-  </div>
+  <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Åpen demo uten innlogging</div><div class="system-badge">Rett i Lomma demo</div></div></div>
   <a class="knapp secondary" href="./index.html">Til innlogging</a>
   <a class="knapp secondary" href="./docs/hovslager/index.html" target="_blank">📖 Brukerdokumentasjon</a>
-  <div class="info">Dette er en trygg demo med eksempeldata. Den lagrer ikke i databasen og kan brukes av kunder uten passord.</div>
+  <div class="info">Dette er en ekte demo koblet til Supabase. Den bruker eget demo-firma, så bilder og jobber lagres uten å blandes med ekte kunder.</div>
+  <div id="demoStatus" class="info">Starter demo...</div>
 </div>
-
-<div class="kort">
-  <button onclick="visSide('jobbSide')">Jobber / timer</button>
-  <button onclick="visSide('hesterSide')">Hester</button>
-  <button onclick="visSide('kunderSide')">Kunder</button>
-  <button onclick="visSide('fakturaSide')">Faktura</button>
-</div>
-
+<div class="kort"><button onclick="visSide('jobbSide')">Jobber / timer</button><button onclick="visSide('hesterSide')">Hester</button><button onclick="visSide('kunderSide')">Kunder</button><button onclick="visSide('fakturaSide')">Faktura</button></div>
 <section class="kort" id="jobbSide">
   <h2>Jobber / timer</h2>
   <button class="voice" onclick="demoMelding('Taleinnlesing er slått av i åpen demo. I produksjon kan jobber dikteres inn.')">🎙️ Snakk inn og lagre jobb</button>
   <h3>Manuell registrering</h3>
-  <div class="rad">
-    <div><label>Dato</label><input id="jobbDato" type="date"></div>
-    <div><label>Kunde</label><select id="jobbKunde"></select></div>
-    <div><label>Hest</label><select id="jobbHest"></select></div>
-  </div>
-  <div class="rad">
-    <div><label>Jobbtype</label><select id="jobbType" onchange="settDemoPris()">
-      <option value="">Velg jobbtype</option><option>Fullbeslag</option><option>Forsko</option><option>Baksko</option><option>Barfot/verking</option><option>Brodder</option><option>Vintersko</option>
-    </select></div>
-    <div><label>Arbeid eks. mva</label><input id="arbeidBelop" type="number" value="0"></div>
-    <div><label>Kjøring km</label><input id="jobbKm" type="number" value="0"></div>
-    <div><label>Pris pr km</label><input id="jobbKmPris" type="number" value="5.30"></div>
-  </div>
-  <label>Beskrivelse</label><textarea id="jobbBeskrivelse"></textarea>
-  <button type="button" id="snakkDemoBeskrivelseKnapp" class="secondary" onclick="startDemoBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
-  <div class="listekort" style="margin-top:10px;">
-    <strong>📷 Bilder</strong>
-    <div class="info">Velg eller ta ett eller flere bilder. I demo vises de bare på skjermen og lagres ikke.</div>
-    <label class="knapp secondary" for="jobbBilderDemo">📷 Velg / ta bilder</label>
-    <input id="jobbBilderDemo" type="file" accept="image/*" multiple style="display:none" onchange="visDemoBilder()">
-    <div id="jobbBildePreviewDemo" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
-  </div>
-  <button onclick="lagreDemoJobb()">Lagre jobb</button>
-  <div id="jobbMelding" class="melding"></div>
-
-  <hr>
-  <div class="rad">
-    <div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div>
-    <div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div>
-    <div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div>
-  </div>
+  <div class="rad"><div><label>Dato</label><input id="jobbDato" type="date"></div><div><label>Kunde</label><select id="jobbKunde"></select></div><div><label>Hest</label><select id="jobbHest"></select></div></div>
+  <div class="rad"><div><label>Jobbtype</label><select id="jobbType" onchange="settDemoPris()"><option value="">Velg jobbtype</option><option>Fullbeslag</option><option>Forsko</option><option>Baksko</option><option>Barfot/verking</option><option>Brodder</option><option>Vintersko</option></select></div><div><label>Arbeid eks. mva</label><input id="arbeidBelop" type="number" value="0"></div><div><label>Kjøring km</label><input id="jobbKm" type="number" value="0"></div><div><label>Pris pr km</label><input id="jobbKmPris" type="number" value="5.30"></div></div>
+  <label>Beskrivelse</label><textarea id="jobbBeskrivelse"></textarea><button type="button" class="secondary" onclick="startDemoBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
+  <div class="listekort" style="margin-top:10px;"><strong>📷 Bilder</strong><div class="info">Velg eller ta ett eller flere bilder. Bildene lagres på jobben og vises i bildehistorikk.</div><label class="knapp secondary" for="jobbBilderDemo">📷 Velg / ta bilder</label><input id="jobbBilderDemo" type="file" accept="image/*" multiple style="display:none" onchange="visDemoBilder()"><div id="jobbBildePreviewDemo" class="preview"></div></div>
+  <button onclick="lagreDemoJobb()">Lagre jobb</button><div id="jobbMelding" class="melding"></div><hr>
+  <div class="rad"><div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div><div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div><div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div></div>
   <div class="info">Klikk på en jobb i listen for detaljer og bilder.</div><div id="jobbListe"></div>
 </section>
-
-<section class="kort skjult" id="hesterSide">
-  <h2>Hester</h2>
-  <div id="hesteListe"></div>
-</section>
-
-<section class="kort skjult" id="kunderSide">
-  <h2>Kunder</h2>
-  <div id="kundeListe"></div>
-</section>
-
-<section class="kort skjult" id="fakturaSide">
-  <h2>Faktura</h2>
-  <div class="rad">
-    <div><label>Kunde</label><select id="fakturaKunde"></select></div>
-  </div>
-  <button onclick="lagFakturaForValgtKunde()">Lag faktura PDF</button>
-  <button class="secondary" onclick="tegnFakturaOversikt()">Vis fakturaoversikt</button>
-  <div id="fakturaMelding" class="melding"></div>
-  <div id="fakturaOversikt"></div>
-</section>
-
+<section class="kort skjult" id="hesterSide"><h2>Hester</h2><div id="hesteListe"></div></section>
+<section class="kort skjult" id="kunderSide"><h2>Kunder</h2><div id="kundeListe"></div></section>
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button class="secondary" onclick="tegnFakturaOversikt()">Vis fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const kunder = [
-  {id:"1", navn:"Anne Lunde", adresse:"Stallveien 10"},
-  {id:"2", navn:"Mari Nilsen", adresse:"Hestejordet 4"},
-  {id:"3", navn:"Ole Berg", adresse:"Gårdsveien 7"}
-];
+const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+window.supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 
-const hester = [
-  {id:"h1", kunde_id:"1", navn:"Quen", rase:"Quarter"},
-  {id:"h2", kunde_id:"1", navn:"Topsy", rase:"Fjording"},
-  {id:"h3", kunde_id:"2", navn:"Dingdoria", rase:"Quarter"},
-  {id:"h4", kunde_id:"3", navn:"Kingen", rase:"Varmblods"}
-];
-
-let jobber = [
-  {id:"j1", kunde_id:"1", hest_id:"h1", dato:"2026-06-16", jobbtype:"Fullbeslag", arbeid_belop:1200, km:20, km_pris:5.30, fakturert:true, fakturanr:"HOV-DEMO-1001"},
-  {id:"j2", kunde_id:"2", hest_id:"h3", dato:"2026-06-16", jobbtype:"Brodder", arbeid_belop:150, km:12, km_pris:5.30, fakturert:false},
-  {id:"j3", kunde_id:"2", hest_id:"h3", dato:"2026-06-15", jobbtype:"Barfot/verking", arbeid_belop:650, km:12, km_pris:5.30, fakturert:false},
-  {id:"j4", kunde_id:"3", hest_id:"h4", dato:"2026-06-14", jobbtype:"Vintersko", arbeid_belop:1400, km:30, km_pris:5.30, fakturert:false}
-];
-
-let fakturaer = [
-  {fakturanr:"HOV-DEMO-1001", kunde_id:"1", dato:"2026-06-16", inkl_mva:1632.50, betalingsstatus:"ubetalt", betalt_belop:0, betalt_dato:""}
-];
-
-const priser = {"Fullbeslag":1200,"Forsko":1100,"Baksko":1100,"Barfot/verking":650,"Brodder":150,"Vintersko":1400};
-
-function kr(n){ return Number(n||0).toLocaleString("no-NO",{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function esc(v){ return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
-function kundeNavn(id){ return kunder.find(k=>k.id===id)?.navn || ""; }
-function hestNavn(id){ return hester.find(h=>h.id===id)?.navn || ""; }
-function totalJobb(j){ return (Number(j.arbeid_belop||0) + Number(j.km||0)*Number(j.km_pris||0)) * 1.25; }
-
-function visSide(id){
-  ["jobbSide","hesterSide","kunderSide","fakturaSide"].forEach(s => document.getElementById(s).classList.toggle("skjult", s!==id));
-  if(id==="fakturaSide") tegnFakturaOversikt();
-}
-
-function fyllSelects(){
-  const kundeOptions = '<option value="">Velg kunde</option>' + kunder.map(k=>`<option value="${k.id}">${esc(k.navn)}</option>`).join("");
-  document.getElementById("jobbKunde").innerHTML = kundeOptions;
-  document.getElementById("fakturaKunde").innerHTML = kundeOptions;
-  document.getElementById("jobbKunde").onchange = () => {
-    const kid = document.getElementById("jobbKunde").value;
-    document.getElementById("jobbHest").innerHTML = '<option value="">Velg hest</option>' + hester.filter(h=>h.kunde_id===kid).map(h=>`<option value="${h.id}">${esc(h.navn)}</option>`).join("");
-  };
-}
-
-function settDemoPris(){
-  const type = document.getElementById("jobbType").value;
-  document.getElementById("arbeidBelop").value = priser[type] || 0;
-}
-
-function lagreDemoJobb(){
-  const kunde_id = document.getElementById("jobbKunde").value;
-  const hest_id = document.getElementById("jobbHest").value;
-  if(!kunde_id || !hest_id){ document.getElementById("jobbMelding").textContent="Velg kunde og hest først."; return; }
-  jobber.unshift({
-    id:"j"+Date.now(),
-    kunde_id,hest_id,
-    dato:document.getElementById("jobbDato").value || new Date().toISOString().slice(0,10),
-    jobbtype:document.getElementById("jobbType").value || "Annet",
-    arbeid_belop:Number(document.getElementById("arbeidBelop").value||0),
-    km:Number(document.getElementById("jobbKm").value||0),
-    km_pris:Number(document.getElementById("jobbKmPris").value||5.30),
-    fakturert:false
-  });
-  document.getElementById("jobbMelding").textContent="Demojobb lagt inn.";
-  tegnJobber();
-}
-
-
-function visDemoJobbDetalj(jobbId){
-  const j = jobber.find(x => x.id === jobbId);
-  if(!j) return;
-
-  let panel = document.getElementById("demoJobbDetaljPanel");
-  if(!panel){
-    panel = document.createElement("div");
-    panel.id = "demoJobbDetaljPanel";
-    panel.className = "listekort";
-    const liste = document.getElementById("jobbListe");
-    if(liste && liste.parentNode) liste.parentNode.insertBefore(panel, liste);
-    else document.getElementById("jobbSide").appendChild(panel);
-  }
-
-  panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-      <h3 style="margin:0;">Jobbdetalj</h3>
-      <button class="secondary" onclick="document.getElementById('demoJobbDetaljPanel').remove()">Lukk</button>
-    </div>
-    <div class="rad" style="margin-top:12px;">
-      <div><strong>Dato:</strong><br>${esc(j.dato)}</div>
-      <div><strong>Kunde:</strong><br>${esc(kundeNavn(j.kunde_id))}</div>
-      <div><strong>Hest:</strong><br>${esc(hestNavn(j.hest_id))}</div>
-      <div><strong>Jobb:</strong><br>${esc(j.jobbtype)}</div>
-      <div><strong>Kjøring:</strong><br>${esc(j.km || 0)} km x ${esc(j.km_pris || 0)}</div>
-      <div><strong>Beløp inkl. mva:</strong><br>${kr(totalJobb(j))} kr</div>
-      <div><strong>Status:</strong><br>${j.fakturert ? "Fakturert" : "Ikke fakturert"}</div>
-      <div><strong>Fakturanr:</strong><br>${esc(j.fakturanr || "-")}</div>
-    </div>
-    ${j.beskrivelse ? `<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${esc(j.beskrivelse)}</div>` : ""}
-    <h4>Bilder</h4>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <div class="listekort" style="width:120px;text-align:center;">📷<br>Demo bilde</div>
-      <div class="listekort" style="width:120px;text-align:center;">📷<br>Demo bilde</div>
-    </div>
-    <button class="secondary" style="margin-top:10px;" onclick="visDemoJobbBilderForHest('${j.hest_id}')">📷 Vis alle jobbilder for denne hesten</button>
-  `;
-
-  panel.scrollIntoView({behavior:"smooth", block:"start"});
-}
-
-function tegnJobber(){
-  const ikke = jobber.filter(j=>!j.fakturert);
-  const fakt = jobber.filter(j=>j.fakturert);
-  document.getElementById("antallUfatturerte").textContent = ikke.length;
-  document.getElementById("antallFakturerte").textContent = fakt.length;
-  document.getElementById("jobbOmsetning").textContent = kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";
-  document.getElementById("jobbListe").innerHTML = `
-    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
-      <thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Status</th></tr></thead>
-      <tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj(\`${j.id}\`)" style="cursor:pointer;" title="Klikk for jobbdetaljer">
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.dato)}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td>
-        <td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert ? "Fakturert" : "Ikke fakturert"}</td>
-      </tr>`).join("")}</tbody>
-    </table>`;
-}
-
-function lagFakturaForValgtKunde(){
-  const kunde_id = document.getElementById("fakturaKunde").value;
-  if(!kunde_id){ document.getElementById("fakturaMelding").textContent="Velg kunde først."; return; }
-  const uf = jobber.filter(j=>j.kunde_id===kunde_id && !j.fakturert);
-  if(!uf.length){ document.getElementById("fakturaMelding").textContent="Ingen ufakturerte jobber på valgt kunde."; return; }
-  const nr = "HOV-DEMO-" + Math.floor(1000 + Math.random()*9000);
-  uf.forEach(j=>{j.fakturert=true; j.fakturanr=nr;});
-  fakturaer.unshift({fakturanr:nr,kunde_id,dato:new Date().toISOString().slice(0,10),inkl_mva:uf.reduce((s,j)=>s+totalJobb(j),0),betalingsstatus:"ubetalt",betalt_belop:0,betalt_dato:""});
-  document.getElementById("fakturaMelding").textContent="Demofaktura laget: "+nr;
-  tegnJobber();
-  tegnFakturaOversikt();
-}
-
-function lagFakturaForKunde(kunde_id){
-  document.getElementById("fakturaKunde").value = kunde_id;
-  lagFakturaForValgtKunde();
-}
-
-function settBetalt(nr){
-  const f = fakturaer.find(x=>x.fakturanr===nr);
-  if(f){ f.betalingsstatus="betalt"; f.betalt_belop=f.inkl_mva; f.betalt_dato=new Date().toISOString().slice(0,10); }
-  tegnFakturaOversikt();
-}
-
-function purring(nr){
-  const f = fakturaer.find(x=>x.fakturanr===nr);
-  if(f){ f.betalingsstatus="purret"; }
-  document.getElementById("fakturaMelding").textContent="Purring laget i demo: "+nr;
-  tegnFakturaOversikt();
-}
-
-function tegnFakturaOversikt(){
-  const grupper = {};
-  jobber.filter(j=>!j.fakturert).forEach(j=>{
-    grupper[j.kunde_id] ||= {kunde_id:j.kunde_id, kunde:kundeNavn(j.kunde_id), antall:0, sum:0};
-    grupper[j.kunde_id].antall++;
-    grupper[j.kunde_id].sum += totalJobb(j);
-  });
-
-  const rader = [
-    ...Object.values(grupper).map(g=>({type:"uf", kunde:g.kunde, fakturanr:"-", dato:"-", jobber:g.antall, belop:g.sum, status:"Ikke fakturert", handling:`<button onclick="lagFakturaForKunde('${g.kunde_id}')">Lag faktura</button>`})),
-    ...fakturaer.map(f=>({type:"f", kunde:kundeNavn(f.kunde_id), fakturanr:f.fakturanr, dato:f.dato, jobber:"", belop:f.inkl_mva, status:f.betalingsstatus==="betalt"?"Betalt":f.betalingsstatus==="purret"?"Purret":"Ubetalt", handling:f.betalingsstatus==="betalt" ? "" : `<button class="secondary" onclick="settBetalt('${f.fakturanr}')">Sett betalt</button> <button class="secondary" onclick="purring('${f.fakturanr}')">Purring</button>`}))
-  ];
-
-  const sumFakturert = fakturaer.reduce((s,f)=>s+Number(f.inkl_mva||0),0);
-  const sumBetalt = fakturaer.reduce((s,f)=>s+(f.betalingsstatus==="betalt"?Number(f.inkl_mva||0):0),0);
-  const sumIkke = Object.values(grupper).reduce((s,g)=>s+g.sum,0);
-
-  document.getElementById("fakturaOversikt").innerHTML = `
-    <div class="listekort" style="background:#111827;">
-      <b>Fakturaer:</b> ${fakturaer.length}<br>
-      <b>Fakturert inkl. mva:</b> ${kr(sumFakturert)} kr<br>
-      <b>Betalt:</b> ${kr(sumBetalt)} kr<br>
-      <b>Utestående:</b> ${kr(sumFakturert-sumBetalt)} kr<br>
-      <b>Ikke fakturert:</b> ${kr(sumIkke)} kr
-    </div>
-    <div style="overflow-x:auto;margin-top:12px;">
-      <table style="width:100%;border-collapse:collapse;min-width:720px;font-size:12px;">
-        <thead><tr><th>Fakturanr</th><th>Dato</th><th>Kunde</th><th style="text-align:right">Jobber</th><th style="text-align:right">Beløp</th><th>Status</th><th style="text-align:right">Handling</th></tr></thead>
-        <tbody>${rader.map(r=>`<tr>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(r.fakturanr)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(r.dato)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(r.kunde)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${esc(r.jobber)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;"><b>${kr(r.belop)}</b></td>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(r.status)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${r.handling}</td>
-        </tr>`).join("")}</tbody>
-      </table>
-    </div>`;
-}
-
-
-function visDemoJobbBilderForHest(hestId){
-  const h = hester.find(x => x.id === hestId);
-  const rader = jobber
-    .filter(j => j.hest_id === hestId)
-    .sort((a,b) => String(a.dato).localeCompare(String(b.dato)));
-
-  let panel = document.getElementById("demoHestBildePanel");
-  if(!panel){
-    panel = document.createElement("div");
-    panel.id = "demoHestBildePanel";
-    panel.className = "listekort";
-    document.getElementById("hesterSide").prepend(panel);
-  }
-
-  panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-      <h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn || "Hest")}</h3>
-      <button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button>
-    </div>
-    <div class="info">I produksjon vises faktiske bilder fra jobbene. I demoen viser vi jobbhistorikk og bildeantall.</div>
-    <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Dato</th>
-          <th style="text-align:left;padding:7px;border-bottom:1px solid #475569;">Jobb</th>
-          <th style="text-align:right;padding:7px;border-bottom:1px solid #475569;">Beløp</th>
-          <th style="text-align:center;padding:7px;border-bottom:1px solid #475569;">Bilder</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rader.map((j,i)=>`<tr>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.dato)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td>
-          <td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${i % 2 === 0 ? 2 : 0}</td>
-        </tr>`).join("") || `<tr><td colspan="4" style="padding:10px;">Ingen jobber på denne hesten ennå.</td></tr>`}
-      </tbody>
-    </table>
-  `;
-  panel.scrollIntoView({behavior:"smooth", block:"start"});
-}
-
-function tegnKunderOgHester(){
-  document.getElementById("kundeListe").innerHTML = kunder.map(k =>
-    `<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse)}</div>`
-  ).join("");
-
-  document.getElementById("hesteListe").innerHTML = hester.map(h => `
-    <div class="listekort">
-      <b>${esc(h.navn)}</b><br>
-      ${esc(h.rase)}<br>
-      Eier: ${esc(kundeNavn(h.kunde_id))}<br>
-      <button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button>
-    </div>
-  `).join("");
-}
-
-function demoMelding(t){ document.getElementById("jobbMelding").textContent=t; }
-
-document.getElementById("jobbDato").value = new Date().toISOString().slice(0,10);
-fyllSelects();
-tegnJobber();
-tegnKunderOgHester();
-tegnFakturaOversikt();
+// Eget demo-firma. Bytt denne hvis du oppretter en separat demo-rad i hov_firma.
+const DEMO_FIRMA_ID="5464c224-45d4-453e-b8e6-8cf559f0faed";
+const priser={"Fullbeslag":1200,"Forsko":1100,"Baksko":1100,"Barfot/verking":650,"Brodder":150,"Vintersko":1400};
+let kunder=[],hester=[],jobber=[],fakturaer=[];
+function kr(n){return Number(n||0).toLocaleString("no-NO",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
+function kundeNavn(id){return kunder.find(k=>String(k.id)===String(id))?.navn||"";}
+function hestNavn(id){return hester.find(h=>String(h.id)===String(id))?.navn||"";}
+function totalJobb(j){return Number(j.total||((Number(j.arbeid_belop||0)+Number(j.varer_belop||0)+Number(j.km||0)*Number(j.km_pris||0))*1.25));}
+function demoMelding(t,feil=false){const e=document.getElementById("jobbMelding");e.textContent=t||"";e.style.color=feil?"#fca5a5":"#86efac";}
+function status(t,feil=false){const e=document.getElementById("demoStatus");e.innerHTML=`<span class="${feil?'statusfeil':'statusok'}">${esc(t)}</span>`;}
+function visSide(id){["jobbSide","hesterSide","kunderSide","fakturaSide"].forEach(s=>document.getElementById(s).classList.toggle("skjult",s!==id));if(id==="fakturaSide")tegnFakturaOversikt();if(id==="hesterSide")tegnKunderOgHester();}
+function settDemoPris(){document.getElementById("arbeidBelop").value=priser[document.getElementById("jobbType").value]||0;}
+function rentFilnavn(navn){return String(navn||"bilde.jpg").replaceAll(" ","_").replace(/[æøåÆØÅ]/g,b=>({æ:"ae",ø:"o",å:"a",Æ:"Ae",Ø:"O",Å:"A"}[b]||b)).replace(/[^a-zA-Z0-9._-]/g,"_");}
+async function bildeUrl(filsti){try{const {data,error}=await supabaseClient.storage.from("bilder").createSignedUrl(filsti,60*60*24*7);if(!error&&data?.signedUrl)return data.signedUrl;}catch(e){}try{return supabaseClient.storage.from("bilder").getPublicUrl(filsti).data?.publicUrl||"";}catch(e){return "";}}
+function visDemoBilder(){const filer=Array.from(document.getElementById("jobbBilderDemo")?.files||[]);document.getElementById("jobbBildePreviewDemo").innerHTML=filer.map(f=>`<img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}">`).join("");}
+async function hentBilderForJobb(jobbId){const {data,error}=await supabaseClient.from("hov_jobb_bilder").select("id,filsti,bilde_url,bildetekst,created_at").eq("jobb_id",jobbId).order("created_at",{ascending:false});if(error){console.warn(error);return [];}const ut=[];for(const b of data||[]){const url=b.filsti?await bildeUrl(b.filsti):(b.bilde_url||"");if(url)ut.push({...b,url});}return ut;}
+async function hentBildeAntall(){const ids=jobber.map(j=>j.id).filter(Boolean);jobber.forEach(j=>j._bilde_antall=0);if(!ids.length)return;const {data,error}=await supabaseClient.from("hov_jobb_bilder").select("jobb_id").in("jobb_id",ids);if(error)return;const m=new Map();(data||[]).forEach(b=>m.set(String(b.jobb_id),(m.get(String(b.jobb_id))||0)+1));jobber.forEach(j=>j._bilde_antall=m.get(String(j.id))||0);}
+async function lastOppJobbBilder(jobbId){const filer=Array.from(document.getElementById("jobbBilderDemo")?.files||[]);let antall=0;for(const fil of filer){const filsti=`demo/hov-jobber/${DEMO_FIRMA_ID}/${jobbId}/${Date.now()}_${rentFilnavn(fil.name)}`;const up=await supabaseClient.storage.from("bilder").upload(filsti,fil,{cacheControl:"3600",upsert:false});if(up.error)throw new Error("Opplasting feilet: "+up.error.message);const url=await bildeUrl(filsti);const ins=await supabaseClient.from("hov_jobb_bilder").insert({firma_id:DEMO_FIRMA_ID,jobb_id:jobbId,filnavn:fil.name,filsti,bilde_url:url||null,bildetekst:"Demo bilde"});if(ins.error)throw new Error("Bildet ble lastet opp, men ikke koblet til jobben: "+ins.error.message);antall++;}document.getElementById("jobbBilderDemo").value="";document.getElementById("jobbBildePreviewDemo").innerHTML="";return antall;}
+async function lastData(){status("Henter demodata...");const [kr,hj,jb]=await Promise.all([supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID).order("dato",{ascending:false})]);if(kr.error)throw kr.error;if(hj.error)throw hj.error;if(jb.error)throw jb.error;kunder=kr.data||[];hester=hj.data||[];jobber=jb.data||[];if(!kunder.length){await seedDemo();return lastData();}await hentBildeAntall();fyllSelects();tegnJobber();tegnKunderOgHester();tegnFakturaOversikt();status("Demo er koblet til Supabase og lagrer i eget demo-firma.");}
+async function seedDemo(){status("Oppretter første demodata...");const k=await supabaseClient.from("kunder").insert([{firma_id:DEMO_FIRMA_ID,navn:"Anne Lunde",adresse:"Stallveien 10"},{firma_id:DEMO_FIRMA_ID,navn:"Mari Nilsen",adresse:"Hestejordet 4"},{firma_id:DEMO_FIRMA_ID,navn:"Ole Berg",adresse:"Gårdsveien 7"}]).select("id,navn");if(k.error)throw k.error;const a=k.data.find(x=>x.navn==="Anne Lunde"),m=k.data.find(x=>x.navn==="Mari Nilsen"),o=k.data.find(x=>x.navn==="Ole Berg");const h=await supabaseClient.from("hester").insert([{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Quen",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Topsy",rase:"Fjording"},{firma_id:DEMO_FIRMA_ID,kunde_id:m.id,navn:"Dingdoria",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:o.id,navn:"Kingen",rase:"Varmblods"}]).select("id,navn,kunde_id");if(h.error)throw h.error;const quen=h.data.find(x=>x.navn==="Quen"),ding=h.data.find(x=>x.navn==="Dingdoria"),king=h.data.find(x=>x.navn==="Kingen");const rows=[{kunde_id:a.id,hest_id:quen.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Fullbeslag",arbeid_belop:1200,km:20,km_pris:5.30},{kunde_id:m.id,hest_id:ding.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Brodder",arbeid_belop:150,km:12,km_pris:5.30},{kunde_id:o.id,hest_id:king.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Vintersko",arbeid_belop:1400,km:30,km_pris:5.30}].map(r=>{const eks=Number(r.arbeid_belop)+Number(r.km)*Number(r.km_pris);return {...r,firma_id:DEMO_FIRMA_ID,varer_belop:0,mva:eks*.25,total:eks*1.25,fakturert:false};});const j=await supabaseClient.from("hov_jobber").insert(rows);if(j.error)throw j.error;}
+function fyllSelects(){const opts='<option value="">Velg kunde</option>'+kunder.map(k=>`<option value="${k.id}">${esc(k.navn)}</option>`).join("");document.getElementById("jobbKunde").innerHTML=opts;document.getElementById("fakturaKunde").innerHTML=opts;document.getElementById("jobbKunde").onchange=()=>{const kid=document.getElementById("jobbKunde").value;document.getElementById("jobbHest").innerHTML='<option value="">Velg hest</option>'+hester.filter(h=>String(h.kunde_id)===String(kid)).map(h=>`<option value="${h.id}">${esc(h.navn)}</option>`).join("");};}
+async function lagreDemoJobb(){const kunde_id=document.getElementById("jobbKunde").value,hest_id=document.getElementById("jobbHest").value;if(!kunde_id||!hest_id){demoMelding("Velg kunde og hest først.",true);return;}const km=Number(document.getElementById("jobbKm").value||0),km_pris=Number(document.getElementById("jobbKmPris").value||5.30),arbeid=Number(document.getElementById("arbeidBelop").value||0),eks=arbeid+(km*km_pris),mva=eks*.25,total=eks+mva;demoMelding("Lagrer jobb...");const {data,error}=await supabaseClient.from("hov_jobber").insert({firma_id:DEMO_FIRMA_ID,kunde_id,hest_id,dato:document.getElementById("jobbDato").value||new Date().toISOString().slice(0,10),jobbtype:document.getElementById("jobbType").value||"Annet",beskrivelse:document.getElementById("jobbBeskrivelse").value.trim(),km,km_pris,arbeid_belop:arbeid,varer_belop:0,mva,total,fakturert:false}).select("*").single();if(error){demoMelding(error.message,true);return;}try{const ant=await lastOppJobbBilder(data.id);demoMelding(ant?`Demojobb og ${ant} bilde(r) lagret.`:"Demojobb lagret.");}catch(e){demoMelding("Jobb lagret, men bilde feilet: "+(e.message||e),true);}await lastData();}
+async function visDemoJobbDetalj(jobbId){const j=jobber.find(x=>String(x.id)===String(jobbId));if(!j)return;const bilder=await hentBilderForJobb(j.id);let panel=document.getElementById("demoJobbDetaljPanel");if(!panel){panel=document.createElement("div");panel.id="demoJobbDetaljPanel";panel.className="listekort";const liste=document.getElementById("jobbListe");liste.parentNode.insertBefore(panel,liste);}panel.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">Jobbdetalj</h3><button class="secondary" onclick="document.getElementById('demoJobbDetaljPanel').remove()">Lukk</button></div><div class="rad" style="margin-top:12px;"><div><strong>Dato:</strong><br>${esc(j.dato)}</div><div><strong>Kunde:</strong><br>${esc(kundeNavn(j.kunde_id))}</div><div><strong>Hest:</strong><br>${esc(hestNavn(j.hest_id))}</div><div><strong>Jobb:</strong><br>${esc(j.jobbtype)}</div><div><strong>Kjøring:</strong><br>${esc(j.km||0)} km x ${esc(j.km_pris||0)}</div><div><strong>Beløp inkl. mva:</strong><br>${kr(totalJobb(j))} kr</div><div><strong>Status:</strong><br>${j.fakturert?"Fakturert":"Ikke fakturert"}</div></div>${j.beskrivelse?`<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${esc(j.beskrivelse)}</div>`:""}<h4>Bilder (${bilder.length})</h4><div class="galleri">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"><small>${esc(b.bildetekst||"Åpne bilde")}</small></a>`).join(""):'<div class="info">Ingen bilder på denne jobben ennå.</div>'}</div><button class="secondary" style="margin-top:10px;" onclick="visDemoJobbBilderForHest('${j.hest_id}')">📷 Vis alle jobbilder for denne hesten</button>`;panel.scrollIntoView({behavior:"smooth",block:"start"});}
+function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
+function lagFakturaForValgtKunde(){const kunde_id=document.getElementById("fakturaKunde").value;if(!kunde_id){document.getElementById("fakturaMelding").textContent="Velg kunde først.";return;}const uf=jobber.filter(j=>String(j.kunde_id)===String(kunde_id)&&!j.fakturert);if(!uf.length){document.getElementById("fakturaMelding").textContent="Ingen ufakturerte jobber på valgt kunde.";return;}const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);Promise.all(uf.map(j=>supabaseClient.from("hov_jobber").update({fakturert:true,fakturanr:nr}).eq("id",j.id))).then(async()=>{document.getElementById("fakturaMelding").textContent="Demofaktura laget: "+nr;await lastData();});}
+function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").value=kunde_id;lagFakturaForValgtKunde();}
+function tegnFakturaOversikt(){const grupper={};jobber.filter(j=>!j.fakturert).forEach(j=>{grupper[j.kunde_id]||={kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),antall:0,sum:0};grupper[j.kunde_id].antall++;grupper[j.kunde_id].sum+=totalJobb(j);});const faktGrupper={};jobber.filter(j=>j.fakturert).forEach(j=>{const nr=j.fakturanr||"Fakturert";faktGrupper[nr]||={fakturanr:nr,kunde:kundeNavn(j.kunde_id),sum:0,antall:0};faktGrupper[nr].sum+=totalJobb(j);faktGrupper[nr].antall++;});const rader=[...Object.values(grupper).map(g=>`<tr><td>-</td><td>${esc(g.kunde)}</td><td style="text-align:right">${g.antall}</td><td style="text-align:right">${kr(g.sum)} kr</td><td>Ikke fakturert</td><td style="text-align:right"><button onclick="lagFakturaForKunde('${g.kunde_id}')">Lag faktura</button></td></tr>`),...Object.values(faktGrupper).map(f=>`<tr><td>${esc(f.fakturanr)}</td><td>${esc(f.kunde)}</td><td style="text-align:right">${f.antall}</td><td style="text-align:right">${kr(f.sum)} kr</td><td>Fakturert</td><td></td></tr>`)];document.getElementById("fakturaOversikt").innerHTML=`<div style="overflow-x:auto;margin-top:12px;"><table style="width:100%;border-collapse:collapse;min-width:650px;"><thead><tr><th>Fakturanr</th><th>Kunde</th><th style="text-align:right">Jobber</th><th style="text-align:right">Beløp</th><th>Status</th><th></th></tr></thead><tbody>${rader.join("")||'<tr><td colspan="6">Ingen fakturaer ennå.</td></tr>'}</tbody></table></div>`;}
+async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
+function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
+function startDemoBeskrivelseTale(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){demoMelding("Tale til tekst støttes ikke i denne nettleseren.",true);return;}const r=new SR();r.lang="nb-NO";r.interimResults=false;r.onresult=e=>{document.getElementById("jobbBeskrivelse").value+=(document.getElementById("jobbBeskrivelse").value?" ":"")+e.results[0][0].transcript;};r.onerror=e=>demoMelding("Tale feilet: "+e.error,true);r.start();}
+document.getElementById("jobbDato").value=new Date().toISOString().slice(0,10);lastData().catch(e=>{console.error(e);status("Demo kunne ikke lagre i Supabase: "+(e.message||e),true);demoMelding("Supabase/RLS stopper demo-lagring. Sjekk policy for demo-firma.",true);});
 </script>
 </body>
 </html>
