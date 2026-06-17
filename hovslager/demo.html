@@ -36,6 +36,15 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
     <label>Navn</label><input id="demoHestNavn" placeholder="Hestenavn">
     <label>Rase/type</label><input id="demoHestRase" placeholder="Rase/type">
     <label>Notater</label><textarea id="demoHestNotater" placeholder="Notater"></textarea>
+
+    <div class="listekort" style="margin-top:10px;">
+      <strong>📷 Bilde av hesten</strong>
+      <div class="info">Velg eller ta ett eller flere bilder av hesten.</div>
+      <label class="knapp secondary" for="demoHestBilder">📷 Velg / ta bilder</label>
+      <input id="demoHestBilder" type="file" accept="image/*" multiple style="display:none">
+      <div id="demoHestBildePreview" class="preview"></div>
+    </div>
+
     <button type="button" onclick="lagreDemoHest()">Lagre hest</button>
     <div id="demoHestMelding" class="melding"></div>
   </div>
@@ -244,5 +253,14 @@ async function installerApp() {
 }
 </script>
 
+<script>
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='demoHestBilder'){
+    const filer=[...(e.target.files||[])];
+    const p=document.getElementById('demoHestBildePreview');
+    if(p) p.innerHTML=filer.map(f=>`<img src="${URL.createObjectURL(f)}">`).join('');
+  }
+});
+</script>
 </body>
 </html>
