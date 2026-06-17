@@ -39,7 +39,7 @@ const SUPABASE_ANON_KEY="sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
 window.supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 
 // Eget demo-firma. Bytt denne hvis du oppretter en separat demo-rad i hov_firma.
-const DEMO_FIRMA_ID="5464c224-45d4-453e-b8e6-8cf559f0faed";
+const DEMO_FIRMA_ID="133fb053-b585-45e2-b730-3f58bf4b8d2e";
 const priser={"Fullbeslag":1200,"Forsko":1100,"Baksko":1100,"Barfot/verking":650,"Brodder":150,"Vintersko":1400};
 let kunder=[],hester=[],jobber=[],fakturaer=[];
 function kr(n){return Number(n||0).toLocaleString("no-NO",{minimumFractionDigits:2,maximumFractionDigits:2});}
