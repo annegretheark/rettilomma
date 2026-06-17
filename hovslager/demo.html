@@ -357,7 +357,12 @@ function visFakturaDokumentFraRader(kunde_id, fakturanr, type, rader){
         <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum)} kr</b></td></tr></tfoot>
       </table>
     </div>
-    <button type="button" data-faktura-print="1" style="background:#0f766e;font-weight:bold;">Skriv ut</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button type="button" onclick="window.print()" data-faktura-print="1" style="background:#0f766e;font-weight:bold;">Skriv ut</button>
+      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="secondary" onclick="visPurringFaktura('${esc(kunde_id)}','${esc(nr)}')">Purring</button>`}
+      ${dokumentType==='KREDITNOTA' ? '' : `<button type="button" class="danger" onclick="visKreditnotaFaktura('${esc(kunde_id)}','${esc(nr)}')">Kreditnota</button>`}
+      ${dokumentType==='KOPI' ? '' : `<button type="button" class="secondary" onclick="visKopiFaktura('${esc(kunde_id)}','${esc(nr)}')">Kopi faktura</button>`}
+    </div>
   `;
 
   const oversikt=document.getElementById("fakturaOversikt");
@@ -406,7 +411,7 @@ function tegnFakturaOversikt(){
         <div>Kunde: ${esc(g.kunde)}</div>
         <div>Jobber: ${g.antall} &nbsp; Beløp: ${kr(g.sum)} kr</div>
       </div>
-      <button type="button" data-lag-faktura="1" data-kunde-id="${esc(g.kunde_id)}">Lag faktura</button>
+      <button type="button" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')" data-lag-faktura="1" data-kunde-id="${esc(g.kunde_id)}">Lag faktura</button>
     </div>
   `).join("");
 
@@ -419,9 +424,9 @@ function tegnFakturaOversikt(){
         <div>Jobber: ${f.antall} &nbsp; Beløp: ${kr(f.sum)} kr</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" data-faktura-action="KOPI" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;">📄 Kopi faktura</button>
-        <button type="button" data-faktura-action="PURRING" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="secondary">Purring</button>
-        <button type="button" data-faktura-action="KREDITNOTA" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="danger">Kreditnota</button>
+        <button type="button" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KOPI" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" style="background:#0f766e;font-weight:bold;">📄 Kopi faktura</button>
+        <button type="button" onclick="visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="PURRING" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="secondary">Purring</button>
+        <button type="button" onclick="visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" data-faktura-action="KREDITNOTA" data-kunde-id="${esc(f.kunde_id)}" data-fakturanr="${esc(f.fakturanr)}" class="danger">Kreditnota</button>
       </div>
     </div>
   `).join("");
