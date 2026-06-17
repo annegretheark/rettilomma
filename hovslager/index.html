@@ -354,4 +354,25 @@
 })();
 </script>
 
+
+<button type="button" id="snakkBeskrivelseKnapp" onclick="startBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
+<script>
+function startBeskrivelseTale(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ alert('Talegjenkjenning støttes ikke i denne nettleseren'); return; }
+  const rec = new SR();
+  rec.lang='no-NO';
+  rec.start();
+  rec.onresult = function(e){
+    const tekst = e.results[0][0].transcript;
+    const felt = document.getElementById('jobbBeskrivelse') ||
+                 document.getElementById('beskrivelse') ||
+                 document.querySelector('textarea');
+    if(felt){
+      felt.value = (felt.value ? felt.value + ' ' : '') + tekst;
+    }
+  };
+}
+</script>
+
 </body></html>
