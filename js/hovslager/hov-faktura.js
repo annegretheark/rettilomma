@@ -101,47 +101,63 @@ async function hovFinnKundeForFaktura(kundeVerdi) {
   ) || null;
 }
 
-async function hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId) {
-  let jobbQuery = supabaseClient
-    .from("hov_jobber")
-    .select("*, hester(navn,kunde_id), kunder(navn)")
-    .or("fakturert.is.false,fakturert.is.null")
-    .order("dato", { ascending: true });
+async function hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId, kundeNavn = "") {
+  async function hentAlleJobber(medFirmaFilter) {
+    let jobbQuery = supabaseClient
+      .from("hov_jobber")
+      .select("*, hester(navn,kunde_id), kunder(navn)")
+      .or("fakturert.is.false,fakturert.is.null")
+      .order("dato", { ascending: true });
 
-  if (aktivFirmaId) jobbQuery = jobbQuery.eq("firma_id", aktivFirmaId);
+    if (medFirmaFilter && aktivFirmaId) jobbQuery = jobbQuery.eq("firma_id", aktivFirmaId);
 
-  const jobbRes = await jobbQuery;
-  if (jobbRes.error) throw jobbRes.error;
-
-  const alleJobber = jobbRes.data || [];
-
-  let jobber = alleJobber.filter(j =>
-    String(j.kunde_id || "") === String(kundeId) ||
-    String(j.hester?.kunde_id || "") === String(kundeId)
-  );
-
-  // Ekstra sikkerhet: noen demo-rader har hest_id, men Supabase-relasjonen
-  // hester(kunde_id) kommer ikke alltid med. Da henter vi hestene separat.
-  if (!jobber.length) {
-    let hesteQuery = supabaseClient
-      .from("hester")
-      .select("id, navn, kunde_id")
-      .eq("kunde_id", kundeId);
-    if (aktivFirmaId) hesteQuery = hesteQuery.eq("firma_id", aktivFirmaId);
-
-    const hesteRes = await hesteQuery;
-    if (!hesteRes.error) {
-      const hestIds = new Set((hesteRes.data || []).map(h => String(h.id)));
-      const hestMap = new Map((hesteRes.data || []).map(h => [String(h.id), h]));
-      jobber = alleJobber.filter(j => hestIds.has(String(j.hest_id || "")));
-      jobber.forEach(j => {
-        const h = hestMap.get(String(j.hest_id || ""));
-        if (h && !j.hester) j.hester = { navn: h.navn, kunde_id: h.kunde_id };
-      });
-    }
+    const jobbRes = await jobbQuery;
+    if (jobbRes.error) throw jobbRes.error;
+    return jobbRes.data || [];
   }
 
-  return jobber;
+  async function filtrerJobber(alleJobber, medFirmaFilter) {
+    const norm = v => String(v || "").trim().toLowerCase();
+    const navnNorm = norm(kundeNavn);
+
+    let jobber = alleJobber.filter(j =>
+      String(j.kunde_id || "") === String(kundeId) ||
+      String(j.hester?.kunde_id || "") === String(kundeId) ||
+      (navnNorm && norm(j.kunder?.navn) === navnNorm)
+    );
+
+    // Ekstra sikkerhet: noen demo-rader har hest_id, men Supabase-relasjonen
+    // hester(kunde_id) kommer ikke alltid med. Da henter vi hestene separat.
+    if (!jobber.length) {
+      let hesteQuery = supabaseClient
+        .from("hester")
+        .select("id, navn, kunde_id")
+        .eq("kunde_id", kundeId);
+      if (medFirmaFilter && aktivFirmaId) hesteQuery = hesteQuery.eq("firma_id", aktivFirmaId);
+
+      const hesteRes = await hesteQuery;
+      if (!hesteRes.error) {
+        const hestIds = new Set((hesteRes.data || []).map(h => String(h.id)));
+        const hestMap = new Map((hesteRes.data || []).map(h => [String(h.id), h]));
+        jobber = alleJobber.filter(j => hestIds.has(String(j.hest_id || "")));
+        jobber.forEach(j => {
+          const h = hestMap.get(String(j.hest_id || ""));
+          if (h && !j.hester) j.hester = { navn: h.navn, kunde_id: h.kunde_id };
+        });
+      }
+    }
+
+    return jobber;
+  }
+
+  // Først riktig firma. Hvis demo.html/aktivt firma peker feil, prøver vi uten firmafilter.
+  // Det er dette som gjør at synlige "Ikke fakturert"-rader faktisk kan faktureres.
+  const medFirma = await hentAlleJobber(true);
+  let jobber = await filtrerJobber(medFirma, true);
+  if (jobber.length || !aktivFirmaId) return jobber;
+
+  const utenFirma = await hentAlleJobber(false);
+  return await filtrerJobber(utenFirma, false);
 }
 
 function hovHentKundeVerdiFraFakturaRad(knapp) {
@@ -188,7 +204,7 @@ async function lagHovFaktura(kundeIdDirekte = "") {
       try { aktivFirmaId = await window.hentAktivHovFirmaId(); } catch (e) { aktivFirmaId = null; }
     }
 
-    const jobber = await hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId);
+    const jobber = await hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId, kundeData.navn || kundeVerdi);
 
     if (!jobber.length) {
       fakturaMelding("Ingen ufakturerte jobber funnet på valgt kunde. Sjekk at jobbene ligger på samme kunde/eier som du valgte i faktura.", true);
@@ -672,4 +688,85 @@ try {
     hovBindFakturaKnapperFix4();
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
+} catch (e) {}
+
+
+// === RETT I LOMMA FIX 5: Fanger også <a>/<div>-knapper og tom "Lag demofaktura" ===
+function hovFinnForsteSynligeFakturaKunde() {
+  const kandidater = Array.from(document.querySelectorAll("tr, div, section, article"));
+  for (const el of kandidater) {
+    const tekst = hovFakturaNormaliserTekst(el.textContent || "");
+    if (!/ikke fakturert/i.test(tekst)) continue;
+    const kunde = hovFakturaKundeFraTekstlinje(tekst);
+    if (kunde && !/^fakturanr kunde jobber/i.test(kunde)) return kunde;
+  }
+  return "";
+}
+
+function hovFakturaFinnKlikkElement(target) {
+  let el = target;
+  for (let i = 0; el && i < 5; i += 1, el = el.parentElement) {
+    const tekst = (el.textContent || el.value || "").toLowerCase();
+    if (tekst.includes("lag") && tekst.includes("faktura")) return el;
+  }
+  return null;
+}
+
+async function hovLagFakturaFraAlleKnappetyper(el, ev) {
+  if (!el) return false;
+  const tekst = (el.textContent || el.value || "").toLowerCase();
+  if (!tekst.includes("lag") || !tekst.includes("faktura")) return false;
+
+  let verdi =
+    hovHentKundeVerdiFraFakturaRadRobust(el) ||
+    document.getElementById("fakturaKunde")?.value ||
+    "";
+
+  // Toppen "Lag demofaktura" har ikke kunde-id. Bruk første synlige ufakturerte rad.
+  if (!verdi) verdi = hovFinnForsteSynligeFakturaKunde();
+
+  if (!verdi) return false;
+
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+  }
+
+  await lagHovFaktura(verdi);
+  return false;
+}
+
+document.addEventListener("click", function(ev) {
+  const el = hovFakturaFinnKlikkElement(ev.target);
+  if (el) hovLagFakturaFraAlleKnappetyper(el, ev);
+}, true);
+
+function hovBindFakturaAlleKnappetyperFix5() {
+  document.querySelectorAll("button, a, [role='button'], input[type='button'], input[type='submit']").forEach(el => {
+    const tekst = (el.textContent || el.value || "").toLowerCase();
+    if (!tekst.includes("lag") || !tekst.includes("faktura")) return;
+    if (el.getAttribute && el.getAttribute("onclick")) {
+      el.dataset.gammelOnclick = el.getAttribute("onclick");
+      el.removeAttribute("onclick");
+    }
+    if (el.dataset.hovFakturaFix5 === "1") return;
+    el.dataset.hovFakturaFix5 = "1";
+    el.addEventListener("click", function(ev) {
+      hovLagFakturaFraAlleKnappetyper(el, ev);
+    }, true);
+  });
+}
+
+window.lagDemoFaktura = function(kundeId) {
+  const valgt = kundeId || document.getElementById("fakturaKunde")?.value || hovFinnForsteSynligeFakturaKunde() || "";
+  return lagHovFaktura(valgt);
+};
+window.hovBindFakturaAlleKnappetyperFix5 = hovBindFakturaAlleKnappetyperFix5;
+
+hovBindFakturaAlleKnappetyperFix5();
+[100, 300, 700, 1200, 2500, 5000, 9000].forEach(ms => setTimeout(hovBindFakturaAlleKnappetyperFix5, ms));
+try {
+  const obs5 = new MutationObserver(hovBindFakturaAlleKnappetyperFix5);
+  obs5.observe(document.documentElement, { childList: true, subtree: true });
 } catch (e) {}
