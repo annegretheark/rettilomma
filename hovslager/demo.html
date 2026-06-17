@@ -16,7 +16,7 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   <div class="info">Dette er en ekte demo koblet til Supabase. Den bruker eget demo-firma, så bilder og jobber lagres uten å blandes med ekte kunder.</div>
   <div id="demoStatus" class="info">Starter demo...</div>
 </div>
-<div class="kort"><button onclick="visSide('jobbSide')">Jobber / timer</button><button onclick="visSide('hesterSide')">Hester</button><button onclick="visSide('kunderSide')">Kunder</button><button onclick="visSide('fakturaSide')">Faktura</button></div>
+<div class="kort"><button onclick="visSide('jobbSide')">Jobber / timer</button><button onclick="visSide('hesterSide')">Hester</button><button onclick="visSide('kunderSide')">Kunder</button><button onclick="visSide('fakturaSide')">Faktura</button><button onclick="visSide('adminSide')">Admin</button></div>
 <section class="kort" id="jobbSide">
   <h2>Jobber / timer</h2>
   <button class="voice" onclick="demoMelding('Taleinnlesing er slått av i åpen demo. I produksjon kan jobber dikteres inn.')">🎙️ Snakk inn og lagre jobb</button>
@@ -62,6 +62,33 @@ body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padd
   </div>
   <div id="kundeListe"></div>
 </section>
+
+<section class="kort skjult" id="adminSide">
+  <h2>Admin</h2>
+  <div class="info">Her kan demo-firmaet redigeres. Demoen bruker bare sitt eget firma.</div>
+
+  <div class="listekort">
+    <h3>Firma</h3>
+    <input id="demoFirmaId" type="hidden">
+    <label>Firmanavn</label><input id="demoFirmaNavn" placeholder="Firmanavn">
+    <label>Adresse</label><input id="demoFirmaAdresse" placeholder="Adresse">
+    <label>Telefon</label><input id="demoFirmaTelefon" placeholder="Telefon">
+    <label>E-post</label><input id="demoFirmaEpost" type="email" placeholder="E-post">
+    <label>Org.nr</label><input id="demoFirmaOrgnr" placeholder="Org.nr">
+    <button type="button" onclick="lagreDemoFirma()">Lagre firma</button>
+    <div id="demoFirmaMelding" class="melding"></div>
+  </div>
+
+  <div class="listekort">
+    <h3>Backup / Restore</h3>
+    <button type="button" onclick="taDemoBackup()">Ta backup</button>
+    <label>Restore fra backupfil</label>
+    <input id="demoRestoreFil" type="file" accept=".json,application/json">
+    <button type="button" onclick="restoreDemoBackup()">Restore backup</button>
+    <div id="demoBackupMelding" class="melding"></div>
+  </div>
+</section>
+
 <section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button class="secondary" onclick="tegnFakturaOversikt()">Vis fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -80,7 +107,7 @@ function hestNavn(id){return hester.find(h=>String(h.id)===String(id))?.navn||""
 function totalJobb(j){return Number(j.total||((Number(j.arbeid_belop||0)+Number(j.varer_belop||0)+Number(j.km||0)*Number(j.km_pris||0))*1.25));}
 function demoMelding(t,feil=false){const e=document.getElementById("jobbMelding");e.textContent=t||"";e.style.color=feil?"#fca5a5":"#86efac";}
 function status(t,feil=false){const e=document.getElementById("demoStatus");e.innerHTML=`<span class="${feil?'statusfeil':'statusok'}">${esc(t)}</span>`;}
-function visSide(id){["jobbSide","hesterSide","kunderSide","fakturaSide"].forEach(s=>document.getElementById(s).classList.toggle("skjult",s!==id));if(id==="fakturaSide")tegnFakturaOversikt();if(id==="hesterSide")tegnKunderOgHester();}
+function visSide(id){["jobbSide","hesterSide","kunderSide","fakturaSide","adminSide"].forEach(s=>document.getElementById(s)?.classList.toggle("skjult",s!==id));if(id==="fakturaSide")tegnFakturaOversikt();if(id==="hesterSide")tegnKunderOgHester();if(id==="adminSide")lastDemoFirma();}
 function settDemoPris(){document.getElementById("arbeidBelop").value=priser[document.getElementById("jobbType").value]||0;}
 function rentFilnavn(navn){return String(navn||"bilde.jpg").replaceAll(" ","_").replace(/[æøåÆØÅ]/g,b=>({æ:"ae",ø:"o",å:"a",Æ:"Ae",Ø:"O",Å:"A"}[b]||b)).replace(/[^a-zA-Z0-9._-]/g,"_");}
 async function bildeUrl(filsti){try{const {data,error}=await supabaseClient.storage.from("bilder").createSignedUrl(filsti,60*60*24*7);if(!error&&data?.signedUrl)return data.signedUrl;}catch(e){}try{return supabaseClient.storage.from("bilder").getPublicUrl(filsti).data?.publicUrl||"";}catch(e){return "";}}
@@ -233,6 +260,122 @@ async function slettDemoBilde(id, filsti){
     alert('Feil ved sletting: ' + (e.message || e));
   }
 }
+
+
+async function lastDemoFirma(){
+  const melding=document.getElementById("demoFirmaMelding");
+  if(melding){melding.textContent="Henter firma..."; melding.style.color="#86efac";}
+  try{
+    const {data,error}=await supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).single();
+    if(error) throw error;
+    const set=(id,v)=>{const e=document.getElementById(id); if(e) e.value=v||"";};
+    set("demoFirmaId",data.id);
+    set("demoFirmaNavn",data.navn);
+    set("demoFirmaAdresse",data.adresse);
+    set("demoFirmaTelefon",data.telefon);
+    set("demoFirmaEpost",data.epost);
+    set("demoFirmaOrgnr",data.orgnr);
+    if(melding) melding.textContent="Firma lastet.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente firma: "+(e.message||e);}
+  }
+}
+
+async function lagreDemoFirma(){
+  const melding=document.getElementById("demoFirmaMelding");
+  if(melding){melding.textContent="Lagrer firma..."; melding.style.color="#86efac";}
+  const get=id=>(document.getElementById(id)?.value||"").trim();
+  try{
+    const {error}=await supabaseClient.from("hov_firma").update({
+      navn:get("demoFirmaNavn"),
+      adresse:get("demoFirmaAdresse"),
+      telefon:get("demoFirmaTelefon"),
+      epost:get("demoFirmaEpost"),
+      orgnr:get("demoFirmaOrgnr")
+    }).eq("id",DEMO_FIRMA_ID);
+    if(error) throw error;
+    if(melding) melding.textContent="Firma lagret.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Firma ble ikke lagret: "+(e.message||e);}
+  }
+}
+
+async function taDemoBackup(){
+  const melding=document.getElementById("demoBackupMelding");
+  if(melding){melding.textContent="Lager backup..."; melding.style.color="#86efac";}
+  try{
+    const [firma,kunderRes,hesterRes,jobberRes,jobbBilderRes,hestBilderRes]=await Promise.all([
+      supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).single(),
+      supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_jobb_bilder").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_hest_bilder").select("*").eq("firma_id",DEMO_FIRMA_ID)
+    ]);
+    for(const r of [firma,kunderRes,hesterRes,jobberRes,jobbBilderRes,hestBilderRes]){ if(r.error) throw r.error; }
+    const backup={
+      type:"hovslager-demo-backup",
+      firma_id:DEMO_FIRMA_ID,
+      laget:new Date().toISOString(),
+      firma:firma.data,
+      kunder:kunderRes.data||[],
+      hester:hesterRes.data||[],
+      jobber:jobberRes.data||[],
+      jobb_bilder:jobbBilderRes.data||[],
+      hest_bilder:hestBilderRes.data||[]
+    };
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="hovslager-demo-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if(melding) melding.textContent="Backup lastet ned.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Backup feilet: "+(e.message||e);}
+  }
+}
+
+async function restoreDemoBackup(){
+  const melding=document.getElementById("demoBackupMelding");
+  const fil=document.getElementById("demoRestoreFil")?.files?.[0];
+  if(!fil){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg backupfil først.";} return; }
+  if(!confirm("Restore vil legge data inn i demo-firmaet. Fortsette?")) return;
+  if(melding){melding.textContent="Leser backup..."; melding.style.color="#86efac";}
+  try{
+    const backup=JSON.parse(await fil.text());
+    if(!backup || backup.type!=="hovslager-demo-backup") throw new Error("Dette ser ikke ut som en gyldig demo-backup.");
+    const strip=(arr)=> (arr||[]).map(r=>{
+      const x={...r};
+      delete x.created_at;
+      delete x.updated_at;
+      x.firma_id=DEMO_FIRMA_ID;
+      return x;
+    });
+    if(backup.firma){
+      const f={...backup.firma};
+      delete f.id; delete f.created_at; delete f.updated_at;
+      await supabaseClient.from("hov_firma").update(f).eq("id",DEMO_FIRMA_ID);
+    }
+    const kunderData=strip(backup.kunder);
+    const hesterData=strip(backup.hester);
+    const jobberData=strip(backup.jobber);
+    const jobbBilderData=strip(backup.jobb_bilder);
+    const hestBilderData=strip(backup.hest_bilder);
+    if(kunderData.length){ const {error}=await supabaseClient.from("kunder").upsert(kunderData); if(error) throw error; }
+    if(hesterData.length){ const {error}=await supabaseClient.from("hester").upsert(hesterData); if(error) throw error; }
+    if(jobberData.length){ const {error}=await supabaseClient.from("hov_jobber").upsert(jobberData); if(error) throw error; }
+    if(jobbBilderData.length){ const {error}=await supabaseClient.from("hov_jobb_bilder").upsert(jobbBilderData); if(error) throw error; }
+    if(hestBilderData.length){ const {error}=await supabaseClient.from("hov_hest_bilder").upsert(hestBilderData); if(error) throw error; }
+    if(melding) melding.textContent="Restore fullført.";
+    await lastData();
+    await lastDemoFirma();
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Restore feilet: "+(e.message||e);}
+  }
+}
+
 
 document.getElementById("jobbDato").value=new Date().toISOString().slice(0,10);lastData().catch(e=>{console.error(e);status("Demo kunne ikke lagre i Supabase: "+(e.message||e),true);demoMelding("Supabase/RLS stopper demo-lagring. Sjekk policy for demo-firma.",true);});
 </script>
