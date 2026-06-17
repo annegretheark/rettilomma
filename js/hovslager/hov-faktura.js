@@ -72,24 +72,33 @@ async function hovFinnKundeForFaktura(kundeVerdi) {
   const verdi = String(kundeVerdi || "").trim();
   if (!verdi) return null;
 
-  // Først prøv som id. Hvis knappen sender kundenavn fra demo-oversikten,
-  // faller vi tilbake til navn/epost/telefon uten å endre resten av appen.
-  let res = await supabaseClient
-    .from("kunder")
-    .select("*")
-    .eq("id", verdi)
-    .maybeSingle();
+  // Prøv som UUID bare når verdien faktisk er UUID.
+  // Ellers kan Supabase/Postgres feile før vi får søkt på kundenavn.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(verdi)) {
+    const res = await supabaseClient
+      .from("kunder")
+      .select("*")
+      .eq("id", verdi)
+      .maybeSingle();
 
-  if (!res.error && res.data) return res.data;
+    if (!res.error && res.data) return res.data;
+  }
 
-  res = await supabaseClient
+  // Søk trygt i JS. Da tåler vi mellomrom/æøå i kundenavn fra demo-tabellen.
+  const res = await supabaseClient
     .from("kunder")
-    .select("*")
-    .or(`navn.eq.${verdi},epost.eq.${verdi},telefon.eq.${verdi}`)
-    .limit(1);
+    .select("*");
 
   if (res.error) throw res.error;
-  return (res.data || [])[0] || null;
+
+  const norm = v => String(v || "").trim().toLowerCase();
+  const needle = norm(verdi);
+
+  return (res.data || []).find(k =>
+    norm(k.navn) === needle ||
+    norm(k.epost) === needle ||
+    norm(k.telefon) === needle
+  ) || null;
 }
 
 async function hovHentUfakturerteJobberForKunde(kundeId, aktivFirmaId) {
@@ -397,6 +406,31 @@ async function lagHovFaktura(kundeIdDirekte = "") {
   }
 }
 
+
+function hovFakturaKlikkDelegert(ev) {
+  const knapp = ev.target?.closest?.("button, input[type='button'], input[type='submit']");
+  if (!knapp) return;
+
+  const tekst = (knapp.textContent || knapp.value || "").toLowerCase();
+  if (!tekst.includes("faktura")) return;
+
+  const direkte = knapp.dataset.kundeId || knapp.getAttribute("data-kunde-id") || "";
+  const fraRad = hovHentKundeVerdiFraFakturaRad(knapp);
+  const valgt = document.getElementById("fakturaKunde")?.value || "";
+  const verdi = direkte || fraRad || valgt;
+
+  // Radknappene i demo-oversikten får kundenavn fra raden.
+  // Da lager vi faktura for akkurat den kunden og stopper gammel demokode.
+  if (verdi) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+    lagHovFaktura(verdi);
+  }
+}
+
+document.addEventListener("click", hovFakturaKlikkDelegert, true);
+
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(fyllFakturaKunder, 300);
   setTimeout(fyllFakturaKunder, 1200);
@@ -461,6 +495,7 @@ function bindHovFakturaKnapperRobust() {
       if (verdi) {
         ev.preventDefault();
         ev.stopPropagation();
+        if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
         lagHovFaktura(verdi);
       }
     }, true);
