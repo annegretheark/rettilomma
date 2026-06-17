@@ -266,8 +266,10 @@ async function lastDemoFirma(){
   const melding=document.getElementById("demoFirmaMelding");
   if(melding){melding.textContent="Henter firma..."; melding.style.color="#86efac";}
   try{
-    const {data,error}=await supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).single();
-    if(error) throw error;
+    const res = await supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).limit(1);
+    if(res.error) throw res.error;
+    const data = (res.data || [])[0];
+    if(!data) throw new Error("Fant ikke demo-firma. Sjekk at demo-firma finnes og at RLS tillater select.");
     const set=(id,v)=>{const e=document.getElementById(id); if(e) e.value=v||"";};
     set("demoFirmaId",data.id);
     set("demoFirmaNavn",data.navn);
@@ -305,7 +307,7 @@ async function taDemoBackup(){
   if(melding){melding.textContent="Lager backup..."; melding.style.color="#86efac";}
   try{
     const [firma,kunderRes,hesterRes,jobberRes,jobbBilderRes,hestBilderRes]=await Promise.all([
-      supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).single(),
+      supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).limit(1),
       supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID),
       supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID),
       supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID),
@@ -317,7 +319,7 @@ async function taDemoBackup(){
       type:"hovslager-demo-backup",
       firma_id:DEMO_FIRMA_ID,
       laget:new Date().toISOString(),
-      firma:firma.data,
+      firma:Array.isArray(firma.data) ? (firma.data[0] || null) : firma.data,
       kunder:kunderRes.data||[],
       hester:hesterRes.data||[],
       jobber:jobberRes.data||[],
