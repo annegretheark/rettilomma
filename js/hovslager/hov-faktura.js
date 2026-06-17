@@ -60,8 +60,10 @@ async function fyllFakturaKunder() {
 
   if (aktivVerdi) sel.value = aktivVerdi;
 
+  // Ikke vis rød feilmelding her.
+  // Ved første lasting kan auth/firma fortsatt være på vei inn, og da kan listen midlertidig være tom.
   if (!kunder.length) {
-    fakturaMelding("Ingen kunder funnet. Opprett kunde først.", true);
+    fakturaMelding("");
   }
 }
 
