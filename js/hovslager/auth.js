@@ -1,5 +1,5 @@
-// Rett i Lomma Hovslager - Magic Link innlogging
-// Erstatter passord / glemt passord med Supabase Magic Link.
+// Rett i Lomma Hovslager - vanlig login + Magic Link-knapp
+// Bruker e-post/passord som hovedinnlogging, og Magic Link som ekstra knapp.
 // Krever at /js/hovslager/config.js lager window.supabaseClient.
 
 (function () {
@@ -15,7 +15,7 @@
   }
 
   function finnRedirectUrl() {
-    // Sender brukeren tilbake til samme hovslager-side etter klikk i e-posten.
+    // Magic Link sender tilbake til samme side brukeren startet fra.
     const url = new URL(window.location.href);
     url.hash = "";
     return url.toString();
@@ -37,6 +37,7 @@
 
   async function startAppEtterLogin(session) {
     const email = session?.user?.email || "";
+
     try {
       if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(email);
     } catch (e) {
@@ -64,13 +65,50 @@
       console.warn("startHovslager feilet", e);
     }
 
-    // Prøv å friske opp hovedlister hvis funksjonene finnes.
     for (const fn of ["hentKunder", "hentHester", "hentJobber", "hentPrislisteTilApp"]) {
       try {
         if (typeof window[fn] === "function") await window[fn]();
       } catch (e) {
         console.warn(fn + " feilet", e);
       }
+    }
+  }
+
+  async function vanligLogin() {
+    try {
+      if (!window.supabaseClient || !window.supabaseClient.auth) {
+        settMelding("Supabase er ikke lastet. Sjekk config.js.");
+        return;
+      }
+
+      const email = ($("loginEpost")?.value || "").trim().toLowerCase();
+      const password = ($("loginPassord")?.value || "").trim();
+
+      if (!email) {
+        settMelding("Skriv e-post.");
+        return;
+      }
+      if (!password) {
+        settMelding("Skriv passord, eller bruk Magic Link-knappen.");
+        return;
+      }
+
+      settMelding("Logger inn...");
+
+      const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        settMelding("Feil e-post eller passord. Du kan bruke Magic Link hvis passordet krangler.");
+        return;
+      }
+
+      settMelding("Innlogget.", true);
+      await startAppEtterLogin(data.session);
+    } catch (e) {
+      settMelding("Teknisk feil ved innlogging: " + (e.message || e));
     }
   }
 
@@ -87,7 +125,7 @@
         return;
       }
 
-      settMelding("Sender innloggingslenke...");
+      settMelding("Sender Magic Link...");
 
       const { error } = await window.supabaseClient.auth.signInWithOtp({
         email: email,
@@ -98,13 +136,13 @@
       });
 
       if (error) {
-        settMelding("Feil: " + error.message);
+        settMelding("Feil ved Magic Link: " + error.message);
         return;
       }
 
-      settMelding("Innloggingslenke er sendt. Åpne e-posten og trykk på lenken.", true);
+      settMelding("Magic Link er sendt. Åpne e-posten og trykk på lenken.", true);
     } catch (e) {
-      settMelding("Teknisk feil: " + (e.message || e));
+      settMelding("Teknisk feil ved Magic Link: " + (e.message || e));
     }
   }
 
@@ -124,42 +162,79 @@
     settMelding("");
   }
 
-  function ryddLoginSkjema() {
-    // Passordfeltet beholdes ikke i bruk. Vi skjuler det så gammel HTML kan stå urørt.
+  function lagMagicLinkKnappHvisMangler() {
+    if ($("magicLinkKnapp")) return;
+
+    const loginKnapp = $("loginKnapp");
+    const glemtKnapp = $("glemtPassordKnapp");
+    const parent = (glemtKnapp && glemtKnapp.parentElement) || (loginKnapp && loginKnapp.parentElement);
+    if (!parent) return;
+
+    const knapp = document.createElement("button");
+    knapp.type = "button";
+    knapp.id = "magicLinkKnapp";
+    knapp.textContent = "Send Magic Link";
+    knapp.className = glemtKnapp?.className || loginKnapp?.className || "";
+    knapp.style.marginLeft = "0.5rem";
+
+    if (glemtKnapp) {
+      glemtKnapp.insertAdjacentElement("afterend", knapp);
+    } else if (loginKnapp) {
+      loginKnapp.insertAdjacentElement("afterend", knapp);
+    } else {
+      parent.appendChild(knapp);
+    }
+  }
+
+  function kobleLoginSkjema() {
+    // Behold vanlig passordfelt synlig.
     const passordLabel = document.querySelector('label[for="loginPassord"]');
     const passordInput = $("loginPassord");
-    const glemtKnapp = $("glemtPassordKnapp");
+    if (passordLabel) passordLabel.style.display = "";
+    if (passordInput) passordInput.style.display = "";
+
     const loginKnapp = $("loginKnapp");
-
-    if (passordLabel) passordLabel.style.display = "none";
-    if (passordInput) passordInput.style.display = "none";
-
     if (loginKnapp) {
-      loginKnapp.textContent = "Send innloggingslenke";
+      loginKnapp.textContent = "Logg inn";
       loginKnapp.onclick = function (ev) {
         ev.preventDefault();
-        sendMagicLink();
+        vanligLogin();
         return false;
       };
     }
 
+    // Hvis gammel "glemt passord"-knapp finnes, bruker vi den som Magic Link-knapp.
+    const glemtKnapp = $("glemtPassordKnapp");
     if (glemtKnapp) {
-      glemtKnapp.textContent = "Send innloggingslenke på nytt";
+      glemtKnapp.textContent = "Send Magic Link";
+      glemtKnapp.style.display = "";
       glemtKnapp.onclick = function (ev) {
         ev.preventDefault();
         sendMagicLink();
         return false;
       };
+    } else {
+      lagMagicLinkKnappHvisMangler();
     }
 
-    const loginSide = $("loginSide");
-    if (loginSide && !$("magicLinkInfo")) {
-      const info = document.createElement("div");
-      info.id = "magicLinkInfo";
-      info.className = "info";
-      info.textContent = "Skriv e-post og få innloggingslenke. Ingen passord trengs.";
-      const melding = $("loginMelding");
-      loginSide.insertBefore(info, melding || null);
+    const magicKnapp = $("magicLinkKnapp");
+    if (magicKnapp) {
+      magicKnapp.onclick = function (ev) {
+        ev.preventDefault();
+        sendMagicLink();
+        return false;
+      };
+    }
+
+    const passord = $("loginPassord");
+    if (passord) {
+      passord.onkeydown = function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          vanligLogin();
+          return false;
+        }
+      };
     }
   }
 
@@ -181,7 +256,7 @@
   }
 
   function kobleAlt() {
-    ryddLoginSkjema();
+    kobleLoginSkjema();
 
     const loggUtKnapp = $("loggUtKnapp");
     if (loggUtKnapp) {
@@ -192,7 +267,8 @@
       };
     }
 
-    if (window.supabaseClient?.auth) {
+    if (window.supabaseClient?.auth && !window.__hovAuthListenerKoblet) {
+      window.__hovAuthListenerKoblet = true;
       window.supabaseClient.auth.onAuthStateChange(async function (event, session) {
         if (event === "SIGNED_IN" && session) await startAppEtterLogin(session);
         if (event === "SIGNED_OUT") visLogin();
@@ -202,6 +278,8 @@
     sjekkSessionOgStart();
   }
 
+  window.hovVanligLogin = vanligLogin;
+  window.hovLogin = vanligLogin;
   window.hovSendMagicLink = sendMagicLink;
   window.hovMagicLinkLogin = sendMagicLink;
   window.hovLoggUt = loggUt;
@@ -213,7 +291,7 @@
     kobleAlt();
   }
 
-  // Litt ekstra lim, fordi index ofte har inline-script som også prøver å koble knappene.
+  // Ekstra lim mot inline-script i index.html.
   setTimeout(kobleAlt, 300);
   setTimeout(kobleAlt, 1000);
 })();
