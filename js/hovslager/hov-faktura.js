@@ -1,4 +1,4 @@
-console.log("hov-faktura.js lastet - DEMO/OVERSIKT FIX 20260617");
+console.log("hov-faktura.js lastet - DEMO/OVERSIKT FIX 20260617 FIX8");
 
 function fakturaMelding(tekst, feil = false) {
   const el = document.getElementById("fakturaMelding");
@@ -158,11 +158,31 @@ async function hovHentUfakturerteJobberForKunde(kundeId, kundeNavn = "") {
 function hovFakturaHentKundeFraTekst(tekst) {
   const t = hovFakturaNorm(tekst);
   if (!t) return "";
-  let m = t.match(/^[-–—]?\s*(.*?)\s+\d+\s+[\d\s.,]+\s*kr\s+Ikke\s+fakturert/i);
+  let m = t.match(/^[-–—]?\s*(.*?)\s+\d+\s+[\d\s.,]+\s*kr\s*Ikke\s+fakturert/i);
   if (m && m[1]) return hovFakturaNorm(m[1]);
   m = t.match(/^[-–—]?\s*([A-ZÆØÅ][A-Za-zÆØÅæøå .'-]+?)\s+\d+\s+/);
   if (m && m[1]) return hovFakturaNorm(m[1]);
   return "";
+}
+
+
+function hovFakturaFinnRadRundtKnapp(el) {
+  if (!el) return null;
+
+  // Vanlig tabell først.
+  const tr = el.closest?.("tr");
+  if (tr) return tr;
+
+  // Demoen kan være laget med div/grid, derfor går vi oppover til minste blokk
+  // som inneholder både kundenavn/beløp/status og akkurat denne knappen.
+  let p = el.parentElement;
+  for (let i = 0; p && i < 10; i += 1, p = p.parentElement) {
+    const tekst = hovFakturaNorm(p.textContent || "");
+    if (/ikke\s+fakturert/i.test(tekst) && /\d[\d\s.,]*\s*kr\s*ikke\s+fakturert/i.test(tekst)) {
+      return p;
+    }
+  }
+  return null;
 }
 
 function hovFakturaHentKundeFraKnapp(el) {
@@ -226,7 +246,7 @@ function hovFakturaLesDemoRad(rad, fallbackKunde = "") {
     belop = hovParseBelopNo(celler[3]?.textContent || "0");
   }
   if (!belop) {
-    const m = tekst.match(/\s(\d+)\s+([\d\s.,]+)\s*kr\s+Ikke\s+fakturert/i);
+    const m = tekst.match(/\s(\d+)\s+([\d\s.,]+)\s*kr\s*Ikke\s+fakturert/i);
     if (m) {
       jobber = Number(m[1] || 1) || 1;
       belop = hovParseBelopNo(m[2] || 0);
@@ -405,7 +425,7 @@ function hovFakturaStoppOgKjor(el, ev) {
     if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
   }
 
-  const rad = fakturaEl.closest?.("tr") || fakturaEl.closest?.(".rad") || null;
+  const rad = hovFakturaFinnRadRundtKnapp(fakturaEl) || fakturaEl.closest?.(".rad") || null;
   const ref = hovFakturaHentKundeFraKnapp(fakturaEl) ||
     hovFakturaHentKundeFraTekst(rad?.textContent || "") ||
     document.getElementById("fakturaKunde")?.value || "";
