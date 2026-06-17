@@ -373,7 +373,64 @@ function visKopiFaktura(kunde_id, fakturanr){
   panel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-function tegnFakturaOversikt(){const grupper={};jobber.filter(j=>!j.fakturert).forEach(j=>{grupper[j.kunde_id]||={kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),antall:0,sum:0};grupper[j.kunde_id].antall++;grupper[j.kunde_id].sum+=totalJobb(j);});const faktGrupper={};jobber.filter(j=>j.fakturert).forEach(j=>{const nr=j.fakturanr||"Fakturert";faktGrupper[nr]||={fakturanr:nr,kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),sum:0,antall:0};faktGrupper[nr].sum+=totalJobb(j);faktGrupper[nr].antall++;});const rader=[...Object.values(grupper).map(g=>`<tr><td>-</td><td>${esc(g.kunde)}</td><td style="text-align:right">${g.antall}</td><td style="text-align:right">${kr(g.sum)} kr</td><td>Ikke fakturert</td><td style="text-align:right"><button onclick="lagFakturaForKunde('${g.kunde_id}')">Lag faktura</button></td></tr>`),...Object.values(faktGrupper).map(f=>`<tr><td>${esc(f.fakturanr)}</td><td>${esc(f.kunde)}</td><td style="text-align:right">${f.antall}</td><td style="text-align:right">${kr(f.sum)} kr</td><td>Fakturert</td><td style="text-align:right"><button type="button" class="secondary" onclick="visKopiFaktura('${f.kunde_id}','${esc(f.fakturanr)}')">Kopi faktura</button></td></tr>`)];document.getElementById("fakturaOversikt").innerHTML=`<div style="overflow-x:auto;margin-top:12px;"><table style="width:100%;border-collapse:collapse;min-width:650px;"><thead><tr><th>Fakturanr</th><th>Kunde</th><th style="text-align:right">Jobber</th><th style="text-align:right">Beløp</th><th>Status</th><th></th></tr></thead><tbody>${rader.join("")||'<tr><td colspan="6">Ingen fakturaer ennå.</td></tr>'}</tbody></table></div>`;}
+function tegnFakturaOversikt(){
+  const grupper={};
+  jobber.filter(j=>!j.fakturert).forEach(j=>{
+    grupper[j.kunde_id]||={kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),antall:0,sum:0};
+    grupper[j.kunde_id].antall++;
+    grupper[j.kunde_id].sum+=totalJobb(j);
+  });
+
+  const faktGrupper={};
+  jobber.filter(j=>j.fakturert).forEach(j=>{
+    const nr=j.fakturanr||"Fakturert";
+    const key=String(j.kunde_id||"")+"|"+String(nr||"");
+    faktGrupper[key]||={fakturanr:nr,kunde_id:j.kunde_id,kunde:kundeNavn(j.kunde_id),sum:0,antall:0};
+    faktGrupper[key].sum+=totalJobb(j);
+    faktGrupper[key].antall++;
+  });
+
+  const rader=[
+    ...Object.values(grupper).map(g=>`
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #374151;">-</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;">${esc(g.kunde)}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;">${g.antall}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(g.sum)} kr</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">
+          Ikke fakturert<br>
+          <button type="button" onclick="lagFakturaForKunde('${g.kunde_id}')" style="margin-top:6px;white-space:nowrap;">Lag faktura</button>
+        </td>
+      </tr>`),
+    ...Object.values(faktGrupper).map(f=>`
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">${esc(f.fakturanr)}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;">${esc(f.kunde)}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;">${f.antall}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(f.sum)} kr</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;white-space:nowrap;">
+          Fakturert<br>
+          <button type="button" class="secondary" onclick="visKopiFaktura('${f.kunde_id}','${esc(f.fakturanr)}')" style="margin-top:6px;white-space:nowrap;">📄 Kopi faktura</button>
+        </td>
+      </tr>`)
+  ];
+
+  document.getElementById("fakturaOversikt").innerHTML=`
+    <div style="overflow-x:auto;margin-top:12px;">
+      <table style="width:100%;border-collapse:collapse;min-width:520px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #475569;">Fakturanr</th>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #475569;">Kunde</th>
+            <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">Jobber</th>
+            <th style="text-align:right;padding:8px;border-bottom:1px solid #475569;">Beløp</th>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid #475569;">Status / handling</th>
+          </tr>
+        </thead>
+        <tbody>${rader.join("")||'<tr><td colspan="5" style="padding:8px;">Ingen fakturaer ennå.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
 async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
 function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
 function startDemoBeskrivelseTale(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){demoMelding("Tale til tekst støttes ikke i denne nettleseren.",true);return;}const r=new SR();r.lang="nb-NO";r.interimResults=false;r.onresult=e=>{document.getElementById("jobbBeskrivelse").value+=(document.getElementById("jobbBeskrivelse").value?" ":"")+e.results[0][0].transcript;};r.onerror=e=>demoMelding("Tale feilet: "+e.error,true);r.start();}
