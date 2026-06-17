@@ -389,10 +389,57 @@ async function tegnFakturaOversikt() {
 
   sikreFakturaDetalj();
 
-  const rader = hentFiltrerteFakturaer();
-  const sumInkl = rader.reduce((s, f) => s + Number(f.inkl_mva || 0), 0);
-  const sumBetalt = rader.reduce((s, f) => s + Number(f.betalt_belop || 0), 0);
-  const sumUtestaende = rader.reduce((s, f) => s + beregnUtestaende(f), 0);
+  const fakturaRader = hentFiltrerteFakturaer();
+  const ufakturerteGrupper = await hentIkkeFakturerteJobberPrKunde();
+
+  const kombinerteRader = [];
+
+  for (const f of fakturaRader) {
+    const status = normaliserStatus(f);
+    kombinerteRader.push({
+      type: "faktura",
+      sortDato: String(f.dato || ""),
+      kunde: f.kunder?.navn || f.kunde_navn || "",
+      fakturanr: f.fakturanr || "",
+      dato: hovDatoNo(f.dato || ""),
+      jobber: "",
+      belop: Number(f.inkl_mva || 0),
+      status,
+      statusTekst: statusTekst(status),
+      htmlHandling: `
+        ${status === "betalt" || status === "kreditert" ? "" : `<button type="button" class="secondary" style="padding:4px 7px;font-size:11px;white-space:nowrap;" onclick="event.stopPropagation(); markerHovFakturaBetalt('${safeText(f.fakturanr)}', ${Number(f.inkl_mva || 0)})">Sett betalt</button>`}
+        ${purringKnappHtml(f, true)}
+      `,
+      onclick: `visHovFakturaDetaljMedJobber('${safeText(f.fakturanr)}')`
+    });
+  }
+
+  for (const g of ufakturerteGrupper) {
+    kombinerteRader.push({
+      type: "ufakturert",
+      sortDato: "9999-99-99",
+      kunde: g.kunde_navn || "",
+      fakturanr: "",
+      dato: "",
+      jobber: String(g.antall || 0),
+      belop: Number(g.sum || 0),
+      status: "ikke_fakturert",
+      statusTekst: "Ikke fakturert",
+      htmlHandling: `<button type="button" style="padding:5px 8px;font-size:12px;white-space:nowrap;" onclick="event.stopPropagation(); velgHovKundeOgLagFaktura('${safeText(g.kunde_id)}')">Lag faktura</button>`,
+      onclick: ""
+    });
+  }
+
+  kombinerteRader.sort((a, b) => {
+    if (a.status === "ikke_fakturert" && b.status !== "ikke_fakturert") return -1;
+    if (a.status !== "ikke_fakturert" && b.status === "ikke_fakturert") return 1;
+    return String(b.sortDato).localeCompare(String(a.sortDato));
+  });
+
+  const sumInkl = fakturaRader.reduce((s, f) => s + Number(f.inkl_mva || 0), 0);
+  const sumBetalt = fakturaRader.reduce((s, f) => s + Number(f.betalt_belop || 0), 0);
+  const sumUtestaende = fakturaRader.reduce((s, f) => s + beregnUtestaende(f), 0);
+  const sumIkkeFakturert = ufakturerteGrupper.reduce((s, g) => s + Number(g.sum || 0), 0);
 
   const filterKnapp = (verdi, tekst) => `
     <button type="button" onclick="settHovFakturaFilter('${verdi}')" class="${hovFakturaFilter === verdi ? "" : "secondary"}">
@@ -400,23 +447,17 @@ async function tegnFakturaOversikt() {
     </button>
   `;
 
-  const tabellRader = rader.map(f => {
-    const status = normaliserStatus(f);
-    const kunde = f.kunder?.navn || f.kunde_navn || "";
-    const fakturanr = safeText(f.fakturanr || "");
-
-    return `
-      <tr onclick="visHovFakturaDetaljMedJobber('${fakturanr}')" style="cursor:pointer;">
-        <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;max-width:115px;overflow:hidden;text-overflow:ellipsis;">${fakturanr}</td>
-        <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(hovDatoNo(f.dato || ""))}</td>
-        <td style="padding:6px;border-bottom:1px solid #374151;max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeText(kunde)}</td>
-        <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;"><b>${oversiktKr(f.inkl_mva)}</b></td>
-        <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(fakturertTekst(f))}</td>
-        <td style="padding:5px;border-bottom:1px solid #374151;white-space:nowrap;">${statusKnappHtml(f)}</td>
-        <td style="padding:5px;border-bottom:1px solid #374151;white-space:nowrap;text-align:right;">${purringKnappHtml(f, true)}</td>
-      </tr>
-    `;
-  }).join("");
+  const tabellRader = kombinerteRader.map(r => `
+    <tr ${r.onclick ? `onclick="${r.onclick}" style="cursor:pointer;"` : ""}>
+      <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;max-width:115px;overflow:hidden;text-overflow:ellipsis;">${safeText(r.fakturanr || "-")}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(r.dato || "-")}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeText(r.kunde)}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${safeText(r.jobber || "")}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;"><b>${oversiktKr(r.belop)}</b></td>
+      <td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap;">${safeText(r.statusTekst)}</td>
+      <td style="padding:5px;border-bottom:1px solid #374151;white-space:nowrap;text-align:right;">${r.htmlHandling || ""}</td>
+    </tr>
+  `).join("");
 
   div.innerHTML = `
     <div class="listekort" style="max-width:100%;overflow:hidden;">
@@ -435,33 +476,33 @@ async function tegnFakturaOversikt() {
         ${filterKnapp("kreditert", "Kreditert")}
       </div>
 
+      <div class="listekort" style="margin-top:12px;line-height:1.7;background:#111827;">
+        <b>Fakturaer:</b> ${fakturaRader.length}<br>
+        <b>Fakturert inkl. mva:</b> ${oversiktKr(sumInkl)} kr<br>
+        <b>Betalt:</b> ${oversiktKr(sumBetalt)} kr<br>
+        <b>Utestående:</b> ${oversiktKr(sumUtestaende)} kr<br>
+        <b>Ikke fakturert:</b> ${oversiktKr(sumIkkeFakturert)} kr<br>
+        <small>Klikk på en faktura for detaljer og jobblinjer.</small>
+      </div>
+
       <div style="overflow-x:auto; margin-top:12px; max-width:100%;">
-        <table style="width:100%; border-collapse:collapse; min-width:680px; font-size:11px; line-height:1.2; table-layout:fixed;">
+        <table style="width:100%; border-collapse:collapse; min-width:760px; font-size:11px; line-height:1.2; table-layout:fixed;">
           <thead>
             <tr>
-              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:98px;">Fakturanr</th>
+              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:100px;">Fakturanr</th>
               <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:78px;">Dato</th>
               <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;">Kunde</th>
-              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;width:92px;">Beløp</th>
-              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:78px;">Fakt.</th>
-              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:76px;">Status</th>
-              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;width:82px;">Purring</th>
+              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;width:60px;">Jobber</th>
+              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;width:96px;">Beløp</th>
+              <th style="text-align:left;border-bottom:1px solid #475569;padding:5px;width:95px;">Status</th>
+              <th style="text-align:right;border-bottom:1px solid #475569;padding:5px;width:145px;">Handling</th>
             </tr>
           </thead>
           <tbody>
-            ${tabellRader || `<tr><td colspan="7" style="padding:12px;">Ingen fakturaer å vise.</td></tr>`}
+            ${tabellRader || `<tr><td colspan="7" style="padding:12px;">Ingen rader å vise.</td></tr>`}
           </tbody>
         </table>
       </div>
-
-      <div style="margin-top:14px; line-height:1.7;">
-        <b>Antall:</b> ${rader.length}<br>
-        <b>Sum inkl. mva:</b> ${oversiktKr(sumInkl)} kr<br>
-        <b>Betalt:</b> ${oversiktKr(sumBetalt)} kr<br>
-        <b>Utestående:</b> ${oversiktKr(sumUtestaende)} kr<br>
-        <small>Klikk på en faktura for detaljer.</small>
-      </div>
-      ${tegnIkkeFakturerteJobberPrKunde(await hentIkkeFakturerteJobberPrKunde())}
     </div>
   `;
 }
