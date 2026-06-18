@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    #prosjektVindu {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      max-width: 90%;
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
+
+    #prosjektOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 9998;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #151819;
+      color: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .kort {
+      background: #171a1b;
+      color: #f3f4f6;
+      max-width: 900px;
+      margin: 0 auto 18px auto;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 11px 14px;
+      margin: 6px 4px 6px 0;
+      border: 0;
+      border-radius: 8px;
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button.danger {
+      background: #b42318;
+    }
+
+    .rad {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .skjult {
+      display: none;
+    }
+
+    .melding {
+      margin-top: 10px;
+      color: #b42318;
+      font-weight: bold;
+    }
+
+    #lonnPanel {
+      border: 2px solid #1f6feb;
+    }
+
+    #lonnPanel h2 {
+      color: #1f6feb;
+    }
+
+    #testMelding {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      min-height: 140px;
+      max-height: 360px;
+      overflow: auto;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    #testMelding .ok { color: #86efac; }
+    #testMelding .feil { color: #fca5a5; }
+
+    .okonomi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .okonomi-boks {
+      background: #22272a;
+      color: #f3f4f6;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .okonomi-boks strong {
+      display: block;
+      font-size: 18px;
+      margin-top: 4px;
+    }
+
+    .okonomi-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .okonomi-tabell th,
+    .okonomi-tabell td {
+      border-bottom: 1px solid #374151;
+      padding: 6px;
+      text-align: left;
+      vertical-align: top;
+      color: #f3f4f6;
+    }
+
+    .okonomi-tabell th {
+      background: #111827;
+      color: #f3f4f6;
+    }
+
+    .okonomi-advarsel {
+      color: #b42318;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi {
+      cursor: pointer;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi:hover {
+      background: #1f2937;
+    }
+
+    .okonomi-mini-knapp {
+      padding: 5px 7px;
+      margin: 0;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .okonomi-detalj {
+      margin-top: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      background: #22272a;
+      color: #f3f4f6;
+    }
+
+    .okonomi-detalj strong,
+    .okonomi-detalj div,
+    .okonomi-detalj p {
+      color: #f3f4f6;
+    }
+
+    .modul-skjult {
+      display: none !important;
+    }
+
+    .modul-rad {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modul-rad label {
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .modul-rad input {
+      width: auto;
+      margin: 0 8px 0 0;
+    }
+
+  
+    .info {
+      color: #cbd5e1;
+    }
+
+    input,
+    select,
+    textarea {
+      background: #f8fafc;
+      color: #111827;
+    }
+
+    h1,
+    h2,
+    h3,
+    label {
+      color: #f3f4f6;
+    }
+
+
+    .bil-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .bil-tabell th,
+    .bil-tabell td {
+      border-bottom: 1px solid #374151;
+      padding: 6px;
+      text-align: left;
+      vertical-align: middle;
+      color: #f3f4f6;
+    }
+    .bil-tabell th { background: #111827; }
+
+
+    /* Kompakt bil-lager: treffer inputfeltene i varelisten */
+    #bilLagerFyllListe .bil-tabell {
+      font-size: 12px;
+    }
+
+    #bilLagerFyllListe .bil-tabell th,
+    #bilLagerFyllListe .bil-tabell td {
+      padding: 2px 4px !important;
+      line-height: 1.1 !important;
+      vertical-align: middle;
+    }
+
+    #bilLagerFyllListe .bil-tabell input[type="number"] {
+      width: 70px !important;
+      min-width: 70px !important;
+      max-width: 80px !important;
+      height: 24px !important;
+      min-height: 24px !important;
+      padding: 2px 4px !important;
+      margin: 0 !important;
+      border-radius: 4px !important;
+      font-size: 12px !important;
+      line-height: 1.1 !important;
+    }
+
+    #bilLagerFyllListe .bil-tabell td:nth-child(1),
+    #bilLagerFyllListe .bil-tabell th:nth-child(1) {
+      min-width: 70px;
+      max-width: 100px;
+    }
+
+
+    .klikkbar-bilrad {
+      cursor: pointer;
+    }
+
+    .klikkbar-bilrad:hover {
+      background: #1f2937;
+    }
+
+
+    .topplinje {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .meny-gruppe {
+      position: relative;
+      display: inline-block;
+    }
+
+    .meny-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 190px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 6px;
+      z-index: 10000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    .meny-gruppe:hover .meny-panel,
+    .meny-gruppe:focus-within .meny-panel {
+      display: block;
+    }
+
+    .meny-panel button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 3px 0;
+      background: #374151;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    .meny-panel button:hover {
+      background: #4b5563;
+    }
+
+
+    .meny-gruppe.apen .meny-panel {
+      display: block;
+    }
+
+
+    #varerSide #vareListe {
+      max-height: 420px;
+      overflow: auto;
+      margin-bottom: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+
+    .meny-panel {
+      pointer-events: auto;
+    }
+
+    .meny-panel button {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+
+
+    /* AGK FIX 7086: behold mørkt tema også etter økonomi/purring-fiks */
+    #fakturaSide,
+    #okonomiOversikt,
+    #okonomiDetalj {
+      color: #f3f4f6;
+    }
+
+    #okonomiOversikt .okonomi-boks,
+    #okonomiDetalj.okonomi-detalj {
+      background: #22272a !important;
+      color: #f3f4f6 !important;
+      border-color: #374151 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell th {
+      background: #111827 !important;
+      color: #f3f4f6 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell td {
+      background: transparent !important;
+      color: #f3f4f6 !important;
+      border-bottom-color: #374151 !important;
+    }
+
+</style>
+</head>
+
+<body>
+  <img id="fakturaLogoBilde" src="../bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
+
+  <!-- LOGIN -->
+  <section id="loginSide" class="kort">
+    <h1>Timeregistrering</h1>
+
+    <label for="loginEpost">E-post</label>
+    <input id="loginEpost" type="email" autocomplete="username">
+
+    <label for="loginPassord">Passord</label>
+    <input id="loginPassord" type="password" autocomplete="current-password">
+
+    <label>
+      <input id="loginSomAdmin" type="checkbox" style="width:auto;">
+      Logg inn som admin
+    </label>
+
+    <button id="loginKnapp" type="button">Logg inn</button>
+<button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
+
+    <div id="loginMelding" class="melding"></div>
+  </section>
+
+  <!-- NYTT PASSORD -->
+  <section id="nyttPassordSide" class="kort skjult">
+    <h2>Nytt passord</h2>
+
+    <label for="nyttPassord">Nytt passord</label>
+    <input id="nyttPassord" type="password">
+
+    <label for="gjentaNyttPassord">Gjenta nytt passord</label>
+    <input id="gjentaNyttPassord" type="password">
+
+    <button id="lagreNyttPassordKnapp" type="button">Lagre nytt passord</button>
+    <button id="tilbakeTilLoginKnapp" type="button" class="secondary">Tilbake</button>
+
+    <div id="nyttPassordMelding" class="melding"></div>
+  </section>
+
+  <!-- APP -->
+  <section id="appSide" class="skjult">
+
+    <div class="kort">
+      <h1>Timeregistrering</h1>
+
+      <div class="topplinje">
+        <button id="visTimerKnapp" type="button">Timer</button>
+        <button id="visJobberKnapp" type="button">Jobber</button>
+        <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
+        <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
+        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
+        <button id="visFravaerKnapp" type="button">Frav&#230;r / Flexi</button>
+
+        <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
+
+        <div class="meny-gruppe admin-only">
+          <button id="adminMenyKnapp" type="button">Admin &#9660;</button>
+          <div class="meny-panel">
+            <button id="visAnsattKnapp" type="button">Ansatte</button>
+            <button id="visFirmaKnapp" type="button">Firma</button>
+            <button id="visModulerKnapp" class="systemadmin-only" type="button">&#9881;&#65039; Moduler</button>
+            <button id="visBackupKnapp" type="button">Backup/Restore</button>
+            <button id="visTestKnapp" type="button">Testpanel</button>
+            <button id="visHovslagerKnapp" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
+            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterin&#230;r</button>
+          </div>
+        </div>
+
+        <button id="loggUtKnapp" type="button" class="danger" onclick="
+  localStorage.removeItem('rettilommaValgtModul');
+  localStorage.removeItem('aktivBilId');
+  localStorage.removeItem('aktivBilNavn');
+  if (window.supabaseClient && supabaseClient.auth) {
+    supabaseClient.auth.signOut().finally(function () {
+      window.location.href = '../handverker-login.html';
+    });
+  } else {
+    window.location.href = '../handverker-login.html';
+  }
+">Logg ut</button>
+      </div>
+    </div>
+
+
+    <section id="backupSide" class="kort admin-only skjult">
+      <h2>Admin-konsoll</h2>
+      <h3>Backup / Restore</h3>
+      <p>Ta full backup f&#248;r st&#248;rre endringer, og bruk restore hvis noe m&#229; rulles tilbake.</p>
+
+      <button id="backupKnapp" type="button">
+        Ta backup
+      </button>
+
+      <label for="importFil" style="font-weight:bold; display:block; margin-top:14px;">
+        Restore fra backupfil
+      </label>
+
+      <input id="importFil" type="file" accept=".json">
+
+      <div id="backupMelding" class="melding"></div>
+    </section>
+
+    <!-- JOBBER -->
+    <section id="jobberSide" class="kort skjult">
+      <h2>Jobber</h2>
+      <p id="jobberForklaring" class="info">Vanlig bruker ser egne jobber. Admin ser alle jobber.</p>
+      <button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button>
+      <div id="jobberMelding" class="melding"></div>
+      <div id="jobberListe"></div>
+    </section>
+
+    <!-- TIMER -->
+    <section id="timerSide" class="kort">
+      <h2>Registrer timer</h2>
+
+      <div class="rad">
+        <div>
+          <label for="dato">Dato</label>
+          <input id="dato" type="date">
+        </div>
+
+        <div>
+          <label for="kundeValg">Kunde</label>
+          <select id="kundeValg">
+            <option value="">Velg kunde</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="kundeNrVisning">Kundenr</label>
+          <input id="kundeNrVisning" readonly>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="prosjektValg">Prosjekt</label>
+          <select id="prosjektValg">
+            <option value="">Velg kunde f&#248;rst</option>
+          </select>
+        </div>
+      </div>
+      <div id="adminAnsattRad" class="rad admin-only skjult" style="display:none;">
+        <div>
+          <label for="adminAnsattValg">Registrer timer for ansatt</label>
+          <select id="adminAnsattValg">
+            <option value="">Meg selv / innlogget bruker</option>
+          </select>
+          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare n&#229;r admin logger inn som admin.</div>
+        </div>
+      </div>
+  <div class="rad">
+  <div>
+    <label for="start">Start</label>
+    <input id="startTid" type="time" value="08:00">
+  </div>
+
+  <div>
+    <label for="slutt">Slutt</label>
+    <input id="sluttTid" type="time" value="16:00">
+  </div>
+
+  <div>
+    <label for="timepris">Timepris</label>
+    <input id="timepris" type="number" value="1100">
+  </div>
+</div>
+  <div class="rad" data-modul="biler">
+  <div>
+    <label for="bilValg">Standard/aktiv bil</label>
+    <select id="bilValg">
+      <option value="">Velg bil</option>
+    </select>
+    <div id="aktivBilInfo" class="melding" style="font-size:0.9em; margin-top:4px;"></div>
+    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil denne gangen</button>
+  </div>
+
+  <div data-modul="varer">
+    <label for="vareValg">Vare</label>
+    <select id="vareValg">
+      <option value="">Velg vare</option>
+    </select>
+  </div>
+
+  
+
+  <div data-modul="varer">
+    <label for="vareAntall">Antall</label>
+    <input id="vareAntall" type="number" value="1" step="1" min="1">
+  </div>
+  <div data-modul="varer">
+  <label for="varePris">Varepris</label>
+  <input id="varePris" type="number" value="0" step="0.01">
+</div>
+
+</div>
+
+<button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
+  Legg til vare p&#229; faktura
+</button>
+<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
+
+      <div class="rad">
+  <div>
+    <label for="utgiftType">Utgiftstype</label>
+    <select id="utgiftType">
+      <option value="">Ingen utgift</option>
+      <option value="kjoring">Kj&#248;ring</option>
+      <option value="bompenger">Bompenger</option>
+      <option value="parkering">Parkering</option>
+      <option value="ferge">Ferge</option>
+      <option value="diett">Diett</option>
+      <option value="billetter">Billetter</option>
+      <option value="annet">Annet</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="utgiftBelop">Bel&#248;p</label>
+    <input id="utgiftBelop" type="number" value="0" step="0.01">
+  </div>
+
+  <div>
+    <label for="utgiftKm">Km</label>
+    <input id="utgiftKm" type="number" value="0" step="0.1">
+  </div>
+
+  <div>
+    <label for="utgiftKmPris">Pris pr km</label>
+    <input id="utgiftKmPris" type="number" value="5.30" step="0.01">
+  </div>
+
+  <div>
+    <label for="fakturerbar">Fakturerbar</label>
+    <select id="fakturerbar">
+      <option value="ja">Ja</option>
+      <option value="nei">Nei</option>
+    </select>
+  
+        </div>
+      </div>
+<button id="leggTilUtleggKnapp" type="button">
+  Legg til utlegg p&#229; faktura
+</button>
+
+<div id="utleggListe" style="margin-top:10px;">
+  Utlegg som legges her kommer med p&#229; neste faktura.
+</div>
+      <label for="beskrivelse">Beskrivelse</label>
+      <textarea id="beskrivelse"></textarea>
+      <label for="timerBildeGalleri">
+  Velg bilde
+</label>
+
+<input
+  id="timerBildeGalleri"
+  type="file"
+  accept="image/*"
+  multiple>
+
+<label for="timerBildeKamera">
+  Ta bilde
+</label>
+
+<input
+  id="timerBildeKamera"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  multiple>
+
+<label for="timerBildeTekst">
+  Bildetekst
+</label>
+
+<input
+  id="timerBildeTekst"
+  type="text"
+  placeholder="F.eks. f&#248;r arbeid">
+
+      <button id="lagreTimerKnapp" type="button">Lagre timer</button>
+
+      <div id="timerMelding" class="melding"></div>
+    </section>
+
+
+    <!-- FRAVÆR / FLEXI -->
+    <section id="fravaerSide" class="kort skjult">
+      <h2>Frav&#230;r / Flexi</h2>
+      <p class="info">Ansatte kan registrere frav&#230;r og avspasering. Admin kan godkjenne og se alle.</p>
+
+      <div class="rad admin-only">
+        <div>
+          <label for="fravaerAnsattValg">Ansatt</label>
+          <select id="fravaerAnsattValg">
+            <option value="">Meg selv / valgt ansatt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="fravaerType">Type</label>
+          <select id="fravaerType">
+            <option value="Ferie">Ferie</option>
+            <option value="Egenmelding">Egenmelding</option>
+            <option value="Sykemelding">Sykemelding</option>
+            <option value="Permisjon med l&#248;nn">Permisjon med l&#248;nn</option>
+            <option value="Permisjon uten l&#248;nn">Permisjon uten l&#248;nn</option>
+            <option value="Avspasering">Avspasering</option>
+            <option value="Annet">Annet</option>
+          </select>
+        </div>
+        <div>
+          <label for="fravaerFraDato">Fra dato</label>
+          <input id="fravaerFraDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTilDato">Til dato</label>
+          <input id="fravaerTilDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTimerPrDag">Timer pr dag</label>
+          <input id="fravaerTimerPrDag" type="number" step="0.25" value="7.5">
+        </div>
+      </div>
+
+      <label for="fravaerKommentar">Kommentar</label>
+      <textarea id="fravaerKommentar" placeholder="F.eks. ferieuke, egenmelding, avspasering"></textarea>
+
+      <button id="lagreFravaerKnapp" type="button">Send til godkjenning</button>
+      <button id="oppdaterFravaerKnapp" type="button" class="secondary">Oppdater</button>
+
+      <div id="fravaerMelding" class="melding"></div>
+
+      <hr>
+
+      <h3>Flexisaldo / timebank</h3>
+      <div id="flexiSaldo"></div>
+
+      <h3>Mine registreringer</h3>
+      <div id="fravaerListe"></div>
+
+      <div class="admin-only">
+        <h3>Til godkjenning</h3>
+        <div id="fravaerGodkjenning"></div>
+      </div>
+    </section>
+
+    <!-- FAKTURA -->
+    <section id="fakturaSide" class="kort skjult admin-only" data-modul="faktura">
+      <h2>Faktura</h2>
+      <p>Velg kunde og lag faktura kun for den kunden. Timer og varelinjer som allerede er fakturert blir ikke tatt med.</p>
+
+      <label for="fakturaKundeValg">Kunde som skal faktureres</label>
+      <select id="fakturaKundeValg">
+        <option value="">Velg kunde</option>
+      </select>
+
+      <div id="fakturaMelding" class="melding"></div>
+
+      <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
+      <button id="excelKnapp" type="button">MVA Excel</button>
+      <button id="purringKnapp" type="button">Kj&#248;r purring</button>
+      <button id="purrAlleKnapp" type="button">Purr alle forfalte</button>
+      <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
+      <button id="kreditnotaKnapp" type="button">Kreditnota</button>
+
+      <div id="fakturaKopiOmrade" style="display:none; margin-top:15px;">
+        <label for="fakturaKopiValg">Velg faktura for kopi</label>
+
+        <select id="fakturaKopiValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtFakturaKopiKnapp" type="button">
+          Skriv ut fakturakopi
+        </button>
+      </div>
+
+      <div id="kreditnotaOmrade" style="display:none; margin-top:15px;">
+        <label id="kreditnotaLabel" for="kreditnotaFakturaValg">
+          Velg faktura for kreditnota
+        </label>
+
+        <select id="kreditnotaFakturaValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtKreditnotaKnapp" type="button">
+          Skriv ut kreditnota
+        </button>
+      </div>
+
+      <div id="fakturaMelding" class="melding"></div>
+    
+      <hr>
+
+      <h3>&#216;konomioversikt</h3>
+      <p>Se hva som ikke er fakturert, hva som er fakturert, og hva som er ubetalt eller forfalt.</p>
+
+      <div class="rad">
+        <div>
+          <label for="okonomiFraDato">Fra dato</label>
+          <input id="okonomiFraDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiTilDato">Til dato</label>
+          <input id="okonomiTilDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiKundeValg">Kunde</label>
+          <select id="okonomiKundeValg">
+            <option value="">Alle kunder</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="okonomiOversiktKnapp" type="button">Vis &#248;konomioversikt</button>
+
+      <div id="okonomiMelding" class="melding"></div>
+      <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
+      <div id="okonomiOversikt"></div>
+
+</section>
+
+
+    <!-- BILER -->
+    <section id="bilerSide" class="kort skjult" data-modul="biler">
+      <h2>Min bil / lager</h2>
+      <p>Opprett biler her. Etterp&#229; kan bilen velges p&#229; ansatt under Standard bil.</p>
+
+      <button id="nyBilKnapp" type="button" onclick="window.nyBilSkjema && window.nyBilSkjema()">Registrer ny bil</button>
+
+      <div id="bilSkjemaOmrade" style="display:block; margin-top:18px; padding-top:4px;">
+        <h3 id="nyBilTittel">Registrer ny bil</h3>
+        <input id="bilId" type="hidden">
+
+        <div class="rad" id="bilSkjemaRad" style="display:grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+          <div>
+            <label for="bilNavn">Bilnavn</label>
+            <input id="bilNavn" type="text" placeholder="Servicebil 1" autocomplete="off">
+          </div>
+          <div>
+            <label for="bilRegnr">Regnr</label>
+            <input id="bilRegnr" type="text" placeholder="AB12345" autocomplete="off">
+          </div>
+        </div>
+
+        <button id="lagreBilKnapp" type="button" style="background:#16a34a !important; font-weight:bold; font-size:16px; display:inline-block !important;" onclick="window.lagreBil && window.lagreBil()">&#128190; Lagre bil</button>
+        <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake til timer</button>
+      </div>
+
+      <div id="bilMelding" class="melding"></div>
+      <div id="bilListe"></div>
+
+      <hr>
+      <h3>Bil-lager</h3>
+      <p>Velg bil &#233;n gang. Skriv antall p&#229; flere varer i listen og lagre alt samtidig.</p>
+      <div class="rad">
+        <div>
+          <label for="bilLagerBilValg">Bil som skal fylles</label>
+          <select id="bilLagerBilValg"><option value="">Velg bil</option></select>
+        </div>
+        <div>
+          <label for="bilLagerHentetAv">Hvem henter varene</label>
+          <input id="bilLagerHentetAv" type="text" placeholder="Navn p&#229; den som henter" autocomplete="off">
+        </div>
+      </div>
+
+      <h4>Fyll bilen fra vareregister</h4>
+      <p class="info">Listen viser varenr, varenavn, innpris, utpris, hovedlager, minimum og MVA.</p>
+      <div id="bilLagerFyllListe"></div>
+      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer p&#229; bilen</button>
+
+      <h4>Varer som ligger p&#229; bil</h4>
+      <div id="bilLagerListe"></div>
+    </section>
+
+    <!-- VARER -->
+    <section id="varerSide" class="kort skjult" data-modul="varer">
+      <h2>Vareregister</h2>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <h3 style="margin:0;">Vareliste</h3>
+        <button type="button" class="secondary" onclick="document.getElementById('varenr')?.scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('varenr')?.focus();">
+          Ny vare
+        </button>
+      </div>
+
+      <div id="vareListe"></div>
+
+      <hr>
+
+      <h3>Ny / rediger vare</h3>
+
+      <label for="varenr">Varenr</label>
+      <input id="varenr">
+
+      <label for="varenavn">Varenavn</label>
+      <input id="varenavn">
+
+      <label for="varebeskrivelse">Beskrivelse</label>
+      <textarea id="varebeskrivelse"></textarea>
+
+      <div class="rad">
+        <div>
+          <label for="vareinnpris">Innpris eks. mva</label>
+          <input id="vareinnpris" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varepaslag">P&#229;slag faktor</label>
+          <input id="varepaslag" type="number" step="0.01" value="3">
+        </div>
+
+        <div>
+          <label for="varepris">Utpris eks. mva</label>
+          <input id="varepris" type="number" step="0.01">
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="varelagerAntall">Antall p&#229; hovedlager</label>
+          <input id="varelagerAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="vareMinimumAntall">Minimum hovedlager</label>
+          <input id="vareMinimumAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varemva">MVA %</label>
+          <input id="varemva" type="number" value="25">
+        </div>
+      </div>
+
+      <button id="lagreVareKnapp" type="button">Lagre vare</button>
+      <button id="tilbakeFraVarerKnapp" type="button" class="secondary">Tilbake</button>
+      <label for="importVarerFil">
+  Importer varer fra Excel/CSV
+</label>
+
+<input
+  id="importVarerFil"
+  type="file"
+  accept=".xlsx,.xls,.csv">
+
+<button
+  id="importVarerKnapp"
+  type="button">
+
+  Importer varer
+
+</button>
+
+<button
+  id="lastInnLasLagerKnapp"
+  type="button"
+  class="secondary"
+  onclick="window.lastInnLasesmedLager && window.lastInnLasesmedLager()">
+
+  Last inn l&#229;sesmed lagervarer
+
+</button>
+
+      <hr>
+
+      <hr>
+
+      <h3>Bil-lager</h3>
+      <p>
+        Biler opprettes og vedlikeholdes p&#229; egen side under knappen <strong>Biler</strong>.
+        Varer beholdes her i vareregisteret.
+      </p>
+      <button type="button" class="secondary" onclick="window.visBilerSide && window.visBilerSide()">
+        &#197;pne bilregister
+      </button>
+      <hr>
+
+    </section>
+
+    <!-- L&#216;NN -->
+    <section id="lonnPanel" class="kort skjult" data-modul="lonn">
+      <h2>L&#248;nn</h2>
+      <p>L&#248;nn hentes fra registrerte timer. Her kan du lage l&#248;nnsslipper og regneark.</p>
+
+      <div class="rad">
+        <div>
+          <label for="lonnManed">M&#229;ned</label>
+          <select id="lonnManed">
+            <option value="1">Januar</option>
+            <option value="2">Februar</option>
+            <option value="3">Mars</option>
+            <option value="4">April</option>
+            <option value="5">Mai</option>
+            <option value="6">Juni</option>
+            <option value="7">Juli</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="lonnAar">&#197;r</label>
+          <input id="lonnAar" type="number" value="2026">
+        </div>
+
+        <div>
+          <label for="lonnUtbetalingsdato">Utbetalingsdato</label>
+          <input id="lonnUtbetalingsdato" type="date">
+        </div>
+
+        <div>
+          <label for="lonnAnsattValg">Ansatt</label>
+          <select id="lonnAnsattValg">
+            <option value="">Alle ansatte</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="kjorLonnKnapp" type="button">Kj&#248;r l&#248;nn</button>
+      <button id="lonnsslippKnapp" type="button" onclick="return window.lagLonnsslipper(false)">L&#248;nnsslipp valgt/alle PDF</button>
+      <button id="lonnsslippKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi valgt/alle PDF</button>
+      <button id="lonnsslippAlleKnapp" type="button" onclick="return window.lagLonnsslipper(false)">Alle l&#248;nnsslipper PDF</button>
+      <button id="lonnsslippAlleKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi alle PDF</button>
+      <button id="trekkExcelKnapp" type="button">Skattetrekk Excel</button>
+      <button id="utbetalingExcelKnapp" type="button">Utbetalinger Excel</button>
+
+      <div id="lonnMelding" class="melding"></div>
+    </section>
+
+    <!-- KUNDER -->
+    <section id="kundeSide" class="kort skjult">
+      <h2>Kunder</h2>
+
+      <input id="kundeId" type="hidden">
+
+      <label for="kundeNavn">Navn</label>
+      <input id="kundeNavn">
+
+      <label for="kundeAdresse">Adresse</label>
+      <input id="kundeAdresse">
+
+      <label for="kundeEpost">E-post</label>
+      <input id="kundeEpost">
+
+      <label for="kundeKontonr">Kontonr</label>
+      <input id="kundeKontonr" type="text">
+
+      <button type="button" class="secondary" onclick="visProsjektVindu()">
+        Legg til prosjekt
+      </button>
+
+      <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
+
+      <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
+        <h3>Legg til prosjekt</h3>
+
+        <label for="prosjektNr">Prosjektnr</label>
+        <input id="prosjektNr" type="text" placeholder="Prosjektnr">
+
+        <label for="prosjektNavn">Prosjektnavn</label>
+        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
+
+        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
+        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
+
+        <button type="button" onclick="lagreProsjektForValgtKunde()">
+          Lagre prosjekt
+        </button>
+
+        <button type="button" class="secondary" onclick="skjulProsjektVindu()">
+          Lukk
+        </button>
+      </div>
+
+      <label for="kundeKontaktperson">Kontaktperson</label>
+      <input id="kundeKontaktperson">
+
+      <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
+      <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="kundeMelding" class="melding"></div>
+      <div id="kundeListe"></div>
+    </section>
+
+    <!-- ANSATTE -->
+    <section id="ansattSide" class="kort skjult">
+      <h2>Ansatte</h2>
+
+      <input id="ansattId" type="hidden">
+
+      <label for="ansattNavn">Navn</label>
+      <input id="ansattNavn">
+
+      <label for="ansattEpost">E-post</label>
+      <input id="ansattEpost">
+
+      <label for="ansattMobil">Mobil</label>
+      <input id="ansattMobil">
+
+      <label for="ansattRolle">Rolle</label>
+      <select id="ansattRolle">
+        <option value="bruker">Bruker</option>
+        <option value="admin">Admin</option>
+        <option value="systemadmin">Systemadmin</option>
+      </select>
+
+
+      <label for="ansattStandardBil">Standard bil</label>
+      <select id="ansattStandardBil">
+        <option value="">Ingen fast bil</option>
+      </select>
+
+      <label for="ansattTimepris">Timepris</label>
+      <input id="ansattTimepris" type="number" value="1100">
+
+      <h3>Trekk</h3>
+
+      <div class="rad">
+        <div>
+          <label for="trekkType">Type trekk</label>
+
+          <select id="trekkType">
+            <option value="">Velg trekk</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="trekkBelop">Bel&#248;p</label>
+          <input id="trekkBelop" type="number" value="0">
+        </div>
+      </div>
+
+      <button id="leggTilTrekkKnapp" type="button">Legg til trekk</button>
+      <button id="lagreAnsattKnapp" type="button">Lagre ansatt</button>
+      <button id="tilbakeFraAnsattKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="trekkListe"></div>
+      <div id="ansattListe"></div>
+    </section>
+
+    <!-- FIRMA -->
+    <section id="firmaSide" class="kort skjult">
+      <h2>Firma</h2>
+
+      <label for="firmaNavn">Firmanavn</label>
+      <input id="firmaNavn">
+
+      <label for="firmaAdresse">Adresse</label>
+      <input id="firmaAdresse">
+
+      <label for="firmaEpost">E-post</label>
+      <input id="firmaEpost">
+
+      <label for="firmaKontonr">Kontonr</label>
+      <input id="firmaKontonr">
+
+      <label for="firmaVippsNummer">Vippsnummer</label>
+      <input id="firmaVippsNummer">
+
+      <label for="firmaVippsMottaker">Vipps mottaker</label>
+      <input id="firmaVippsMottaker">
+
+      <label for="firmaBrevhode">Brevhode</label>
+      <textarea id="firmaBrevhode" placeholder="Tekst &#248;verst p&#229; faktura / PDF"></textarea>
+
+      <label for="firmaBrevfot">Brevfot / brevhale</label>
+      <textarea id="firmaBrevfot" placeholder="Tekst nederst p&#229; faktura / PDF"></textarea>
+
+      <label for="firmaOrgNr">Org nr</label>
+      <input id="firmaOrgNr">
+
+      <label for="firmaMvaNr">MVA nr</label>
+      <input id="firmaMvaNr">
+
+      <label for="firmaLogo">Logo</label>
+      <input id="firmaLogo" type="file" accept="image/*">
+
+      <button id="lagreFirmaKnapp" type="button">Lagre firma</button>
+      <button id="tilbakeFraFirmaKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="firmaMelding" class="melding"></div>
+    </section>
+
+    <!-- TESTPANEL -->
+
+
+
+
+    <section id="modulerSide" class="kort skjult admin-only systemadmin-only">
+      <h2>Moduler</h2>
+      <p>Skru av det kunden ikke trenger. Valget lagres i Supabase for denne kunden.</p>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">H&#229;ndverker</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('veterinaer')">Veterin&#230;r</button>
+      </div>
+
+      <div id="modulListe"></div>
+
+      <button id="lagreModulerKnapp" type="button">Lagre moduler</button>
+      <button type="button" class="secondary" onclick="visTimerSide()">Tilbake</button>
+
+      <div id="modulStatus" class="melding"></div>
+      <div id="modulMelding" class="melding"></div>
+    </section>
+
+    <section id="testSide" class="kort skjult admin-only">
+      <h2>Testpanel</h2>
+
+      <button id="testFakturaProsjektGrupperingKnapp" type="button" onclick="testFakturaProsjektGruppering()">Test faktura per prosjekt</button>
+      <button id="kjorHelsetestKnapp" type="button">Kj&#248;r helsetest</button>
+      <button id="kjorStresstestKnapp" type="button">Kj&#248;r stresstest</button>
+      <button id="testDobbeltregistreringKnapp" type="button">Test dobbeltregistrering</button>
+      <button id="testBlankLagringKnapp" type="button">Test blank lagring</button>
+      <button id="testLonnKnapp" type="button">Test l&#248;nn</button>
+      <button id="testFakturaGrunnlagKnapp" type="button">Test fakturagrunnlag</button>
+      <button id="testMvaKnapp" type="button">Test MVA</button>
+      <button id="testFakturaSperreKnapp" type="button">Test fakturasperre</button>
+      <button id="testMvaSperreKnapp" type="button">Test MVA-sperre</button>
+      <button id="testRettigheterKnapp" type="button">Test rettigheter</button>
+      <button id="lagStresstestFakturaKnapp" type="button">Lag stresstest faktura</button>
+<button id="slettKunTestdataKnapp" type="button" class="danger">Slett kun testdata</button>
+
+      <div id="testMelding"></div>
+    </section>
+
+  </section>
+
+<script charset="UTF-8" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script charset="UTF-8" src="../js/core/config.js?v=5001"></script>
+<script charset="UTF-8" src="../js/core/state.js?v=999"></script>
+<script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/navigation.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/auth.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/kunder.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/prosjekter.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/ansatte.js?v=7044"></script>
+<script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/firma.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/timer.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/utils.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaData.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
+<script charset="UTF-8" src="../js/handverker/pdfLayout.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaPdf.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/faktura.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/okonomi.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/fakturaValg.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/backup.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/lonn.js?v=7100"></script>
+<script charset="UTF-8" src="../js/handverker/fravaer.js?v=7090"></script>
+<script charset="UTF-8" src="../js/handverker/tester.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/app.js?v=7100"></script>
+<script charset="UTF-8" src="../js/handverker/varer.js?v=7066"></script>
+<script charset="UTF-8" src="../js/handverker/biler.js?v=88888"></script>
+  <script charset="UTF-8" src="../js/handverker/lager-patch.js?v=7300"></script>
+<script charset="UTF-8" src="../js/handverker/jobber-rolle.js?v=7068"></script>
+<script charset="UTF-8" src="../js/handverker/bruker-billager.js?v=7055"></script>
+<script charset="UTF-8" src="../js/handverker/bilvalg-repair.js?v=7059"></script>
+
+
+<script>
+window.addEventListener("load", function () {
+  async function nodLoggInn() {
+    const loginMelding = document.getElementById("loginMelding");
+    if (loginMelding) loginMelding.textContent = "";
+
+    const email = document.getElementById("loginEpost")?.value?.trim()?.toLowerCase() || "";
+    const password = document.getElementById("loginPassord")?.value || "";
+    const vilAdmin = document.getElementById("loginSomAdmin")?.checked === true;
+
+    if (!email || !password) {
+      if (loginMelding) loginMelding.textContent = "Skriv inn e-post og passord.";
+      return;
+    }
+
+    if (!window.supabaseClient || !supabaseClient.auth) {
+      if (loginMelding) loginMelding.textContent = "Supabase er ikke lastet. Sjekk js/core/config.js.";
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      if (loginMelding) loginMelding.textContent = "Innlogging feilet: " + error.message;
+      return;
+    }
+
+    window.innloggetEpost = email;
+    window.erAdmin = false;
+
+    let ansattData = null;
+
+    try {
+      const { data, error: ansattError } = await supabaseClient
+        .from("ansatte")
+        .select("*")
+        .eq("epost", email)
+        .limit(1);
+
+      if (!ansattError && Array.isArray(data) && data.length) {
+        ansattData = data[0];
+        window.innloggetAnsattId = ansattData.id || "";
+      }
+    } catch (e) {
+      console.warn("Kunne ikke hente ansattdata i n\u00F8dinnlogging:", e);
+    }
+
+    const rolle = String(ansattData?.rolle || "").toLowerCase();
+    window.innloggetRolle = rolle;
+    window.erSystemadmin = ["systemadmin", "sysadmin"].includes(rolle);
+    const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    window.erAdmin = harAdminRolle && vilAdmin;
+    localStorage.setItem("rilAdminModus", window.erAdmin ? "ja" : "nei");
+
+    if (typeof window.visApp === "function") {
+      await window.visApp();
+    } else {
+      const loginSide = document.getElementById("loginSide");
+      const appSide = document.getElementById("appSide");
+      if (loginSide) loginSide.classList.add("skjult");
+      if (appSide) appSide.classList.remove("skjult");
+    }
+
+    if (window.erAdmin) {
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = "";
+        el.classList.remove("skjult", "hidden");
+      });
+      if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
+      if (typeof window.skjulSystemadminHvisIkkeSystemadmin === "function") window.skjulSystemadminHvisIkkeSystemadmin();
+    } else {
+      document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = "none";
+        el.classList.add("skjult");
+      });
+      if (typeof window.visTimerSide === "function") window.visTimerSide();
+    }
+  }
+
+  async function nodGlemtPassord() {
+    const loginMelding = document.getElementById("loginMelding");
+    const email = document.getElementById("loginEpost")?.value?.trim()?.toLowerCase() || "";
+
+    if (!email) {
+      if (loginMelding) loginMelding.textContent = "Skriv inn e-postadressen f\u00F8rst.";
+      return;
+    }
+
+    if (!window.supabaseClient || !supabaseClient.auth) {
+      if (loginMelding) loginMelding.textContent = "Supabase er ikke lastet. Sjekk js/core/config.js.";
+      return;
+    }
+
+    const redirectUrl = window.location.origin + "/rettilomma/reset.html";
+
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+
+    if (loginMelding) {
+      loginMelding.textContent = error
+        ? "Kunne ikke sende e-post: " + error.message
+        : "E-post for tilbakestilling av passord er sendt.";
+    }
+  }
+
+  if (typeof window.loggInn !== "function") {
+    window.loggInn = nodLoggInn;
+    console.warn("Bruker n\u00F8dinnlogging fordi auth.js ikke registrerte window.loggInn.");
+  }
+
+  if (typeof window.glemtPassord !== "function") {
+    window.glemtPassord = nodGlemtPassord;
+  }
+
+  const loginKnapp = document.getElementById("loginKnapp");
+  if (loginKnapp) {
+    loginKnapp.onclick = function () {
+      window.loggInn();
+    };
+  }
+
+  const glemtKnapp = document.getElementById("glemtPassordKnapp");
+  if (glemtKnapp) {
+    glemtKnapp.onclick = function () {
+      window.glemtPassord();
+    };
+  }
+});
+</script>
+
+
+
+
+
+
+<script>
+window.addEventListener("load", function () {
+  var backupKnapp = document.getElementById("backupKnapp");
+  var importFil = document.getElementById("importFil");
+
+  if (backupKnapp) {
+    backupKnapp.onclick = function () {
+      if (typeof window.backup === "function") {
+        window.backup();
+      } else {
+        alert("Backup-funksjonen er ikke lastet. Sjekk js/backup.js.");
+      }
+    };
+  }
+
+  if (importFil) {
+    importFil.onchange = function (event) {
+      if (typeof window.importerBackup === "function") {
+        window.importerBackup(event);
+      } else {
+        alert("Restore-funksjonen er ikke lastet. Sjekk js/backup.js.");
+      }
+    };
+  }
+});
+</script>
+
+<script>
+window.addEventListener("load", function () {
+  const loginKnapp = document.getElementById("loginKnapp");
+  const glemtKnapp = document.getElementById("glemtPassordKnapp");
+
+  if (loginKnapp) {
+    loginKnapp.onclick = function () {
+      if (typeof window.loggInn === "function") {
+        window.loggInn();
+        return;
+      }
+
+      const melding = document.getElementById("loginMelding");
+      if (melding) {
+        melding.textContent =
+          "Innlogging er ikke klar. Sjekk at js/auth.js og js/core/config.js ligger riktig.";
+      }
+    };
+  }
+
+  if (glemtKnapp) {
+    glemtKnapp.onclick = function () {
+      if (typeof window.glemtPassord === "function") {
+        window.glemtPassord();
+        return;
+      }
+
+      const melding = document.getElementById("loginMelding");
+      if (melding) {
+        melding.textContent =
+          "Glemt passord er ikke klar. Sjekk at js/auth.js er lastet.";
+      }
+    };
+  }
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// N\u00D8D-FIX 7063: s\u00F8rger for at Lagre bil alltid er klikkbar selv om en annen fil overskriver onclick.
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function msg(t, feil) {
+    var m = $("bilMelding");
+    if (m) { m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
+    if (feil) console.error(t); else if (t) console.log(t);
+  }
+  function visBilSkjemaNod() {
+    var o = $("bilSkjemaOmrade");
+    var r = $("bilSkjemaRad");
+    var k = $("lagreBilKnapp");
+    if (o) { o.classList.remove("skjult", "hidden", "modul-skjult"); o.style.display = "block"; }
+    if (r) { r.classList.remove("skjult", "hidden", "modul-skjult"); r.style.display = "grid"; }
+    if (k) { k.style.display = "inline-block"; k.disabled = false; k.textContent = "\uD83D\uDCBE Lagre bil"; }
+  }
+  async function lagreBilNod() {
+    try {
+      visBilSkjemaNod();
+      msg("Lagrer bil...");
+      if (!window.supabaseClient) { msg("Supabase er ikke lastet. Sjekk js/core/config.js.", true); return; }
+      var id = ($("bilId") && $("bilId").value || "").trim();
+      var navn = ($("bilNavn") && $("bilNavn").value || "").trim();
+      var regnr = ($("bilRegnr") && $("bilRegnr").value || "").trim();
+      if (!navn && !regnr) { msg("Skriv bilnavn eller regnr.", true); alert("Skriv bilnavn eller regnr."); return; }
+      var rad = { navn: navn || regnr, regnr: regnr || null, aktiv: true };
+      var q = id
+        ? window.supabaseClient.from("biler").update(rad).eq("id", id).select().single()
+        : window.supabaseClient.from("biler").insert([rad]).select().single();
+      var res = await q;
+      if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
+        var rad2 = { navn: navn || regnr, regnr: regnr || null };
+        res = id
+          ? await window.supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
+          : await window.supabaseClient.from("biler").insert([rad2]).select().single();
+      }
+      if (res.error) { msg("Kunne ikke lagre bil: " + res.error.message, true); alert("Kunne ikke lagre bil: " + res.error.message); return; }
+      if (res.data && res.data.id) {
+        localStorage.setItem("aktivBilId", String(res.data.id));
+        localStorage.setItem("aktivBilNavn", (res.data.navn || "Bil") + (res.data.regnr ? " - " + res.data.regnr : ""));
+        window.aktivBilId = String(res.data.id);
+      }
+      if ($("bilId")) $("bilId").value = "";
+      if ($("bilNavn")) $("bilNavn").value = "";
+      if ($("bilRegnr")) $("bilRegnr").value = "";
+      msg(id ? "Bil oppdatert." : "Ny bil lagret.");
+      if (typeof window.lastBilerOgBilLager === "function") await window.lastBilerOgBilLager();
+      else if (typeof window.lastBiler === "function") await window.lastBiler();
+    } catch (e) {
+      var tekst = "Feil ved lagring av bil: " + (e && e.message ? e.message : String(e));
+      msg(tekst, true); alert(tekst);
+    }
+  }
+  function koble() {
+    visBilSkjemaNod();
+    var ny = $("nyBilKnapp");
+    var lagre = $("lagreBilKnapp");
+    if (ny) ny.onclick = function (e) { if (e) e.preventDefault(); visBilSkjemaNod(); if ($("bilNavn")) $("bilNavn").focus(); };
+    if (lagre) lagre.onclick = function (e) { if (e) e.preventDefault(); return lagreBilNod(); };
+    window.lagreBilNod = lagreBilNod;
+  }
+  document.addEventListener("DOMContentLoaded", koble);
+  window.addEventListener("load", koble);
+  setTimeout(koble, 500);
+})();
+</script>
+
+
+<script charset="UTF-8">
+// FIX 7067: Jobboversikt skal ikke vise rene utlegg/refusjon-rader med 0 kr som egne jobber.
+(function () {
+  function tekst(e) { return (e && e.textContent ? e.textContent : "").trim(); }
+  function erNullKroner(t) {
+    var x = String(t || "").replace(/\s+/g, "").toLowerCase();
+    return x === "0kr" || x === "0,00kr" || x === "0.00kr" || x === "0";
+  }
+  function ryddJobbListe() {
+    var c = document.getElementById("jobberListe");
+    if (!c) return;
+    var rader = Array.from(c.querySelectorAll("tbody tr"));
+    rader.forEach(function (tr) {
+      var celler = Array.from(tr.children);
+      if (!celler.length) return;
+      var radtekst = tekst(tr).toLowerCase();
+      var beskrivelse = celler[4] ? tekst(celler[4]).toLowerCase() : radtekst;
+      var belop = celler[5] ? tekst(celler[5]) : "";
+      var erRenUtleggRad = beskrivelse.indexOf("utlegg/refusjon") !== -1 || radtekst.indexOf("utlegg/refusjon") !== -1;
+      if (erRenUtleggRad && erNullKroner(belop)) {
+        tr.style.display = "none";
+        tr.setAttribute("data-skjult-utlegg-null", "ja");
+      }
+    });
+  }
+  var gammelVisJobberSide = window.visJobberSide;
+  if (typeof gammelVisJobberSide === "function") {
+    window.visJobberSide = async function () {
+      var res = await gammelVisJobberSide.apply(this, arguments);
+      setTimeout(ryddJobbListe, 100);
+      setTimeout(ryddJobbListe, 600);
+      return res;
+    };
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    ryddJobbListe();
+    var c = document.getElementById("jobberListe");
+    if (c && window.MutationObserver) {
+      new MutationObserver(function () { ryddJobbListe(); }).observe(c, { childList: true, subtree: true });
+    }
+    var k = document.getElementById("oppdaterJobberKnapp");
+    if (k) k.addEventListener("click", function () { setTimeout(ryddJobbListe, 400); });
+  });
+  window.ryddJobbListe = ryddJobbListe;
+})();
+</script>
+
+</body>
+</html>

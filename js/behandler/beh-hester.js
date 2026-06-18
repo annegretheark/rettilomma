@@ -24,6 +24,15 @@ function datoVerdi(v) {
   return String(v).slice(0, 10);
 }
 
+function behEscHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function finnValgtHestFraSkjema() {
   const id = behHentEl("hestVelg")?.value || "";
   if (!id) return null;
@@ -208,12 +217,12 @@ async function hentHester() {
         const div = document.createElement("div");
         div.className = "listekort";
         div.innerHTML = `
-          <b>${h.navn || ""}</b><br>
-          Eier: ${kundeNavn.get(String(h.kunde_id)) || ""}<br>
-          ${h.rase || ""}<br>
+          <b>${behEscHtml(h.navn)}</b><br>
+          Eier: ${behEscHtml(kundeNavn.get(String(h.kunde_id)))}<br>
+          ${behEscHtml(h.rase)}<br>
           Sist behandlet: ${datoVerdi(h.sist_skodd)}<br>
           Neste oppfølging: ${datoVerdi(h.neste_besok)}<br>
-          ${h.notater || ""}
+          ${behEscHtml(h.notater)}
         `;
         liste.appendChild(div);
       }

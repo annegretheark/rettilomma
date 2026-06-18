@@ -3,7 +3,7 @@
 <html lang="no">
 <head>
 <meta charset="utf-8"/>
-<title>Hestebehandler - Rett i Lomma</title>
+<title>Dyrebehandler - Rett i Lomma</title>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <style>
     body {
@@ -358,9 +358,15 @@ button.voice {
 }
 
 </style>
+<style>
+html[data-auth-pending="1"] #appSide {
+  display: none;
+}
+</style>
 </head>
 <body>
 <script>
+document.documentElement.setAttribute("data-auth-pending", "1");
 localStorage.setItem("rettilommaValgtModul", "hestebehandler");
 // Start alltid på Behandlinger etter innlogging eller refresh.
 // Menyknappene virker fortsatt etter at siden er lastet.
@@ -371,15 +377,15 @@ if (window.location.hash !== "#behandlingSide") {
 <section id="appSide">
 <div class="kort">
 <div class="system-header">
-<div aria-hidden="true" class="system-logo">🐴</div>
+<div aria-hidden="true" class="system-logo">🐾</div>
 <div>
-<h1 class="system-title">Hestebehandler</h1>
+<h1 class="system-title">Dyrebehandler</h1>
 <div class="system-subtitle">Kunder, dyr, behandlinger, journal, bilder, kjøring og faktura</div>
 <div class="system-badge">Rett i Lomma</div>
 </div>
 </div>
 <div class="app-meny-linje">
-<a class="knapp danger" href="../hestebehandler-login.html" onclick="localStorage.removeItem(\'rettilommaValgtModul\');">Logg ut</a>
+<a class="knapp danger" href="../behandler-login.html" onclick="return window.behLoggUt && window.behLoggUt(event);">Logg ut</a>
 <a class="knapp" href="#behandlingSide">Behandlinger</a>
 <a class="knapp" href="#hesterSide">Dyr</a>
 <a class="knapp" href="#prislisteSide">Prisliste</a>
@@ -484,11 +490,11 @@ if (window.location.hash !== "#behandlingSide") {
 <div class="rad">
   <div>
     <label for="behandlingBildeKamera">Ta bilde</label>
-    <input id="behandlingBildeKamera" type="file" accept="image/*" capture="environment">
+    <input id="behandlingBildeKamera" type="file" accept="image/*" capture="environment" multiple>
   </div>
   <div>
     <label for="behandlingBildeGalleri">Velg bilde</label>
-    <input id="behandlingBildeGalleri" type="file" accept="image/*">
+    <input id="behandlingBildeGalleri" type="file" accept="image/*" multiple>
   </div>
 </div>
 <div class="rad">
@@ -508,13 +514,13 @@ if (window.location.hash !== "#behandlingSide") {
 <label for="behandlingKm">
           Kjøring km
         </label>
-<input id="behandlingKm" step="0.1" type="number" value="0"/>
+<input id="behandlingKm" step="0.1" type="number" value=""/>
 </div>
 <div>
 <label for="behandlingKmPris">
           Pris pr km
         </label>
-<input id="behandlingKmPris" step="0.01" type="number" value="5.30"/>
+<input id="behandlingKmPris" step="0.01" type="number" value=""/>
 </div>
 </div>
 <button id="lagreBehandlingKnapp" type="button" onclick="return window.behLagreBehandlingDirekte && window.behLagreBehandlingDirekte(event);">Lagre behandling</button>
@@ -591,6 +597,7 @@ if (window.location.hash !== "#behandlingSide") {
 <button id="lagreHestKnapp" type="button">
       Lagre dyr
     </button>
+<button id="behandleValgtDyrKnapp" class="secondary" type="button" style="display:none;">Ny behandling for valgt dyr</button>
 <div class="melding" id="hestMelding"></div>
 <div id="hesteListe"></div>
 </section><section class="kort skjult" id="prislisteSide">
@@ -601,14 +608,14 @@ if (window.location.hash !== "#behandlingSide") {
 
 <div id="prislisteAppMelding" class="melding"></div>
 <div id="prislisteApp"></div>
-</section><section class="kort skjult" id="adminSide"><h2>Admin</h2><p class="info">Kunder, faktura, backup og firmaoppsett.</p><section class="kort" id="fakturaSide">
+</section><section class="kort skjult" id="fakturaSide">
 <h2>Faktura</h2>
 <label for="fakturaKunde">Kunde</label>
 <select id="fakturaKunde">
 <option value="">Velg kunde</option>
 </select>
 <button id="oppdaterFakturaKunderKnapp" class="secondary" onclick="fyllFakturaKunder()" type="button">Oppdater kundeliste</button>
-<button id="lagFakturaKnapp" type="button" onclick="return window.behLagFakturaHardfix && window.behLagFakturaHardfix(event);">
+<button id="lagFakturaKnapp" type="button">
       Lag faktura PDF
     </button>
 <p class="info">
@@ -626,12 +633,42 @@ if (window.location.hash !== "#behandlingSide") {
       Lag kreditnota
     </button>
 <div class="melding" id="fakturaMelding"></div>
-</section><div class="kort">
+<hr/>
 <h3>Fakturaoversikt</h3>
 <button id="hentFakturaOversiktKnapp" type="button">Vis fakturaoversikt</button>
 <button id="eksporterFakturaExcelKnapp" type="button">Eksporter fakturaoversikt Excel</button>
 <div id="fakturaOversikt"></div>
-</div><section class="kort" id="kundeSide">
+</section><section class="kort skjult" id="adminSide"><h2>Admin</h2><p class="info">Kunder, backup og firmaoppsett.</p><section class="kort" data-greknuts-only style="display:none;">
+<h3>Systemeier</h3>
+<p class="info">Bare greknuts skal kunne opprette nye behandlere/systemer. Vanlige behandlere kan fortsatt være admin i sitt eget system.</p>
+<input id="nyBehandlerId" type="hidden"/>
+<label for="nyBehandlerNavn">Navn på behandler</label>
+<input id="nyBehandlerNavn" placeholder="F.eks. Anne Behandler"/>
+<label for="nyBehandlerEpost">E-post</label>
+<input id="nyBehandlerEpost" type="email" placeholder="epost@domene.no"/>
+<label for="nyBehandlerPassord">Midlertidig passord</label>
+<input id="nyBehandlerPassord" type="text" placeholder="Lag eller skriv passord"/>
+<button id="lagNyBehandlerPassordKnapp" class="secondary" type="button">Lag passord</button>
+<label for="nyBehandlerOrgNr">Org.nr</label>
+<input id="nyBehandlerOrgNr" placeholder="999 999 999"/>
+<label for="nyBehandlerAdresse">Fakturaadresse</label>
+<input id="nyBehandlerAdresse" placeholder="Gate, postnr og sted"/>
+<label for="nyBehandlerBankkonto">Bankkonto</label>
+<input id="nyBehandlerBankkonto" inputmode="numeric" placeholder="1234.56.78901"/>
+<label for="nyBehandlerFakturaNotat">Fakturanotat</label>
+<textarea id="nyBehandlerFakturaNotat" placeholder="F.eks. abonnement, avtalt pris eller intern kommentar"></textarea>
+<label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+  <input id="nyBehandlerAktiv" type="checkbox" checked style="width:auto;margin:0;"/>
+  Aktiv behandler
+</label>
+<button id="nyBehandlerKnapp" type="button">Opprett behandler med innlogging</button>
+<button id="avbrytBehandlerRedigeringKnapp" class="secondary" type="button" style="display:none;">Avbryt redigering</button>
+<div class="melding" id="nyBehandlerMelding"></div>
+<hr/>
+<h3>Behandlere</h3>
+<button id="hentBehandlereKnapp" class="secondary" type="button">Vis behandlere</button>
+<div id="behandlerListe"></div>
+</section><section class="kort" id="kundeSide">
 <h2>Kunder</h2>
 <input id="kundeId" type="hidden"/>
 <label for="kundeNavn">Navn</label>
@@ -727,7 +764,8 @@ if (window.location.hash !== "#behandlingSide") {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=5001"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=5001"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=5001"></script>
-<script src="config.js"></script>
+<script src="../js/behandler/config.js?v=20260618-split"></script>
+<script src="../js/behandler/auth-guard.js?v=20260618-authfix2"></script>
 
 <script>
 /* FALLBACK 2026-06-14: sikrer Supabase-klient hvis config.js ikke ble lastet fra riktig mappe */
@@ -739,8 +777,8 @@ if (window.location.hash !== "#behandlingSide") {
       return;
     }
 
-    const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+    const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
 
     window.supabaseClient = window.supabase.createClient(
       SUPABASE_URL,
@@ -763,19 +801,20 @@ if (window.location.hash !== "#behandlingSide") {
 })();
 </script>
 
-<script src="moduler.js"></script>
-<script src="backup.js"></script>
-<script src="state.js"></script>
-<script src="beh-navigation.js"></script>
-<script src="beh-kunder.js"></script>
-<script src="beh-oppsett.js"></script>
-<script src="beh-hester.js?v=20260614-knapper-linje"></script>
-<script src="beh-jobber.js?v=20260614-endelig-pris6"></script>
-<script src="beh-faktura.js"></script>
-<script src="beh-kreditnota.js"></script>
-<script src="beh-fakturaoversikt.js"></script>
-<script src="beh-prisliste.js?v=20260614-smale-prisfelt"></script>
-<script src="beh-app.js"></script>
+<script src="../js/behandler/moduler.js?v=20260618-split"></script>
+<script src="../js/behandler/backup.js?v=20260618-split"></script>
+<script src="../js/behandler/state.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-navigation.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-kunder.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-oppsett.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-hester.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-jobber.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-faktura.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-kreditnota.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-fakturaoversikt.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-prisliste.js?v=20260618-split"></script>
+<script src="../js/behandler/beh-app.js?v=20260618-split"></script>
+
 
 <script>
 // ROBUST FIX: Snakk inn-knapp for Hestebehandler
@@ -1061,8 +1100,8 @@ if (window.location.hash !== "#behandlingSide") {
 // FINAL FIX 2026-06-14: Kunde-dropdown for Behandling + Dyr
 // Denne ligger SIST i index.html for å vinne over andre filer som tømmer select-feltene.
 (function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
   let kunderCache = [];
   let hesterCache = [];
   let fyller = false;
@@ -1143,7 +1182,7 @@ if (window.location.hash !== "#behandlingSide") {
       fyllDyrForValgtKunde();
 
       if (kunderCache.length) {
-        document.title = "Hestebehandler - Rett i Lomma";
+        document.title = "Dyrebehandler - Rett i Lomma";
         skrivStatus("Kunder lastet: " + kunderCache.length, false);
       } else {
         document.title = "Ingen kunder funnet";
@@ -1207,8 +1246,8 @@ if (window.location.hash !== "#behandlingSide") {
 // DYREVALG-SIKRING 2026-06-14: siste script vinner.
 // Fyller kunde + dyr direkte, uten å tømme valgt dyr unødvendig.
 (function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
   let kunder = [];
   let dyr = [];
   let busy = false;
@@ -1289,9 +1328,11 @@ if (window.location.hash !== "#behandlingSide") {
   function fillFormFromDyr(){
     const id = String(el("hestVelg")?.value || "");
     const d = dyr.find(x => String(x.id) === id);
+    const behandleKnapp = el("behandleValgtDyrKnapp");
     if(!d){
       ["hestNavn","hestRase","hestNotater","sistSkodd","nesteBesok"].forEach(id => { const f=el(id); if(f) f.value=""; });
       const img=el("hestBildePreview"); if(img){img.style.display="none"; img.removeAttribute("src");}
+      if(behandleKnapp) behandleKnapp.style.display = "none";
       return;
     }
     if(el("hestNavn")) el("hestNavn").value = d.navn || "";
@@ -1302,7 +1343,79 @@ if (window.location.hash !== "#behandlingSide") {
     const img=el("hestBildePreview");
     if(img && d.bilde_url){ img.src=d.bilde_url; img.style.display="block"; }
     else if(img){ img.style.display="none"; img.removeAttribute("src"); }
+    if(behandleKnapp){
+      behandleKnapp.style.display = "";
+      behandleKnapp.textContent = "Ny behandling for " + (d.navn || "valgt dyr");
+    }
   }
+
+  function tegnKlikkbarDyrListe(){
+    const liste = el("hesteListe");
+    if(!liste) return;
+    const kundeId = valgtKundeForDyrSide();
+    const rows = kundeId ? dyr.filter(d => String(d.kunde_id) === kundeId) : dyr;
+    if(!rows.length){
+      liste.innerHTML = '<div class="info">Ingen dyr funnet.</div>';
+      return;
+    }
+    liste.innerHTML = rows.map(d => `
+      <div
+        class="listekort"
+        style="cursor:pointer;padding:9px 10px;margin-top:6px;display:grid;grid-template-columns:${d.bilde_url ? "46px " : ""}1fr auto;gap:8px;align-items:center;"
+        onclick="return window.behVelgDyrFraListe('${String(d.id).replace(/'/g, "\\'")}')"
+      >
+        ${d.bilde_url ? `<img src="${String(d.bilde_url).replace(/"/g, "&quot;")}" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:6px;">` : ""}
+        <div style="min-width:0;">
+          <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${String(d.navn || "Uten navn").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</strong>
+          <span style="font-size:12px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${String(d.rase || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span>
+        </div>
+        <span style="font-size:12px;color:#93c5fd;">Rediger</span>
+      </div>
+    `).join("");
+  }
+
+  window.behVelgDyrFraListe = function behVelgDyrFraListe(id){
+    const d = dyr.find(x => String(x.id) === String(id));
+    if(!d) return false;
+    const kunde = el("hestKunde");
+    if(kunde && d.kunde_id){
+      kunde.value = d.kunde_id;
+      fillDyrSide();
+    }
+    const velg = el("hestVelg");
+    if(velg) velg.value = d.id;
+    fillFormFromDyr();
+    el("hestNavn")?.focus();
+    return false;
+  };
+
+  window.behStartBehandlingForValgtDyr = function behStartBehandlingForValgtDyr(event){
+    if(event){ event.preventDefault(); event.stopPropagation(); }
+    const id = String(el("hestVelg")?.value || "");
+    const d = dyr.find(x => String(x.id) === id);
+    if(!d){
+      const m = el("hestMelding");
+      if(m){ m.textContent = "Velg et dyr først."; m.style.color = "#fca5a5"; }
+      return false;
+    }
+    window.location.hash = "behandlingSide";
+    const manuell = el("manuellBehandling");
+    if(manuell) manuell.classList.remove("skjult");
+    const kunde = el("behandlingKunde");
+    if(kunde){
+      kunde.value = d.kunde_id || "";
+      kunde.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+    setTimeout(function(){
+      fillBehandlingDyr();
+      const dyrSelect = el("behandlingHest");
+      if(dyrSelect) dyrSelect.value = d.id;
+      const dato = el("behandlingDato");
+      if(dato && !dato.value) dato.value = new Date().toISOString().slice(0,10);
+      el("behandlingType")?.focus();
+    }, 150);
+    return false;
+  };
 
   async function loadAll(){
     if(busy) return;
@@ -1321,6 +1434,7 @@ if (window.location.hash !== "#behandlingSide") {
       fillSelect(el("fakturaKunde"), kunder, "Velg kunde");
       fillDyrSide();
       fillBehandlingDyr();
+      tegnKlikkbarDyrListe();
 
       window.behDyrCache = dyr;
       window.behKundeCache = kunder;
@@ -1406,7 +1520,7 @@ if (window.location.hash !== "#behandlingSide") {
     const hk = el("hestKunde");
     if(hk && hk.dataset.dyretrygg !== "1"){
       hk.dataset.dyretrygg = "1";
-      hk.addEventListener("change", function(){ fillDyrSide(); fillFormFromDyr(); });
+      hk.addEventListener("change", function(){ fillDyrSide(); fillFormFromDyr(); tegnKlikkbarDyrListe(); });
       hk.addEventListener("focus", loadAll);
       hk.addEventListener("click", loadAll);
     }
@@ -1421,7 +1535,7 @@ if (window.location.hash !== "#behandlingSide") {
     if(hv && hv.dataset.dyretrygg !== "1"){
       hv.dataset.dyretrygg = "1";
       hv.addEventListener("focus", fillDyrSide);
-      hv.addEventListener("click", fillDyrSide);
+      hv.addEventListener("click", function(){ fillDyrSide(); tegnKlikkbarDyrListe(); });
       hv.addEventListener("change", fillFormFromDyr);
     }
     const bh = el("behandlingHest");
@@ -1436,6 +1550,13 @@ if (window.location.hash !== "#behandlingSide") {
       save.onclick = saveDyr;
     } else if (save) {
       save.onclick = saveDyr;
+    }
+    const behandle = el("behandleValgtDyrKnapp");
+    if(behandle && behandle.dataset.dyretrygg !== "1"){
+      behandle.dataset.dyretrygg = "1";
+      behandle.onclick = window.behStartBehandlingForValgtDyr;
+    } else if (behandle) {
+      behandle.onclick = window.behStartBehandlingForValgtDyr;
     }
     const imgInput = el("hestBilde");
     const img = el("hestBildePreview");
@@ -1493,8 +1614,8 @@ if (window.location.hash !== "#behandlingSide") {
       if(window.supabaseClient) return window.supabaseClient;
       if(window.supabase && typeof window.supabase.createClient === "function"){
         window.supabaseClient = window.supabase.createClient(
-          "https://pxlbrywowphkczkehmee.supabase.co",
-          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
+          window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co",
+          window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
           { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage } }
         );
         return window.supabaseClient;
@@ -2014,11 +2135,21 @@ if (window.location.hash !== "#behandlingSide") {
   }
 
   const gammelNyBehandling = window.nyBehandling;
+  function nullstillBehandlingSkjema(){
+    ["behandlingKunde","behandlingHest","behandlingType"].forEach(id => setv(id, ""));
+    ["behandlingBeskrivelse","behandlingKm","behandlingKmPris","arbeidBelop","varerBelop","behandlingPrisAuto"].forEach(id => setv(id, ""));
+    const kamera = el("behandlingBildeKamera"); if(kamera) kamera.value = "";
+    const galleri = el("behandlingBildeGalleri"); if(galleri) galleri.value = "";
+    const m = el("behandlingMelding"); if(m) m.textContent = "";
+    const knapp = el("lagreBehandlingKnapp"); if(knapp) knapp.textContent = "Lagre behandling";
+    window.behValgtBehandlingId = "";
+  }
   window.nyBehandling = function(){
     if(typeof gammelNyBehandling === "function") {
       try { gammelNyBehandling(); } catch(e) { console.warn(e); }
     }
-    setTimeout(settDagensDato, 0);
+    nullstillBehandlingSkjema();
+    setTimeout(function(){ nullstillBehandlingSkjema(); settDagensDato(); }, 0);
     return false;
   };
 
@@ -2149,8 +2280,8 @@ if (window.location.hash !== "#behandlingSide") {
       if(window.supabaseClient) return window.supabaseClient;
       if(window.supabase && typeof window.supabase.createClient === "function"){
         window.supabaseClient = window.supabase.createClient(
-          "https://pxlbrywowphkczkehmee.supabase.co",
-          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
+          window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co",
+          window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
           { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage } }
         );
         return window.supabaseClient;
@@ -2256,8 +2387,8 @@ if (window.location.hash !== "#behandlingSide") {
 // Synlig prisfelt + vedvarende synk mot Arbeid eks. mva.
 // Stopper at gamle script nullstiller prisen etter valg.
 (function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
   let priser = [];
   let laster = false;
   let sisteType = "";
@@ -2494,8 +2625,8 @@ if (window.location.hash !== "#behandlingSide") {
 // ENDELIG PRIS/LAGRING FIX 2026-06-14
 // Ett prisfelt brukes til både visning og lagring. Teller opp behandlinger direkte etter lagring.
 (function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
   let priser = [];
   let lagrer = false;
 
@@ -2924,8 +3055,8 @@ if (window.location.hash !== "#behandlingSide") {
       if(window.supabaseClient) return window.supabaseClient;
       if(window.supabase && window.supabase.createClient){
         window.supabaseClient = window.supabase.createClient(
-          "https://pxlbrywowphkczkehmee.supabase.co",
-          "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
+          window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co",
+          window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS",
           { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storage:window.localStorage} }
         );
         return window.supabaseClient;
@@ -3210,8 +3341,8 @@ if (window.location.hash !== "#behandlingSide") {
 // Behandlingstale fyller/lager behandling. Journal-tale skriver kun i journalnotat.
 // Denne ligger aller sist og kloner behandling-knappen, slik at gamle lyttere fjernes.
 (function(){
-  const SUPABASE_URL = "https://pxlbrywowphkczkehmee.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+  const SUPABASE_URL = window.SUPABASE_URL || "https://pxlbrywowphkczkehmee.supabase.co";
+  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
 
   function el(id){ return document.getElementById(id); }
   function setv(id,v){ const e=el(id); if(e){ e.value = v == null ? "" : String(v); e.dispatchEvent(new Event("change", {bubbles:true})); } }
@@ -3404,5 +3535,10 @@ if (window.location.hash !== "#behandlingSide") {
 })();
 </script>
 
+<script src="../js/behandler/behandler-feature-fix.js?v=20260618-feature3"></script>
 </body>
 </html>
+
+
+
+

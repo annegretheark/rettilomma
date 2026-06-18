@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Veterinær - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background:#151819; color:#f3f4f6; margin:0; padding:20px; }
+    .kort { background:#171a1b; max-width:980px; margin:0 auto 18px auto; padding:18px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.22); border:1px solid #2b3135; }
+    h1,h2,h3 { margin-top:0; color:#f8fafc; }
+    label { display:block; margin-top:10px; font-weight:bold; color:#f3f4f6; }
+    input,select,textarea { width:100%; box-sizing:border-box; padding:10px; margin-top:4px; border:1px solid #4b5563; border-radius:8px; background:#f8fafc; color:#111827; }
+    textarea { min-height:90px; }
+    button { padding:11px 14px; margin:6px 4px 6px 0; border:0; border-radius:8px; background:#1f6feb; color:white; cursor:pointer; font-size:15px; }
+    button.secondary { background:#555; }
+    button.danger { background:#b42318; }
+    .rad { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .skjult { display:none; }
+    .melding { margin-top:10px; color:#fca5a5; font-weight:bold; }
+    .listekort { border:1px solid #374151; padding:10px; border-radius:8px; margin-top:8px; background:#22272a; color:#f3f4f6; }
+    .lite { color:#cbd5e1; font-size:13px; }
+    .vet-admin-nav, .vet-systemadmin-nav { display:none; }
+    .vet-toppkort h1 { margin-bottom:4px; }
+    .vet-rollelinje { margin-top:0; font-weight:bold; }
+    .vet-meny { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; align-items:flex-start; }
+    .vet-undermeny { width:100%; margin-top:4px; padding:10px; border:1px solid #374151; border-radius:10px; background:#22272a; }
+    .vet-undermeny button { background:#555; }
+    .vet-faktura-nav, .vet-oppsett-nav, .vet-admin-toggle { display:none; }
+    .minbil-varelinje { display:grid; grid-template-columns:minmax(220px,1fr) 120px; gap:10px; align-items:end; padding:8px 0; border-bottom:1px solid #374151; }
+    .minbil-varelinje input { margin-top:0; }
+    .vare-regneark-wrap { overflow-x:auto; border:1px solid #374151; border-radius:10px; background:#171a1b; margin-top:8px; }
+    .vare-regneark { width:100%; border-collapse:collapse; min-width:620px; font-size:14px; }
+    .vare-regneark th, .vare-regneark td { border-bottom:1px solid #374151; padding:7px 8px; text-align:left; vertical-align:middle; }
+    .vare-regneark th { background:#22272a; color:#f8fafc; position:sticky; top:0; z-index:1; }
+    .vare-regneark tr:last-child td { border-bottom:0; }
+    .vare-regneark input { margin:0; padding:6px 8px; border-radius:6px; max-width:95px; }
+    .vare-regneark .tall { text-align:right; white-space:nowrap; }
+    .lager-varsel { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:10px; padding:10px; margin:10px 0; font-weight:bold; }
+    .lager-ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:10px; padding:10px; margin:10px 0; font-weight:bold; }
+    .lager-faner { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px 0; }
+    .lager-faner button { margin:0; }
+
+    /* Lager: bare én knapperekke inne i lagerkortet, ikke dobbelt sett med faner */
+    #lagerSide > .lager-faner { display:none !important; }
+
+
+    .okonomi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px; }
+    .okonomi-boks { background:#22272a; border:1px solid #374151; color:#f3f4f6; border-radius:10px; padding:12px; }
+    .okonomi-boks strong { display:block; font-size:18px; margin-top:4px; }
+    .okonomi-tabell { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    .okonomi-tabell th,.okonomi-tabell td { border-bottom:1px solid #374151; padding:6px; text-align:left; vertical-align:top; }
+    .okonomi-tabell th { background:#22272a; color:#f8fafc; }
+    .okonomi-advarsel { color:#b42318; font-weight:bold; }
+
+    .vare-regneark td, .okonomi-tabell td { color:#f3f4f6; }
+    .vare-regneark th, .okonomi-tabell th { color:#f8fafc; }
+    .listekort strong, .listekort span, .listekort p, .listekort div { color:#f3f4f6; }
+    hr { border:0; border-top:1px solid #374151; margin:18px 0; }
+
+
+    /* Kompakt lager-/billiste: ikke store hvite antallfelt under hver vare */
+    #minBilFyllListe .vet-linje-liste,
+    #fyllBilFlerListe .vet-linje-liste,
+    #fyllBilFyllListe .vet-linje-liste {
+      display:grid;
+      gap:2px;
+      margin-top:6px;
+    }
+    #minBilFyllListe .vet-linje-kort,
+    #fyllBilFlerListe .vet-linje-kort,
+    #fyllBilFyllListe .vet-linje-kort {
+      display:grid !important;
+      grid-template-columns:28px minmax(220px,1.7fr) minmax(130px,.8fr) 96px !important;
+      gap:8px;
+      align-items:center;
+      border:1px solid #374151;
+      border-radius:6px;
+      background:#1f2427;
+      padding:4px 8px !important;
+      margin:0 !important;
+      line-height:1.1;
+      min-height:30px;
+    }
+    #minBilFyllListe input[type="checkbox"],
+    #fyllBilFlerListe input[type="checkbox"],
+    #fyllBilFyllListe input[type="checkbox"] {
+      width:auto !important;
+      margin:0 !important;
+      padding:0 !important;
+    }
+    #minBilFyllListe input[type="number"],
+    #fyllBilFlerListe input[type="number"],
+    #fyllBilFyllListe input[type="number"] {
+      width:86px !important;
+      min-width:86px !important;
+      padding:4px 6px !important;
+      margin:0 !important;
+      border-radius:5px !important;
+      font-size:13px !important;
+    }
+    #minBilFyllListe .lite,
+    #fyllBilFlerListe .lite,
+    #fyllBilFyllListe .lite {
+      font-size:13px !important;
+      line-height:1.1 !important;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+
+    /* Kompakt pasientliste */
+    .pasientliste-tittel { margin-bottom:8px; white-space:nowrap; font-size:20px; }
+    #eierSide { padding-top:12px; }
+    #eierSide label[for="dyreeierVelgForDyr"],
+    #dyreeierVelgForDyr,
+    #eierSide .rad,
+    #eierSide label[for="dyreeierEpost"],
+    #dyreeierEpost,
+    #eierSide label[for="dyreeierAdresse"],
+    #dyreeierAdresse,
+    #eierSide h3,
+    #eierSide > p.lite,
+    #dyreeierDyrValg,
+    #dyreeierDyrInfo,
+    #lagreDyreeierKnapp,
+    #dyreeierMelding { display:none !important; }
+    #dyreeierListe { margin-top:4px; }
+    .vet-klikk-liste { display:grid !important; gap:1px !important; margin-top:4px !important; }
+    #eierSide .vet-klikk-rad,
+    #eierSide .vet-linje-kort,
+    #dyreeierListe .listekort {
+      width:100% !important;
+      box-sizing:border-box !important;
+      min-height:24px !important;
+      padding:3px 8px !important;
+      margin:0 !important;
+      line-height:1.1 !important;
+      font-size:14px !important;
+      border:1px solid rgba(255,255,255,.08) !important;
+      border-radius:0 !important;
+      background:rgba(255,255,255,.025) !important;
+      color:#f3f4f6 !important;
+      align-items:center !important;
+    }
+    #eierSide .vet-klikk-rad span,
+    #eierSide .vet-linje-kort span,
+    #dyreeierListe .listekort span {
+      font-size:14px !important;
+      line-height:1.1 !important;
+      font-weight:400 !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+    #eierSide .vet-klikk-rad button, #eierSide .vet-klikk-rad a {
+      padding:3px 8px !important;
+      margin:0 !important;
+      font-size:13px !important;
+      line-height:1.1 !important;
+      border-radius:4px !important;
+    }
+    .vet-dyr-mini-bilde { width:30px !important; height:24px !important; object-fit:cover !important; border-radius:4px !important; }
+    .vet-meny button[onclick="visVetSide('journalSide')"],
+    .vet-meny button[onclick="visFyllBilSide()"] { display:none !important; }
+
+
+    /* Hindrer blink av gamle/feil knapper før rolle er ferdig lastet */
+    body.vet-loading #appSide { visibility:hidden !important; }
+    .vet-bruker-nav, .vet-lagerlogg-nav, .vet-faktura-nav, .vet-admin-toggle, #vetSlettTestdataKnapp { display:none; }
+    #vetFakturaFastKnapp, #vetOversiktFastKnapp { display:none !important; }
+
+    /* Vipps på faktura og purring */
+    .vet-vipps-betaling { color:#d40000; font-weight:800; font-size:18px; margin-top:14px; }
+    .vet-vipps-betaling .lite { color:#d40000; font-weight:700; font-size:14px; }
+
+  </style>
+</head>
+<body>
+<script>
+/* Rydder gammel direkte-lenke som sender veterinær til feil underside */
+(function () {
+  if (window.location.hash === "#behandlingSide") {
+    history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  }
+})();
+localStorage.setItem("rettilommaValgtModul", "veterinar");
+</script>
+<section id="appSide">
+  <div class="kort vet-toppkort">
+    <h1 id="vetToppNavn">Veterinær</h1>
+    <p id="vetToppRolle" class="lite vet-rollelinje">Laster rolle ...</p>
+    <p id="aktivKlinikkInfo" class="lite"></p>
+    <p id="vetVisningInfo" class="lite skjult">Du viser nå systemet som vanlig veterinær.</p>
+
+    <div class="vet-meny">
+      <button id="vetOppsettKnapp" type="button" class="vet-oppsett-nav secondary">Oppsett</button>
+
+      <button type="button" class="vet-bruker-nav" onclick="visVetSide('eierSide')">Pasienter</button>
+<button type="button" class="vet-bruker-nav" onclick="visVetSide('lagerSide')">Bil og lager</button>
+<button id="vetSlettTestdataKnapp" type="button" class="danger" onclick="slettVetTestdata()" style="display:none;">Slett testdata</button>
+      <button type="button" class="vet-systemadmin-nav" onclick="visVetSide('backupSide')">Backup / Import</button>
+      <button id="vetVisSomVeterinaerKnapp" type="button" class="secondary vet-admin-toggle">Vis som vanlig veterinær</button>
+      <button type="button" class="danger" onclick="loggUtVeterinaer()">Logg ut</button>
+
+      <div id="vetOppsettMeny" class="vet-undermeny skjult">
+        <button type="button" onclick="visVetSide('klinikkSide')">Klinikk og brukere</button>
+        <button type="button" onclick="visVetSide('lagerSide')">Hovedlager og biler</button>
+        <button type="button" onclick="visVetSide('prisSide')">Prisliste</button>
+      </div>
+    </div>
+
+    <p class="lite">Første versjon: journal, behandling og pasienthistorikk. Resept er ikke med ennå.</p>
+  </div>
+
+  <section id="klinikkSide" class="kort">
+    <h2>Klinikk</h2>
+    <p class="lite">Alle veterinærer hører til en klinikk. Klinikken kan senere kobles til et konsern, f.eks. EMET.</p>
+    <input id="klinikkId" type="hidden">
+    <label for="klinikkNavn">Klinikknavn</label>
+    <input id="klinikkNavn" placeholder="Dyrlegene i Norderhov">
+    <label for="konsernNavn">Konsern / kjede</label>
+    <input id="konsernNavn" placeholder="Valgfritt, f.eks. EMET">
+    <div class="rad">
+      <div><label for="klinikkTelefon">Telefon</label><input id="klinikkTelefon"></div>
+      <div><label for="klinikkEpost">E-post</label><input id="klinikkEpost" type="email"></div>
+    </div>
+    <label for="klinikkAdresse">Adresse</label>
+    <input id="klinikkAdresse">
+
+    <div id="adminKlinikkLogo" class="skjult">
+      <h3>Klinikkoppsett</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin ser dette. Logo brukes på faktura, brevhode og utskrifter.</p>
+
+      <div class="rad">
+        <div>
+          <label for="klinikkKmPris">Km-pris</label>
+          <input id="klinikkKmPris" type="number" step="0.01" min="0" value="5.30">
+        </div>
+        <div>
+          <label for="klinikkVippsNr">Vipps nr</label>
+          <input id="klinikkVippsNr" type="text" inputmode="numeric" placeholder="F.eks. 123456">
+        </div>
+        <div>
+          <label for="klinikkVippsTil">Vipps til</label>
+          <input id="klinikkVippsTil" type="text" placeholder="F.eks. klinikknavn">
+        </div>
+        <div>
+          <label for="klinikkLogoFil">Klinikklogo</label>
+          <input id="klinikkLogoFil" type="file" accept="image/*">
+        </div>
+      </div>
+
+      <img id="klinikkLogoPreview" alt="Klinikklogo" class="skjult" style="max-height:120px; margin-top:10px; border:1px solid #ddd; border-radius:8px; padding:6px;">
+    </div>
+
+    
+    <div id="adminKlinikkBrukere" class="skjult">
+      <h3>Brukere på klinikk</h3>
+      <p class="lite">Kun klinikkadmin/systemadmin. Opprett innlogging og velg om brukeren er vanlig veterinær eller klinikkadmin.</p>
+
+      <div class="rad">
+        <div>
+          <label for="nyBrukerNavn">Navn</label>
+          <input id="nyBrukerNavn" placeholder="Navn på bruker">
+        </div>
+        <div>
+          <label for="nyBrukerEpost">E-post</label>
+          <input id="nyBrukerEpost" type="email" placeholder="navn@klinikk.no">
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="nyBrukerPassord">Midlertidig passord</label>
+          <input id="nyBrukerPassord" type="password" placeholder="Minst 6 tegn">
+        </div>
+        <div>
+          <label for="nyBrukerRolle">Rolle</label>
+          <select id="nyBrukerRolle">
+            <option value="veterinaer">Vanlig bruker</option>
+            <option value="admin">Klinikkadmin</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="opprettKlinikkBrukerKnapp" type="button" class="secondary">Opprett bruker</button>
+
+      <hr>
+
+      <h4>Eksisterende brukere</h4>
+      <div id="klinikkBrukerMelding" class="melding"></div>
+      <div id="klinikkBrukerListe"></div>
+    </div>
+
+    <button id="lagreKlinikkKnapp" type="button">Lagre klinikk</button>
+    <div id="klinikkMelding" class="melding"></div>
+    <div id="klinikkListe"></div>
+  </section>
+
+  <section id="eierSide" class="kort skjult">
+    <h2 class="pasientliste-tittel">Dyreeiere | Pasientliste</h2>
+    <input id="dyreeierId" type="hidden">
+    <label for="dyreeierVelgForDyr">Velg dyreeier</label>
+    <select id="dyreeierVelgForDyr">
+      <option value="">Velg dyreeier</option>
+    </select>
+    <div class="rad">
+      <div><label for="dyreeierNavn">Navn</label><input id="dyreeierNavn"></div>
+      <div><label for="dyreeierTelefon">Telefon</label><input id="dyreeierTelefon"></div>
+    </div>
+    <label for="dyreeierEpost">E-post</label>
+    <input id="dyreeierEpost" type="email">
+    <label for="dyreeierAdresse">Adresse</label>
+    <input id="dyreeierAdresse">
+
+    <h3>Dyr hos valgt dyreeier</h3>
+    <p class="lite">Når du redigerer en dyreeier, vises bare dyrene som tilhører denne eieren her.</p>
+    <select id="dyreeierDyrValg">
+      <option value="">Velg/rediger dyreeier først</option>
+    </select>
+    <p id="dyreeierDyrInfo" class="lite"></p>
+
+    <button id="lagreDyreeierKnapp" type="button">Lagre dyreeier</button>
+    <div id="dyreeierMelding" class="melding"></div>
+    <div id="dyreeierListe"></div>
+  </section>
+
+  <section id="dyrSide" class="kort skjult">
+    <h2>Dyr / pasienter</h2>
+    <input id="dyrId" type="hidden">
+    <label for="dyrEierValg">Eier</label>
+    <select id="dyrEierValg"><option value="">Velg eier</option></select>
+    <div class="rad">
+      <div><label for="dyrNavn">Navn</label><input id="dyrNavn"></div>
+      <div><label for="dyrArt">Art</label><input id="dyrArt" placeholder="Hund, katt, hest ..."></div>
+      <div><label for="dyrRase">Rase</label><input id="dyrRase"></div>
+    </div>
+    <div class="rad">
+      <div><label for="dyrFodselsdato">Fødselsdato</label><input id="dyrFodselsdato" type="date"></div>
+      <div><label for="dyrKjonn">Kjønn</label><select id="dyrKjonn"><option value="">Velg</option><option>Hann</option><option>Hunn</option><option>Vallak</option><option>Ukjent</option></select></div>
+      <div><label for="dyrIdmerking">ID/chip</label><input id="dyrIdmerking"></div>
+    </div>
+    <button id="lagreDyrKnapp" type="button">Lagre dyr</button>
+    <div id="dyrMelding" class="melding"></div>
+    <div id="dyrListe"></div>
+  </section>
+
+
+  <section id="prisSide" class="kort skjult">
+    <h2>Prisliste</h2>
+    <p class="lite">Her kan veterinæren lage både fastpriser og timepriser. Prisene kan senere velges inn i journal/behandling.</p>
+    <input id="prisId" type="hidden">
+    <div class="rad">
+      <div>
+        <label for="prisNavn">Navn på pris</label>
+        <input id="prisNavn" placeholder="Konsultasjon hest, vaksine, akuttvakt ...">
+      </div>
+      <div>
+        <label for="prisType">Pristype</label>
+        <select id="prisType">
+          <option value="fastpris">Fastpris</option>
+          <option value="timepris">Timepris</option>
+          <option value="kmpris">Kjøring per km</option>
+          <option value="annet">Annet</option>
+        </select>
+      </div>
+      <div>
+        <label for="prisBelop">Pris eks. mva</label>
+        <input id="prisBelop" type="number" step="0.01" min="0" placeholder="1200">
+      </div>
+    </div>
+    <label for="prisBeskrivelse">Beskrivelse</label>
+    <input id="prisBeskrivelse" placeholder="Valgfritt">
+    <button id="lagrePrisKnapp" type="button">Lagre pris</button>
+    <button id="nyPrisKnapp" type="button" class="secondary">Ny pris</button>
+    <div id="prisMelding" class="melding"></div>
+    <div id="prisListe"></div>
+  </section>
+
+
+
+  <section id="lagerSide" class="kort skjult">
+    <div class="lager-faner">
+      <button type="button" class="secondary" onclick="visLagerFane('minBilOmrade')">Min bil</button>
+      <button type="button" class="secondary vet-admin-nav" onclick="visLagerFane('adminLagerOmrade')">Hovedlager</button>
+      <button type="button" class="secondary" onclick="visLagerFane('bestillingOmrade')">Bestillingsliste</button>
+</div>
+    <div id="lagerVarselTopp"></div>
+
+    <div id="minBilOmrade">
+      <h2>Min bil</h2>
+      <p class="lite">Velg bil første gang. Den huskes automatisk neste gang. Når du fyller bilen fra hovedlager blir det logget hvem som tok hva.</p>
+      <p class="lite">Her kan veterinæren fylle egen bil fra hovedlager. Skriv antall kun på varene som skal legges i bilen.</p>
+
+      <div id="minBilInfo" class="melding"></div>
+
+      <div class="rad" id="minBilVelgRad">
+        <div>
+          <label for="minBilValg">Bil</label>
+          <select id="minBilValg"><option value="">Velg bil</option></select>
+        </div>
+      </div>
+
+      <h3>Velg varer fra hovedlager</h3>
+      <div id="minBilFyllListe" style="margin-top:10px;"></div>
+      <button id="fyllMinBilFlereKnapp" type="button" class="secondary">Legg valgte varer på bilen</button>
+
+      <h3>Innhold i bilen</h3>
+      <div id="minBilInnholdListe"></div>
+      <div id="minBilMelding" class="melding"></div>
+      <h3>Siste lagerbevegelser for bilen</h3>
+      <div id="minBilLoggListe"></div>
+    </div>
+
+    <div id="adminLagerOmrade">
+      <h2>Varer, lager og biler</h2>
+      <p class="lite">Admin kan opprette varer, redigere hovedlager og administrere biler.</p>
+
+      <h3>Medisin / vare</h3>
+      <input id="vetVareId" type="hidden">
+      <div class="rad">
+        <div><label for="vetVareNavn">Navn</label><input id="vetVareNavn" placeholder="F.eks. Influensavaksine, Sedalin, bandasje"></div>
+        <div><label for="vetVareKategori">Kategori</label><select id="vetVareKategori"><option value="medisin">Medisin</option><option value="bandasje">Bandasje</option><option value="forbruk">Forbruk</option><option value="annet">Annet</option></select></div>
+        <div><label for="vetVareEnhet">Enhet</label><input id="vetVareEnhet" placeholder="stk, dose, pakke" value="stk"></div>
+        <div><label for="vetVarePris">Utsalgspris eks. mva</label><input id="vetVarePris" type="number" step="0.01" min="0" value="0"></div>
+        <div><label for="vetVareMinimum">Minimum totalt</label><input id="vetVareMinimum" type="number" step="0.01" min="0" value="0"></div>
+      </div>
+      <button id="lagreVetVareKnapp" type="button">Lagre medisin/vare</button>
+      <button id="nyVetVareKnapp" type="button" class="secondary">Ny vare</button>
+      <div id="vetVareMelding" class="melding"></div>
+      <div id="vetVareListe"></div>
+
+      <hr>
+
+      <h3>Sentral lager / hovedlager</h3>
+      <p class="lite">Her fyller du lageret på klinikken. Positive tall legger til, negative tall korrigerer ned.</p>
+      <div class="rad">
+        <div><label for="hovedlagerVareValg">Medisin/vare</label><select id="hovedlagerVareValg"><option value="">Velg vare</option></select></div>
+        <div><label for="hovedlagerAntall">Antall inn/ut</label><input id="hovedlagerAntall" type="number" step="1" value="1"></div>
+      </div>
+      <button id="oppdaterHovedlagerKnapp" type="button">Oppdater hovedlager</button>
+      <div id="hovedlagerMelding" class="melding"></div>
+      <div id="hovedlagerListe"></div>
+
+      <hr>
+
+      <h3>Biler</h3>
+      <input id="vetBilId" type="hidden">
+      <div class="rad">
+        <div><label for="vetBilNavn">Bilnavn</label><input id="vetBilNavn" placeholder="Bil Anne"></div>
+        <div><label for="vetBilRegnr">Regnr</label><input id="vetBilRegnr" placeholder="AB12345"></div>
+        <div><label for="vetBilVeterinaer">Veterinær</label><input id="vetBilVeterinaer" placeholder="Navn eller e-post til veterinær"></div>
+      </div>
+      <button id="lagreVetBilKnapp" type="button">Lagre bil</button>
+      <button id="nyVetBilKnapp" type="button" class="secondary">Ny bil</button>
+      <div id="vetBilMelding" class="melding"></div>
+      <div id="vetBilListe"></div>
+
+      <hr>
+
+      <h3>Fyll bil fra hovedlager</h3>
+      <p class="lite">Velg bil, skriv antall på alle varene som skal legges i bilen, og overfør alt i én operasjon.</p>
+      <div class="rad">
+        <div><label for="fyllBilValg">Bil</label><select id="fyllBilValg"><option value="">Velg bil</option></select></div>
+      </div>
+      <div id="fyllBilFlerListe" style="margin-top:10px;"></div>
+      <button id="flyttTilBilKnapp" type="button">Legg valgte varer på bil</button>
+      <div id="billagerMelding" class="melding"></div>
+      <div id="billagerListe"></div>
+
+      <hr>
+      <h3>Siste lagerlogg</h3>
+      <p class="lite">Viser hvem som flyttet eller brukte varer.</p>
+      <div id="lagerLoggListe"></div>
+    </div>
+
+    <div id="bestillingOmrade" style="display:none;">
+      <h2>Bestillingsliste</h2>
+      <p class="lite">Varsler når hovedlager er tomt eller under minimum. Bruk listen som påminnelse til innkjøp.</p>
+      <div id="bestillingVarsel"></div>
+      <div id="bestillingListe"></div>
+    </div>
+</div>
+  </section>
+<section id="journalSide" class="kort skjult">
+    <h2>Journal / behandling</h2>
+
+    <div class="rad">
+      <div>
+        <label for="journalDyreeierValg">Dyreeier</label>
+        <select id="journalDyreeierValg"><option value="">Velg dyreeier</option></select>
+      </div>
+      <div>
+        <label for="journalDyrValg">Dyr</label>
+        <select id="journalDyrValg"><option value="">Velg dyreeier først</option></select>
+      </div>
+      <div>
+        <label for="journalDato">Dato</label>
+        <input id="journalDato" type="date">
+      </div>
+    </div>
+
+    <h3>Behandlinger</h3>
+    <p class="lite">Du kan legge til flere behandlinger på samme journal. Kjøring og varer/medisiner ligger i egne felt under.</p>
+
+    <label for="journalPrisValg">Behandling</label>
+    <select id="journalPrisValg">
+      <option value="">Velg behandling</option>
+    </select>
+    <div class="rad">
+      <div>
+        <label for="journalBehandlingAntall">Antall / timer</label>
+        <input id="journalBehandlingAntall" type="number" step="0.25" min="0" value="1">
+      </div>
+      <div style="align-self:end;">
+        <button id="leggTilJournalBehandlingKnapp" type="button" class="secondary">Legg til behandling</button>
+      </div>
+    </div>
+    <div id="journalBehandlingListe" class="lite">Ingen behandlinger lagt til.</div>
+
+    <h3>Kjøring / timer / fastpris</h3>
+    <div class="rad">
+      <div><label for="journalFastpris">Fastpris eks. mva</label><input id="journalFastpris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimepris">Timepris eks. mva</label><input id="journalTimepris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div><label for="journalTimer">Antall timer</label><input id="journalTimer" type="number" step="0.25" min="0" placeholder="0"></div>
+      <div><label for="journalKm">Kjøring km</label><input id="journalKm" type="number" step="1" min="0" placeholder="0"></div>
+      <div><label for="journalKmPris">Pris per km</label><input id="journalKmPris" type="number" step="0.01" min="0" placeholder="0"></div>
+      <div style="align-self:end;">
+        <button id="leggTilJournalKjoringKnapp" type="button" class="secondary">Legg til kjøring</button>
+      </div>
+    </div>
+    <div id="journalKjoringListe" class="lite">Ingen kjøring lagt til.</div>
+    <p class="lite">Sum eks. mva: <strong id="journalSumVisning">0,00</strong></p>
+    <label for="journalNotat">Journalnotat</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <button type="button" class="secondary" onclick="startTale('journalNotat')">Snakk inn journalnotat</button>
+      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
+    </div>
+    <textarea id="journalNotat" placeholder="Skriv eller snakk inn journalnotat."></textarea>
+    <label for="journalMedisin">Medisin / reseptkladd</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <button type="button" class="secondary" onclick="startTale('journalMedisin')">Snakk inn medisin/reseptkladd</button>
+      <button type="button" class="secondary" onclick="stoppTale()">Stopp tale</button>
+    </div>
+    <textarea id="journalMedisin" placeholder="Skriv eller snakk inn medisin / reseptkladd. Ikke e-resept."></textarea>
+
+    <h3>Varer / medisiner til faktura</h3>
+    <p class="lite">Velg helst fra bil-lager. Da trekkes beholdningen fra bilen når journalen lagres. Manuell varelinje kan fortsatt brukes ved behov.</p>
+
+    <h4>Fra bil-lager</h4>
+    <div class="rad">
+      <div><label for="journalBilValg">Bil</label><select id="journalBilValg"><option value="">Velg bil</option></select></div>
+    </div>
+    <div id="journalBilVareListe" class="listekort">Velg bil først.</div>
+    <button id="leggTilJournalVarerFraBilListeKnapp" type="button" class="secondary">Legg inn valgte varer fra bil</button>
+
+    <div style="display:none;">
+      <select id="journalBilVareValg"><option value="">Velg bil først</option></select>
+      <input id="journalBilVareAntall" type="number" step="1" min="1" value="1">
+      <button id="leggTilJournalVareFraBilKnapp" type="button" class="secondary">Legg til fra bil-lager</button>
+    </div>
+
+    <h4>Manuell varelinje</h4>
+    <div class="rad">
+      <div><label for="journalVareNavn">Vare / medisin</label><input id="journalVareNavn" placeholder="F.eks. ormekur, vaksine, bandasjemateriell"></div>
+      <div><label for="journalVareAntall">Antall</label><input id="journalVareAntall" type="number" step="1" min="1" value="1"></div>
+      <div><label for="journalVarePris">Pris per stk eks. mva</label><input id="journalVarePris" type="number" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <button id="leggTilJournalVareKnapp" type="button" class="secondary">Legg til manuell vare</button>
+    <div id="journalVareListe" class="lite">Ingen varer lagt til.</div>
+
+    <h3>Journalbilder</h3>
+    <p class="lite">Bildene lagres i Supabase Storage og kobles til journalnotatet.</p>
+    <div class="rad">
+      <div><label for="journalBildeGalleri">Velg bilde fra galleri</label><input id="journalBildeGalleri" type="file" accept="image/*" multiple></div>
+      <div><label for="journalBildeKamera">Ta bilde</label><input id="journalBildeKamera" type="file" accept="image/*" capture="environment"></div>
+    </div>
+    <label for="journalBildeTekst">Bildetekst</label>
+    <input id="journalBildeTekst" placeholder="F.eks. sår høyre bakbein før behandling">
+    <p id="journalBildeInfo" class="lite">Ingen bilder valgt.</p>
+
+    <button id="lagreJournalKnapp" type="button">Lagre journal</button>
+    <div id="journalMelding" class="melding"></div>
+    <div id="journalListe"></div>
+  </section>
+
+
+  <section id="okonomiSide" class="kort skjult">
+    <h2>Oversikt</h2>
+    <p class="lite">Adminoversikt over alle journaler, fakturert og ikke fakturert.</p>
+
+    <div class="rad">
+      <div>
+        <label for="adminOkonomiFilter">Vis</label>
+        <select id="adminOkonomiFilter">
+          <option value="alle">Alle journaler</option>
+          <option value="ikke_fakturert">Ikke fakturert</option>
+          <option value="fakturert">Fakturert</option>
+        </select>
+      </div>
+      <div>
+        <label for="adminOkonomiFraDato">Fra dato</label>
+        <input id="adminOkonomiFraDato" type="date">
+      </div>
+      <div>
+        <label for="adminOkonomiTilDato">Til dato</label>
+        <input id="adminOkonomiTilDato" type="date">
+      </div>
+    </div>
+
+    <button id="oppdaterAdminOkonomiKnapp" type="button" class="secondary">Oppdater oversikt</button>
+
+    <div id="adminOkonomiMelding" class="melding"></div>
+    <div id="adminOkonomiSummer" class="okonomi-grid"></div>
+    <div id="adminOkonomiListe"></div>
+
+    <hr>
+    <h3>MVA-oversikt</h3>
+    <p class="lite">Utgående MVA kommer fra faktura/kreditnota. Inngående MVA kommer fra innkjøp og står foreløpig som 0 til vi legger inn innkjøpsdelen.</p>
+    <div id="adminMvaSummer" class="okonomi-grid"></div>
+    <div id="adminMvaListe"></div>
+  </section>
+
+  <section id="backupSide" class="kort skjult">
+    <h2>Backup / Restore / Import</h2>
+    <p class="lite">Kun systemadmin. Her kan du ta backup og importere behandlinger/varer.</p>
+
+    <h3>Backup</h3>
+    <p class="lite">Lokal backup lastes ned til PC. Supabase-backup lagres i privat Storage-bucket og kan også kjøres automatisk hver natt.</p>
+    <button id="vetBackupKnapp" type="button" onclick="vetLagBackup()">Last ned lokal backup</button>
+    <button id="vetBackupStorageKnapp" type="button" class="secondary" onclick="vetLagBackupTilStorage()">Ta backup nå til Supabase</button>
+    <p id="vetSisteBackupInfo" class="lite"></p>
+
+    <h3>Restore</h3>
+    <label for="vetRestoreFil">Velg backupfil (.json)</label>
+    <input id="vetRestoreFil" type="file" accept=".json,application/json">
+    <button id="vetRestoreKnapp" type="button" class="secondary" onclick="return vetRestoreBackupDirekte(event)">Les inn backup</button>
+    <h3>Importer behandlingspriser</h3>
+    <p class="lite">CSV-kolonner: navn,type,pris,beskrivelse</p>
+    <label for="vetImportPriserFil">Velg CSV-fil med behandlingspriser</label>
+    <input id="vetImportPriserFil" type="file" accept=".csv,text/csv">
+    <button id="vetImportPriserKnapp" type="button" class="secondary" onclick="vetImporterPriserCsv()">Importer behandlingspriser</button>
+
+    <h3>Importer medisiner/varer til lager</h3>
+    <p class="lite">CSV-kolonner: navn,kategori,enhet,utsalgspris,minimum_antall,hovedlager_antall</p>
+    <label for="vetImportVarerFil">Velg CSV-fil med medisiner/varer</label>
+    <input id="vetImportVarerFil" type="file" accept=".csv,text/csv">
+    <button id="vetImportVarerKnapp" type="button" class="secondary" onclick="vetImporterVarerCsv()">Importer medisiner/varer</button>
+    <div id="backupMelding" class="melding"></div>
+  </section>
+
+  <section id="fakturaSide" class="kort skjult">
+    <h2>Faktura veterinær</h2>
+    <p class="lite">Velg dyreeier og lag faktura fra journaler, behandlinger, kjøring og varer/medisiner. Logo hentes fra klinikkoppsettet.</p>
+
+    <label for="fakturaDyreeierValg">Dyreeier / kunde</label>
+    <select id="fakturaDyreeierValg">
+      <option value="">Velg dyreeier</option>
+    </select>
+
+    <div class="rad">
+      <div>
+        <label for="fakturaDato">Fakturadato</label>
+        <input id="fakturaDato" type="date">
+      </div>
+      <div>
+        <label for="fakturaForfallsdato">Forfallsdato</label>
+        <input id="fakturaForfallsdato" type="date">
+      </div>
+    </div>
+
+    <button id="hentFakturaGrunnlagKnapp" type="button" class="secondary">Hent fakturagrunnlag</button>
+    <button id="skrivUtVetFakturaKnapp" type="button">Skriv ut faktura med logo</button>
+
+    <hr>
+    <h3>Kreditnota</h3>
+    <p class="lite">Velg en eksisterende faktura og lag kreditnota. Kreditnota trekkes fra i MVA-oversikten.</p>
+    <label for="kreditnotaFakturaValg">Faktura som skal krediteres</label>
+    <select id="kreditnotaFakturaValg">
+      <option value="">Velg faktura</option>
+    </select>
+    <button id="lagVetKreditnotaKnapp" type="button" class="danger">Lag kreditnota</button>
+
+    <div id="vetVippsFakturaVisning" class="vet-vipps-betaling"></div>
+    <div id="fakturaMelding" class="melding"></div>
+    <div id="fakturaGrunnlagListe"></div>
+  </section>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/core/config.js"></script>
+<script src="../js/veterinaer/vet-app.js?v=20260615stabilmeny1"></script>
+<script src="../js/veterinaer/vet-klinikk-priser-bilder.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-lager-bil.js?v=20260615pdf1"></script>
+<script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-faktura-okonomi.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-backup-import-admin.js?v=20260611split"></script>
+<script src="../js/veterinaer/vet-pasient-admin.js?v=20260615stabilmeny1"></script>
+<script src="../js/veterinaer/vet-journal-lager.js?v=20260612minimal"></script>
+<script src="../js/veterinaer/vet-admin-ekstra.js?v=20260615stabilmeny1"></script>
+<script>
+async function loggUtVeterinaer() {
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (e) {
+    console.error(e);
+  }
+
+  window.location.href = "../veterinaer-login.html";
+}
+</script>
+
+
+
+<script>
+/* Tale til tekst i journalfeltene. Lagrer ingen lydfil. */
+let vetTaleRecognition = null;
+let vetAktivtTaleFelt = null;
+function startTale(feltId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert("Talegjenkjenning støttes ikke i denne nettleseren. Bruk Chrome eller Edge."); return; }
+  if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} }
+  vetAktivtTaleFelt = document.getElementById(feltId);
+  if (!vetAktivtTaleFelt) return;
+  vetTaleRecognition = new SpeechRecognition();
+  vetTaleRecognition.lang = "no-NO";
+  vetTaleRecognition.continuous = true;
+  vetTaleRecognition.interimResults = false;
+  vetTaleRecognition.onresult = function(event) {
+    let tekst = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) tekst += event.results[i][0].transcript + " ";
+    const gammel = vetAktivtTaleFelt.value || "";
+    vetAktivtTaleFelt.value = gammel + (gammel && !gammel.endsWith(" ") ? " " : "") + tekst;
+    vetAktivtTaleFelt.dispatchEvent(new Event("input", { bubbles:true }));
+  };
+  vetTaleRecognition.start();
+}
+function stoppTale() { if (vetTaleRecognition) { try { vetTaleRecognition.stop(); } catch(e) {} } }
+window.startTale = startTale;
+window.stoppTale = stoppTale;
+</script>
+
+
+
+<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612NYBEHANDLINGFAST2"></script>
+
+<script>
+/* ENDLIG: Ny behandling fra alle pasientliste-knapper */
+(function () {
+  function getGlobal(name, fallback) {
+    try {
+      const v = Function("return (typeof " + name + " !== 'undefined' ? " + name + " : undefined)")();
+      return v === undefined ? fallback : v;
+    } catch(e) { return fallback; }
+  }
+
+  function setv(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.value = v == null ? "" : v;
+  }
+
+  function finnEierIdForDyr(d) {
+    return d?.dyreeier_id || d?.eier_id || d?.kunde_id || d?.owner_id || d?.vet_dyreeiere?.id || d?.dyreeier?.id || "";
+  }
+
+  function finnDyrIdFraKnapp(btn) {
+    if (!btn) return "";
+    let id = btn.getAttribute("data-dyr-id") || "";
+    if (id) return id;
+
+    const onclick = btn.getAttribute("onclick") || "";
+    const m = onclick.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (m) return m[0];
+
+    const panel = btn.closest("[id^='vetBehandlingPanel_']");
+    if (panel && panel.id) return panel.id.replace("vetBehandlingPanel_", "");
+
+    const kort = btn.closest(".vet-dyr-kort");
+    if (kort) {
+      const b = kort.querySelector("button[data-dyr-id]");
+      if (b) return b.getAttribute("data-dyr-id") || "";
+    }
+    return "";
+  }
+
+  function apneJournalForDyr(dyrId) {
+    const dyrListe = getGlobal("vetDyr", []) || [];
+    const d = dyrListe.find(x => String(x.id || "") === String(dyrId || ""));
+
+    if (!d) {
+      alert("Fant ikke dyret for ny behandling. Trykk Oppdater og prøv igjen.");
+      return false;
+    }
+
+    const eierId = finnEierIdForDyr(d);
+    if (!eierId) {
+      alert("Dyret mangler eierkobling.");
+      return false;
+    }
+
+    try { if (typeof window.vetLukkNyBehandlingInline === "function") window.vetLukkNyBehandlingInline(); } catch(e) {}
+    try { window.vetRedigerJournalId = ""; } catch(e) {}
+
+    document.querySelectorAll("#klinikkSide,#eierSide,#dyrSide,#prisSide,#lagerSide,#journalSide,#fakturaSide,#okonomiSide,#backupSide,#lagerLoggSide,#journalLoggSide,#vetJournalApningsloggSide").forEach(function(el) {
+      if (!el) return;
+      el.classList.add("skjult");
+      el.style.display = "none";
+    });
+
+    const side = document.getElementById("journalSide");
+    if (!side) {
+      alert("Fant ikke journalbildet.");
+      return false;
+    }
+    side.classList.remove("skjult");
+    side.style.display = "";
+
+    setTimeout(function () {
+      try { if (typeof fyllJournalDyreeierValg === "function") fyllJournalDyreeierValg(); } catch(e) {}
+      setv("journalDyreeierValg", eierId);
+      const eierValg = document.getElementById("journalDyreeierValg");
+      if (eierValg) {
+        try { eierValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
+      }
+
+      setTimeout(function () {
+        try { if (typeof fyllDyrValg === "function") fyllDyrValg(); } catch(e) {}
+        setv("journalDyrValg", d.id);
+        const dyrValg = document.getElementById("journalDyrValg");
+        if (dyrValg) {
+          try { dyrValg.dispatchEvent(new Event("change", { bubbles:true })); } catch(e) {}
+        }
+
+        setv("journalDato", new Date().toISOString().slice(0,10));
+        ["journalNotat","journalMedisin","journalMedisinKladd","journalBildeTekst","journalVareNavn","journalVarePris"].forEach(id => setv(id, ""));
+        ["journalFastpris","journalTimepris","journalTimer","journalKm"].forEach(id => setv(id, ""));
+
+        try { if (typeof settStandardKmPrisFraKlinikk === "function") settStandardKmPrisFraKlinikk(); } catch(e) {}
+        try { if (typeof fyllPrisValg === "function") fyllPrisValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilValg === "function") fyllJournalBilValg(); } catch(e) {}
+        try { if (typeof fyllJournalBilVareValg === "function") fyllJournalBilVareValg(); } catch(e) {}
+        try { if (typeof oppdaterJournalSum === "function") oppdaterJournalSum(); } catch(e) {}
+
+        const lagre = document.getElementById("lagreJournalKnapp");
+        if (lagre) lagre.textContent = "Lagre journal";
+        const h = document.querySelector("#journalSide h2");
+        if (h) h.textContent = "Ny behandling";
+        const msg = document.getElementById("journalMelding");
+        if (msg) msg.textContent = "Ny behandling for " + (d.navn || "valgt dyr") + ".";
+        side.scrollIntoView({ behavior:"smooth", block:"start" });
+        const notat = document.getElementById("journalNotat");
+        if (notat) notat.focus();
+      }, 100);
+    }, 100);
+    return false;
+  }
+
+  window.vetApneJournalForDyr = apneJournalForDyr;
+
+  document.addEventListener("click", function (ev) {
+    const btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+    if (!btn || !btn.closest("#eierSide")) return;
+
+    const tekst = String(btn.textContent || "").trim().toLowerCase();
+    const erNyBehandling = btn.matches(".vet-nybehandling-radknapp,[data-dyr-id],.vet-nybehandling-direkte") || tekst === "ny behandling";
+    if (!erNyBehandling) return;
+
+    const dyrId = finnDyrIdFraKnapp(btn);
+    if (!dyrId) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    return apneJournalForDyr(dyrId);
+  }, true);
+})();</script>
+
+
+
+
+
+<script>
+/* STABIL MENY 2026-06-15: rolig versjon uten blink og uten Velg modul. */
+(function () {
+  function tekst(id){ var el=document.getElementById(id); return String(el && el.textContent ? el.textContent : "").toLowerCase(); }
+  function epost(){ try { return String(window.vetInnloggetEpost || localStorage.getItem("rettilommaSistEpost") || "").toLowerCase(); } catch(e){ return ""; } }
+  function rolleKlar(){ var r=tekst("vetToppRolle"); return r && !r.includes("laster"); }
+  function erAdmin(){
+    var rolle=tekst("vetToppRolle"), info=tekst("aktivKlinikkInfo"), mail=epost(), globalAdmin=false;
+    try { globalAdmin=(typeof window.erKlinikkAdmin==="function" && window.erKlinikkAdmin()) || window.vetErSystemAdmin===true || String(window.vetKlinikkRolle||"").toLowerCase().includes("admin"); } catch(e){}
+    return !!(globalAdmin || mail==="greknuts@online.no" || rolle.includes("admin") || info.includes("admin") || info.includes("systemadmin"));
+  }
+  function vis(el, synlig, display){ if(!el) return; display=display||"inline-block"; el.style.display=synlig ? display : "none"; el.classList.toggle("skjult", !synlig); }
+  function settMeny(apne){ var meny=document.getElementById("vetOppsettMeny"); if(meny) vis(meny, !!apne, "block"); }
+  function stabiliser(){
+    var admin=erAdmin();
+    document.body.classList.remove("vet-loading");
+    document.querySelectorAll(".vet-bruker-nav").forEach(function(el){ vis(el,true); });
+    document.querySelectorAll(".vet-admin-nav,.vet-systemadmin-nav,.vet-faktura-nav,.vet-lagerlogg-nav,.vet-admin-toggle").forEach(function(el){ vis(el,admin); });
+    var oppsett=document.getElementById("vetOppsettKnapp");
+    if(oppsett){ vis(oppsett,admin); oppsett.disabled=false; oppsett.onclick=toggle; }
+    if(!admin) settMeny(false);
+  }
+  function toggle(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(!erAdmin()) return false;
+    var meny=document.getElementById("vetOppsettMeny"); if(!meny) return false;
+    var synlig=!(meny.classList.contains("skjult") || getComputedStyle(meny).display==="none");
+    settMeny(!synlig); return false;
+  }
+  document.addEventListener("click", function(ev){ var k=ev.target && ev.target.closest ? ev.target.closest("#vetOppsettKnapp") : null; if(k) return toggle(ev); }, true);
+  window.toggleVetOppsettMeny=toggle;
+  window.rettILommaStabiliserVetMeny=stabiliser;
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(stabiliser,50); }); else setTimeout(stabiliser,50);
+  window.addEventListener("load", function(){ setTimeout(stabiliser,100); });
+})();
+</script>
+
+</body>
+</html>

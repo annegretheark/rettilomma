@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rett i Lomma - Dyrebehandler</title>
+<style>
+body{
+  background:#151819;
+  color:#f3f4f6;
+  font-family:Arial,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  margin:0;
+}
+.kort{
+  background:#171a1b;
+  padding:40px;
+  border-radius:16px;
+  width:420px;
+  max-width:90%;
+  box-shadow:0 12px 35px rgba(0,0,0,.35);
+}
+h1{margin-top:0;text-align:center}
+p{color:#cbd5e1;text-align:center}
+label{display:block;margin-top:14px;font-weight:bold}
+input{
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #334155;
+  background:#0f1213;
+  color:#f8fafc;
+  font-size:16px;
+}
+button{
+  width:100%;
+  margin-top:18px;
+  padding:14px;
+  border:none;
+  border-radius:10px;
+  background:#1f6feb;
+  color:white;
+  font-size:18px;
+  cursor:pointer;
+  font-weight:bold;
+}
+button.secondary{
+  background:#475569;
+}
+.melding{margin-top:14px;color:#fca5a5;min-height:22px}
+a{display:block;margin-top:14px;color:#cbd5e1;text-align:center;text-decoration:none}
+.skjult{display:none}
+</style>
+</head>
+<body>
+<div class="kort">
+  <h1>Dyrebehandler</h1>
+  <p>Logg inn for kunder, dyr, behandlinger og faktura.</p>
+
+  <label for="loginEpost">E-post</label>
+  <input id="loginEpost" type="email" autocomplete="username">
+
+  <label for="loginPassord">Passord</label>
+  <input id="loginPassord" type="password" autocomplete="current-password">
+
+  <button id="loginKnapp" type="button">Logg inn</button>
+  <button id="glemtPassordKnapp" class="secondary" type="button" onclick="window.behSendResetLenke && window.behSendResetLenke(); return false;">Glemt passord?</button>
+  <div id="loginMelding" class="melding"></div>
+  <div id="loginDetaljer" class="melding" style="font-size:12px;color:#cbd5e1;white-space:pre-wrap;"></div>
+
+  <div id="nyttPassordBoks" class="skjult">
+    <label for="nyttPassord">Nytt passord</label>
+    <input id="nyttPassord" type="password" autocomplete="new-password">
+    <label for="gjentaPassord">Gjenta nytt passord</label>
+    <input id="gjentaPassord" type="password" autocomplete="new-password">
+    <button id="lagreNyttPassordKnapp" type="button">Lagre nytt passord</button>
+  </div>
+
+  <a href="./index.html">Til hovedsiden</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/behandler/config.js?v=20260618-login"></script>
+<script>
+(function () {
+  localStorage.setItem("rettilommaValgtModul", "hestebehandler");
+
+  function resetUrl() {
+    return window.location.origin + window.location.pathname.replace(/\/behandler-login\.html$/, "/reset.html?app=behandler");
+  }
+
+  function melding(tekst, ok) {
+    const felt = document.getElementById("loginMelding");
+    felt.style.color = ok ? "#86efac" : "#fca5a5";
+    felt.textContent = tekst || "";
+  }
+
+  function detaljer(tekst) {
+    const felt = document.getElementById("loginDetaljer");
+    if (felt) felt.textContent = tekst || "";
+  }
+
+  function feilTekst(e, fallback) {
+    if (!e) return fallback;
+    if (typeof e === "string") return e;
+    if (e.message) return e.message;
+    if (e.error_description) return e.error_description;
+    if (e.error) return String(e.error);
+    try {
+      const json = JSON.stringify(e);
+      if (json && json !== "{}") return json;
+    } catch (_) {}
+    return fallback;
+  }
+
+  async function visResetHvisAktiv() {
+    if (!window.supabaseClient) return;
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const erRecovery = hash.includes("type=recovery") || search.includes("type=recovery");
+    const erBekreftet = hash.includes("type=signup") || search.includes("type=signup");
+
+    if (erRecovery) {
+      document.getElementById("nyttPassordBoks").classList.remove("skjult");
+      melding("Skriv nytt passord.", true);
+    } else if (erBekreftet) {
+      melding("E-post er bekreftet. Du kan logge inn.", true);
+      history.replaceState(null, "", window.location.pathname);
+    }
+  }
+
+  async function loggInn() {
+    const epost = document.getElementById("loginEpost").value.trim();
+    const passord = document.getElementById("loginPassord").value;
+    melding("");
+
+    if (!epost || !passord) {
+      melding("Skriv e-post og passord.");
+      return;
+    }
+
+    if (!window.supabaseClient) {
+      melding("Supabase er ikke lastet.");
+      return;
+    }
+
+    const { error } = await window.supabaseClient.auth.signInWithPassword({
+      email: epost,
+      password: passord
+    });
+
+    if (error) {
+      melding(error.message || "Kunne ikke logge inn.");
+      return;
+    }
+
+    window.location.href = "./behandler/index.html";
+  }
+
+  let resetSender = false;
+
+  window.behSendResetLenke = async function sendResetLenke() {
+    if (resetSender) return false;
+    const epost = document.getElementById("loginEpost").value.trim();
+    if (!epost) {
+      melding("Skriv e-post først.");
+      return false;
+    }
+    if (!window.supabaseClient || !window.supabaseClient.auth) {
+      melding("Supabase er ikke lastet.");
+      return false;
+    }
+
+    resetSender = true;
+    melding("Sender reset-lenke ...", true);
+    detaljer("Reset sendes til: " + resetUrl());
+
+    try {
+      const supabaseUrl = window.SUPABASE_URL || window.supabaseClient?.supabaseUrl || "";
+      const anonKey = window.SUPABASE_ANON_KEY || window.supabaseClient?.supabaseKey || "";
+      if (!supabaseUrl || !anonKey) {
+        melding("Mangler Supabase URL eller nøkkel i config.");
+        detaljer("SUPABASE_URL: " + (supabaseUrl || "mangler") + "\nSUPABASE_ANON_KEY: " + (anonKey ? "finnes" : "mangler"));
+        return false;
+      }
+
+      const svar = await fetch(supabaseUrl.replace(/\/$/, "") + "/auth/v1/recover?redirect_to=" + encodeURIComponent(resetUrl()), {
+        method: "POST",
+        headers: {
+          "apikey": anonKey,
+          "Authorization": "Bearer " + anonKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email: epost })
+      });
+
+      if (!svar.ok) {
+        const tekst = await svar.text();
+        melding("Kunne ikke sende reset-lenke (" + svar.status + ").");
+        detaljer((tekst || "Tomt svar fra Supabase.") + "\n\nReset URL: " + resetUrl());
+        return false;
+      }
+
+      melding("Reset-lenke sendt. Sjekk e-posten.", true);
+      detaljer("Supabase godtok reset-kallet.\nReset URL: " + resetUrl());
+      return false;
+    } catch (e) {
+      melding("Kunne ikke sende reset-lenke.");
+      detaljer(feilTekst(e, "Ukjent feil. Sjekk nettleserkonsollen, SMTP/e-postoppsett og Redirect URLs i Supabase.") + "\n\nReset URL: " + resetUrl());
+      return false;
+    } finally {
+      resetSender = false;
+    }
+  };
+
+  async function lagreNyttPassord() {
+    const passord = document.getElementById("nyttPassord").value;
+    const gjenta = document.getElementById("gjentaPassord").value;
+    if (!passord || passord.length < 6) {
+      melding("Passordet må være minst 6 tegn.");
+      return;
+    }
+    if (passord !== gjenta) {
+      melding("Passordene er ikke like.");
+      return;
+    }
+
+    const { error } = await window.supabaseClient.auth.updateUser({ password: passord });
+    if (error) {
+      melding(error.message || "Kunne ikke lagre nytt passord.");
+      return;
+    }
+
+    await window.supabaseClient.auth.signOut();
+    document.getElementById("nyttPassordBoks").classList.add("skjult");
+    history.replaceState(null, "", window.location.pathname);
+    melding("Nytt passord er lagret. Logg inn med det nye passordet.", true);
+  }
+
+  document.getElementById("loginKnapp").addEventListener("click", loggInn);
+  document.getElementById("lagreNyttPassordKnapp").addEventListener("click", lagreNyttPassord);
+  document.getElementById("loginPassord").addEventListener("keydown", event => {
+    if (event.key === "Enter") loggInn();
+  });
+  visResetHvisAktiv();
+})();
+</script>
+</body>
+</html>

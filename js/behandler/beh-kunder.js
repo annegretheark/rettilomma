@@ -12,6 +12,15 @@ function kundeMelding(tekst, feil = false) {
   }
 }
 
+function kundeSafe(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function nullstillKundeFelter() {
 
   document.getElementById("kundeId").value = "";
@@ -162,19 +171,20 @@ async function hentKunder() {
         document.createElement("div");
 
       div.className = "listekort";
+      const kundeJson = encodeURIComponent(JSON.stringify(k));
 
       div.innerHTML = `
-        <b>${k.navn || ""}</b><br>
+        <b>${kundeSafe(k.navn)}</b><br>
 
-        ${k.adresse || ""}<br>
+        ${kundeSafe(k.adresse)}<br>
 
-        ${k.telefon || ""}
-        ${k.epost || ""}
+        ${kundeSafe(k.telefon)}
+        ${kundeSafe(k.epost)}
 
         <br><br>
 
         <button type="button"
-                onclick='redigerKunde(${JSON.stringify(k)})'>
+                onclick='redigerKunde(JSON.parse(decodeURIComponent("${kundeJson}")))'>
 
           Rediger
 

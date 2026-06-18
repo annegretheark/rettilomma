@@ -2,7 +2,9 @@ Hestebehandler / Behandler app
 
 1. Kjør supabase-behandler-setup.sql i Supabase SQL Editor.
 2. Opprett første bruker i Authentication -> Users -> Add user.
-3. Last opp filene.
+3. Sett riktig Supabase URL og anon key i config.js hvis du bruker et annet prosjekt.
+4. Last opp filene.
+5. index.html krever innlogget Supabase-session og sender ellers brukeren til ../hestebehandler-login.html.
 
 Alle app-tabeller starter med beh_:
 - beh_kunder
