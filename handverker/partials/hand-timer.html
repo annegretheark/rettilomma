@@ -1,0 +1,172 @@
+<section id="timerSide" class="kort">
+      <h2>Registrer timer</h2>
+
+      <div class="rad">
+        <div>
+          <label for="dato">Dato</label>
+          <input id="dato" type="date">
+        </div>
+
+        <div>
+          <label for="kundeValg">Kunde</label>
+          <select id="kundeValg">
+            <option value="">Velg kunde</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="kundeNrVisning">Kundenr</label>
+          <input id="kundeNrVisning" readonly>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="prosjektValg">Prosjekt</label>
+          <select id="prosjektValg">
+            <option value="">Velg kunde f&#248;rst</option>
+          </select>
+        </div>
+      </div>
+      <div id="adminAnsattRad" class="rad admin-only skjult" style="display:none;">
+        <div>
+          <label for="adminAnsattValg">Registrer timer for ansatt</label>
+          <select id="adminAnsattValg">
+            <option value="">Meg selv / innlogget bruker</option>
+          </select>
+          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare n&#229;r admin logger inn som admin.</div>
+        </div>
+      </div>
+  <div class="rad">
+  <div>
+    <label for="start">Start</label>
+    <input id="startTid" type="time" value="08:00">
+  </div>
+
+  <div>
+    <label for="slutt">Slutt</label>
+    <input id="sluttTid" type="time" value="16:00">
+  </div>
+
+  <div>
+    <label for="timepris">Timepris</label>
+    <input id="timepris" type="number" value="1100">
+  </div>
+</div>
+  <div class="rad" data-modul="biler">
+  <div>
+    <label for="bilValg">Standard/aktiv bil</label>
+    <select id="bilValg">
+      <option value="">Velg bil</option>
+    </select>
+    <div id="aktivBilInfo" class="melding" style="font-size:0.9em; margin-top:4px;"></div>
+    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil denne gangen</button>
+  </div>
+
+  <div data-modul="varer">
+    <label for="vareValg">Vare</label>
+    <select id="vareValg">
+      <option value="">Velg vare</option>
+    </select>
+  </div>
+
+  
+
+  <div data-modul="varer">
+    <label for="vareAntall">Antall</label>
+    <input id="vareAntall" type="number" value="1" step="1" min="1">
+  </div>
+  <div data-modul="varer">
+  <label for="varePris">Varepris</label>
+  <input id="varePris" type="number" value="0" step="0.01">
+</div>
+
+</div>
+
+<button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
+  Legg til vare p&#229; faktura
+</button>
+<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
+
+      <div class="rad">
+  <div>
+    <label for="utgiftType">Utgiftstype</label>
+    <select id="utgiftType">
+      <option value="">Ingen utgift</option>
+      <option value="kjoring">Kj&#248;ring</option>
+      <option value="bompenger">Bompenger</option>
+      <option value="parkering">Parkering</option>
+      <option value="ferge">Ferge</option>
+      <option value="diett">Diett</option>
+      <option value="billetter">Billetter</option>
+      <option value="annet">Annet</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="utgiftBelop">Bel&#248;p</label>
+    <input id="utgiftBelop" type="number" value="0" step="0.01">
+  </div>
+
+  <div>
+    <label for="utgiftKm">Km</label>
+    <input id="utgiftKm" type="number" value="0" step="0.1">
+  </div>
+
+  <div>
+    <label for="utgiftKmPris">Pris pr km</label>
+    <input id="utgiftKmPris" type="number" value="5.30" step="0.01">
+  </div>
+
+  <div>
+    <label for="fakturerbar">Fakturerbar</label>
+    <select id="fakturerbar">
+      <option value="ja">Ja</option>
+      <option value="nei">Nei</option>
+    </select>
+  
+        </div>
+      </div>
+<button id="leggTilUtleggKnapp" type="button">
+  Legg til utlegg p&#229; faktura
+</button>
+
+<div id="utleggListe" style="margin-top:10px;">
+  Utlegg som legges her kommer med p&#229; neste faktura.
+</div>
+      <label for="beskrivelse">Beskrivelse</label>
+      <textarea id="beskrivelse"></textarea>
+      <label for="timerBildeGalleri">
+  Velg bilde
+</label>
+
+<input
+  id="timerBildeGalleri"
+  type="file"
+  accept="image/*"
+  multiple>
+
+<label for="timerBildeKamera">
+  Ta bilde
+</label>
+
+<input
+  id="timerBildeKamera"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  multiple>
+
+<label for="timerBildeTekst">
+  Bildetekst
+</label>
+
+<input
+  id="timerBildeTekst"
+  type="text"
+  placeholder="F.eks. f&#248;r arbeid">
+
+      <button id="lagreTimerKnapp" type="button">Lagre timer</button>
+
+      <div id="timerMelding" class="melding"></div>
+    </section>

@@ -230,6 +230,8 @@ async function loggInn() {
 
   innloggetEpost = email;
   window.innloggetEpost = email;
+  window.erSystemadmin = email === "greknuts@online.no";
+  localStorage.removeItem("rilSysadminModus");
     localStorage.setItem("handInnloggetEpost", email);
     if (typeof window.settInnloggetBrukerVisning === "function") window.settInnloggetBrukerVisning();
   localStorage.setItem("rettilommaSistEpost", email);
@@ -279,7 +281,9 @@ const {
 
   await velgAktivBilVedInnlogging(ansattData);
 
-  const rolle = String(ansattData?.rolle || "").toLowerCase();
+  let rolle = String(ansattData?.rolle || "").toLowerCase();
+  if (email === "greknuts@online.no") rolle = "sysadmin";
+  window.innloggetRolle = rolle;
   const harAdminRolle =
     rolle === "admin" ||
     rolle === "systemadmin" ||
@@ -292,6 +296,11 @@ const {
     rolle === "systemadmin" ||
     rolle === "sysadmin" ||
     email === "greknuts@online.no";
+  if (email === "greknuts@online.no") {
+    window.erAdmin = true;
+    window.erSystemadmin = true;
+    localStorage.setItem("rilAdminModus", "ja");
+  }
 
   const maaByttePassord =
     ansattData &&
@@ -331,25 +340,70 @@ const {
   }
 }
 
-async function loggUt() {
+function handAppBaseUrl() {
+  const path = window.location.pathname || "";
+  const lower = path.toLowerCase();
+  const marker = "/handverker/";
+  const index = lower.lastIndexOf(marker);
+  if (index >= 0) {
+    return window.location.origin + path.slice(0, index + marker.length);
+  }
+  return "./";
+}
 
-  await supabaseClient.auth.signOut();
+function ryddHandLogoutLagring() {
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    keys.forEach(function (key) {
+      if (
+        key === "rettilommaValgtModul" ||
+        key === "rettilommaSistEpost" ||
+        key === "handInnloggetEpost" ||
+        key === "innloggetEpost" ||
+        key === "handInnloggetRolle" ||
+        key === "rilAdminModus" ||
+        key === "rilSysadminModus" ||
+        key === "aktivBilId" ||
+        key === "aktivBilNavn" ||
+        key === "aktivFirmaId" ||
+        key === "firmaId" ||
+        key === "firma_id" ||
+        String(key || "").startsWith("sb-")
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
+    sessionStorage.clear();
+  } catch (e) {}
+}
 
-  document.getElementById("loginPassord").value = "";
+async function handLoggUtHardt(event) {
+  if (event && typeof event.preventDefault === "function") event.preventDefault();
+  if (event && typeof event.stopPropagation === "function") event.stopPropagation();
 
-  erAdmin = false;
-  window.erAdmin = false;
+  try {
+    if (window.supabaseClient && window.supabaseClient.auth) {
+      await Promise.race([
+        window.supabaseClient.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 1200))
+      ]);
+    }
+  } catch (e) {
+    console.warn("signOut feilet, rydder lokalt likevel:", e);
+  }
 
-  innloggetEpost = "";
-  innloggetAnsattId = "";
-
+  ryddHandLogoutLagring();
   window.innloggetEpost = "";
   window.innloggetAnsattId = "";
-  settAktivBil("", "");
+  window.erAdmin = false;
+  window.erSystemadmin = false;
+  window.location.replace(handAppBaseUrl() + "index.html?logout=1&t=" + Date.now());
+  return false;
+}
 
-  visModulvalgKnappHvisSystemadmin("");
-
-  visLogin();
+async function loggUt(event) {
+  return handLoggUtHardt(event);
 }
 
 async function glemtPassord() {
@@ -513,6 +567,7 @@ async function sendMagicLink() {
 
 window.loggInn = loggInn;
 window.loggUt = loggUt;
+window.handLoggUtHardt = handLoggUtHardt;
 window.glemtPassord = glemtPassord;
 window.sendMagicLink = sendMagicLink;
 window.magicLink = sendMagicLink;

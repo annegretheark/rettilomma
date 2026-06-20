@@ -131,6 +131,39 @@
     return window.RIL_TIMER_TABELL || "hand_time";
   }
 
+  async function hentFirmaIdForTilgang() {
+    if (typeof window.hentAktivFirmaId === "function") {
+      const id = window.hentAktivFirmaId();
+      if (id) return id;
+    }
+    const direkte = window.aktivFirmaId || window.firmaData?.id || window.firma?.id || localStorage.getItem("aktivFirmaId") || localStorage.getItem("firmaId") || localStorage.getItem("firma_id") || "";
+    if (direkte) return direkte;
+
+    const ansattId = hentInnloggetAnsattId();
+    const epost = String(window.innloggetEpost || localStorage.getItem("innloggetEpost") || "").toLowerCase();
+    if (!window.supabaseClient) return "";
+
+    try {
+      let q = supabaseClient.from("hand_ansatt").select("firma_id").limit(1);
+      if (ansattId) q = q.eq("id", ansattId);
+      else if (epost) q = q.ilike("epost", epost);
+      else return "";
+      const { data, error } = await q.maybeSingle();
+      if (!error && data?.firma_id) {
+        window.aktivFirmaId = data.firma_id;
+        localStorage.setItem("aktivFirmaId", data.firma_id);
+        return data.firma_id;
+      }
+    } catch (e) {
+      console.warn("Kunne ikke finne firma_id for tilgang:", e);
+    }
+    return "";
+  }
+
+  function erFirmaAdminModus() {
+    return erAdminModus() && window.erSystemadmin !== true;
+  }
+
   function filtrerEgneJobber(rader) {
     if (erAdminModus()) return rader;
 
@@ -788,7 +821,7 @@
 
     if (forklaring) {
       forklaring.textContent = erAdminModus()
-        ? "Admin ser alle jobber. Klikk på en jobb for detaljer."
+        ? (window.erSystemadmin === true ? "Sysadmin ser alle jobber. Klikk på en jobb for detaljer." : "Admin ser bare jobber for eget firma. Klikk på en jobb for detaljer.")
         : "Du ser bare egne jobber. Klikk på en jobb for detaljer.";
     }
 
@@ -838,8 +871,11 @@
       const tabell = finnTimerTabell();
       let query = supabaseClient.from(tabell).select("*").order("dato", { ascending: false }).limit(500);
       const ansattId = hentInnloggetAnsattId();
+      const firmaId = await hentFirmaIdForTilgang();
 
-      if (!erAdminModus() && ansattId) {
+      if (erFirmaAdminModus() && firmaId) {
+        query = query.eq("firma_id", firmaId);
+      } else if (!erAdminModus() && ansattId) {
         query = query.eq("ansatt_id", ansattId);
       }
 

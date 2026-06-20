@@ -237,11 +237,47 @@ async function lastTrekkTyper() {
   oppdaterTrekkEnhet();
 }
 
+
+async function hentFirmaIdForAnsattTilgang() {
+  if (typeof window.hentAktivFirmaId === "function") {
+    const id = window.hentAktivFirmaId();
+    if (id) return id;
+  }
+  const direkte = window.aktivFirmaId || window.firmaData?.id || window.firma?.id || localStorage.getItem("aktivFirmaId") || localStorage.getItem("firmaId") || localStorage.getItem("firma_id") || "";
+  if (direkte) return direkte;
+
+  const ansattId = window.innloggetAnsattId || localStorage.getItem("innloggetAnsattId") || localStorage.getItem("ansattId") || "";
+  const epost = String(window.innloggetEpost || localStorage.getItem("innloggetEpost") || "").toLowerCase();
+  if (!window.supabaseClient) return "";
+  try {
+    let q = supabaseClient.from("hand_ansatt").select("firma_id").limit(1);
+    if (ansattId) q = q.eq("id", ansattId);
+    else if (epost) q = q.ilike("epost", epost);
+    else return "";
+    const { data, error } = await q.maybeSingle();
+    if (!error && data?.firma_id) {
+      window.aktivFirmaId = data.firma_id;
+      localStorage.setItem("aktivFirmaId", data.firma_id);
+      return data.firma_id;
+    }
+  } catch (e) {
+    console.warn("Kunne ikke finne firma_id for ansatt-tilgang:", e);
+  }
+  return "";
+}
+
 async function lastAnsatte() {
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("hand_ansatt")
     .select("*")
     .order("navn");
+
+  const firmaId = await hentFirmaIdForAnsattTilgang();
+  if (window.erAdmin === true && window.erSystemadmin !== true && firmaId) {
+    query = query.eq("firma_id", firmaId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Feil ved henting av ansatte:", error);

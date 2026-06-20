@@ -37,13 +37,23 @@ async function lastKunder() {
 async function lagreKunde() {
   const id = document.getElementById("kundeId")?.value || "";
 
+  const firmaId =
+    window.handHentAktuellModulKundeId?.() ||
+    localStorage.getItem('handAktuellModulKundeId') || '';
+
   const kunde = {
     navn: document.getElementById("kundeNavn").value.trim(),
     adresse: document.getElementById("kundeAdresse").value.trim(),
     epost: document.getElementById("kundeEpost").value.trim(),
     kontaktperson: document.getElementById("kundeKontaktperson").value.trim(),
-    kontonr: document.getElementById("kundeKontonr").value.trim()
+    kontonr: document.getElementById("kundeKontonr").value.trim(),
+    firma_id: firmaId || null
   };
+
+  if (!firmaId) {
+    settKundeMelding("Velg firma før kunde lagres.");
+    return;
+  } ;
 
   if (!kunde.navn) {
     settKundeMelding("Kundenavn må fylles ut.");

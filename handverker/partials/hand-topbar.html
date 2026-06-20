@@ -1,0 +1,38 @@
+
+
+    <div class="kort">
+      <h1>Timeregistrering</h1>
+
+      <div id="innloggetBrukerBoks" class="innlogget-bruker-boks">
+        Innlogget bruker: <strong id="innloggetBrukerVisning">Ikke innlogget</strong>
+        <span id="innloggetRolleVisning"></span>
+      </div>
+
+      <div class="topplinje">
+        <button id="visTimerKnapp" type="button">Timer</button>
+        <button id="visJobberKnapp" type="button">Jobber</button>
+        <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
+        <button id="visTilbudKnapp" class="admin-only" type="button">Tilbud</button>
+        <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
+        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
+        <button id="visFravaerKnapp" type="button">Frav&#230;r / Flexi</button>
+        <button id="sysadminModeKnapp" class="greknuts-only sysadmin-entry skjult" type="button" style="display:none; background:#7c3aed;">Sysadm</button>
+
+        <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
+
+        <div class="meny-gruppe admin-only">
+          <button id="adminMenyKnapp" type="button">Admin &#9660;</button>
+          <div class="meny-panel">
+            <button id="visAnsattKnapp" type="button">Ansatte</button>
+            <button id="visFirmaKnapp" type="button">Firma</button>
+            <button id="visModulerKnapp" class="systemadmin-only" type="button">&#9881;&#65039; Moduler</button>
+            <button id="visBackupKnapp" type="button">Backup/Restore</button>
+            <button id="visTestKnapp" type="button">Testpanel</button>
+            <button id="visHovslagerKnapp" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
+            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterin&#230;r</button>
+          </div>
+        </div>
+        <a id="loggUtKnapp" href="./logout.html" role="button" class="secondary" style="margin-left:auto; display:inline-block; text-decoration:none; background:#444; color:#fff; padding:10px 16px; border-radius:8px;" onclick="return window.handLoggUtHardt ? window.handLoggUtHardt(event) : true;">Logg ut</a>
+
+      </div>
+    </div>

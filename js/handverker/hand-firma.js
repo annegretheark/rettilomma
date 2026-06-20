@@ -310,8 +310,37 @@ window.addEventListener("load", function () {
     if(email === 'greknuts@online.no') return true;
     try{ const {data,error}=await window.supabaseClient.rpc('er_systemadmin'); return !error && data === true; }catch(e){ return false; }
   }
+
+  function handSlugFraUrl(){
+    try{
+      const params = new URLSearchParams(window.location.search || '');
+      let slug = (params.get('firma') || params.get('kunde') || '').trim();
+      if(!slug){
+        const deler = String(window.location.pathname || '').split('/').filter(Boolean);
+        const siste = deler[deler.length - 1] || '';
+        if(siste && !['handverker','rettilomma','index.html'].includes(siste.toLowerCase())) slug = siste;
+      }
+      return slug ? decodeURIComponent(slug).toLowerCase() : '';
+    }catch(e){ return ''; }
+  }
+  async function handFinnFirmaIdFraKundelink(){
+    const slug = handSlugFraUrl();
+    if(!slug || !window.supabaseClient) return null;
+    try{
+      let r = await window.supabaseClient.from('hand_firma').select('id').eq('linknavn', slug).limit(1).maybeSingle();
+      if(!r.error && r.data?.id) return r.data.id;
+    }catch(e){ console.warn('Fant ikke firma via linknavn:', e); }
+    try{
+      let r = await window.supabaseClient.from('hand_firma').select('id').ilike('kundelink', '%' + slug).limit(1).maybeSingle();
+      if(!r.error && r.data?.id) return r.data.id;
+    }catch(e){ console.warn('Fant ikke firma via kundelink:', e); }
+    return null;
+  }
+
   async function handFinnMittFirmaId(){
     if(!window.supabaseClient) return window.aktivFirmaId || window.firmaData?.id || null;
+    const firmaFraLink = await handFinnFirmaIdFraKundelink();
+    if(firmaFraLink) return firmaFraLink;
     if(window.aktivFirmaId && !(await handErSystemadmin())) return window.aktivFirmaId;
     const email = await handInnloggetEmail();
     try{

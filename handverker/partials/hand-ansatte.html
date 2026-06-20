@@ -1,0 +1,54 @@
+<section id="ansattSide" class="kort skjult">
+      <h2>Ansatte</h2>
+
+      <input id="ansattId" type="hidden">
+
+      <label for="ansattNavn">Navn</label>
+      <input id="ansattNavn">
+
+      <label for="ansattEpost">E-post</label>
+      <input id="ansattEpost">
+
+      <label for="ansattMobil">Mobil</label>
+      <input id="ansattMobil">
+
+      <label for="ansattRolle">Rolle</label>
+      <select id="ansattRolle">
+        <option value="bruker">Bruker</option>
+        <option value="admin">Admin</option>
+        <option value="systemadmin">Systemadmin</option>
+      </select>
+
+
+      <label for="ansattStandardBil">Standard bil</label>
+      <select id="ansattStandardBil">
+        <option value="">Ingen fast bil</option>
+      </select>
+
+      <label for="ansattTimepris">Timepris</label>
+      <input id="ansattTimepris" type="number" value="1100">
+
+      <h3>Trekk</h3>
+
+      <div class="rad">
+        <div>
+          <label for="trekkType">Type trekk</label>
+
+          <select id="trekkType">
+            <option value="">Velg trekk</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="trekkBelop">Bel&#248;p</label>
+          <input id="trekkBelop" type="number" value="0">
+        </div>
+      </div>
+
+      <button id="leggTilTrekkKnapp" type="button">Legg til trekk</button>
+      <button id="lagreAnsattKnapp" type="button">Lagre ansatt</button>
+      <button id="tilbakeFraAnsattKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="trekkListe"></div>
+      <div id="ansattListe"></div>
+    </section>

@@ -10,25 +10,41 @@
   function appBase(){ const p=location.pathname.toLowerCase(); if(p.includes('/rettilomma/')) return location.origin + '/rettilomma/handverker/'; if(p.includes('/handverker/')) return location.origin + '/handverker/'; return location.origin + '/handverker/'; }
   function rootBase(){ return location.pathname.toLowerCase().includes('/rettilomma/') ? location.origin + '/rettilomma/' : location.origin + '/'; }
   function link(slug){ return appBase() + '?firma=' + encodeURIComponent(slug||''); }
+  function kundelink(slug){ return link(slug); } // Kundelinken ender med firmanavn/linknavn etter ?firma=
 
   async function innloggetEmail(){
     try{ const r = await window.supabaseClient?.auth?.getSession(); return (r?.data?.session?.user?.email || window.innloggetEpost || '').toLowerCase(); }catch(e){ return String(window.innloggetEpost || '').toLowerCase(); }
   }
   async function erSystemadmin(){
     const email = await innloggetEmail();
-    if(email === 'greknuts@online.no') return true;
+    // Greknuts er alltid systemadmin. Modus bestemmer bare hvilken side som vises.
+    if(email === 'greknuts@online.no') { window.erSystemadmin = true; window.erAdmin = true; window.innloggetRolle = 'sysadmin'; return true; }
     try{ const {data,error}=await window.supabaseClient.rpc('er_systemadmin'); if(!error && data === true) return true; }catch(e){}
     return window.erSystemadmin === true;
   }
 
   function visAdminElementer(){
-    document.querySelectorAll('.admin-only').forEach(el => { el.style.display=''; el.classList.remove('skjult','hidden'); });
-    document.querySelectorAll('.systemadmin-only').forEach(el => { el.style.display=''; el.classList.remove('skjult','hidden'); });
+    document.querySelectorAll('.admin-only').forEach(el => {
+      var erSide = el.tagName === 'SECTION' || /Side$|Panel$/.test(el.id || '');
+      if (!erSide) { el.style.display=''; el.classList.remove('skjult','hidden'); }
+    });
+    document.querySelectorAll('.sysadmin-entry').forEach(el => {
+      var visKnapp = window.erSystemadmin === true && localStorage.getItem('rilSysadminModus') !== 'ja';
+      el.style.display = visKnapp ? '' : 'none';
+      el.classList.toggle('skjult', !visKnapp);
+      el.classList.toggle('hidden', !visKnapp);
+    });
+    document.querySelectorAll('.systemadmin-only').forEach(el => {
+      var erSide = el.tagName === 'SECTION' || /Side$|Panel$/.test(el.id || '');
+      var sysAktiv = localStorage.getItem('rilSysadminModus') === 'ja';
+      if (!erSide && window.erSystemadmin === true && sysAktiv) { el.style.display=''; el.classList.remove('skjult','hidden'); }
+      else if (!erSide) { el.style.display='none'; el.classList.add('skjult','hidden'); }
+    });
   }
 
   async function oppdaterSystemadminVisning(){
     const admin = await erSystemadmin();
-    window.erSystemadmin = admin || window.erSystemadmin === true;
+    window.erSystemadmin = admin === true;
     if(admin){ window.erAdmin = true; localStorage.setItem('rilAdminModus','ja'); visAdminElementer(); }
     const blokk = $('handSystemadminBlokk');
     if(blokk) blokk.classList.toggle('skjult', !admin);
@@ -44,7 +60,9 @@
     const badge = $('innloggetBruker');
     const email = await innloggetEmail();
     if(badge && email) badge.textContent = 'Innlogget: ' + email;
-    if(admin && typeof window.handLastKundeliste === 'function') { try{ await window.handLastKundeliste(); }catch(e){ console.warn(e); } }
+    const panel = $('sysadminPanelSide');
+    const panelSynlig = panel && !panel.classList.contains('skjult') && panel.style.display !== 'none';
+    if(admin && panelSynlig && typeof window.handLastKundeliste === 'function') { try{ await window.handLastKundeliste(); }catch(e){ console.warn(e); } }
   }
 
   async function supaInsertAdaptive(tabell, payload){
@@ -112,14 +130,14 @@
 
       const navn = val('nyHandKundeNavn');
       const epost = val('nyHandKundeEpost').toLowerCase();
-      const slug = slugify(val('nyHandKundeLinknavn') || navn);
+      const slug = slugify(navn); // opprettes automatisk fra firmanavn
       const passord = val('nyHandKundePassord');
 
       if(!navn){ msg('Skriv firmanavn.', true); return; }
       if(!epost){ msg('Skriv e-post.', true); return; }
 
       set('nyHandKundeLinknavn', slug);
-      set('nyHandKundeLink', link(slug));
+      set('nyHandKundeLink', kundelink(slug));
 
       msg('Sjekker om kunden finnes fra før...');
 
@@ -150,6 +168,8 @@
         orgnr: val('nyHandKundeOrgNr'),
         org_nr: val('nyHandKundeOrgNr'),
         linknavn: slug,
+        kundelink: kundelink(slug),
+        kunde_link: kundelink(slug),
         rolle: 'admin',
         er_admin: true,
         aktiv: true,
@@ -181,9 +201,21 @@
         firmaRad = await supaInsertAdaptive('hand_firma', payload);
       }
 
+      if (firmaRad && firmaRad.id) {
+        try {
+          const ansattPayload = { firma_id: firmaRad.id, epost, email: epost, navn, rolle: 'admin', er_admin: true, aktiv: true };
+          const finnesAnsatt = await window.supabaseClient.from('hand_ansatt').select('id').eq('epost', epost).limit(1);
+          if (!finnesAnsatt.error && Array.isArray(finnesAnsatt.data) && finnesAnsatt.data.length) {
+            await supaUpdateAdaptive('hand_ansatt', finnesAnsatt.data[0].id, ansattPayload);
+          } else {
+            await supaInsertAdaptive('hand_ansatt', ansattPayload);
+          }
+        } catch(e) { console.warn('Kunne ikke opprette admin i hand_ansatt:', e); }
+      }
+
       msg(viaFn
         ? 'Kunde/firma er opprettet i GUI. Auth-bruker er opprettet og e-post er sendt.'
-        : 'Firma/kunde er opprettet i GUI. Bekreftelses-/passordepost er forsøkt sendt fra Auth.'
+        : 'Firma/kunde er opprettet, og adminrad er lagt i hand_ansatt. Hvis kunden fortsatt ikke får logget inn, mangler Auth-brukeren. Da må Edge Function opprett-hand-kunde eller Supabase invite være aktiv.'
       );
 
       await window.handLastKundeliste();
@@ -195,29 +227,43 @@
     }
   };
 
+  async function hentAlleFirmaAdaptive(){
+    const forsok = [
+      ['hand_firma','*','navn'], ['hand_firma','*','firmanavn'], ['hand_firma','*',null],
+      ['hand_kunder','*','navn'], ['hand_kunder','*','firmanavn'], ['hand_kunder','*',null]
+    ];
+    for (const f of forsok) {
+      try {
+        let q = window.supabaseClient.from(f[0]).select(f[1]);
+        if (f[2]) q = q.order(f[2], {ascending:true});
+        const r = await q;
+        if (!r.error && Array.isArray(r.data)) return r.data;
+      } catch(e) {}
+    }
+    return [];
+  }
+
   window.handLastKundeliste = async function(){
     const liste = $('handKundeAdminListe'); if(!liste || !window.supabaseClient) return;
     try{
       liste.innerHTML = '<div class="info">Henter kunder...</div>';
-      const {data,error} = await window.supabaseClient.from('hand_firma').select('*').order('navn', {ascending:true});
-      if(error) throw error;
-      window.handAdminKunder = data || [];
-      if(!window.handAdminKunder.length){ liste.innerHTML = '<div class="info">Ingen håndverkerkunder funnet.</div>'; return; }
+      window.handAdminKunder = await hentAlleFirmaAdaptive();
+      if(!window.handAdminKunder.length){ liste.innerHTML = '<div class="info">Ingen håndverkerkunder funnet. Hvis du vet at det finnes firma, sjekk RLS/select-rettighet på hand_firma for sysadmin.</div>'; return; }
       liste.innerHTML = '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #374151">Firma</th><th style="text-align:left;padding:6px;border-bottom:1px solid #374151">E-post</th><th style="text-align:left;padding:6px;border-bottom:1px solid #374151">Link</th><th style="text-align:left;padding:6px;border-bottom:1px solid #374151">Handling</th></tr></thead><tbody>' +
-        window.handAdminKunder.map(k => { const slug = k.linknavn || slugify(k.navn || k.firmanavn || k.epost || k.id); const lnk = link(slug); return '<tr><td style="padding:6px;border-bottom:1px solid #374151">'+esc(k.navn||k.firmanavn||'')+'</td><td style="padding:6px;border-bottom:1px solid #374151">'+esc(k.epost||k.email||'')+'</td><td style="padding:6px;border-bottom:1px solid #374151"><a href="'+esc(lnk)+'" target="_blank" style="color:#93c5fd">'+esc(slug)+'</a></td><td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap"><button type="button" class="secondary" onclick="handRedigerKunde(\''+esc(k.id)+'\')">Rediger</button> <button type="button" class="secondary" onclick="handKopierTekst(\''+esc(lnk)+'\')">Kopier link</button></td></tr>'; }).join('') + '</tbody></table></div>';
+        window.handAdminKunder.map(k => { const slug = k.linknavn || slugify(k.navn || k.firmanavn || k.epost || k.id); const lnk = kundelink(slug); return '<tr><td style="padding:6px;border-bottom:1px solid #374151">'+esc(k.navn||k.firmanavn||'')+'</td><td style="padding:6px;border-bottom:1px solid #374151">'+esc(k.epost||k.email||'')+'</td><td style="padding:6px;border-bottom:1px solid #374151"><a href="'+esc(lnk)+'" target="_blank" style="color:#93c5fd">'+esc(slug)+'</a></td><td style="padding:6px;border-bottom:1px solid #374151;white-space:nowrap"><button type="button" class="secondary" onclick="handRedigerKunde(\''+esc(k.id)+'\')">Rediger</button> <button type="button" class="secondary" onclick="handKopierTekst(\''+esc(lnk)+'\')">Kopier link</button></td></tr>'; }).join('') + '</tbody></table></div>';
     }catch(e){ console.error(e); liste.innerHTML = '<div class="melding">Kunne ikke hente kunder: '+esc(e.message||e)+'</div>'; }
   };
 
   window.handRedigerKunde = function(id){
     const k = (window.handAdminKunder || []).find(x => String(x.id) === String(id));
     if(!k){ msg('Fant ikke kunden.', true); return; }
-    set('redigerHandKundeId', k.id || ''); set('nyHandKundeNavn', k.navn || k.firmanavn || ''); set('nyHandKundeEpost', k.epost || k.email || ''); set('nyHandKundeTelefon', k.telefon || ''); set('nyHandKundeAdresse', k.adresse || ''); set('nyHandKundeOrgNr', k.orgnr || k.org_nr || ''); set('nyHandKundeLinknavn', k.linknavn || slugify(k.navn || k.firmanavn || '')); set('nyHandKundePassord',''); set('nyHandKundeLink', link(val('nyHandKundeLinknavn'))); msg('Redigerer: ' + (k.navn || k.firmanavn || k.epost || k.id)); $('nyHandKundeNavn')?.scrollIntoView({behavior:'smooth', block:'center'});
+    set('redigerHandKundeId', k.id || ''); set('nyHandKundeNavn', k.navn || k.firmanavn || ''); set('nyHandKundeEpost', k.epost || k.email || ''); set('nyHandKundeTelefon', k.telefon || ''); set('nyHandKundeAdresse', k.adresse || ''); set('nyHandKundeOrgNr', k.orgnr || k.org_nr || ''); set('nyHandKundeLinknavn', k.linknavn || slugify(k.navn || k.firmanavn || '')); set('nyHandKundePassord',''); set('nyHandKundeLink', kundelink(val('nyHandKundeLinknavn'))); msg('Redigerer: ' + (k.navn || k.firmanavn || k.epost || k.id)); $('nyHandKundeNavn')?.scrollIntoView({behavior:'smooth', block:'center'});
   };
   window.handLagreRedigertKunde = async function(){
     if(!(await erSystemadmin())){ msg('Bare systemadmin kan lagre her.', true); return; }
     const id = val('redigerHandKundeId'); if(!id){ msg('Velg en kunde fra listen først.', true); return; }
-    const navn = val('nyHandKundeNavn'); const epost = val('nyHandKundeEpost').toLowerCase(); const slug = slugify(val('nyHandKundeLinknavn') || navn);
-    try{ msg('Lagrer endringer...'); await supaUpdateAdaptive('hand_firma', id, {navn, firmanavn:navn, epost, email:epost, telefon:val('nyHandKundeTelefon'), adresse:val('nyHandKundeAdresse'), orgnr:val('nyHandKundeOrgNr'), org_nr:val('nyHandKundeOrgNr'), linknavn:slug}); set('nyHandKundeLinknavn', slug); set('nyHandKundeLink', link(slug)); msg('Kunde oppdatert.'); await window.handLastKundeliste(); }catch(e){ console.error(e); msg('Feil: '+(e.message||e), true); }
+    const navn = val('nyHandKundeNavn'); const epost = val('nyHandKundeEpost').toLowerCase(); const slug = slugify(navn); // opprettes automatisk fra firmanavn
+    try{ msg('Lagrer endringer...'); await supaUpdateAdaptive('hand_firma', id, {navn, firmanavn:navn, epost, email:epost, telefon:val('nyHandKundeTelefon'), adresse:val('nyHandKundeAdresse'), orgnr:val('nyHandKundeOrgNr'), org_nr:val('nyHandKundeOrgNr'), linknavn:slug, kundelink:kundelink(slug), kunde_link:kundelink(slug)}); set('nyHandKundeLinknavn', slug); set('nyHandKundeLink', kundelink(slug)); msg('Kunde oppdatert.'); await window.handLastKundeliste(); }catch(e){ console.error(e); msg('Feil: '+(e.message||e), true); }
   };
   window.handNullstillKundeSkjema = function(){ ['redigerHandKundeId','nyHandKundeNavn','nyHandKundeEpost','nyHandKundeTelefon','nyHandKundeAdresse','nyHandKundeOrgNr','nyHandKundeLinknavn','nyHandKundePassord','nyHandKundeLink'].forEach(id=>set(id,'')); msg('Klar for ny kunde.'); };
   window.handSendPassordopprettingDirekte = async function(){ const epost = val('nyHandKundeEpost').toLowerCase(); if(!epost){ msg('Skriv e-post først.', true); return; } try{ const {error}=await window.supabaseClient.auth.resetPasswordForEmail(epost,{redirectTo: rootBase()+'reset.html'}); if(error) throw error; msg('Passordoppretting sendt.'); }catch(e){ msg('Feil: '+(e.message||e), true); } };
@@ -226,17 +272,22 @@
 
   function bindLinkFelter(){
     const navn=$('nyHandKundeNavn'), slug=$('nyHandKundeLinknavn');
-    function upd(){ const s=slugify(val('nyHandKundeLinknavn') || val('nyHandKundeNavn')); if(s){ set('nyHandKundeLinknavn', s); set('nyHandKundeLink', link(s)); } }
-    if(navn && navn.dataset.handBind!=='1'){ navn.dataset.handBind='1'; navn.addEventListener('input', function(){ if(!val('nyHandKundeLinknavn')) upd(); }); }
-    if(slug && slug.dataset.handBind!=='1'){ slug.dataset.handBind='1'; slug.addEventListener('input', upd); }
+    function upd(){ const s=slugify(val('nyHandKundeNavn')); if(s){ set('nyHandKundeLinknavn', s); set('nyHandKundeLink', kundelink(s)); } }
+    if(navn && navn.dataset.handBind!=='1'){ navn.dataset.handBind='1'; navn.addEventListener('input', upd); }
+    if(slug){ slug.readOnly = true; slug.title = 'Opprettes automatisk fra firmanavn'; }
   }
 
 
   function visHandKundeAdminSide(){
     try {
+      if (typeof window.handVisSysadminPanel === 'function') {
+        window.handVisSysadminPanel();
+        return;
+      }
       if (typeof window.skjulAlleSider === 'function') window.skjulAlleSider();
-      if (typeof window.visFirmaSide === 'function') window.visFirmaSide();
-      else { const s = $('firmaSide'); if (s) s.classList.remove('skjult'); }
+      localStorage.setItem('rilSysadminModus', 'ja');
+      const panel = $('sysadminPanelSide');
+      if (panel) { panel.classList.remove('skjult','hidden'); panel.style.display = ''; }
       const blokk = $('handSystemadminBlokk');
       if (blokk) { blokk.classList.remove('skjult'); blokk.style.display = ''; setTimeout(function(){ blokk.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); }
     } catch(e) { console.warn(e); }

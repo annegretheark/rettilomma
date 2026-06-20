@@ -115,6 +115,13 @@ if (typeof supabaseClient !== "undefined") {
 
 async function startApp() {
   console.log("Starter app");
+  localStorage.removeItem("rilSysadminModus");
+  // HAND_FIX_PARTIAL_READY: Vent til HTML-delene i partials er lastet.
+  // Dette hindrer blinking/flicker og at knapper kobles før de finnes.
+  if (window.handPartialerKlare && !window.__handPartialerVentet) {
+    window.__handPartialerVentet = true;
+    try { await window.handPartialerKlare; } catch (e) { console.warn("Partialer ble ikke ferdig lastet:", e); }
+  }
 
   try {
     if (!window.supabaseClient || !supabaseClient.auth) {
@@ -128,6 +135,14 @@ async function startApp() {
 
     if (!session || !email) {
       if (typeof window.visLogin === "function") window.visLogin();
+      try {
+        const params = new URLSearchParams(window.location.search || "");
+        const firmaSlug = params.get("firma") || params.get("kunde") || "";
+        if (firmaSlug) {
+          const melding = document.getElementById("loginMelding");
+          if (melding) melding.textContent = "Logg inn for å åpne kundelinken: " + firmaSlug;
+        }
+      } catch (e) {}
       return;
     }
 
@@ -149,11 +164,18 @@ async function startApp() {
       console.warn("Kunne ikke hente ansatt ved oppfrisking:", e);
     }
 
-    const rolle = String(ansattData?.rolle || "").toLowerCase();
+    let rolle = String(ansattData?.rolle || "").toLowerCase();
+    if (email === "greknuts@online.no") rolle = "sysadmin";
     window.innloggetRolle = rolle;
-    window.erSystemadmin = ["systemadmin", "sysadmin"].includes(rolle);
 
-    const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    // Greknuts skal alltid ha rettighet til både vanlig bruker, admin og systemadmin.
+    // Aktiv visning styres fortsatt av rilAdminModus/rilSysadminModus.
+    const erGreknuts = email === "greknuts@online.no";
+    const harSystemadminRolle = erGreknuts || ["systemadmin", "sysadmin"].includes(rolle);
+    const harAdminRolle = erGreknuts || ["admin", "systemadmin", "sysadmin"].includes(rolle);
+
+    window.erSystemadmin = harSystemadminRolle;
+
     const adminModus = localStorage.getItem("rilAdminModus") === "ja";
     window.erAdmin = harAdminRolle && adminModus;
 
@@ -292,15 +314,46 @@ async function startModulerEtterInnlogging() {
 
 window.startModulerEtterInnlogging = startModulerEtterInnlogging;
 
-if (typeof supabaseClient !== "undefined" && supabaseClient.auth) {
-  supabaseClient.auth.onAuthStateChange((event) => {
-    if (event === "SIGNED_IN") {
-      setTimeout(startModulerEtterInnlogging, 1200);
-    }
-  });
-}
+// SIGNED_IN module restart removed to reduce flicker
 
-window.addEventListener("load", () => {
-  setTimeout(startModulerEtterInnlogging, 1800);
-});
+// load module restart removed to reduce flicker
 
+
+
+// HAND_FIX_PARTIAL_READY: Koble viktige knapper på nytt etter at partials er lastet.
+// Noen knapper finnes ikke når scriptet først leses, fordi HTML-delene hentes med fetch().
+(function(){
+  function bind(id, event, fnName){
+    const el = document.getElementById(id);
+    const fn = window[fnName];
+    if (!el || typeof fn !== "function") return;
+    const key = "handBound_" + event + "_" + fnName;
+    if (el.dataset && el.dataset[key] === "1") return;
+    el.addEventListener(event, fn);
+    if (el.dataset) el.dataset[key] = "1";
+  }
+
+  window.handKobleKnapperEtterPartials = function(){
+    bind("loginKnapp", "click", "loggInn");
+    bind("glemtPassordKnapp", "click", "glemtPassord");
+    bind("lagreNyttPassordKnapp", "click", "lagreNyttPassord");
+    bind("tilbakeTilLoginKnapp", "click", "visLogin");
+    bind("loggUtKnapp", "click", "loggUt");
+    bind("visTimerKnapp", "click", "visTimerSide");
+    bind("visJobberKnapp", "click", "visJobberSide");
+    bind("visKundeKnapp", "click", "visKundeSide");
+    bind("visTilbudKnapp", "click", "visTilbudSide");
+    bind("visFakturaKnapp", "click", "visFakturaSide");
+    bind("visLonnKnapp", "click", "visLonnSide");
+    bind("visFravaerKnapp", "click", "visFravaerSide");
+    bind("visAnsattKnapp", "click", "visAnsattSide");
+    bind("visFirmaKnapp", "click", "visFirmaSide");
+    bind("visModulerKnapp", "click", "visModulerSide");
+    bind("visBackupKnapp", "click", "visBackupSide");
+    bind("visTestKnapp", "click", "visTestSide");
+  };
+
+  document.addEventListener("handPartialerLastet", window.handKobleKnapperEtterPartials);
+  document.addEventListener("DOMContentLoaded", function(){ setTimeout(window.handKobleKnapperEtterPartials, 50); });
+  window.addEventListener("load", function(){ setTimeout(window.handKobleKnapperEtterPartials, 250); });
+})();

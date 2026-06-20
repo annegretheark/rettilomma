@@ -1,0 +1,53 @@
+<section id="kundeSide" class="kort skjult">
+      <h2>Kunder</h2>
+
+      <input id="kundeId" type="hidden">
+
+      <label for="kundeNavn">Navn</label>
+      <input id="kundeNavn">
+
+      <label for="kundeAdresse">Adresse</label>
+      <input id="kundeAdresse">
+
+      <label for="kundeEpost">E-post</label>
+      <input id="kundeEpost">
+
+      <label for="kundeKontonr">Kontonr</label>
+      <input id="kundeKontonr" type="text">
+
+      <button type="button" class="secondary" onclick="visProsjektVindu()">
+        Legg til prosjekt
+      </button>
+
+      <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
+
+      <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
+        <h3>Legg til prosjekt</h3>
+
+        <label for="prosjektNr">Prosjektnr</label>
+        <input id="prosjektNr" type="text" placeholder="Prosjektnr">
+
+        <label for="prosjektNavn">Prosjektnavn</label>
+        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
+
+        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
+        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
+
+        <button type="button" onclick="lagreProsjektForValgtKunde()">
+          Lagre prosjekt
+        </button>
+
+        <button type="button" class="secondary" onclick="skjulProsjektVindu()">
+          Lukk
+        </button>
+      </div>
+
+      <label for="kundeKontaktperson">Kontaktperson</label>
+      <input id="kundeKontaktperson">
+
+      <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
+      <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+
+      <div id="kundeMelding" class="melding"></div>
+      <div id="kundeListe"></div>
+    </section>

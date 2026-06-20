@@ -4,7 +4,7 @@
 (function () {
   const ARBEIDSSIDER = [
     "timerSide", "jobberSide", "tilbudSide", "backupSide", "fakturaSide", "varerSide", "bilerSide",
-    "kundeSide", "ansattSide", "firmaSide", "bilBestillingerSide", "testSide", "lonnPanel", "fravaerSide", "modulerSide"
+    "kundeSide", "ansattSide", "firmaSide", "bilBestillingerSide", "testSide", "lonnPanel", "fravaerSide", "modulerSide", "sysadminPanelSide"
   ];
 
   function hent(id) { return document.getElementById(id); }
@@ -31,6 +31,9 @@
 
   function oppdaterAdminVisning() {
     const admin = window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja";
+    const innloggetEmail = String(window.innloggetEpost || localStorage.getItem("handInnloggetEpost") || "").toLowerCase();
+    const erGreknuts = innloggetEmail === "greknuts@online.no";
+    const sysadmin = (window.erSystemadmin === true || erGreknuts) && localStorage.getItem("rilSysadminModus") === "ja";
 
     if (document.body) {
       document.body.classList.toggle("ril-er-admin", admin);
@@ -39,6 +42,16 @@
 
     document.querySelectorAll(".admin-only").forEach(function (element) {
       if (admin) {
+        element.classList.remove("hidden", "skjult");
+        element.style.display = "";
+      } else {
+        element.classList.add("hidden", "skjult");
+        element.style.display = "none";
+      }
+    });
+
+    document.querySelectorAll(".systemadmin-only").forEach(function (element) {
+      if (sysadmin) {
         element.classList.remove("hidden", "skjult");
         element.style.display = "";
       } else {
@@ -210,8 +223,11 @@
   }
 
   function visModulerSide() {
-    if (!krevAdmin("Du har ikke tilgang til moduler.")) return;
+    const email = String(window.innloggetEpost || localStorage.getItem("handInnloggetEpost") || "").toLowerCase();
+    const sysadmin = window.erSystemadmin === true || email === "greknuts@online.no";
+    if (!sysadmin) { alert("Moduler er kun for systemadmin."); return; }
     visSide("modulerSide");
+    if (typeof window.lastModulerFraDatabase === "function") window.lastModulerFraDatabase();
     if (typeof window.tegnModulGui === "function") window.tegnModulGui();
   }
 

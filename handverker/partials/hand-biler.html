@@ -1,0 +1,50 @@
+<section id="bilerSide" class="kort skjult" data-modul="biler">
+      <h2>Min bil / lager</h2>
+      <p>Opprett biler her. Etterp&#229; kan bilen velges p&#229; ansatt under Standard bil.</p>
+
+      <button id="nyBilKnapp" type="button" onclick="window.nyBilSkjema && window.nyBilSkjema()">Registrer ny bil</button>
+
+      <div id="bilSkjemaOmrade" style="display:block; margin-top:18px; padding-top:4px;">
+        <h3 id="nyBilTittel">Registrer ny bil</h3>
+        <input id="bilId" type="hidden">
+
+        <div class="rad" id="bilSkjemaRad" style="display:grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+          <div>
+            <label for="bilNavn">Bilnavn</label>
+            <input id="bilNavn" type="text" placeholder="Servicebil 1" autocomplete="off">
+          </div>
+          <div>
+            <label for="bilRegnr">Regnr</label>
+            <input id="bilRegnr" type="text" placeholder="AB12345" autocomplete="off">
+          </div>
+        </div>
+
+        <button id="lagreBilKnapp" type="button" style="background:#16a34a !important; font-weight:bold; font-size:16px; display:inline-block !important;" onclick="window.lagreBil && window.lagreBil()">&#128190; Lagre bil</button>
+        <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake til timer</button>
+      </div>
+
+      <div id="bilMelding" class="melding"></div>
+      <div id="bilListe"></div>
+
+      <hr>
+      <h3>Bil-lager</h3>
+      <p>Velg bil &#233;n gang. Skriv antall p&#229; flere varer i listen og lagre alt samtidig.</p>
+      <div class="rad">
+        <div>
+          <label for="bilLagerBilValg">Bil som skal fylles</label>
+          <select id="bilLagerBilValg"><option value="">Velg bil</option></select>
+        </div>
+        <div>
+          <label for="bilLagerHentetAv">Hvem henter varene</label>
+          <input id="bilLagerHentetAv" type="text" placeholder="Navn p&#229; den som henter" autocomplete="off">
+        </div>
+      </div>
+
+      <h4>Fyll bilen fra vareregister</h4>
+      <p class="info">Listen viser varenr, varenavn, innpris, utpris, hovedlager, minimum og MVA.</p>
+      <div id="bilLagerFyllListe"></div>
+      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer p&#229; bilen</button>
+
+      <h4>Varer som ligger p&#229; bil</h4>
+      <div id="bilLagerListe"></div>
+    </section>

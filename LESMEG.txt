@@ -1,0 +1,26 @@
+HANDVERKER SPLITTET INDEX
+
+Pakk ut over:
+C:\inetpub\wwwroot\rettilomma
+
+Velg ERSTATT FILER.
+
+Ny struktur:
+- handverker/index.html er nå liten og laster partials
+- handverker/partials/hand-login.html
+- handverker/partials/hand-topbar.html
+- handverker/partials/hand-timer.html
+- handverker/partials/hand-admin.html
+- handverker/partials/hand-systemadmin.html
+- css/hand-main.css
+- js/handverker/hand-inline-fixes.js
+
+Alt har hand- i navnet der det er nye filer.
+
+Viktig:
+Denne versjonen bruker fetch() for å laste partials. Den må kjøres via IIS/localhost, ikke åpnes direkte som fil.
+
+Etter kopiering:
+1. Ctrl+F5
+2. Logg ut
+3. Logg inn igjen

@@ -1,0 +1,25 @@
+<section id="modulerSide" class="admin-only kort skjult systemadmin-only">
+      <h2>Moduler</h2>
+      <p>Skru av det kunden ikke trenger. Valget lagres i Supabase for denne kunden.</p>
+
+      <label for="modulKundeVelger">Aktuell kunde/firma</label>
+      <select id="modulKundeVelger" class="hand-kunde-select" style="max-width:420px; margin-bottom:12px;">
+        <option value="">Velg kunde/firma...</option>
+      </select>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">H&#229;ndverker</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
+        <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
+          <button type="button" class="secondary" onclick="brukModulPakke('veterinaer')">Veterin&#230;r</button>
+      </div>
+
+      <div id="modulListe"></div>
+
+      <button id="lagreModulerKnapp" type="button">Lagre moduler</button>
+      <button type="button" class="secondary" onclick="visTimerSide()">Tilbake</button>
+
+      <div id="modulStatus" class="melding"></div>
+      <div id="modulMelding" class="melding"></div>
+    </section>
