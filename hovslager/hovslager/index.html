@@ -5,7 +5,7 @@
 <title>HovslagerSystem - Rett i Lomma</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}.kort{background:#171a1b;max-width:1000px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}h1,h2,h3{margin-top:0}label{display:block;margin-top:10px;font-weight:bold}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}textarea{min-height:70px}button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block}button.secondary{background:#555}button.danger,.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.skjult{display:none!important}.melding{margin-top:10px;color:#fca5a5;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}.hov-bildeblokk{border:1px solid #374151;background:#22272a;border-radius:10px;padding:12px;margin:12px 0}.hov-bildeknapp{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 14px;border-radius:8px;background:#555;color:#fff;cursor:pointer;font-weight:bold}.hov-bildeinput{display:none}.hov-bildepreview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.hov-bildepreview img{width:92px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #475569}table{color:#f3f4f6}.hov-hestbilde-preview img{width:140px;height:100px;object-fit:cover;border-radius:10px;border:1px solid #475569;margin-top:8px}.hov-hestkort{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}.hov-hestkort img{width:96px;height:76px;object-fit:cover;border-radius:10px;border:1px solid #475569;background:#111827}
+  body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}.kort{background:#171a1b;max-width:1000px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}h1,h2,h3{margin-top:0}label{display:block;margin-top:10px;font-weight:bold}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}textarea{min-height:70px}button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block} body:not(.hov-innlogget) #snakkBeskrivelseKnapp{display:none!important}button.secondary{background:#555}button.danger,.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.skjult{display:none!important}.melding{margin-top:10px;color:#fca5a5;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}.hov-bildeblokk{border:1px solid #374151;background:#22272a;border-radius:10px;padding:12px;margin:12px 0}.hov-bildeknapp{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 14px;border-radius:8px;background:#555;color:#fff;cursor:pointer;font-weight:bold}.hov-bildeinput{display:none}.hov-bildepreview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.hov-bildepreview img{width:92px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #475569}table{color:#f3f4f6}.hov-hestbilde-preview img{width:140px;height:100px;object-fit:cover;border-radius:10px;border:1px solid #475569;margin-top:8px}.hov-hestkort{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}.hov-hestkort img{width:96px;height:76px;object-fit:cover;border-radius:10px;border:1px solid #475569;background:#111827}
 </style>
 <script>
 (function(){
@@ -26,10 +26,13 @@
 <body>
 <section id="loginSide" class="kort">
   <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Rett i Lomma</div><div id="kundeLinkInfo" class="system-badge"></div></div></div>
-  <label for="loginEpost">E-post</label><input id="loginEpost" type="email" autocomplete="username">
-  <label for="loginPassord">Passord</label><input id="loginPassord" type="password" autocomplete="current-password">
+  <label for="loginEpost">E-post</label><input id="loginEpost" name="hovslager_epost" type="email" autocomplete="off" autocapitalize="none" spellcheck="false">
+  <label for="loginPassord">Passord</label><input id="loginPassord" name="hovslager_passord" type="password" autocomplete="new-password">
   <button id="loginKnapp" type="button">Logg inn</button>
+  <a id="apenDemoKnapp" class="knapp" href="./demo.html">Prøv demo uten innlogging</a>
+  <button type="button" class="secondary" onclick="installerApp()">📱 Installer på mobil</button>
   <button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
+  <a id="brukerDokLoginKnapp" class="knapp secondary" href="docs/hovslager/index.html" target="_blank" rel="noopener">Brukerdokumentasjon</a>
   <div id="loginMelding" class="melding"></div>
 </section>
 
@@ -37,7 +40,10 @@
 <div class="kort">
   <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Kunder, hester, jobber, kjøring og faktura</div>
     <div id="innloggetBruker" class="system-badge">Ikke innlogget</div><div class="system-badge">Rett i Lomma</div></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
   <button id="loggUtKnapp" class="danger" type="button">Logg ut</button>
+  <a id="brukerDokAppKnapp" class="knapp secondary" href="docs/hovslager/index.html" target="_blank" rel="noopener">📖 Brukerdokumentasjon</a>
+</div>
   <button id="visJobberKnapp" type="button">Jobber / timer</button>
   <button id="visHesterKnapp" type="button">Hester</button>
   <button id="visKunderKnapp" type="button">Kunder</button>
@@ -60,12 +66,13 @@
 <hr><h3>Jobbliste</h3><div class="rad"><div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div><div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div><div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div></div><button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button><div id="jobbListe"></div>
 </section>
 
-<section class="kort skjult" id="hesterSide"><h2>Hester</h2><label for="hestKunde">Eier/kunde</label><select id="hestKunde"><option value="">Velg kunde</option></select><label for="hestVelg">Velg hest å redigere</label><select id="hestVelg"><option value="">Ny hest</option></select><label for="hestNavn">Navn</label><input id="hestNavn"><label for="hestRase">Rase/type</label><input id="hestRase"><label for="hestNotater">Notater</label><textarea id="hestNotater"></textarea>
+<section class="kort skjult" id="hesterSide"><h2>Hester</h2><label for="hestKunde">Eier/kunde</label><select id="hestKunde"><option value="">Velg kunde</option></select><label for="hestVelg">Velg hest å redigere</label><select id="hestVelg"><option value="">Ny hest</option></select>
+<button type="button" id="visAlleJobbBilderValgtHestKnapp" class="secondary" onclick="hovVisJobbBilderForValgtHest()">📷 Vis alle jobbilder kronologisk for valgt hest</button><label for="hestNavn">Navn</label><input id="hestNavn"><label for="hestRase">Rase/type</label><input id="hestRase"><label for="hestNotater">Notater</label><textarea id="hestNotater"></textarea>
 <div class="hov-bildeblokk">
   <strong>📷 Bilde av hesten</strong>
   <div class="info">Velg eller ta ett eller flere bilder når du oppretter eller redigerer hesten.</div>
   <label class="hov-bildeknapp" for="hestBildeFil">📷 Velg / ta bilder</label>
-  <input id="hestBildeFil" class="hov-bildeinput" type="file" accept="image/*" capture="environment" multiple>
+  <input id="hestBildeFil" class="hov-bildeinput" type="file" accept="image/*" multiple>
   <div id="hestBildePreview" class="hov-hestbilde-preview"></div>
 </div><div class="rad"><div><label for="sistSkodd">Sist skodd</label><input id="sistSkodd" type="date"></div><div><label for="nesteBesok">Neste besøk</label><input id="nesteBesok" type="date"></div></div><button id="lagreHestKnapp" type="button">Lagre hest</button><div class="melding" id="hestMelding"></div><div id="hesteListe"></div></section>
 
@@ -119,82 +126,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/rettilomma/js/hovslager/config.js"></script><script src="/rettilomma/js/hovslager/moduler.js"></script><script src="/rettilomma/js/hovslager/backup.js"></script><script src="/rettilomma/js/hovslager/state.js"></script><script src="/rettilomma/js/hovslager/hov-navigation.js"></script><script src="/rettilomma/js/hovslager/hov-kunder.js"></script><script src="/rettilomma/js/hovslager/hov-oppsett.js"></script><script src="/rettilomma/js/hovslager/hester.js?v=hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-jobber.js?v=pris-bilde-hestbilder-20260616"></script><script src="/rettilomma/js/hovslager/hov-faktura.js"></script><script src="/rettilomma/js/hovslager/hov-kreditnota.js"></script><script src="/rettilomma/js/hovslager/hov-fakturaoversikt.js"></script><script src="/rettilomma/js/hovslager/hov-prisliste.js"></script><script src="/rettilomma/js/hovslager/hov-app.js"></script><script src="/rettilomma/js/hovslager/auth.js"></script>
+<script src="../js/hovslager/config.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/moduler.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/backup.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/state.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-navigation.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-kunder.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-oppsett.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hester.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-jobber.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-faktura.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-kreditnota.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-fakturaoversikt.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-prisliste.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/hov-app.js?v=hov-pathfix-20260619-2"></script>
+<script src="../js/hovslager/auth.js?v=hov-pathfix-20260619-2"></script>
 <script>
 (function(){
- const info=document.getElementById('kundeLinkInfo'); if(info) info.textContent=window.HOV_FIRMA_NAVN ? 'Kundelink: '+window.HOV_FIRMA_NAVN : 'Hovslager';
- async function autoStart(){
-   if(!window.supabaseClient) return;
-   const {data}=await supabaseClient.auth.getSession();
-   if(data && data.session){
-     document.getElementById('loginSide')?.classList.add('skjult');
-     document.getElementById('appSide')?.classList.remove('skjult');
-     try { if(window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.session?.user?.email || ''); } catch(e){}
-      try { if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.user?.email || email); } catch(e){}
-     try { if(window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId(); } catch(e){ const m=document.getElementById('jobbMelding'); if(m) m.textContent='Firmafeil: '+(e.message||e); }
-     try { if(window.startHovslager) await window.startHovslager(); } catch(e){ console.warn(e); }
-     try { if(window.hovOppdaterSystemadminSynlighet) await window.hovOppdaterSystemadminSynlighet(); } catch(e){ console.warn(e); }
-   }
- }
- if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(autoStart,300)); else setTimeout(autoStart,300);
+ const info=document.getElementById('kundeLinkInfo');
+ if(info) info.textContent=window.HOV_FIRMA_NAVN ? 'Kundelink: '+window.HOV_FIRMA_NAVN : 'Hovslager';
 })();
 </script>
-
-<script>
-(function(){
-  async function hovLoginDirekte(){
-    const melding = document.getElementById('loginMelding');
-    try {
-      if (melding) melding.textContent = 'Logger inn...';
-      if (!window.supabaseClient) {
-        if (melding) melding.textContent = 'Supabase er ikke lastet. Sjekk config.js-stien.';
-        alert('Supabase er ikke lastet. Sjekk config.js-stien.');
-        return;
-      }
-      const email = (document.getElementById('loginEpost')?.value || '').trim();
-      const password = document.getElementById('loginPassord')?.value || '';
-      if (!email || !password) {
-        if (melding) melding.textContent = 'Skriv e-post og passord.';
-        return;
-      }
-      const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
-        if (melding) melding.textContent = error.message;
-        alert('Login-feil: ' + error.message);
-        return;
-      }
-      document.getElementById('loginSide')?.classList.add('skjult');
-      document.getElementById('appSide')?.classList.remove('skjult');
-      if (melding) melding.textContent = '';
-      try { if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(data?.user?.email || email); } catch(e){ console.warn(e); }
-      try { if (window.hentAktivHovFirmaId) await window.hentAktivHovFirmaId(); } catch(e){ console.warn(e); }
-      try { if (window.startHovslager) await window.startHovslager(); } catch(e){ console.warn(e); }
-      try { if (window.hovOppdaterSystemadminSynlighet) await window.hovOppdaterSystemadminSynlighet(); } catch(e){ console.warn(e); }
-      try { if (window.hentKunder) await window.hentKunder(); } catch(e){ console.warn(e); }
-      try { if (window.hentHester) await window.hentHester(); } catch(e){ console.warn(e); }
-      try { if (window.hentJobber) await window.hentJobber(); } catch(e){ console.warn(e); }
-    } catch (e) {
-      console.error(e);
-      if (melding) melding.textContent = 'Teknisk feil: ' + (e.message || e);
-      alert('Teknisk feil: ' + (e.message || e));
-    }
-  }
-
-  function kobleLogin(){
-    const btn = document.getElementById('loginKnapp');
-    if (!btn) return;
-    btn.onclick = hovLoginDirekte;
-    btn.addEventListener('click', function(ev){ ev.preventDefault(); hovLoginDirekte(); });
-    console.log('Hovslager direkte-login koblet');
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kobleLogin);
-  else kobleLogin();
-  setTimeout(kobleLogin, 500);
-})();
-</script>
-
-
 <script>
 /* Produksjonsfix for kundelink, Auth-bruker og passord */
 (function(){
@@ -374,78 +326,28 @@
 
 
 <script>
-/* Rett i Lomma - robust visning av innlogget bruker */
+/* Rett i Lomma - systemadmin kundeliste */
 (function(){
-  function settInnloggetBrukerTekst(email){
-    var el = document.getElementById("innloggetBruker");
-    if (!el) return;
-    el.textContent = email ? ("Innlogget: " + email) : "Ikke innlogget";
+  function hovErSystemadminEpost(email){
+    return String(email || "").trim().toLowerCase() === "greknuts@online.no";
   }
 
-  async function oppdaterInnloggetBrukerFraSession(){
-    try {
-      if (!window.supabaseClient || !window.supabaseClient.auth) return;
-      var svar = await window.supabaseClient.auth.getSession();
-      var email = svar && svar.data && svar.data.session && svar.data.session.user
-        ? svar.data.session.user.email
-        : "";
-      settInnloggetBrukerTekst(email || "");
-    } catch(e) {
-      console.warn("Kunne ikke vise innlogget bruker:", e);
-    }
-  }
-
-  window.hovSettInnloggetBruker = settInnloggetBrukerTekst;
-  window.hovOppdaterInnloggetBrukerFraSession = oppdaterInnloggetBrukerFraSession;
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function(){
-      setTimeout(oppdaterInnloggetBrukerFraSession, 200);
-      setTimeout(oppdaterInnloggetBrukerFraSession, 800);
-      setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
-    });
-  } else {
-    setTimeout(oppdaterInnloggetBrukerFraSession, 200);
-    setTimeout(oppdaterInnloggetBrukerFraSession, 800);
-    setTimeout(oppdaterInnloggetBrukerFraSession, 2000);
-  }
-
-  window.addEventListener("focus", oppdaterInnloggetBrukerFraSession);
-})();
-</script>
-
-
-<script>
-/* Rett i Lomma - systemadmin kundeliste uten hardkodet e-post */
-(function(){
   async function hovOppdaterSystemadminSynlighet(){
     try {
-      if (window.hovOppdaterSystemadminSynlighet && window.hovOppdaterSystemadminSynlighet._fraOppsett === true) {
-        await window.hovOppdaterSystemadminSynlighet();
-        return;
-      }
-
       if (!window.supabaseClient) return;
-      const { data } = await window.supabaseClient.auth.getSession();
-      const email = String(data?.session?.user?.email || "").trim().toLowerCase();
-      const uid = String(data?.session?.user?.id || "").trim();
-      let rad = null;
-
-      if (uid) {
-        const svar = await window.supabaseClient.from("hov_firma").select("*").eq("auth_user_id", uid).limit(1).maybeSingle();
-        if (!svar.error && svar.data) rad = svar.data;
-      }
-
-      if (!rad && email) {
-        const svar = await window.supabaseClient.from("hov_firma").select("*").ilike("epost", email).limit(1).maybeSingle();
-        if (!svar.error && svar.data) rad = svar.data;
-      }
-
-      const rolle = String(rad?.rolle || "").trim().toLowerCase();
-      const admin = rad?.er_admin === true || rolle === "systemadmin";
+      let email = "";
+      try {
+        const { data } = await window.supabaseClient.auth.getSession();
+        email = data?.session?.user?.email || "";
+      } catch(e) {}
+      if (!email) email = window.__hovInnloggetEpost || localStorage.getItem("hov_lokal_admin_epost") || "";
+      const admin = hovErSystemadminEpost(email) || window.__hovGreknutsLokalAdmin === true;
 
       const adminBlokk = document.getElementById("hovSystemadminBlokk");
       if (adminBlokk) adminBlokk.classList.toggle("skjult", !admin);
+
+      const linkBlokk = document.getElementById("hovKundelinkBlokk");
+      if (linkBlokk) linkBlokk.classList.toggle("skjult", !admin);
 
       const innlogget = document.getElementById("innloggetBruker");
       if (innlogget && email) innlogget.textContent = "Innlogget: " + email;
@@ -458,34 +360,100 @@
     }
   }
 
-  function hovPlanleggSystemadminSynlighet(){
-    [100, 500, 1200, 2500].forEach(function(ms){
-      setTimeout(hovOppdaterSystemadminSynlighet, ms);
-    });
-  }
-
-  if (!window.hovOppdaterSystemadminSynlighet) {
-    window.hovOppdaterSystemadminSynlighet = hovOppdaterSystemadminSynlighet;
-  }
+  window.hovOppdaterSystemadminSynlighet = hovOppdaterSystemadminSynlighet;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", hovPlanleggSystemadminSynlighet);
+    document.addEventListener("DOMContentLoaded", function(){
+      setTimeout(hovOppdaterSystemadminSynlighet, 500);
+      setTimeout(hovOppdaterSystemadminSynlighet, 1500);
+    });
   } else {
-    hovPlanleggSystemadminSynlighet();
+    setTimeout(hovOppdaterSystemadminSynlighet, 500);
+    setTimeout(hovOppdaterSystemadminSynlighet, 1500);
   }
-
-  window.addEventListener("focus", hovOppdaterSystemadminSynlighet);
-
-  setTimeout(function(){
-    try {
-      if (window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.auth.onAuthStateChange) {
-        window.supabaseClient.auth.onAuthStateChange(function(){
-          hovPlanleggSystemadminSynlighet();
-        });
-      }
-    } catch(e) {}
-  }, 700);
 })();
 </script>
+
+
+<button type="button" id="snakkBeskrivelseKnapp" class="skjult" onclick="startBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
+<script>
+function startBeskrivelseTale(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ alert('Talegjenkjenning støttes ikke i denne nettleseren'); return; }
+  const rec = new SR();
+  rec.lang='no-NO';
+  rec.start();
+  rec.onresult = function(e){
+    const tekst = e.results[0][0].transcript;
+    const felt = document.getElementById('jobbBeskrivelse') ||
+                 document.getElementById('beskrivelse') ||
+                 document.querySelector('textarea');
+    if(felt){
+      felt.value = (felt.value ? felt.value + ' ' : '') + tekst;
+    }
+  };
+}
+</script>
+
+
+<script>
+function hovVisJobbBilderForValgtHest(){
+  const sel = document.getElementById("hestVelg");
+  const hestId = sel ? sel.value : "";
+  if(!hestId){
+    alert("Velg en hest først.");
+    return;
+  }
+  if(typeof window.visAlleHovBilderForHest === "function"){
+    window.visAlleHovBilderForHest(hestId);
+  } else {
+    alert("Bildevisning er ikke lastet ennå. Gå til Jobber og prøv igjen.");
+  }
+}
+</script>
+
+
+<script>
+/* Sikker fallback: jobbrader skal være klikkbare */
+function hovBindKlikkbareJobbraderFallback(){
+  const liste = document.getElementById("jobbListe");
+  if(!liste || typeof window.visHovJobbDetalj !== "function") return;
+
+  liste.querySelectorAll("tr[data-jobb-id]").forEach(tr => {
+    if(tr.dataset.klikkbarJobb === "1") return;
+    tr.dataset.klikkbarJobb = "1";
+    tr.style.cursor = "pointer";
+    tr.title = "Klikk for jobbdetaljer og bilder";
+    tr.addEventListener("click", function(){
+      window.visHovJobbDetalj(tr.dataset.jobbId);
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  setInterval(hovBindKlikkbareJobbraderFallback, 1200);
+});
+</script>
+
+
+<script>
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+async function installerApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+  } else {
+    alert("Android:\nMeny → Installer app\n\niPhone/iPad:\nSafari → Del → Legg til på Hjem-skjerm");
+  }
+}
+</script>
+
+
+
+<!-- Loginfeltene tømmes ikke automatisk lenger; greknuts kan logge inn normalt. -->
 
 </body></html>

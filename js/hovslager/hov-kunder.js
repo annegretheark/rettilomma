@@ -71,7 +71,8 @@ async function lagreKunde() {
     res = await supabaseClient
       .from("kunder")
       .update(kunde)
-      .eq("id", kundeId);
+      .eq("id", kundeId)
+      .eq("firma_id", firmaId);
 
   } else {
 
@@ -127,9 +128,12 @@ function redigerKunde(kunde) {
 
 async function hentKunder() {
 
+  const firmaId = await window.hentAktivHovFirmaId();
+
   const res = await supabaseClient
     .from("kunder")
     .select("*")
+    .eq("firma_id", firmaId)
     .order("navn");
 
   if (res.error) {

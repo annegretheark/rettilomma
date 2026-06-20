@@ -1103,7 +1103,8 @@ async function hentDirekteHestBilderKronologisk(filterFelt, filterVerdi, firmaId
   try {
     let hesterQuery = window.supabaseClient
       .from("hester")
-      .select("id, navn, kunde_id, kunder(navn)");
+      .select("id, navn, kunde_id, kunder(navn)")
+      .eq("firma_id", firmaId);
 
     if (filterFelt === "hest_id") {
       hesterQuery = hesterQuery.eq("id", filterVerdi);

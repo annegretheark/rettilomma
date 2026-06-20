@@ -247,9 +247,12 @@ async function lagreHest() {
 }
 
 async function hentHester() {
+  const firmaId = await window.hentAktivHovFirmaId();
+
   const hestRes = await supabaseClient
     .from("hester")
     .select("*")
+    .eq("firma_id", firmaId)
     .order("navn");
 
   if (hestRes.error) {
@@ -261,6 +264,7 @@ async function hentHester() {
   const kundeRes = await supabaseClient
     .from("kunder")
     .select("id, navn")
+    .eq("firma_id", firmaId)
     .order("navn");
 
   if (kundeRes.error) {

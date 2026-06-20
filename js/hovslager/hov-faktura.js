@@ -44,10 +44,14 @@ async function fyllFakturaKunder() {
   const aktivVerdi = sel.value || "";
   sel.innerHTML = `<option value="">Laster kunder...</option>`;
 
-  const res = await supabaseClient
+  const firmaId = await hovHentAktivFirmaIdTrygt();
+
+  let q = supabaseClient
     .from("kunder")
-    .select("id, navn, epost, telefon, adresse")
+    .select("id, navn, epost, telefon, adresse, firma_id")
     .order("navn", { ascending: true });
+  if (firmaId) q = q.eq("firma_id", firmaId);
+  const res = await q;
 
   if (res.error) {
     console.error("Feil ved henting av kunder:", res.error);
@@ -74,17 +78,22 @@ async function hovFinnKundeForFaktura(kundeRef) {
   const ref = hovFakturaNorm(kundeRef);
   if (!ref || !window.supabaseClient) return null;
 
+  const firmaId = await hovHentAktivFirmaIdTrygt();
+
   if (hovErUuid(ref)) {
-    const { data, error } = await supabaseClient
+    let q = supabaseClient
       .from("kunder")
       .select("*")
-      .eq("id", ref)
-      .maybeSingle();
+      .eq("id", ref);
+    if (firmaId) q = q.eq("firma_id", firmaId);
+    const { data, error } = await q.maybeSingle();
     if (error) throw error;
     if (data) return data;
   }
 
-  const { data, error } = await supabaseClient.from("kunder").select("*");
+  let q = supabaseClient.from("kunder").select("*");
+  if (firmaId) q = q.eq("firma_id", firmaId);
+  const { data, error } = await q;
   if (error) throw error;
 
   const needle = hovFakturaNormLav(ref);

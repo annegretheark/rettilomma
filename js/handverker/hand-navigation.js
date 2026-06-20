@@ -3,8 +3,8 @@
 */
 (function () {
   const ARBEIDSSIDER = [
-    "timerSide", "jobberSide", "backupSide", "fakturaSide", "varerSide", "bilerSide",
-    "kundeSide", "ansattSide", "firmaSide", "testSide", "lonnPanel", "fravaerSide", "modulerSide"
+    "timerSide", "jobberSide", "tilbudSide", "backupSide", "fakturaSide", "varerSide", "bilerSide",
+    "kundeSide", "ansattSide", "firmaSide", "bilBestillingerSide", "testSide", "lonnPanel", "fravaerSide", "modulerSide"
   ];
 
   function hent(id) { return document.getElementById(id); }
@@ -128,6 +128,13 @@
 
   function visTimerForAnsattSide() { visTimerSide(); }
 
+  function visTilbudSide() {
+    if (!krevAdmin("Du har ikke tilgang til tilbud.")) return;
+    visSide("tilbudSide");
+    if (typeof window.fyllTilbudKundeDropdown === "function") window.fyllTilbudKundeDropdown();
+    if (typeof window.lastTilbud === "function") setTimeout(window.lastTilbud, 20);
+  }
+
   function visFakturaSide() {
     if (!krevAdmin("Du har ikke tilgang til faktura.")) return;
     visSide("fakturaSide");
@@ -175,6 +182,12 @@
     visSide("firmaSide");
     if (typeof window.lastFirma === "function") window.lastFirma();
     else if (typeof window.fyllFirmaSkjema === "function") window.fyllFirmaSkjema();
+  }
+
+  function visBilBestillingerSide() {
+    if (!krevAdmin("Du har ikke tilgang til bilbestillinger.")) return;
+    visSide("bilBestillingerSide");
+    if (typeof window.handLastBilBestillinger === "function") setTimeout(window.handLastBilBestillinger, 20);
   }
 
   async function visLonnSide() {
@@ -236,6 +249,7 @@
     bindKnapp("visTimerKnapp", visTimerSide);
     bindKnapp("visJobberKnapp", visJobberSide);
     bindKnapp("visKundeKnapp", visKundeSide);
+    bindKnapp("visTilbudKnapp", visTilbudSide);
     bindKnapp("visFakturaKnapp", visFakturaSide);
     bindKnapp("visLonnKnapp", visLonnSide);
     bindKnapp("visFravaerKnapp", visFravaerSide);
@@ -243,6 +257,7 @@
     bindKnapp("visBilerKnapp", visBilerSide);
     bindKnapp("visAnsattKnapp", visAnsattSide);
     bindKnapp("visFirmaKnapp", visFirmaSide);
+    bindKnapp("visBilBestillingerKnapp", visBilBestillingerSide);
     bindKnapp("visModulerKnapp", visModulerSide);
     bindKnapp("visBackupKnapp", visBackupSide);
     bindKnapp("visTestKnapp", visTestSide);
@@ -264,6 +279,7 @@
   window.rilVisTimerForAnsattSide = visTimerForAnsattSide;
   window.visAdminKonsollSide = visTimerSide;
   window.rilVisAdminKonsollSide = visTimerSide;
+  window.visTilbudSide = visTilbudSide;
   window.visFakturaSide = visFakturaSide;
   window.visBackupSide = visBackupSide;
   window.visVarerSide = visVarerSide;
@@ -271,6 +287,7 @@
   window.visKundeSide = visKundeSide;
   window.visAnsattSide = visAnsattSide;
   window.visFirmaSide = visFirmaSide;
+  window.visBilBestillingerSide = visBilBestillingerSide;
   window.visTestSide = visTestSide;
   window.visLonnSide = visLonnSide;
   window.visFravaerSide = visFravaerSide;

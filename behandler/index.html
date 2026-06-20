@@ -203,6 +203,14 @@
       font-size: 12px;
       font-weight: bold;
     }
+
+    .innlogget-badge {
+      margin-top: 6px;
+      color: #d1fae5;
+      font-size: 13px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
   
 .behandling-status {
   display:flex;
@@ -357,6 +365,23 @@ button.voice {
   }
 }
 
+#behandlingListe,
+#behandlingListe * {
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+}
+
+#behandlingListe [style*="padding:3px 0"] {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+#behandlingListe button {
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 5px 7px !important;
+}
+
 </style>
 <style>
 html[data-auth-pending="1"] #appSide {
@@ -382,6 +407,7 @@ if (window.location.hash !== "#behandlingSide") {
 <h1 class="system-title">Dyrebehandler</h1>
 <div class="system-subtitle">Kunder, dyr, behandlinger, journal, bilder, kjøring og faktura</div>
 <div class="system-badge">Rett i Lomma</div>
+<div class="innlogget-badge" id="innloggetBrukerVisning">Innlogget: laster ...</div>
 </div>
 </div>
 <div class="app-meny-linje">
@@ -765,7 +791,7 @@ if (window.location.hash !== "#behandlingSide") {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=5001"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js?v=5001"></script>
 <script src="../js/behandler/config.js?v=20260618-split"></script>
-<script src="../js/behandler/auth-guard.js?v=20260618-authfix2"></script>
+<script src="../js/behandler/auth-guard.js?v=20260619-kredit0f"></script>
 
 <script>
 /* FALLBACK 2026-06-14: sikrer Supabase-klient hvis config.js ikke ble lastet fra riktig mappe */
@@ -3535,7 +3561,116 @@ if (window.location.hash !== "#behandlingSide") {
 })();
 </script>
 
-<script src="../js/behandler/behandler-feature-fix.js?v=20260618-feature3"></script>
+<script src="../js/behandler/behandler-feature-fix.js?v=20260619-kredit0f"></script>
+<script>
+// NODFIKS 2026-06-19: vis 0-fakturerte behandlinger i fakturaoversikt selv om fakturarad mangler.
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function num(v){ const n = Number(String(v ?? "0").replace(",", ".")); return Number.isFinite(n) ? n : 0; }
+  function kr(v){ return num(v).toLocaleString("no-NO", { maximumFractionDigits: 2 }).replace(",00", ""); }
+  function esc(v){ return String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
+  async function client(){
+    for(let i=0;i<80;i++){
+      if(window.supabaseClient) return window.supabaseClient;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    throw new Error("Supabase er ikke klar.");
+  }
+  function leggEierFilter(q){
+    const id = window.behInnloggetBehandlerId || window.behInnloggetBehandler?.id || "";
+    if(!window.behErSystemeier && id) return q.eq("behandler_id", id);
+    return q;
+  }
+  async function hentFakturaer(c){
+    let r = await leggEierFilter(c.from("beh_fakturaer").select("*, kunder:beh_kunder(navn)"))
+      .order("dato", { ascending:false })
+      .order("fakturanr", { ascending:false });
+    if(r.error && String(r.error.message || "").includes("dato")){
+      r = await leggEierFilter(c.from("beh_fakturaer").select("*, kunder:beh_kunder(navn)"))
+        .order("created_at", { ascending:false })
+        .order("fakturanr", { ascending:false });
+    }
+    if(r.error) throw r.error;
+    return r.data || [];
+  }
+  async function hentNullFakturaer(c, fakturaer){
+    const finnes = new Set((fakturaer || []).map(f => String(f.fakturanr || "")).filter(Boolean));
+    const r = await leggEierFilter(c.from("beh_behandlinger")
+      .select("id,dato,kunde_id,fakturanr,total,arbeid_belop,varer_belop,km,km_pris,fakturert,behandler_id,kunder:beh_kunder(navn)"))
+      .eq("fakturert", true)
+      .order("dato", { ascending:false });
+    if(r.error) throw r.error;
+    return (r.data || []).filter(b => {
+      const sum = num(b.total) || (num(b.arbeid_belop) + num(b.varer_belop) + (num(b.km) * num(b.km_pris)));
+      const fakturanr = String(b.fakturanr || "");
+      const nr = fakturanr.toLowerCase();
+      const erKreditert = nr.includes("kreditert") || nr.startsWith("kred");
+      return sum === 0 && !erKreditert && (!fakturanr || !finnes.has(fakturanr));
+    }).map(b => ({
+      fakturanr: b.fakturanr || ("BEH-NULL-" + String(b.id || "").slice(0, 8)),
+      kunde_id: b.kunde_id,
+      inkl_mva: 0,
+      eks_mva: 0,
+      mva: 0,
+      dato: b.dato || "",
+      betalingsstatus: "ubetalt",
+      kreditert: false,
+      kunder: b.kunder || { navn:"Uten kunde" },
+      _fraBehandling: true,
+      _behandlingId: b.id
+    }));
+  }
+  function tegn(data){
+    const div = el("fakturaOversikt");
+    if(!div) return;
+    window.behFeatureFakturaer = data;
+    const sum = data.reduce((s,f) => s + num(f.inkl_mva), 0);
+    div.innerHTML = '<div class="listekort" style="padding:7px;"><h3 style="margin:0 0 6px 0;font-size:16px;">Alle fakturaer</h3><div style="display:grid;gap:3px;">' +
+      data.map(f => {
+        const status = f.kreditert ? "Kreditert" : (f.purring_sendt ? "Purret" : (String(f.betalingsstatus || "").toLowerCase() === "betalt" ? "Betalt" : "Ubetalt"));
+        const farge = status === "Betalt" ? "#14532d" : status === "Kreditert" ? "#3f1d1d" : status === "Purret" ? "#713f12" : "#1e3a8a";
+        return '<div style="border:1px solid #26313a;border-radius:5px;padding:5px;background:#0d1113;display:grid;grid-template-columns:minmax(86px,.9fr) minmax(90px,1fr) minmax(54px,.55fr) minmax(46px,.45fr) auto;gap:5px;align-items:center;font-size:12px;line-height:1.15;">' +
+          '<span style="color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(f.fakturanr) + '</span>' +
+          '<span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(f.kunder?.navn || "Uten kunde") + '</span>' +
+          '<span style="font-weight:700;white-space:nowrap;text-align:right;">' + kr(f.inkl_mva) + '</span>' +
+          '<span style="background:' + farge + ';color:#fff;border-radius:999px;padding:2px 5px;font-size:10px;text-align:center;">' + esc(status) + '</span>' +
+          '<span style="display:flex;gap:3px;justify-content:flex-end;white-space:nowrap;">' +
+          (f.kreditert ? '' : '<button type="button" class="danger" style="padding:4px 7px;font-size:11px;line-height:1;width:auto;min-height:0;" onclick="return window.behKrediterFaktura && window.behKrediterFaktura(\'' + esc(f.fakturanr) + '\')">Kredit</button>') +
+          '</span></div>';
+      }).join("") +
+      '</div><p style="font-size:12px;margin:7px 0 0 0;"><strong>Sum:</strong> ' + kr(sum) + ' kr</p></div>';
+  }
+  async function hentOversiktMedNull(){
+    try{
+      const c = await client();
+      const fakturaer = await hentFakturaer(c);
+      const nuller = await hentNullFakturaer(c, fakturaer);
+      const data = [...fakturaer, ...nuller].sort((a,b) => String(b.dato || b.created_at || "").localeCompare(String(a.dato || a.created_at || "")));
+      tegn(data);
+      return false;
+    }catch(e){
+      alert("Kunne ikke hente fakturaoversikt: " + (e.message || e));
+      return false;
+    }
+  }
+  window.behHentFakturaOversiktMedNull = hentOversiktMedNull;
+  function bind(){
+    const knapp = el("hentFakturaOversiktKnapp");
+    if(!knapp || knapp.dataset.nullOversikt === "1") return;
+    knapp.dataset.nullOversikt = "1";
+    knapp.onclick = hentOversiktMedNull;
+    knapp.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      try{ e.stopImmediatePropagation(); }catch(_){}
+      hentOversiktMedNull();
+      return false;
+    }, true);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
+  window.addEventListener("load", function(){ setTimeout(bind, 200); setTimeout(bind, 1000); });
+})();
+</script>
 </body>
 </html>
 

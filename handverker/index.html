@@ -400,6 +400,21 @@
       border-bottom-color: #374151 !important;
     }
 
+
+    .innlogget-bruker-boks {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .innlogget-bruker-boks strong {
+      color: #93c5fd;
+    }
+
 </style>
 </head>
 
@@ -449,13 +464,20 @@
     <div class="kort">
       <h1>Timeregistrering</h1>
 
+      <div id="innloggetBrukerBoks" class="innlogget-bruker-boks">
+        Innlogget bruker: <strong id="innloggetBrukerVisning">Ikke innlogget</strong>
+        <span id="innloggetRolleVisning"></span>
+      </div>
+
       <div class="topplinje">
         <button id="visTimerKnapp" type="button">Timer</button>
         <button id="visJobberKnapp" type="button">Jobber</button>
         <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
+        <button id="visTilbudKnapp" class="admin-only" type="button">Tilbud</button>
         <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
         <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
         <button id="visFravaerKnapp" type="button">Frav&#230;r / Flexi</button>
+        <button id="visHandKundeAdminKnapp" class="systemadmin-only skjult" type="button" style="display:none; background:#0f766e;">Opprett h&#229;ndverkerkunde</button>
 
         <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
 
@@ -751,6 +773,94 @@
         <h3>Til godkjenning</h3>
         <div id="fravaerGodkjenning"></div>
       </div>
+    </section>
+
+
+    <!-- TILBUD -->
+    <section id="tilbudSide" class="kort skjult admin-only">
+      <h2>Tilbud</h2>
+      <p class="info">Lag tilbud til kunde. Tilbud bruker nye tabellnavn: <code>hand_tilbud</code> og <code>hand_tilbud_linje</code>.</p>
+
+      <input id="tilbudId" type="hidden">
+
+      <div class="rad">
+        <div>
+          <label for="tilbudNr">Tilbudsnummer</label>
+          <input id="tilbudNr" placeholder="F.eks. T-2026-001">
+        </div>
+        <div>
+          <label for="tilbudDato">Dato</label>
+          <input id="tilbudDato" type="date">
+        </div>
+        <div>
+          <label for="tilbudGyldigTil">Gyldig til</label>
+          <input id="tilbudGyldigTil" type="date">
+        </div>
+        <div>
+          <label for="tilbudStatus">Status</label>
+          <select id="tilbudStatus">
+            <option value="utkast">Utkast</option>
+            <option value="sendt">Sendt</option>
+            <option value="akseptert">Akseptert</option>
+            <option value="avslatt">Avslått</option>
+            <option value="utlopt">Utløpt</option>
+            <option value="konvertert_til_prosjekt">Konvertert til prosjekt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="tilbudKundeValg">Kunde</label>
+          <select id="tilbudKundeValg"><option value="">Velg kunde</option></select>
+        </div>
+        <div>
+          <label for="tilbudProsjektValg">Prosjekt</label>
+          <select id="tilbudProsjektValg"><option value="">Ingen / velg prosjekt</option></select>
+        </div>
+      </div>
+
+      <label for="tilbudNotat">Notat / tekst på tilbudet</label>
+      <textarea id="tilbudNotat" placeholder="Kort beskrivelse av arbeidet"></textarea>
+
+      <hr>
+      <h3>Tilbudslinjer</h3>
+      <div class="rad">
+        <div>
+          <label for="tilbudLinjeTekst">Tekst</label>
+          <input id="tilbudLinjeTekst" placeholder="Arbeid, materiell eller fastpris">
+        </div>
+        <div>
+          <label for="tilbudLinjeAntall">Antall</label>
+          <input id="tilbudLinjeAntall" type="number" step="0.01" value="1">
+        </div>
+        <div>
+          <label for="tilbudLinjeEnhet">Enhet</label>
+          <input id="tilbudLinjeEnhet" value="stk">
+        </div>
+        <div>
+          <label for="tilbudLinjePris">Pris eks. mva</label>
+          <input id="tilbudLinjePris" type="number" step="0.01" value="0">
+        </div>
+        <div>
+          <label for="tilbudLinjeMva">MVA %</label>
+          <input id="tilbudLinjeMva" type="number" step="0.01" value="25">
+        </div>
+      </div>
+
+      <button id="leggTilTilbudLinjeKnapp" type="button">Legg til linje</button>
+      <div id="tilbudLinjeListe"></div>
+      <div id="tilbudSummer"></div>
+
+      <button id="lagreTilbudKnapp" type="button">Lagre tilbud</button>
+      <button id="nyttTilbudKnapp" type="button" class="secondary">Nytt / tøm skjema</button>
+      <button id="oppdaterTilbudKnapp" type="button" class="secondary">Oppdater liste</button>
+
+      <div id="tilbudMelding" class="melding"></div>
+
+      <hr>
+      <h3>Tilbudsliste</h3>
+      <div id="tilbudListe"></div>
     </section>
 
     <!-- FAKTURA -->
@@ -1158,6 +1268,51 @@
     <section id="firmaSide" class="kort skjult">
       <h2>Firma</h2>
 
+      <div id="handSystemadminBlokk" class="kort skjult" style="border:2px solid #0f766e; margin-bottom:14px;">
+        <h2>Admin</h2>
+        <h3>Opprett ny håndverkerkunde</h3>
+        <p class="info">Vises bare for systemadmin. Oppretter firma/kunde i tabellen <code>firma</code>.</p>
+
+        <input id="redigerHandKundeId" type="hidden">
+
+        <label for="nyHandKundeNavn">Firmanavn</label>
+        <input id="nyHandKundeNavn" placeholder="F.eks. Hansen Bygg AS">
+
+        <label for="nyHandKundeEpost">E-post til kunde/admin</label>
+        <input id="nyHandKundeEpost" type="email" placeholder="kunde@example.no">
+
+        <label for="nyHandKundeTelefon">Telefon</label>
+        <input id="nyHandKundeTelefon" placeholder="Telefon">
+
+        <label for="nyHandKundeAdresse">Adresse</label>
+        <input id="nyHandKundeAdresse" placeholder="Adresse">
+
+        <label for="nyHandKundeOrgNr">Org.nr</label>
+        <input id="nyHandKundeOrgNr" placeholder="Org.nr">
+
+        <label for="nyHandKundeLinknavn">Linknavn</label>
+        <input id="nyHandKundeLinknavn" placeholder="f.eks. hansen-bygg">
+
+        <label for="nyHandKundePassord">Midlertidig passord</label>
+        <input id="nyHandKundePassord" type="text" placeholder="Midlertidig passord / brukes ved Auth-epost">
+
+        <label for="nyHandKundeLink">Kundelink</label>
+        <input id="nyHandKundeLink" readonly>
+
+        <button type="button" onclick="handOpprettKundeDirekte()">Opprett håndverkerkunde og send e-post</button>
+        <button type="button" class="secondary" onclick="handLagreRedigertKunde()">Lagre endringer</button>
+        <button type="button" class="secondary" onclick="handNullstillKundeSkjema()">Ny/tøm skjema</button>
+        <button type="button" class="secondary" onclick="handSendPassordopprettingDirekte()">Send passordoppretting</button>
+        <button type="button" class="secondary" onclick="handKopierKundelinkDirekte()">Kopier kundelink</button>
+
+        <div id="nyHandKundeMelding" class="melding"></div>
+
+        <hr>
+        <h3>Håndverkerkunder</h3>
+        <button type="button" class="secondary" onclick="handLastKundeliste()">Oppdater kundeliste</button>
+        <div id="handKundeAdminListe" class="info">Ingen kunder lastet ennå.</div>
+      </div>
+
       <label for="firmaNavn">Firmanavn</label>
       <input id="firmaNavn">
 
@@ -1249,37 +1404,39 @@
 <script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script charset="UTF-8" src="../js/core/config.js?v=5001"></script>
+<script charset="UTF-8" src="../js/core/config.js?v=20260620-adminfix"></script>
 <script charset="UTF-8" src="../js/core/state.js?v=999"></script>
 <script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
-<script charset="UTF-8" src="../js/handverker/navigation.js?v=7060"></script>
-<script charset="UTF-8" src="../js/handverker/auth.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/kunder.js?v=7044"></script>
-<script charset="UTF-8" src="../js/handverker/prosjekter.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/ansatte.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/hand-auth.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/handverker/hand-kunder.js?v=7044"></script>
+<script charset="UTF-8" src="../js/handverker/hand-prosjekter.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-ansatte.js?v=20260620-adminfix"></script>
 <script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/firma.js?v=7058"></script>
-<script charset="UTF-8" src="../js/handverker/timer.js?v=7044"></script>
-<script charset="UTF-8" src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
-<script charset="UTF-8" src="../js/handverker/utils.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaData.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
-<script charset="UTF-8" src="../js/handverker/pdfLayout.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaPdf.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/faktura.js?v=7086"></script>
-<script charset="UTF-8" src="../js/handverker/okonomi.js?v=7086"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaValg.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/backup.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/lonn.js?v=7100"></script>
-<script charset="UTF-8" src="../js/handverker/fravaer.js?v=7090"></script>
-<script charset="UTF-8" src="../js/handverker/tester.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/app.js?v=7100"></script>
-<script charset="UTF-8" src="../js/handverker/varer.js?v=7066"></script>
-<script charset="UTF-8" src="../js/handverker/biler.js?v=88888"></script>
-  <script charset="UTF-8" src="../js/handverker/lager-patch.js?v=7300"></script>
-<script charset="UTF-8" src="../js/handverker/jobber-rolle.js?v=7068"></script>
-<script charset="UTF-8" src="../js/handverker/bruker-billager.js?v=7055"></script>
-<script charset="UTF-8" src="../js/handverker/bilvalg-repair.js?v=7059"></script>
+<script charset="UTF-8" src="../js/handverker/hand-firma.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/hand-timer.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/handverker/hand-admin-timer-ansatt.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/hand-utils.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-data.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-vipps-faktura-fix.js?v=20260608"></script>
+<script charset="UTF-8" src="../js/handverker/hand-pdf-layout.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-pdf.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/hand-okonomi.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-valg.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-backup.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-lonn.js?v=7100"></script>
+<script charset="UTF-8" src="../js/handverker/hand-fravaer.js?v=7090"></script>
+<script charset="UTF-8" src="../js/handverker/hand-tilbud.js?v=1"></script>
+<script charset="UTF-8" src="../js/handverker/hand-tester.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-app.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/handverker/hand-systemadmin.js?v=20260619-1"></script>
+<script charset="UTF-8" src="../js/handverker/hand-varer.js?v=7066"></script>
+<script charset="UTF-8" src="../js/handverker/hand-biler.js?v=88888"></script>
+  <script charset="UTF-8" src="../js/handverker/hand-lager-patch.js?v=7300"></script>
+<script charset="UTF-8" src="../js/handverker/hand-jobber-rolle.js?v=7068"></script>
+<script charset="UTF-8" src="../js/handverker/hand-bruker-billager.js?v=7055"></script>
+<script charset="UTF-8" src="../js/handverker/hand-bilvalg-repair.js?v=7059"></script>
 
 
 <script>
@@ -1313,13 +1470,15 @@ window.addEventListener("load", function () {
     }
 
     window.innloggetEpost = email;
+    localStorage.setItem("handInnloggetEpost", email);
+    if (typeof window.settInnloggetBrukerVisning === "function") window.settInnloggetBrukerVisning();
     window.erAdmin = false;
 
     let ansattData = null;
 
     try {
       const { data, error: ansattError } = await supabaseClient
-        .from("ansatte")
+        .from("hand_ansatt")
         .select("*")
         .eq("epost", email)
         .limit(1);
@@ -1378,7 +1537,7 @@ window.addEventListener("load", function () {
       return;
     }
 
-    const redirectUrl = window.location.origin + "/rettilomma/reset.html";
+    const redirectUrl = window.location.origin + "/rettilomma/handverker/reset.html";
 
     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl
@@ -1393,7 +1552,7 @@ window.addEventListener("load", function () {
 
   if (typeof window.loggInn !== "function") {
     window.loggInn = nodLoggInn;
-    console.warn("Bruker n\u00F8dinnlogging fordi auth.js ikke registrerte window.loggInn.");
+    console.warn("Bruker n\u00F8dinnlogging fordi hand-auth.js ikke registrerte window.loggInn.");
   }
 
   if (typeof window.glemtPassord !== "function") {
@@ -1431,7 +1590,7 @@ window.addEventListener("load", function () {
       if (typeof window.backup === "function") {
         window.backup();
       } else {
-        alert("Backup-funksjonen er ikke lastet. Sjekk js/backup.js.");
+        alert("Backup-funksjonen er ikke lastet. Sjekk js/hand-backup.js.");
       }
     };
   }
@@ -1441,7 +1600,7 @@ window.addEventListener("load", function () {
       if (typeof window.importerBackup === "function") {
         window.importerBackup(event);
       } else {
-        alert("Restore-funksjonen er ikke lastet. Sjekk js/backup.js.");
+        alert("Restore-funksjonen er ikke lastet. Sjekk js/hand-backup.js.");
       }
     };
   }
@@ -1463,7 +1622,7 @@ window.addEventListener("load", function () {
       const melding = document.getElementById("loginMelding");
       if (melding) {
         melding.textContent =
-          "Innlogging er ikke klar. Sjekk at js/auth.js og js/core/config.js ligger riktig.";
+          "Innlogging er ikke klar. Sjekk at js/hand-auth.js og js/core/config.js ligger riktig.";
       }
     };
   }
@@ -1478,7 +1637,7 @@ window.addEventListener("load", function () {
       const melding = document.getElementById("loginMelding");
       if (melding) {
         melding.textContent =
-          "Glemt passord er ikke klar. Sjekk at js/auth.js er lastet.";
+          "Glemt passord er ikke klar. Sjekk at js/hand-auth.js er lastet.";
       }
     };
   }
@@ -1524,14 +1683,14 @@ window.addEventListener("load", function () {
       if (!navn && !regnr) { msg("Skriv bilnavn eller regnr.", true); alert("Skriv bilnavn eller regnr."); return; }
       var rad = { navn: navn || regnr, regnr: regnr || null, aktiv: true };
       var q = id
-        ? window.supabaseClient.from("biler").update(rad).eq("id", id).select().single()
-        : window.supabaseClient.from("biler").insert([rad]).select().single();
+        ? window.supabaseClient.from("hand_bil").update(rad).eq("id", id).select().single()
+        : window.supabaseClient.from("hand_bil").insert([rad]).select().single();
       var res = await q;
       if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
         var rad2 = { navn: navn || regnr, regnr: regnr || null };
         res = id
-          ? await window.supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
-          : await window.supabaseClient.from("biler").insert([rad2]).select().single();
+          ? await window.supabaseClient.from("hand_bil").update(rad2).eq("id", id).select().single()
+          : await window.supabaseClient.from("hand_bil").insert([rad2]).select().single();
       }
       if (res.error) { msg("Kunne ikke lagre bil: " + res.error.message, true); alert("Kunne ikke lagre bil: " + res.error.message); return; }
       if (res.data && res.data.id) {
@@ -1609,6 +1768,61 @@ window.addEventListener("load", function () {
     if (k) k.addEventListener("click", function () { setTimeout(ryddJobbListe, 400); });
   });
   window.ryddJobbListe = ryddJobbListe;
+})();
+</script>
+
+
+<script>
+// HAND: vis innlogget bruker tydelig på første side
+(function () {
+  function finnSupabaseEpostFraLocalStorage() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (!key || key.indexOf("sb-") !== 0) continue;
+        var raw = localStorage.getItem(key);
+        if (!raw) continue;
+        var data = JSON.parse(raw);
+        if (data && data.user && data.user.email) return data.user.email;
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  function settInnloggetBrukerVisning() {
+    var epost =
+      window.innloggetEpost ||
+      window.innloggetBrukerEpost ||
+      localStorage.getItem("handInnloggetEpost") ||
+      localStorage.getItem("innloggetEpost") ||
+      finnSupabaseEpostFraLocalStorage() ||
+      "";
+
+    var rolle = window.innloggetRolle || "";
+    var erAdmin = window.erAdmin ? "adminmodus" : "";
+    var visning = document.getElementById("innloggetBrukerVisning");
+    var rolleVisning = document.getElementById("innloggetRolleVisning");
+
+    if (visning) {
+      visning.textContent = epost || "Ikke innlogget / ukjent bruker";
+    }
+
+    if (rolleVisning) {
+      var deler = [];
+      if (rolle) deler.push("rolle: " + rolle);
+      if (erAdmin) deler.push(erAdmin);
+      rolleVisning.textContent = deler.length ? " (" + deler.join(", ") + ")" : "";
+    }
+  }
+
+  window.settInnloggetBrukerVisning = settInnloggetBrukerVisning;
+
+  document.addEventListener("DOMContentLoaded", settInnloggetBrukerVisning);
+  window.addEventListener("load", function () {
+    settInnloggetBrukerVisning();
+    setTimeout(settInnloggetBrukerVisning, 500);
+    setTimeout(settInnloggetBrukerVisning, 1500);
+  });
 })();
 </script>
 

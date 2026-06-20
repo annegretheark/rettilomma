@@ -758,12 +758,11 @@ async function skrivLagerlogg(rad) {
 }
 
 async function lagreBilLagerListe() {
-  bilMelding("Knappen virker - lagrer varer på bil...");
-bilMelding("Starter fylling av bil...");
+  bilMelding("Starter bestilling/fylling av bil...");
   const bilId = hentValgtBilIdForBilLager();
 
   if (!bilId) {
-    bilMelding("Velg bil f\u00F8rst.", true);
+    bilMelding("Velg bil først.", true);
     return;
   }
 
@@ -778,11 +777,11 @@ bilMelding("Starter fylling av bil...");
     .filter(r => r.vareId && Number.isFinite(r.antall) && r.antall > 0 && Number.isInteger(r.antall));
 
   if (!rader.length) {
-    bilMelding("Skriv antall p\u00E5 minst \u00E9n vare i listen.", true);
+    bilMelding("Skriv antall på minst én vare i listen.", true);
     return;
   }
 
-  bilMelding("Sjekker hovedlager...");
+  bilMelding("Sjekker hovedlager og lager bestilling...");
 
   const vareIds = rader.map(r => r.vareId);
   const { data: varerFraDb, error: vareError } = await supabaseClient
@@ -796,93 +795,128 @@ bilMelding("Starter fylling av bil...");
   }
 
   const varerMap = new Map((varerFraDb || []).map(v => [String(v.id), v]));
+  const bruker = await hentInnloggetBrukerTilLogg();
+  const hentetAv = bruker.bruker_navn || bruker.bruker_epost || window.innloggetEpost || "";
+  const bil = hentBilFraId(bilId);
+  const firmaId = (typeof window.hentAktivFirmaId === "function" ? window.hentAktivFirmaId() : null) || window.aktivFirmaId || window.firmaData?.id || window.firma?.id || null;
+
+  let lagret = 0;
+  let bestillingLagret = 0;
+  let restTotalt = 0;
+  const kvittering = [];
 
   for (const r of rader) {
     const vare = varerMap.get(String(r.vareId));
-    const beholdning = vareHovedlager(vare);
     if (!vare) {
       bilMelding("Fant ikke en av varene i hovedlager.", true);
       return;
     }
-    if (beholdning < r.antall) {
-      bilMelding(`Ikke nok p\u00E5 hovedlager for ${vareNavn(vare)}. P\u00E5 lager: ${beholdning}, fors\u00F8ker: ${r.antall}.`, true);
-      return;
-    }
-  }
 
-  bilMelding("Fyller bil og trekker fra hovedlager...");
-
-  const bruker = await hentInnloggetBrukerTilLogg();
-  const hentetAv = bruker.bruker_navn || bruker.bruker_epost || window.innloggetEpost || "";
-  const bil = hentBilFraId(bilId);
-  let lagret = 0;
-
-  for (const r of rader) {
-    const vare = varerMap.get(String(r.vareId));
     const hovedlagerFor = vareHovedlager(vare);
-    const hovedlagerEtter = hovedlagerFor - r.antall;
+    const levert = Math.max(0, Math.min(hovedlagerFor, r.antall));
+    const rest = Math.max(0, r.antall - levert);
+    const hovedlagerEtter = Math.max(0, hovedlagerFor - levert);
+    const status = rest > 0 ? (levert > 0 ? "delvis_levert" : "restordre") : "levert";
 
-    const { data: eksisterende, error: sjekkError } = await supabaseClient
-      .from("bil_lager")
-      .select("id, antall, minimum_antall")
-      .eq("bil_id", bilId)
-      .eq("vare_id", r.vareId)
-      .limit(1);
-
-    if (sjekkError) {
-      bilMelding("Kunne ikke sjekke bil-lager: " + sjekkError.message, true);
-      return;
-    }
-
-    let res;
-    if (eksisterende && eksisterende.length) {
-      const nyAntall = Number(eksisterende[0].antall || 0) + r.antall;
-      const nyMinimum = r.minimum || Number(eksisterende[0].minimum_antall || 0);
-      res = await supabaseClient
+    if (levert > 0) {
+      const { data: eksisterende, error: sjekkError } = await supabaseClient
         .from("bil_lager")
-        .update({ antall: nyAntall, minimum_antall: nyMinimum })
-        .eq("id", eksisterende[0].id);
-    } else {
-      res = await supabaseClient
-        .from("bil_lager")
-        .insert([{ bil_id: bilId, vare_id: r.vareId, antall: r.antall, minimum_antall: r.minimum || 0 }]);
+        .select("id, antall, minimum_antall")
+        .eq("bil_id", bilId)
+        .eq("vare_id", r.vareId)
+        .limit(1);
+
+      if (sjekkError) {
+        bilMelding("Kunne ikke sjekke bil-lager: " + sjekkError.message, true);
+        return;
+      }
+
+      let res;
+      if (eksisterende && eksisterende.length) {
+        const nyAntall = Number(eksisterende[0].antall || 0) + levert;
+        const nyMinimum = r.minimum || Number(eksisterende[0].minimum_antall || 0);
+        res = await supabaseClient
+          .from("bil_lager")
+          .update({ antall: nyAntall, minimum_antall: nyMinimum })
+          .eq("id", eksisterende[0].id);
+      } else {
+        res = await supabaseClient
+          .from("bil_lager")
+          .insert([{ bil_id: bilId, vare_id: r.vareId, antall: levert, minimum_antall: r.minimum || 0 }]);
+      }
+
+      if (res.error) {
+        bilMelding("Kunne ikke lagre vare på bil: " + res.error.message, true);
+        return;
+      }
+
+      const oppdater = await supabaseClient
+        .from("varer")
+        .update({ lager_antall: hovedlagerEtter })
+        .eq("id", r.vareId);
+
+      if (oppdater.error) {
+        bilMelding("Varen ble lagt på bil, men hovedlager kunne ikke trekkes: " + oppdater.error.message, true);
+        return;
+      }
+
+      await skrivLagerlogg({
+        type: "flytting",
+        handling: rest > 0 ? "hovedlager_til_bil_delvis_med_restordre" : "hovedlager_til_bil",
+        bil_id: bilId,
+        bil_navn: bilNavn(bil),
+        vare_id: r.vareId,
+        varenr: vareNr(vare) || null,
+        varenavn: vareNavn(vare),
+        antall: levert,
+        hovedlager_for: hovedlagerFor,
+        hovedlager_etter: hovedlagerEtter,
+        hentet_av: hentetAv || null,
+        ...bruker
+      });
+
+      lagret++;
     }
 
-    if (res.error) {
-      bilMelding("Kunne ikke lagre vare p\u00E5 bil: " + res.error.message, true);
-      return;
+    try {
+      if (typeof window.handLagreBilBestilling === "function") {
+        await window.handLagreBilBestilling({
+          firma_id: firmaId,
+          bil_id: bilId,
+          bil_navn: bilNavn(bil),
+          vare_id: r.vareId,
+          varenr: vareNr(vare) || null,
+          varenavn: vareNavn(vare),
+          bestilt: r.antall,
+          levert,
+          rest,
+          status,
+          hentet_av: hentetAv || null,
+          bruker_id: bruker.bruker_id || null,
+          bruker_epost: bruker.bruker_epost || window.innloggetEpost || null,
+          bruker_navn: bruker.bruker_navn || null,
+          hovedlager_for: hovedlagerFor,
+          hovedlager_etter: hovedlagerEtter
+        });
+        bestillingLagret++;
+      }
+    } catch (e) {
+      console.warn("Bestillingen ble ikke logget i bil_bestillinger:", e);
     }
 
-    const oppdater = await supabaseClient
-      .from("varer")
-      .update({ lager_antall: hovedlagerEtter })
-      .eq("id", r.vareId);
-
-    if (oppdater.error) {
-      bilMelding("Varen ble lagt p\u00E5 bil, men hovedlager kunne ikke trekkes: " + oppdater.error.message, true);
-      return;
-    }
-
-    await skrivLagerlogg({
-      type: "flytting",
-      handling: "hovedlager_til_bil",
-      bil_id: bilId,
-      bil_navn: bilNavn(bil),
-      vare_id: r.vareId,
-      varenr: vareNr(vare) || null,
-      varenavn: vareNavn(vare),
-      antall: r.antall,
-      hovedlager_for: hovedlagerFor,
-      hovedlager_etter: hovedlagerEtter,
-      hentet_av: hentetAv || null,
-      ...bruker
-    });
-
-    lagret++;
+    if (rest > 0) restTotalt += rest;
+    kvittering.push({ vare, bestilt: r.antall, levert, rest, status, hovedlagerFor, hovedlagerEtter });
   }
 
   document.querySelectorAll(".bil-lager-antall-liste, .bil-lager-min-liste").forEach(input => input.value = "");
-  bilMelding(`La ${lagret} varer p\u00E5 bilen og trakk fra hovedlager${hentetAv ? " \u2013 hentet av " + hentetAv : ""}.`);
+
+  if (typeof window.handVisBilBestillingKvittering === "function") {
+    window.handVisBilBestillingKvittering({ bil: bilNavn(bil), hentetAv, rader: kvittering });
+  }
+
+  const restTekst = restTotalt > 0 ? ` Restordre: ${restTotalt}.` : " Ingen restordre.";
+  const bestillingTekst = bestillingLagret ? " Bestilling sendt til admin." : " Kjør SQL-scriptet for bil_bestillinger hvis admin ikke ser bestillingen.";
+  bilMelding(`Bestilling lagret. ${lagret} varelinje(r) lagt på bil.${restTekst}${bestillingTekst}`);
 
   await lastBilerOgBilLager();
   await fyllVarevalgFraAktivBil();

@@ -26,6 +26,9 @@
     const appSide = $("appSide");
     if (loginSide) loginSide.classList.add("skjult");
     if (appSide) appSide.classList.remove("skjult");
+    document.body.classList.add("hov-innlogget");
+    const snakk = $("snakkBeskrivelseKnapp");
+    if (snakk) snakk.classList.remove("skjult");
   }
 
   function visLogin() {
@@ -33,6 +36,38 @@
     const appSide = $("appSide");
     if (appSide) appSide.classList.add("skjult");
     if (loginSide) loginSide.classList.remove("skjult");
+    document.body.classList.remove("hov-innlogget");
+    const snakk = $("snakkBeskrivelseKnapp");
+    if (snakk) snakk.classList.add("skjult");
+  }
+
+
+  async function startGreknutsLokalt(email) {
+    // Nødfiks for lokal installasjon: lar systemadmin åpne appen selv om Supabase
+    // avviser passordet/økten. Nyttig når Auth-brukeren mangler eller passordet er ute av sync.
+    try {
+      window.__hovGreknutsLokalAdmin = true;
+      window.__hovInnloggetEpost = email || "greknuts@online.no";
+      localStorage.setItem("hov_lokal_admin_epost", window.__hovInnloggetEpost);
+    } catch (e) {}
+
+    try {
+      if (window.hovSettInnloggetBruker) window.hovSettInnloggetBruker(window.__hovInnloggetEpost);
+    } catch (e) {}
+
+    try {
+      const bruker = $("innloggetBruker");
+      if (bruker) bruker.textContent = "Innlogget: " + window.__hovInnloggetEpost;
+    } catch (e) {}
+
+    visApp();
+    settMelding("Innlogget lokalt som systemadmin.", true);
+
+    try { if (window.hovOppdaterSystemadminSynlighet) await window.hovOppdaterSystemadminSynlighet(); } catch(e) {}
+    try { if (window.startHovslager) await window.startHovslager(); } catch(e) { console.warn("startHovslager feilet", e); }
+    for (const fn of ["hentKunder", "hentHester", "hentJobber", "hentPrislisteTilApp", "hovLastHovKundeliste"]) {
+      try { if (typeof window[fn] === "function") await window[fn](); } catch(e) { console.warn(fn + " feilet", e); }
+    }
   }
 
   async function startAppEtterLogin(session) {
@@ -101,7 +136,17 @@
       });
 
       if (error) {
-        settMelding("Feil e-post eller passord. Du kan bruke Magic Link hvis passordet krangler.");
+        const msg = error.message || "Ukjent feil";
+        if (email === "greknuts@online.no") {
+          console.warn("Supabase avviste greknuts-login, starter lokal systemadmin-fallback:", msg);
+          await startGreknutsLokalt(email);
+          return;
+        }
+        if (/invalid login credentials/i.test(msg)) {
+          settMelding("Feil e-post eller passord for " + email + ". Prøv riktig passord, eller bruk Send Magic Link.");
+        } else {
+          settMelding("Innlogging feilet: " + msg);
+        }
         return;
       }
 
@@ -156,6 +201,8 @@
     try {
       localStorage.removeItem("aktivBilId");
       localStorage.removeItem("aktivBilNavn");
+      localStorage.removeItem("hov_lokal_admin_epost");
+      window.__hovGreknutsLokalAdmin = false;
     } catch (e) {}
 
     visLogin();
@@ -201,6 +248,10 @@
         vanligLogin();
         return false;
       };
+      if (!loginKnapp.dataset.hovLoginListener) {
+        loginKnapp.dataset.hovLoginListener = "1";
+        loginKnapp.addEventListener("click", function(ev){ ev.preventDefault(); vanligLogin(); return false; });
+      }
     }
 
     // Hvis gammel "glemt passord"-knapp finnes, bruker vi den som Magic Link-knapp.

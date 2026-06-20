@@ -1,4 +1,4 @@
-// firma.js - håndverker
+// hand-firma.js - håndverker
 // Fikset: bruker aktivt firma-id, retter Org.nr/MVA-feltnavn og eksponerer firma-id til timer/faktura.
 
 async function hentAktivFirmaRad() {
@@ -10,7 +10,7 @@ async function hentAktivFirmaRad() {
     Når du senere har flere firma/kunder i samme Supabase, bør firma_id hentes fra innlogget ansatt/tenant.
   */
   const { data, error } = await supabaseClient
-    .from("firma")
+    .from("hand_firma")
     .select("*")
     .order("id", { ascending: true })
     .limit(1)
@@ -140,7 +140,7 @@ async function lagreFirma() {
   if (melding) melding.textContent = "";
 
   const { data: eksisterende, error: hentError } = await supabaseClient
-    .from("firma")
+    .from("hand_firma")
     .select("*")
     .order("id", { ascending: true })
     .limit(1)
@@ -192,14 +192,14 @@ async function lagreFirma() {
     }
 
     result = await supabaseClient
-      .from("firma")
+      .from("hand_firma")
       .update(firma)
       .eq("id", eksisterende.id)
       .select()
       .single();
   } else {
     result = await supabaseClient
-      .from("firma")
+      .from("hand_firma")
       .insert([firma])
       .select()
       .single();
@@ -298,3 +298,127 @@ window.addEventListener("load", function () {
     logoInput.onchange = window.lastInnLogo;
   }
 });
+
+
+// AGK HAND FIRMA TENANT FIX: firmaadmin redigerer eget firma, ikke første firma i databasen.
+(function(){
+  async function handInnloggetEmail(){
+    try{ const r = await window.supabaseClient?.auth?.getSession(); return String(r?.data?.session?.user?.email || window.innloggetEpost || '').toLowerCase(); }catch(e){ return String(window.innloggetEpost || '').toLowerCase(); }
+  }
+  async function handErSystemadmin(){
+    const email = await handInnloggetEmail();
+    if(email === 'greknuts@online.no') return true;
+    try{ const {data,error}=await window.supabaseClient.rpc('er_systemadmin'); return !error && data === true; }catch(e){ return false; }
+  }
+  async function handFinnMittFirmaId(){
+    if(!window.supabaseClient) return window.aktivFirmaId || window.firmaData?.id || null;
+    if(window.aktivFirmaId && !(await handErSystemadmin())) return window.aktivFirmaId;
+    const email = await handInnloggetEmail();
+    try{
+      const u = await window.supabaseClient.auth.getUser();
+      const uid = u?.data?.user?.id || null;
+      let q = window.supabaseClient.from('hand_ansatt').select('firma_id').limit(1);
+      if(uid) q = q.eq('user_id', uid); else q = q.ilike('epost', email);
+      let {data,error}=await q.maybeSingle();
+      if(!error && data?.firma_id) return data.firma_id;
+    }catch(e){ console.warn('Fant ikke firma via ansatte/user_id:', e); }
+    try{
+      const {data,error}=await window.supabaseClient.from('hand_ansatt').select('firma_id').ilike('epost', email).limit(1).maybeSingle();
+      if(!error && data?.firma_id) return data.firma_id;
+    }catch(e){ console.warn('Fant ikke firma via ansatte/epost:', e); }
+    return window.aktivFirmaId || window.firmaData?.id || null;
+  }
+  async function hentAktivFirmaRadFix(){
+    if(!window.supabaseClient) return window.firmaData || {};
+    const isSys = await handErSystemadmin();
+    let id = await handFinnMittFirmaId();
+    if(isSys) {
+      const feltId = (document.getElementById('redigerHandKundeId')?.value || '').trim();
+      if(feltId) id = feltId;
+    }
+    let q = window.supabaseClient.from('hand_firma').select('*');
+    if(id) q = q.eq('id', id);
+    else q = q.order('id', {ascending:true}).limit(1);
+    const {data,error} = await q.limit(1).maybeSingle();
+    if(error){ console.error('Feil ved henting av firma:', error); return window.firmaData || {}; }
+    const firma = data || {};
+    window.firmaData = firma; window.firma = firma; window.aktivFirmaId = firma.id || null;
+    return firma;
+  }
+  async function hentFirmaDataFix(){ return await hentAktivFirmaRadFix(); }
+  async function lastFirmaFix(){
+    const firma = await hentAktivFirmaRadFix();
+    if(typeof settFirmaFeltHvisFinnes === 'function'){
+      settFirmaFeltHvisFinnes('firmaNavn', firma.navn || firma.firmanavn);
+      settFirmaFeltHvisFinnes('firmaAdresse', firma.adresse);
+      settFirmaFeltHvisFinnes('firmaOrgnr', firma.orgnr || firma.org_nr); settFirmaFeltHvisFinnes('firmaOrgNr', firma.orgnr || firma.org_nr);
+      settFirmaFeltHvisFinnes('firmaMvanr', firma.mva_nr || firma.mvanr); settFirmaFeltHvisFinnes('firmaMvaNr', firma.mva_nr || firma.mvanr);
+      settFirmaFeltHvisFinnes('firmaTelefon', firma.telefon); settFirmaFeltHvisFinnes('firmaEpost', firma.epost || firma.email);
+      settFirmaFeltHvisFinnes('firmaKontonr', firma.kontonr || firma.konto_nr); settFirmaFeltHvisFinnes('firmaKontoNr', firma.kontonr || firma.konto_nr);
+      settFirmaFeltHvisFinnes('firmaVippsNummer', firma.vipps_nummer); settFirmaFeltHvisFinnes('firmaVippsMottaker', firma.vipps_mottaker);
+      settFirmaFeltHvisFinnes('firmaBrevhode', firma.brevhode_tekst); settFirmaFeltHvisFinnes('firmaBrevfot', firma.brevfot_tekst);
+    }
+    if(typeof visFirma === 'function') visFirma(firma);
+    return firma;
+  }
+  async function lagreFirmaFix(){
+    const melding = document.getElementById('firmaMelding'); if(melding) melding.textContent='';
+    const eksisterende = await hentAktivFirmaRadFix();
+    const firma = {};
+    if(typeof leggTilHvisUtfylt === 'function'){
+      leggTilHvisUtfylt(firma, 'navn', 'firmaNavn'); leggTilHvisUtfylt(firma, 'adresse', 'firmaAdresse');
+      leggTilHvisUtfylt(firma, 'orgnr', 'firmaOrgnr', 'firmaOrgNr'); leggTilHvisUtfylt(firma, 'mva_nr', 'firmaMvanr', 'firmaMvaNr');
+      leggTilHvisUtfylt(firma, 'telefon', 'firmaTelefon'); leggTilHvisUtfylt(firma, 'epost', 'firmaEpost');
+      leggTilHvisUtfylt(firma, 'kontonr', 'firmaKontonr', 'firmaKontoNr'); leggTilHvisUtfylt(firma, 'vipps_nummer', 'firmaVippsNummer');
+      leggTilHvisUtfylt(firma, 'vipps_mottaker', 'firmaVippsMottaker'); leggTilHvisUtfylt(firma, 'brevhode_tekst', 'firmaBrevhode'); leggTilHvisUtfylt(firma, 'brevfot_tekst', 'firmaBrevfot');
+    }
+    try{ if(typeof lastOppFirmaLogoHvisValgt === 'function'){ const logoUrl = await lastOppFirmaLogoHvisValgt(); if(logoUrl){ firma.logo_url = logoUrl; firma.logo = null; } } }catch(e){ if(melding) melding.textContent=e.message||String(e); return; }
+    if(Object.keys(firma).length===0){
+      firma.navn = (document.getElementById('firmaNavn')?.value || '').trim() || 'Mitt firma';
+    }
+
+    let res;
+    if(eksisterende?.id){
+      res = await window.supabaseClient
+        .from('hand_firma')
+        .update(firma)
+        .eq('id', eksisterende.id)
+        .select()
+        .maybeSingle();
+    } else {
+      // Første gangs oppsett: ingen firma-rad finnes for denne brukeren.
+      // Opprett en ny hand_firma-rad i stedet for å stoppe med feilmelding.
+      res = await window.supabaseClient
+        .from('hand_firma')
+        .insert([firma])
+        .select()
+        .maybeSingle();
+    }
+
+    if(res.error){ console.error(res.error); if(melding) melding.textContent='Feil ved lagring av firma: '+res.error.message; return; }
+    window.firmaData=res.data||{}; window.firma=window.firmaData; window.aktivFirmaId=window.firmaData.id||null;
+
+    // Prøv å koble innlogget ansatt til firmaet hvis ansatte-tabellen har firma_id.
+    try {
+      const email = await handInnloggetEmail();
+      const uidRes = await window.supabaseClient.auth.getUser();
+      const uid = uidRes?.data?.user?.id || null;
+      const nyFirmaId = window.aktivFirmaId;
+      if(nyFirmaId) {
+        let q = window.supabaseClient.from('hand_ansatt').update({ firma_id: nyFirmaId });
+        if(uid) q = q.eq('user_id', uid); else if(email) q = q.ilike('epost', email);
+        await q;
+      }
+    } catch(e) {
+      console.warn('Kunne ikke koble ansatt til firma automatisk:', e);
+    }
+
+    if(melding) melding.textContent=eksisterende?.id ? 'Firma lagret i databasen' : 'Første firma opprettet og lagret';
+    await lastFirmaFix();
+  }
+  window.hentAktivFirmaRad = hentAktivFirmaRadFix;
+  window.hentFirmaData = hentFirmaDataFix;
+  window.lastFirma = lastFirmaFix;
+  window.lagreFirma = lagreFirmaFix;
+  window.hentAktivFirmaId = function(){ return window.aktivFirmaId || window.firmaData?.id || window.firma?.id || null; };
+})();
