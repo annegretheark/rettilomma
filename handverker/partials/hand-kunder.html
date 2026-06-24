@@ -1,53 +1,76 @@
 <section id="kundeSide" class="kort skjult">
-      <h2>Kunder</h2>
+  <h2>Kunder</h2>
 
-      <input id="kundeId" type="hidden">
+  <input id="kundeId" type="hidden">
+  <input id="kundeNr" type="hidden">
 
+  <div class="kunde-form-grid">
+
+    <div class="felt">
+      <label for="kundeNrVis">Kundenr</label>
+      <input id="kundeNrVis" type="text" readonly placeholder="Lages automatisk">
+    </div>
+    <div class="felt">
       <label for="kundeNavn">Navn</label>
       <input id="kundeNavn">
+    </div>
 
+    <div class="felt">
       <label for="kundeAdresse">Adresse</label>
       <input id="kundeAdresse">
+    </div>
 
+    <div class="felt">
       <label for="kundeEpost">E-post</label>
       <input id="kundeEpost">
+    </div>
 
+    <div class="felt kunde-kontonr-felt">
       <label for="kundeKontonr">Kontonr</label>
       <input id="kundeKontonr" type="text">
+    </div>
 
-      <button type="button" class="secondary" onclick="visProsjektVindu()">
-        Legg til prosjekt
-      </button>
-
-      <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
-
-      <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
-        <h3>Legg til prosjekt</h3>
-
-        <label for="prosjektNr">Prosjektnr</label>
-        <input id="prosjektNr" type="text" placeholder="Prosjektnr">
-
-        <label for="prosjektNavn">Prosjektnavn</label>
-        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
-
-        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
-        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
-
-        <button type="button" onclick="lagreProsjektForValgtKunde()">
-          Lagre prosjekt
-        </button>
-
-        <button type="button" class="secondary" onclick="skjulProsjektVindu()">
-          Lukk
-        </button>
-      </div>
-
+    <div class="felt kunde-kontaktperson-felt">
       <label for="kundeKontaktperson">Kontaktperson</label>
       <input id="kundeKontaktperson">
+    </div>
+  </div>
 
-      <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
-      <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+  <div class="kunde-knapperad">
+    <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
+    <button id="avbrytKundeRedigeringKnapp" type="button" class="secondary" style="display:none;">Avbryt redigering</button>
+    <button type="button" class="secondary" onclick="visProsjektVindu()">Legg til prosjekt</button>
+    <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+  </div>
 
-      <div id="kundeMelding" class="melding"></div>
-      <div id="kundeListe"></div>
-    </section>
+  <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
+
+  <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
+    <h3>Legg til prosjekt</h3>
+
+    <div class="kunde-form-grid prosjekt-form-grid">
+      <div class="felt">
+        <label for="prosjektNr">Prosjektnr</label>
+        <input id="prosjektNr" type="text" readonly placeholder="Lages automatisk fra kundenr + prosjektnr">
+      </div>
+
+      <div class="felt">
+        <label for="prosjektNavn">Prosjektnavn</label>
+        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
+      </div>
+
+      <div class="felt prosjekt-beskrivelse-felt">
+        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
+        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
+      </div>
+    </div>
+
+    <div class="kunde-knapperad">
+      <button type="button" onclick="lagreProsjektForValgtKunde()">Lagre prosjekt</button>
+      <button type="button" class="secondary" onclick="skjulProsjektVindu()">Lukk</button>
+    </div>
+  </div>
+
+  <div id="kundeMelding" class="melding"></div>
+  <div id="kundeListe"></div>
+</section>

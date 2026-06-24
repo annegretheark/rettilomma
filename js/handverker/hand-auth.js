@@ -184,7 +184,7 @@ function gaaTilModulvalg() {
 }
 
 function visModulvalgKnappHvisSystemadmin(email) {
-  const erSystemadmin = String(email || "").toLowerCase() === "greknuts@online.no";
+  const erSystemadmin = false;
   let knapp = document.getElementById("velgModulKnapp");
 
   if (!knapp) {
@@ -205,6 +205,7 @@ function visModulvalgKnappHvisSystemadmin(email) {
 }
 
 async function loggInn() {
+  document.documentElement.classList.remove("ril-admin-ready");
   const loginMelding = document.getElementById("loginMelding");
   loginMelding.textContent = "";
 
@@ -230,8 +231,8 @@ async function loggInn() {
 
   innloggetEpost = email;
   window.innloggetEpost = email;
-  window.erSystemadmin = email === "greknuts@online.no";
-  localStorage.removeItem("rilSysadminModus");
+  // Rolle settes samlet etter at Auth metadata og ansattdata er lest.
+  // Ikke nullstill sysadm her, det gir blink/nedgradering.
     localStorage.setItem("handInnloggetEpost", email);
     if (typeof window.settInnloggetBrukerVisning === "function") window.settInnloggetBrukerVisning();
   localStorage.setItem("rettilommaSistEpost", email);
@@ -281,26 +282,13 @@ const {
 
   await velgAktivBilVedInnlogging(ansattData);
 
-  let rolle = String(ansattData?.rolle || "").toLowerCase();
-  if (email === "greknuts@online.no") rolle = "sysadmin";
-  window.innloggetRolle = rolle;
-  const harAdminRolle =
-    rolle === "admin" ||
-    rolle === "systemadmin" ||
-    rolle === "sysadmin" ||
-    email === "greknuts@online.no";
-
-  erAdmin = harAdminRolle;
-  window.erAdmin = harAdminRolle;
-  window.erSystemadmin =
-    rolle === "systemadmin" ||
-    rolle === "sysadmin" ||
-    email === "greknuts@online.no";
-  if (email === "greknuts@online.no") {
-    window.erAdmin = true;
-    window.erSystemadmin = true;
-    localStorage.setItem("rilAdminModus", "ja");
-  }
+  const rolleStatus = typeof window.handResolveRole === "function"
+    ? await window.handResolveRole(ansattData)
+    : { rolle: String(ansattData?.rolle || "").toLowerCase(), admin: false, sys: false };
+  const rolle = rolleStatus.rolle;
+  erAdmin = rolleStatus.admin === true;
+  window.erAdmin = erAdmin;
+  window.erSystemadmin = rolleStatus.sys === true;
 
   const maaByttePassord =
     ansattData &&
@@ -379,6 +367,7 @@ function ryddHandLogoutLagring() {
 }
 
 async function handLoggUtHardt(event) {
+  document.documentElement.classList.remove("ril-admin-ready");
   if (event && typeof event.preventDefault === "function") event.preventDefault();
   if (event && typeof event.stopPropagation === "function") event.stopPropagation();
 

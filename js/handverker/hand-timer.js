@@ -371,7 +371,7 @@ async function sjekkTimerGrenser(ansattId, dato, nyeTimer) {
 
   const { data: dagTimer, error: dagFeil } = await supabaseClient
     .from("hand_time")
-    .select("hand_time")
+    .select("timer")
     .eq("ansatt_id", ansattId)
     .eq("dato", dato);
 
@@ -399,7 +399,7 @@ async function sjekkTimerGrenser(ansattId, dato, nyeTimer) {
 
   const { data: manedTimer, error: manedFeil } = await supabaseClient
     .from("hand_time")
-    .select("hand_time")
+    .select("timer")
     .eq("ansatt_id", ansattId)
     .gte("dato", manedStart)
     .lt("dato", nesteManedStart);
@@ -536,8 +536,13 @@ async function lagreTimer() {
     ? registrering.sumTimer + registrering.sumKm + registrering.sumUtlegg
     : 0;
 
+  const firmaIdForLagring = typeof hentFirmaIdForTimerTilgang === "function"
+    ? await hentFirmaIdForTimerTilgang()
+    : null;
+
   const supabaseTimer = {
     ansatt_id: ansattId,
+    firma_id: firmaIdForLagring || null,
     dato: registrering.dato,
     kunde_id: registrering.kundeId,
     kunde_nr: registrering.kundeNr,
@@ -547,6 +552,8 @@ async function lagreTimer() {
     vare_antall: null,*/
     start: registrering.start,
     slutt: registrering.slutt,
+    start_tid: registrering.start,
+    slutt_tid: registrering.slutt,
     timer: registrering.timer,
     overtid50: registrering.overtid50,
     overtid100: registrering.overtid100,
@@ -774,11 +781,11 @@ async function hentBilderForTimer(timerId) {
 }
 
 function lagJobbModalHvisMangler() {
-  let modal = document.getElementById("agkJobbModal");
+  let modal = document.getElementById("rilJobbModal");
   if (modal) return modal;
 
   modal = document.createElement("div");
-  modal.id = "agkJobbModal";
+  modal.id = "rilJobbModal";
   modal.style.cssText = "display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.45);padding:16px;overflow:auto;";
   document.body.appendChild(modal);
   return modal;
@@ -798,7 +805,7 @@ async function apneJobbDetalj(timerId) {
     <div style="background:#fff;color:#111;max-width:850px;margin:22px auto;padding:18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <h2 style="margin:0;">Jobb ${t.dato || ""}</h2>
-        <button type="button" id="agkLukkJobbModal">Lukk</button>
+        <button type="button" id="rilLukkJobbModal">Lukk</button>
       </div>
 
       <p>
@@ -811,24 +818,24 @@ async function apneJobbDetalj(timerId) {
       <p><b>Beskrivelse:</b><br>${t.beskrivelse || ""}</p>
 
       <h3>Bilder</h3>
-      <div id="agkJobbBilder">Laster bilder...</div>
+      <div id="rilJobbBilder">Laster bilder...</div>
 
       <hr>
       <h3>Legg til bilde på denne jobben</h3>
       <div style="display:grid;gap:8px;max-width:440px;">
-        <input type="file" id="agkJobbBildeFil" accept="image/*" multiple>
-        <input type="text" id="agkJobbBildeTekst" placeholder="Bildetekst, valgfritt">
-        <button type="button" id="agkLagreJobbBildeKnapp" style="padding:10px 12px;font-weight:700;">Legg til bilde(r) på denne jobben</button>
-        <div id="agkJobbBildeMelding" style="font-weight:600;"></div>
+        <input type="file" id="rilJobbBildeFil" accept="image/*" multiple>
+        <input type="text" id="rilJobbBildeTekst" placeholder="Bildetekst, valgfritt">
+        <button type="button" id="rilLagreJobbBildeKnapp" style="padding:10px 12px;font-weight:700;">Legg til bilde(r) på denne jobben</button>
+        <div id="rilJobbBildeMelding" style="font-weight:600;"></div>
       </div>
     </div>
   `;
 
-  document.getElementById("agkLukkJobbModal").onclick = function () {
+  document.getElementById("rilLukkJobbModal").onclick = function () {
     modal.style.display = "none";
   };
 
-  document.getElementById("agkLagreJobbBildeKnapp").onclick = async function () {
+  document.getElementById("rilLagreJobbBildeKnapp").onclick = async function () {
     await lagreBildeFraJobbModal(timerId);
   };
 
@@ -836,7 +843,7 @@ async function apneJobbDetalj(timerId) {
 }
 
 async function oppdaterJobbModalBilder(timerId) {
-  const boks = document.getElementById("agkJobbBilder");
+  const boks = document.getElementById("rilJobbBilder");
   if (!boks) return;
 
   const bilder = await hentBilderForTimer(timerId);
@@ -906,10 +913,10 @@ async function lastOppTimerBildeFraFil(timerId, fil, bildetekst) {
 }
 
 async function lagreBildeFraJobbModal(timerId) {
-  const filInput = document.getElementById("agkJobbBildeFil");
-  const tekstInput = document.getElementById("agkJobbBildeTekst");
-  const melding = document.getElementById("agkJobbBildeMelding");
-  const knapp = document.getElementById("agkLagreJobbBildeKnapp");
+  const filInput = document.getElementById("rilJobbBildeFil");
+  const tekstInput = document.getElementById("rilJobbBildeTekst");
+  const melding = document.getElementById("rilJobbBildeMelding");
+  const knapp = document.getElementById("rilLagreJobbBildeKnapp");
 
   if (melding) melding.textContent = "";
 
@@ -969,12 +976,12 @@ function tegnTimer() {
       <td>${Number(t.sum || 0).toFixed(2)}</td>
       <td>${t.fakturerbar ? "Ja" : "Nei"}</td>
       <td>📷 ${bildeAntall}</td>
-      <td><button type="button" class="agk-apne-jobb-knapp" data-timer-id="${t.id}">Åpne</button></td>
+      <td><button type="button" class="ril-apne-jobb-knapp" data-timer-id="${t.id}">Åpne</button></td>
     `;
 
     timerTabell.appendChild(tr);
 
-    const apneKnapp = tr.querySelector(".agk-apne-jobb-knapp");
+    const apneKnapp = tr.querySelector(".ril-apne-jobb-knapp");
     if (apneKnapp) {
       apneKnapp.addEventListener("click", async function (e) {
         e.preventDefault();
@@ -1002,6 +1009,26 @@ function nullstillSkjema() {
   }
 
   if (typeof fyllProsjektDropdown === "function") fyllProsjektDropdown();
+
+  handLeggTilKompaktLinje({
+    containerId: "handUtleggLinjer",
+    etterElementId: "leggTilUtleggKnapp",
+    tittel: "Utlegg lagt til",
+    tekst: type + " - " + handFormatKr(belop) + (type === "kjoring" ? " (" + km + " km)" : ""),
+    sum: belop,
+    sumId: "handUtleggSum",
+    sumLabel: "Utleggsum",
+    slett: async function () {
+      if (utleggData?.id) {
+        const { error: slettUtleggFeil } = await supabaseClient.from("hand_faktura_utlegg").delete().eq("id", utleggData.id);
+        if (slettUtleggFeil) throw slettUtleggFeil;
+      }
+      if (timerUtleggData?.id) {
+        const { error: slettTimerFeil } = await supabaseClient.from("hand_time").delete().eq("id", timerUtleggData.id);
+        if (slettTimerFeil) throw slettTimerFeil;
+      }
+    }
+  });
 
   settFeltHvisFinnes("utgiftType", "");
   settFeltHvisFinnes("utgiftBelop", "0");
@@ -1162,6 +1189,91 @@ async function handterManglendeVareTilBil({ vareId, aktivBilId, antall, antallIB
   return true;
 }
 
+
+function handFormatKr(belop) {
+  const n = Number(belop || 0);
+  return n.toLocaleString("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " kr";
+}
+
+function handFinnEllerLagLinjeListe(id, etterElementId, tittel) {
+  let wrap = document.getElementById(id);
+  if (wrap) return wrap;
+  const etter = document.getElementById(etterElementId);
+  if (!etter || !etter.parentElement) return null;
+  wrap = document.createElement("div");
+  wrap.id = id;
+  wrap.style.margin = "8px 0 12px 0";
+  wrap.style.padding = "0";
+  wrap.style.background = "transparent";
+  wrap.style.color = "#e5e7eb";
+  wrap.innerHTML = '<div style="font-weight:700;margin:4px 0 6px 0;color:#e5e7eb;">' + tittel + '</div>';
+  etter.insertAdjacentElement("afterend", wrap);
+  return wrap;
+}
+
+function handOppdaterSum(container, sumId, label) {
+  if (!container) return;
+  let sum = 0;
+  container.querySelectorAll("[data-linje-sum]").forEach(el => {
+    sum += Number(el.getAttribute("data-linje-sum") || 0);
+  });
+  let sumEl = document.getElementById(sumId);
+  if (!sumEl) {
+    sumEl = document.createElement("div");
+    sumEl.id = sumId;
+    sumEl.style.marginTop = "6px";
+    sumEl.style.fontWeight = "700";
+    sumEl.style.color = "#f9fafb";
+    container.appendChild(sumEl);
+  }
+  sumEl.textContent = label + ": " + handFormatKr(sum);
+}
+
+function handLeggTilKompaktLinje({ containerId, etterElementId, tittel, tekst, sum, sumId, sumLabel, slett }) {
+  const container = handFinnEllerLagLinjeListe(containerId, etterElementId, tittel);
+  if (!container) return;
+  const row = document.createElement("div");
+  row.setAttribute("data-linje-sum", String(Number(sum || 0)));
+  row.style.display = "flex";
+  row.style.alignItems = "center";
+  row.style.justifyContent = "space-between";
+  row.style.gap = "10px";
+  row.style.borderBottom = "1px solid #374151";
+  row.style.padding = "6px 0";
+  row.style.color = "#e5e7eb";
+  row.style.background = "transparent";
+  const span = document.createElement("span");
+  span.textContent = tekst;
+  span.style.flex = "1";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Slett";
+  btn.style.padding = "4px 10px";
+  btn.style.borderRadius = "6px";
+  btn.style.border = "0";
+  btn.style.cursor = "pointer";
+  btn.style.background = "#dc2626";
+  btn.style.color = "white";
+  btn.onclick = async function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!confirm("Slette denne linjen?")) return;
+    try {
+      if (typeof slett === "function") await slett();
+      row.remove();
+      handOppdaterSum(container, sumId, sumLabel);
+    } catch (e) {
+      alert("Kunne ikke slette linjen: " + (e.message || e));
+    }
+  };
+  row.appendChild(span);
+  row.appendChild(btn);
+  const gammelSum = document.getElementById(sumId);
+  if (gammelSum && gammelSum.parentElement === container) container.insertBefore(row, gammelSum);
+  else container.appendChild(row);
+  handOppdaterSum(container, sumId, sumLabel);
+}
+
 async function lagreVarelinjeTilFaktura() {
   const melding = hentTimerMelding();
 
@@ -1266,7 +1378,7 @@ async function lagreVarelinjeTilFaktura() {
 
   const pris = Number(prisFelt?.value || 0) || Number(vare.pris || vare.utpris || 0);
 
-  const { error } = await supabaseClient
+  const { data: varelinjeData, error } = await supabaseClient
     .from("hand_faktura_vare")
     .insert({
       kunde_id: valgtKunde.id,
@@ -1275,7 +1387,9 @@ async function lagreVarelinjeTilFaktura() {
       pris: pris,
       fakturert: false,
       fakturanr: null
-    });
+    })
+    .select()
+    .single();
 
   if (error) {
     alert("Feil ved lagring av varelinje: " + error.message);
@@ -1307,20 +1421,24 @@ async function lagreVarelinjeTilFaktura() {
     });
   }
 
-  const liste = document.getElementById("varelinjeListe");
-  if (liste) {
-    const div = document.createElement("div");
-    div.textContent =
-      "Lagt til og trukket fra bil-lager: " +
-      (vare.varenr || "") +
-      " " +
-      (vare.navn || "") +
-      " - antall " +
-      antall +
-      " - pris " +
-      pris;
-    liste.appendChild(div);
-  }
+  handLeggTilKompaktLinje({
+    containerId: "handVarerLinjer",
+    etterElementId: "leggTilVarelinjeKnapp",
+    tittel: "Varer lagt til",
+    tekst: ((vare.varenr || "") + " " + (vare.navn || "")).trim() + " - " + antall + " x " + handFormatKr(pris) + " = " + handFormatKr(antall * pris),
+    sum: antall * pris,
+    sumId: "handVarerSum",
+    sumLabel: "Varesum",
+    slett: async function () {
+      if (varelinjeData?.id) {
+        const { error: slettVareFeil } = await supabaseClient.from("hand_faktura_vare").delete().eq("id", varelinjeData.id);
+        if (slettVareFeil) throw slettVareFeil;
+      }
+      if (bilVare?.id) {
+        await supabaseClient.from("hand_bil_lager").update({ antall: antallIBil }).eq("id", bilVare.id);
+      }
+    }
+  });
 
   vareValg.value = "";
   if (antallFelt) antallFelt.value = "1";
@@ -1434,7 +1552,7 @@ async function lagreUtleggTilFaktura() {
     ? hentKundeNr(valgtKunde)
     : (valgtKunde?.kundenr || valgtKunde?.kunde_nr || "");
 
-  const { error: fakturaFeil } = await supabaseClient
+  const { data: utleggData, error: fakturaFeil } = await supabaseClient
     .from("hand_faktura_utlegg")
     .insert({
       kunde_id: valgtKunde.id,
@@ -1443,7 +1561,9 @@ async function lagreUtleggTilFaktura() {
       belop: belop,
       fakturert: false,
       fakturanr: null
-    });
+    })
+    .select()
+    .single();
 
   if (fakturaFeil) {
     alert("Feil ved lagring av utlegg til faktura: " + fakturaFeil.message);
@@ -1460,6 +1580,8 @@ async function lagreUtleggTilFaktura() {
 
     start: "00:00",
     slutt: "00:00",
+    start_tid: "00:00",
+    slutt_tid: "00:00",
     timer: 0,
     overtid50: 0,
     overtid100: 0,
@@ -1485,14 +1607,30 @@ async function lagreUtleggTilFaktura() {
     beskrivelse: "Utlegg/refusjon: " + type
   };
 
-  const { error: timerFeil } = await supabaseClient
-    .from("hand_time")
-    .insert([timerUtlegg]);
+  // Utlegg skal bare lagres på faktura her.
+  // Tid/lønn lagres i hand_time når timer registreres.
+  // Ikke skriv utlegg til hand_time, fordi RLS for hand_time kan stoppe innsettingen.
+  const timerUtleggData = null;
 
-  if (timerFeil) {
-    alert("Utlegg ble lagret til faktura, men ikke til lønn: " + timerFeil.message);
-    return;
-  }
+  handLeggTilKompaktLinje({
+    containerId: "handUtleggLinjer",
+    etterElementId: "leggTilUtleggKnapp",
+    tittel: "Utlegg lagt til",
+    tekst: type + " - " + handFormatKr(belop) + (type === "kjoring" ? " (" + km + " km)" : ""),
+    sum: belop,
+    sumId: "handUtleggSum",
+    sumLabel: "Utleggsum",
+    slett: async function () {
+      if (utleggData?.id) {
+        const { error: slettUtleggFeil } = await supabaseClient.from("hand_faktura_utlegg").delete().eq("id", utleggData.id);
+        if (slettUtleggFeil) throw slettUtleggFeil;
+      }
+      if (timerUtleggData?.id) {
+        const { error: slettTimerFeil } = await supabaseClient.from("hand_time").delete().eq("id", timerUtleggData.id);
+        if (slettTimerFeil) throw slettTimerFeil;
+      }
+    }
+  });
 
   settFeltHvisFinnes("utgiftType", "");
   settFeltHvisFinnes("utgiftBelop", "0");
@@ -1502,7 +1640,7 @@ async function lagreUtleggTilFaktura() {
   visSkjulKjoringFelter();
 
   if (melding) {
-    melding.textContent = "Utlegg lagret til faktura og lønnsslipp.";
+    melding.textContent = "Utlegg lagret til faktura.";
   }
 
   await lastTimer();
@@ -1643,21 +1781,21 @@ window.addEventListener("load", function () {
 
 window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
 
-/* AGK HARD FIX 2026-06-05:
+/* RIL HARD FIX 2026-06-05:
    Fast bildepanel som dukker opp når en jobb åpnes.
    Dette er med vilje uavhengig av selve jobbdetaljvisningen,
    fordi detaljvisningen kan bli tegnet av annen kode. */
 (function () {
-  function agkTimerListe() {
+  function rilTimerListe() {
     return Array.isArray(window.timer) ? window.timer : [];
   }
 
-  function agkJobbTekst(t, i) {
+  function rilJobbTekst(t, i) {
     const kunde = (typeof kundeInfoForTimer === "function") ? kundeInfoForTimer(t) : { kundeNavn: t.kunde_navn || "" };
     return `${i + 1}: ${t.dato || ""} ${kunde.kundeNavn || t.kunde_navn || ""} ${t.start || ""}-${t.slutt || ""}`.trim();
   }
 
-  function agkFinnTimerIdFraElement(el) {
+  function rilFinnTimerIdFraElement(el) {
     if (!el) return "";
     const direkte = el.dataset?.timerId || el.getAttribute?.("data-timer-id") || "";
     if (direkte) return direkte;
@@ -1670,19 +1808,19 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
       if (index < 0) {
         index = Array.from(tabell.rows || []).indexOf(rad) - 1;
       }
-      const t = agkTimerListe()[index];
+      const t = rilTimerListe()[index];
       if (t?.id) return String(t.id);
     }
 
-    return window.agkApenTimerId || "";
+    return window.rilApenTimerId || "";
   }
 
-  function agkLagPanelHvisMangler() {
-    let panel = document.getElementById("agkFastBildePanel");
+  function rilLagPanelHvisMangler() {
+    let panel = document.getElementById("rilFastBildePanel");
     if (panel) return panel;
 
     panel = document.createElement("div");
-    panel.id = "agkFastBildePanel";
+    panel.id = "rilFastBildePanel";
     panel.style.cssText = [
       "display:none",
       "position:fixed",
@@ -1704,36 +1842,36 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
     panel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
         <strong style="font-size:18px;">Bilder på denne jobben</strong>
-        <button type="button" id="agkFastBildeLukk" style="padding:6px 10px;">Lukk</button>
+        <button type="button" id="rilFastBildeLukk" style="padding:6px 10px;">Lukk</button>
       </div>
       <div style="display:grid;gap:8px;">
-        <select id="agkFastBildeJobbValg" style="padding:8px;"></select>
-        <div id="agkFastBildeGalleri" style="display:flex;flex-wrap:wrap;gap:8px;max-height:220px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px;">Laster bilder...</div>
-        <input type="file" id="agkFastBildeFil" accept="image/*" multiple style="padding:8px;border:1px solid #aaa;border-radius:8px;">
-        <input type="text" id="agkFastBildeTekst" placeholder="Bildetekst, valgfritt" style="padding:8px;border:1px solid #aaa;border-radius:8px;">
-        <button type="button" id="agkFastBildeLagre" style="padding:12px;font-weight:700;font-size:16px;background:#111;color:#fff;border-radius:8px;">Lagre bilde(r) på jobben</button>
-        <div id="agkFastBildeMelding" style="font-weight:700;"></div>
+        <select id="rilFastBildeJobbValg" style="padding:8px;"></select>
+        <div id="rilFastBildeGalleri" style="display:flex;flex-wrap:wrap;gap:8px;max-height:220px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px;">Laster bilder...</div>
+        <input type="file" id="rilFastBildeFil" accept="image/*" multiple style="padding:8px;border:1px solid #aaa;border-radius:8px;">
+        <input type="text" id="rilFastBildeTekst" placeholder="Bildetekst, valgfritt" style="padding:8px;border:1px solid #aaa;border-radius:8px;">
+        <button type="button" id="rilFastBildeLagre" style="padding:12px;font-weight:700;font-size:16px;background:#111;color:#fff;border-radius:8px;">Lagre bilde(r) på jobben</button>
+        <div id="rilFastBildeMelding" style="font-weight:700;"></div>
       </div>
     `;
 
     document.body.appendChild(panel);
 
-    document.getElementById("agkFastBildeLukk").onclick = function () {
+    document.getElementById("rilFastBildeLukk").onclick = function () {
       panel.style.display = "none";
     };
 
-    document.getElementById("agkFastBildeLagre").onclick = async function () {
-      await agkFastLagreBilde();
+    document.getElementById("rilFastBildeLagre").onclick = async function () {
+      await rilFastLagreBilde();
     };
 
     return panel;
   }
 
-  function agkFyllJobbValg(valgtTimerId) {
-    const select = document.getElementById("agkFastBildeJobbValg");
+  function rilFyllJobbValg(valgtTimerId) {
+    const select = document.getElementById("rilFastBildeJobbValg");
     if (!select) return;
 
-    const liste = agkTimerListe();
+    const liste = rilTimerListe();
     select.innerHTML = "";
 
     if (!liste.length) {
@@ -1747,7 +1885,7 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
     liste.forEach((t, i) => {
       const opt = document.createElement("option");
       opt.value = t.id || "";
-      opt.textContent = agkJobbTekst(t, i);
+      opt.textContent = rilJobbTekst(t, i);
       select.appendChild(opt);
     });
 
@@ -1756,23 +1894,23 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
     }
 
     select.onchange = async function () {
-      window.agkApenTimerId = select.value || "";
-      if (typeof agkOppdaterFastBildeGalleri === "function") {
-        await agkOppdaterFastBildeGalleri(window.agkApenTimerId);
+      window.rilApenTimerId = select.value || "";
+      if (typeof rilOppdaterFastBildeGalleri === "function") {
+        await rilOppdaterFastBildeGalleri(window.rilApenTimerId);
       }
     };
   }
 
-  async function agkVisFastBildePanel(timerId) {
-    const panel = agkLagPanelHvisMangler();
-    window.agkApenTimerId = timerId || window.agkApenTimerId || "";
-    agkFyllJobbValg(window.agkApenTimerId);
+  async function rilVisFastBildePanel(timerId) {
+    const panel = rilLagPanelHvisMangler();
+    window.rilApenTimerId = timerId || window.rilApenTimerId || "";
+    rilFyllJobbValg(window.rilApenTimerId);
     panel.style.display = "block";
-    await agkOppdaterFastBildeGalleri(window.agkApenTimerId);
+    await rilOppdaterFastBildeGalleri(window.rilApenTimerId);
   }
 
-  async function agkOppdaterFastBildeGalleri(timerId) {
-    const galleri = document.getElementById("agkFastBildeGalleri");
+  async function rilOppdaterFastBildeGalleri(timerId) {
+    const galleri = document.getElementById("rilFastBildeGalleri");
     if (!galleri) return;
 
     if (!timerId) {
@@ -1801,14 +1939,14 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
     }).join("");
   }
 
-  async function agkFastLagreBilde() {
-    const select = document.getElementById("agkFastBildeJobbValg");
-    const filInput = document.getElementById("agkFastBildeFil");
-    const tekstInput = document.getElementById("agkFastBildeTekst");
-    const melding = document.getElementById("agkFastBildeMelding");
-    const knapp = document.getElementById("agkFastBildeLagre");
+  async function rilFastLagreBilde() {
+    const select = document.getElementById("rilFastBildeJobbValg");
+    const filInput = document.getElementById("rilFastBildeFil");
+    const tekstInput = document.getElementById("rilFastBildeTekst");
+    const melding = document.getElementById("rilFastBildeMelding");
+    const knapp = document.getElementById("rilFastBildeLagre");
 
-    const timerId = select?.value || window.agkApenTimerId || "";
+    const timerId = select?.value || window.rilApenTimerId || "";
     const filer = Array.from(filInput?.files || []);
 
     if (melding) melding.textContent = "";
@@ -1844,7 +1982,7 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
       if (tekstInput) tekstInput.value = "";
 
       if (typeof window.lastTimer === "function") await window.lastTimer();
-      if (typeof agkOppdaterFastBildeGalleri === "function") await agkOppdaterFastBildeGalleri(timerId);
+      if (typeof rilOppdaterFastBildeGalleri === "function") await rilOppdaterFastBildeGalleri(timerId);
       if (typeof oppdaterJobbModalBilder === "function") await oppdaterJobbModalBilder(timerId);
       if (melding) melding.textContent = filer.length + " bilde(r) er lagret på jobben.";
     } catch (e) {
@@ -1863,17 +2001,17 @@ window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
     const erApne = tekst === "åpne" || tekst === "apne" || tekst.includes("åpne jobb") || tekst.includes("apne jobb");
     if (!erApne) return;
 
-    const timerId = agkFinnTimerIdFraElement(knapp);
-    window.agkApenTimerId = timerId || window.agkApenTimerId || "";
+    const timerId = rilFinnTimerIdFraElement(knapp);
+    window.rilApenTimerId = timerId || window.rilApenTimerId || "";
 
     setTimeout(function () {
-      agkVisFastBildePanel(window.agkApenTimerId);
+      rilVisFastBildePanel(window.rilApenTimerId);
     }, 150);
   }, true);
 
-  window.agkVisFastBildePanel = agkVisFastBildePanel;
-  window.agkFastLagreBilde = agkFastLagreBilde;
-  window.agkOppdaterFastBildeGalleri = agkOppdaterFastBildeGalleri;
+  window.rilVisFastBildePanel = rilVisFastBildePanel;
+  window.rilFastLagreBilde = rilFastLagreBilde;
+  window.rilOppdaterFastBildeGalleri = rilOppdaterFastBildeGalleri;
 })();
 
 

@@ -1,0 +1,36 @@
+/* SYSADM BEDRIFTER FORCE v9 - bruker KUN public.hand_firma */
+(function(){
+  'use strict';
+  if (window.__handSysadmBedrifterForceV9) return; window.__handSysadmBedrifterForceV9 = true;
+  function $(id){ return document.getElementById(id); }
+  function s(v){ return String(v == null ? '' : v); }
+  function esc(v){ return s(v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function val(id){ var e=$(id); return s(e && e.value).trim(); }
+  function setVal(id,v){ var e=$(id); if(e) e.value = v == null ? '' : s(v); }
+  function client(){ return (window.supabaseClient && typeof window.supabaseClient.from==='function') ? window.supabaseClient : null; }
+  function slug(v){ return s(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function baseUrl(){ return location.pathname.toLowerCase().indexOf('/rettilomma/')>=0 ? location.origin+'/rettilomma/handverker/' : location.origin+'/handverker/'; }
+  function link(sl){ return baseUrl()+'?firma='+encodeURIComponent(sl||''); }
+  function msg(t,bad){ var e=$('nyHandKundeMelding')||$('firmaMelding'); if(e){ e.textContent=t||''; e.style.color=bad?'#fca5a5':'#86efac'; } }
+  function ensureHidden(){ if(!$('redigerHandKundeId')){ var i=document.createElement('input'); i.type='hidden'; i.id='redigerHandKundeId'; document.body.appendChild(i); } }
+  function nameOf(r){ return r.navn || r.firmanavn || r.firma_navn || ''; }
+  function emailOf(r){ return r.epost || r.email || ''; }
+  function slugOf(r){ return r.linknavn || r.slug || slug(nameOf(r)||emailOf(r)||r.id); }
+  function rowHtml(r,i){ var sl=slugOf(r), l=link(sl); return '<div class="hand-bedriftkort" style="margin:10px 0;padding:14px 16px;border:1px solid #1f2937;border-radius:10px;background:#111827">'+
+    '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><b>'+esc(nameOf(r)||'(uten navn)')+'</b><br>'+esc(r.adresse||'')+(r.adresse?'<br>':'')+esc(emailOf(r)||'')+(r.orgnr?'<br><span style="opacity:.8">Org.nr: '+esc(r.orgnr)+'</span>':'')+'<br><span style="opacity:.65;font-size:12px">hand_firma</span></div>'+ 
+    '<div style="white-space:nowrap"><button type="button" onclick="handSysadmRedigerBedriftV9('+i+')">Rediger</button> <button type="button" onclick="handSysadmKopierBedriftLinkV9('+i+')">Kopier link</button></div></div></div>'; }
+  function render(rows){ var list=$('handKundeAdminListe'); if(!list) return; rows=(rows||[]).filter(function(r){ return !r.system_type || r.system_type==='handverker'; }); window.handSysadmBedrifterV9=rows; window.handAdminKunder=rows; if(!rows.length){ list.innerHTML='<div class="melding">Ingen bedrifter funnet i hand_firma.</div>'; return; } list.innerHTML='<div class="info">Fant '+rows.length+' bedrifter fra hand_firma.</div>'+rows.map(rowHtml).join(''); }
+  async function load(){ var list=$('handKundeAdminListe'); if(!list) return; var c=client(); if(!c){ list.innerHTML='<div class="melding">Supabase er ikke lastet.</div>'; return; } list.innerHTML='<div class="info">Henter bedrifter fra hand_firma...</div>'; try{ var q=c.from('hand_firma').select('*').eq('system_type','handverker'); var r=await q.order('created_at',{ascending:false}); if(r.error){ r=await c.from('hand_firma').select('*'); } if(r.error) throw r.error; render(Array.isArray(r.data)?r.data:[]); }catch(e){ list.innerHTML='<div class="melding">Feil ved henting fra hand_firma: '+esc(e.message||e)+'</div>'; } }
+  window.handSysadmLastBedrifterV9=load; window.handLastKundeliste=load; window.handLastBedriftsliste=load;
+  window.handSysadmRedigerBedriftV9=function(i){ ensureHidden(); var r=(window.handSysadmBedrifterV9||[])[i]; if(!r) return; var sl=slugOf(r); setVal('redigerHandKundeId',r.id||''); setVal('nyHandKundeNavn',nameOf(r)); setVal('nyHandKundeEpost',emailOf(r)); setVal('nyHandKundeTelefon',r.telefon||''); setVal('nyHandKundeAdresse',r.adresse||''); setVal('nyHandKundeOrgNr',r.orgnr||''); setVal('nyHandKundeLinknavn',sl); setVal('nyHandKundeLink',link(sl)); msg('Redigerer bedrift: '+(nameOf(r)||emailOf(r)||r.id)); var f=$('handSystemadminBlokk')||$('nyHandKundeNavn'); if(f) f.scrollIntoView({behavior:'smooth',block:'start'}); };
+  window.handSysadmKopierBedriftLinkV9=function(i){ var r=(window.handSysadmBedrifterV9||[])[i]; if(!r) return; var l=link(slugOf(r)); setVal('nyHandKundeLink',l); if(navigator.clipboard) navigator.clipboard.writeText(l).then(function(){msg('Kundelink kopiert.');}).catch(function(){msg('Kopier manuelt fra feltet.');}); };
+  async function save(kind){ var c=client(); if(!c) throw new Error('Supabase er ikke lastet.'); var navn=val('nyHandKundeNavn'), epost=val('nyHandKundeEpost').toLowerCase(), sl=slug(val('nyHandKundeLinknavn')||navn||epost); if(!navn) throw new Error('Skriv firmanavn.'); var p={navn:navn,epost:epost,telefon:val('nyHandKundeTelefon')||null,adresse:val('nyHandKundeAdresse')||null,orgnr:val('nyHandKundeOrgNr')||null,linknavn:sl,system_type:'handverker'}; var r; if(kind==='update'){ var id=val('redigerHandKundeId'); if(!id) throw new Error('Trykk Rediger på en bedrift først.'); r=await c.from('hand_firma').update(p).eq('id',id).select('*'); } else { r=await c.from('hand_firma').insert([p]).select('*'); } if(r.error) throw r.error; setVal('nyHandKundeLinknavn',sl); setVal('nyHandKundeLink',link(sl)); await load(); }
+  window.handOpprettKundeDirekte=async function(){ try{ msg('Oppretter bedrift...'); await save('insert'); msg('Bedrift opprettet.'); }catch(e){ msg('Feil: '+(e.message||e),true); } };
+  window.handLagreRedigertKunde=async function(){ try{ msg('Lagrer bedrift...'); await save('update'); msg('Bedrift oppdatert.'); }catch(e){ msg('Feil: '+(e.message||e),true); } };
+  window.handNullstillKundeSkjema=function(){ ['redigerHandKundeId','nyHandKundeNavn','nyHandKundeEpost','nyHandKundeTelefon','nyHandKundeAdresse','nyHandKundeOrgNr','nyHandKundeLinknavn','nyHandKundePassord','nyHandKundeLink'].forEach(function(id){setVal(id,'');}); msg('Klar for ny bedrift.'); };
+  function bind(){ ensureHidden(); var btn=$('sysadminKundelisteKnapp')||$('handSysadmRefreshInline'); if(btn){ btn.textContent='Hent/oppdater bedrifter'; btn.onclick=function(e){ if(e){e.preventDefault(); e.stopPropagation();} load(); return false; }; } var h=[].slice.call(document.querySelectorAll('h2,h3')).find(function(x){ return /Håndverkerkunder|Kunder|Bedrifter/.test(x.textContent||'') && x.closest('#sysadminPanelSide'); }); if(h) h.textContent='Bedrifter'; }
+  document.addEventListener('click',function(e){ var t=e.target&&e.target.closest&&e.target.closest('#sysadminKundelisteKnapp,#handSysadmRefreshInline'); if(t){ e.preventDefault(); e.stopImmediatePropagation(); bind(); load(); return false; } },true);
+  function start(){ bind(); var list=$('handKundeAdminListe'); if(list && /Laskunde|Snekker kunde|Ingen|kunde/i.test(list.textContent||'')) load(); }
+  [50,300,900,1800,3500,6000].forEach(function(ms){ setTimeout(start,ms); });
+  document.addEventListener('DOMContentLoaded',start); document.addEventListener('handPartialerLastet',start); window.addEventListener('load',start);
+})();

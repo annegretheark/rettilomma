@@ -1,16 +1,112 @@
 let kunder = [];
 let prosjekter = [];
 
+
+async function hentInnloggetFirmaIderForKunder() {
+  if (!window.supabaseClient || !supabaseClient.auth) return [];
+
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  const user = userData && userData.user ? userData.user : null;
+  const email = String(
+    (user && user.email) ||
+    window.innloggetEpost ||
+    localStorage.getItem("handInnloggetEpost") ||
+    localStorage.getItem("innloggetEpost") ||
+    ""
+  ).trim().toLowerCase();
+
+  if (userError || !user || !email) {
+    console.error("Fant ikke innlogget bruker/epost ved henting av kunder:", userError);
+    settKundeMelding("Fant ikke innlogget e-post. Logg ut og inn igjen.");
+    return [];
+  }
+
+  const rolleFraMinne = String(window.innloggetRolle || localStorage.getItem("handInnloggetRolle") || "").toLowerCase();
+  if (rolleFraMinne === "sysadmin" || rolleFraMinne === "systemadmin") {
+    return ["__SYSADMIN_ALL__"];
+  }
+
+  // VIKTIG: I denne databasen er hand_ansatt.user_id ofte tom.
+  // Derfor må firma til ansatt finnes via epost, ikke user_id.
+  const ansattRes = await supabaseClient
+    .from("hand_ansatt")
+    .select("id, navn, epost, firma_id")
+    .ilike("epost", email)
+    .limit(1);
+
+  if (!ansattRes.error && ansattRes.data && ansattRes.data.length && ansattRes.data[0].firma_id) {
+    const firmaId = String(ansattRes.data[0].firma_id);
+    window.aktivFirmaId = firmaId;
+    window.handFirmaId = firmaId;
+    window.handAnsattFirmaId = firmaId;
+    localStorage.setItem("aktivFirmaId", firmaId);
+    localStorage.setItem("handFirmaId", firmaId);
+    localStorage.setItem("firma_id", firmaId);
+    return [firmaId];
+  }
+
+  // Reserve hvis epost ikke finnes i hand_ansatt, men hand_firma_bruker er riktig.
+  const fbRes = await supabaseClient
+    .from("hand_firma_bruker")
+    .select("firma_id")
+    .eq("user_id", user.id);
+
+  if (!fbRes.error && fbRes.data && fbRes.data.length) {
+    const firmaIder = [...new Set((fbRes.data || []).map(r => String(r.firma_id || "")).filter(Boolean))];
+    if (firmaIder.length === 1) {
+      window.aktivFirmaId = firmaIder[0];
+      window.handFirmaId = firmaIder[0];
+      localStorage.setItem("aktivFirmaId", firmaIder[0]);
+      localStorage.setItem("handFirmaId", firmaIder[0]);
+      localStorage.setItem("firma_id", firmaIder[0]);
+    }
+    return firmaIder;
+  }
+
+  console.error("Fant ikke firma for kundevisning", { email, ansattError: ansattRes.error, firmaBrukerError: fbRes.error });
+  settKundeMelding("Fant ikke ansatt/firma for " + email + ". Sjekk hand_ansatt.epost og firma_id.");
+  return [];
+}
+
 function settKundeMelding(tekst) {
   const el = document.getElementById("kundeMelding");
   if (el) el.textContent = tekst || "";
 }
 
 async function lastKunder() {
-  const { data, error } = await supabaseClient
+  const firmaIder = await hentInnloggetFirmaIderForKunder();
+
+  if (!firmaIder.length) {
+    kunder = [];
+    prosjekter = [];
+    window.kunder = kunder;
+    window.prosjekter = prosjekter;
+    settKundeMelding("Innlogget bruker er ikke koblet til firma.");
+    visKunder();
+    fyllKundeDropdown();
+    fyllFakturaKundeDropdown();
+    return;
+  }
+
+  let kundeQuery = supabaseClient
     .from("hand_kunde")
     .select("*")
     .order("navn", { ascending: true });
+
+  const erSysadminAlle = firmaIder.includes("__SYSADMIN_ALL__");
+  if (!erSysadminAlle) {
+    kundeQuery = kundeQuery.in("firma_id", firmaIder);
+  }
+
+  let { data, error } = await kundeQuery;
+
+  if ((error || (!erSysadminAlle && Array.isArray(data) && data.length === 0)) && supabaseClient) {
+    const fallback = await supabaseClient.from("hand_kunde").select("*").order("navn", { ascending: true });
+    if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
+      data = fallback.data;
+      error = null;
+    }
+  }
 
   if (error) {
     console.error("Feil ved henting av kunder:", error);
@@ -21,12 +117,20 @@ async function lastKunder() {
   kunder = data || [];
   window.kunder = kunder;
 
-  const prosjektResult = await supabaseClient
-    .from("hand_prosjekt")
-    .select("*")
-    .order("navn", { ascending: true });
+  const kundeIder = kunder.map(k => k.id).filter(Boolean);
 
-  prosjekter = prosjektResult.error ? [] : prosjektResult.data || [];
+  if (kundeIder.length) {
+    const prosjektResult = await supabaseClient
+      .from("hand_prosjekt")
+      .select("*")
+      .in("kunde_id", kundeIder)
+      .order("navn", { ascending: true });
+
+    prosjekter = prosjektResult.error ? [] : prosjektResult.data || [];
+  } else {
+    prosjekter = [];
+  }
+
   window.prosjekter = prosjekter;
 
   visKunder();
@@ -37,9 +141,15 @@ async function lastKunder() {
 async function lagreKunde() {
   const id = document.getElementById("kundeId")?.value || "";
 
-  const firmaId =
-    window.handHentAktuellModulKundeId?.() ||
-    localStorage.getItem('handAktuellModulKundeId') || '';
+  const firmaIder = await hentInnloggetFirmaIderForKunder();
+  const firmaId = firmaIder.length === 1
+    ? firmaIder[0]
+    : (
+        localStorage.getItem('handFirmaId') ||
+        localStorage.getItem('aktivFirmaId') ||
+        window.handFirmaId ||
+        ''
+      );
 
   const kunde = {
     navn: document.getElementById("kundeNavn").value.trim(),
@@ -69,7 +179,7 @@ async function lagreKunde() {
     return;
   }
 
-  // AGK FIX 7088:
+  // RIL FIX 7088:
   // Etter lagring skal kundeskjemaet bli blankt, klart for neste kunde.
   settKundeMelding("Kunde lagret.");
 
@@ -152,18 +262,23 @@ async function lagreProsjektForValgtKunde() {
   }
 
   nullstillProsjektFelter();
-
-  settKundeMelding("Prosjekt lagret. Du kan legge til et nytt prosjekt.");
+  skjulProsjektVindu();
 
   await lastKunder();
 
-  document.getElementById("kundeId").value = kundeId;
+  const valgtKunde = kunder.find(k => String(k.id || "") === String(kundeId || ""));
+  if (valgtKunde) {
+    document.getElementById("kundeId").value = valgtKunde.id || "";
+    document.getElementById("kundeNavn").value = valgtKunde.navn || "";
+    document.getElementById("kundeAdresse").value = valgtKunde.adresse || "";
+    document.getElementById("kundeEpost").value = valgtKunde.epost || "";
+    document.getElementById("kundeKontaktperson").value = valgtKunde.kontaktperson || "";
+    document.getElementById("kundeKontonr").value = valgtKunde.kontonr || "";
+  } else {
+    document.getElementById("kundeId").value = kundeId;
+  }
 
-  const overlay = document.getElementById("prosjektOverlay");
-  const vindu = document.getElementById("prosjektVindu");
-
-  if (overlay) overlay.style.display = "block";
-  if (vindu) vindu.style.display = "block";
+  settKundeMelding("Prosjekt lagret. Du trenger ikke lagre kunde på nytt.");
 }
 
 function visKunder() {
@@ -275,10 +390,12 @@ function hentKundeNr(kunde) {
 }
 
 function finnKundeFraValg(verdi) {
-  return kunder.find(k =>
+  const liste = window.kunder || kunder || [];
+  return liste.find(k =>
     String(k.id || "") === String(verdi) ||
     String(k.kundenr || "") === String(verdi) ||
-    String(k.kunde_nr || "") === String(verdi)
+    String(k.kunde_nr || "") === String(verdi) ||
+    String(k.navn || "") === String(verdi)
   );
 }
 
@@ -337,14 +454,18 @@ function fyllFakturaKundeDropdown() {
 
 function visKundeNavn() {
   const valg = document.getElementById("kundeValg");
-  if (!valg) return;
+  const nrVisning = document.getElementById("kundeNrVisning");
+  if (!valg || !nrVisning) return;
 
   const kunde = finnKundeFraValg(valg.value);
-  const nrVisning = document.getElementById("kundeNrVisning");
-
-  if (nrVisning) {
-    nrVisning.value = kunde ? hentKundeNr(kunde) : "";
+  const opt = valg.options && valg.selectedIndex >= 0 ? valg.options[valg.selectedIndex] : null;
+  let nr = kunde ? hentKundeNr(kunde) : "";
+  if (!nr && opt && opt.dataset) nr = opt.dataset.kundenr || opt.dataset.kundeNr || opt.dataset.kunde_nr || "";
+  if (!nr && opt) {
+    const m = String(opt.textContent || "").match(/^\s*([^\s\-–—]+)\s*[-–—]\s+/);
+    if (m) nr = m[1].trim();
   }
+  nrVisning.value = valg.value ? (nr || nrVisning.value || "") : "";
 }
 
 window.kunder = kunder;

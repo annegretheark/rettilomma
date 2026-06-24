@@ -29,7 +29,7 @@ window.addEventListener("load", function () {
 
     window.innloggetEpost = email;
     localStorage.setItem("handInnloggetEpost", email);
-    localStorage.removeItem("rilSysadminModus");
+    // Sysadm-modus styres av hand-role-core, ikke nullstill her.
     if (typeof window.settInnloggetBrukerVisning === "function") window.settInnloggetBrukerVisning();
     window.erAdmin = false;
 
@@ -50,18 +50,13 @@ window.addEventListener("load", function () {
       console.warn("Kunne ikke hente ansattdata i n\u00F8dinnlogging:", e);
     }
 
-    const rolle = String(ansattData?.rolle || "").toLowerCase();
+    const rolleStatus = typeof window.handResolveRole === "function"
+      ? await window.handResolveRole(ansattData)
+      : { rolle: String(ansattData?.rolle || "").toLowerCase(), admin: false, sys: false };
+    const rolle = rolleStatus.rolle;
     window.innloggetRolle = rolle;
-
-    // Greknuts skal alltid ha rettighet til både vanlig bruker, admin og systemadmin.
-    // Aktiv visning styres fortsatt av vilAdmin/rilSysadminModus.
-    const erGreknuts = email === "greknuts@online.no";
-    const harSystemadminRolle = erGreknuts || ["systemadmin", "sysadmin"].includes(rolle);
-    const harAdminRolle = erGreknuts || ["admin", "systemadmin", "sysadmin"].includes(rolle);
-
-    window.erSystemadmin = harSystemadminRolle;
-    window.erAdmin = harAdminRolle && vilAdmin;
-    localStorage.setItem("rilAdminModus", window.erAdmin ? "ja" : "nei");
+    window.erSystemadmin = rolleStatus.sys === true;
+    window.erAdmin = rolleStatus.admin === true;
 
     if (typeof window.visApp === "function") {
       await window.visApp();
@@ -345,13 +340,13 @@ window.addEventListener("load", function () {
       finnSupabaseEpostFraLocalStorage() ||
       "";
 
-    var erGreknuts = String(epost || "").toLowerCase() === "greknuts@online.no";
-    if (erGreknuts) {
+    var erSystembruker = false;
+    if (erSystembruker) {
       window.erSystemadmin = true;
       window.erAdmin = true;
-      if (!window.innloggetRolle || window.innloggetRolle === "admin") window.innloggetRolle = "sysadmin";
+      if (!window.innloggetRolle || window.innloggetRolle === "admin") window.innloggetRolle = "sysadm";
     }
-    var rolle = erGreknuts ? "sysadmin" : (window.innloggetRolle || "");
+    var rolle = erSystembruker ? "sysadmin" : (window.innloggetRolle || "");
     var erAdmin = window.erAdmin ? "adminmodus" : "";
     var erSys = window.erSystemadmin ? "sysadm" : "";
     var visning = document.getElementById("innloggetBrukerVisning");
@@ -393,8 +388,8 @@ window.addEventListener("load", function () {
     return !!String(window.innloggetEpost || "").toLowerCase();
   }
   function email(){ return String(window.innloggetEpost || "").toLowerCase(); }
-  function erGreknuts(){ return harAktivSession() && email() === "greknuts@online.no"; }
-  function sysAktiv(){ return erGreknuts() && localStorage.getItem("rilSysadminModus") === "ja"; }
+  function erSystembruker(){ return (typeof window.handErSysadm === "function" && window.handErSysadm()) || window.erSystemadmin === true || ["sysadm","sysadmin","systemadmin"].includes(rolle()); }
+  function sysAktiv(){ return erSystembruker() && localStorage.getItem("rilSysadminModus") === "ja"; }
   function vis(id, ja){
     var el = document.getElementById(id);
     if (!el) return;
@@ -403,23 +398,24 @@ window.addEventListener("load", function () {
     el.style.display = ja ? "" : "none";
   }
   function oppdater(){
+    if (typeof window.handSetRole === "function" && ["sysadm","sysadmin","systemadmin"].includes(rolle())) window.handSetRole(rolle());
     var sys = sysAktiv();
-    if (erGreknuts()) {
-      // Greknuts skal aldri nedgraderes til vanlig admin av en ansatt-rad.
+    if (erSystembruker()) {
+      // Systembruker skal aldri nedgraderes til vanlig admin av en ansatt-rad.
       window.erAdmin = true;
       window.erSystemadmin = true;
-      window.innloggetRolle = "sysadmin";
+      window.innloggetRolle = "sysadm";
       localStorage.setItem("rilAdminModus", "ja");
     } else {
-      window.erSystemadmin = sys;
+      window.erSystemadmin = false;
     }
 
     // Skjul aldri login-siden her hvis brukeren ikke faktisk er innlogget.
     // startApp()/visLogin() bestemmer login-visning.
     if (harAktivSession()) vis("loginSide", false);
 
-    document.querySelectorAll(".greknuts-only, .sysadmin-entry").forEach(function(el){
-      var show = erGreknuts() && !sys;
+    document.querySelectorAll(".systemadmin-only, .sysadmin-entry").forEach(function(el){
+      var show = erSystembruker() && !sys;
       el.classList.toggle("skjult", !show);
       el.classList.toggle("hidden", !show);
       el.style.display = show ? "" : "none";
@@ -485,13 +481,12 @@ window.addEventListener("load", function () {
   });
 })();/*
   Handverker final fix 2026-06-20
-  - Greknuts skal aldri nedgraderes fra sysadmin
+  - Systembruker skal aldri nedgraderes fra sysadmin
   - Firma/kundeliste skal lastes for sysadmin
   - Ny kunde får firma-rad + adminrad; Auth må opprettes av Edge Function/opprett-hand-kunde
 */
 (function () {
-  const SYS_EMAIL = 'greknuts@online.no';
-
+  
   function $(id) { return document.getElementById(id); }
   function norm(v) { return String(v || '').trim().toLowerCase(); }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
@@ -518,75 +513,30 @@ window.addEventListener("load", function () {
     return norm(window.innloggetEpost || localStorage.getItem('handInnloggetEpost'));
   }
 
-  function forceGreknuts(email) {
-    email = norm(email || window.innloggetEpost || localStorage.getItem('handInnloggetEpost'));
-    if (email !== SYS_EMAIL) return false;
-    window.innloggetEpost = SYS_EMAIL;
-    window.innloggetRolle = 'sysadmin';
+  function erRolleSystemadmin() {
+    const r = norm(window.innloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
+    return (typeof window.handErSysadm === 'function' && window.handErSysadm()) || window.erSystemadmin === true || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin';
+  }
+
+  function forceSystembruker(email) {
+    if (!erRolleSystemadmin()) return false;
     window.erSystemadmin = true;
     window.erAdmin = true;
-    localStorage.setItem('handInnloggetEpost', SYS_EMAIL);
     localStorage.setItem('rilAdminModus', 'ja');
-
-    const epostEl = $('innloggetBrukerVisning');
-    const rolleEl = $('innloggetRolleVisning');
-    const badge = $('innloggetBruker');
-    if (epostEl) epostEl.textContent = SYS_EMAIL;
-    if (rolleEl) rolleEl.textContent = ' (rolle: sysadmin, sysadm, adminmodus)';
-    if (badge) badge.textContent = 'Innlogget: ' + SYS_EMAIL;
-
-    document.querySelectorAll('.greknuts-only, .sysadmin-entry').forEach(el => {
-      const sysAktiv = localStorage.getItem('rilSysadminModus') === 'ja';
-      el.classList.toggle('skjult', sysAktiv);
-      el.classList.toggle('hidden', sysAktiv);
-      el.style.display = sysAktiv ? 'none' : '';
-    });
-    document.querySelectorAll('.admin-only').forEach(el => {
-      el.classList.remove('skjult', 'hidden');
-      if (!(el.tagName === 'SECTION' || /Side$|Panel$/.test(el.id || ''))) el.style.display = '';
-    });
-    document.querySelectorAll('.systemadmin-only').forEach(el => {
-      const sysAktiv = localStorage.getItem('rilSysadminModus') === 'ja';
-      el.classList.toggle('skjult', !sysAktiv);
-      el.classList.toggle('hidden', !sysAktiv);
-      el.style.display = sysAktiv ? '' : 'none';
-    });
     return true;
   }
 
-  async function ensureGreknutsAnsattRow() {
-    const email = await sessionEmail();
-    if (email !== SYS_EMAIL || !window.supabaseClient) return;
-    forceGreknuts(email);
-    const payload = {
-      epost: SYS_EMAIL,
-      email: SYS_EMAIL,
-      navn: 'Greknuts',
-      rolle: 'sysadmin',
-      er_admin: true,
-      aktiv: true
-    };
-    try {
-      const r = await supabaseClient.from('hand_ansatt').select('id, rolle').eq('epost', SYS_EMAIL).limit(1);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        await supabaseClient.from('hand_ansatt').update(payload).eq('id', r.data[0].id);
-      } else {
-        await supabaseClient.from('hand_ansatt').insert([payload]);
-      }
-    } catch (e) {
-      console.warn('Kunne ikke sikre greknuts sysadminrad. Sjekk RLS hvis firma ikke vises:', e);
-    }
+  async function ensureSystembrukerAnsattRow() {
+    // Ingen hardkodet systemadmin-e-post. Tilgang styres av rolle/RPC i databasen.
+    return;
   }
 
   async function hentAlleFirmaRobust() {
-    await ensureGreknutsAnsattRow();
+    await ensureSystembrukerAnsattRow();
     const forsok = [
       ['hand_firma', '*', 'navn'],
-      ['hand_firma', '*', 'firmanavn'],
-      ['hand_firma', '*', null],
-      ['hand_kunder', '*', 'navn'],
-      ['hand_kunder', '*', 'firmanavn'],
-      ['hand_kunder', '*', null]
+      ['hand_firma', '*', 'created_at'],
+      ['hand_firma', '*', null]
     ];
     let sisteFeil = null;
     for (const [tabell, felt, order] of forsok) {
@@ -605,18 +555,18 @@ window.addEventListener("load", function () {
     const liste = $('handKundeAdminListe');
     if (!liste || !window.supabaseClient) return;
     const email = await sessionEmail();
-    if (!forceGreknuts(email)) {
+    if (!forceSystembruker(email)) {
       liste.innerHTML = '<div class="melding">Bare sysadmin kan se alle firma.</div>';
       return;
     }
-    liste.innerHTML = '<div class="info">Henter firma/kunder...</div>';
+    liste.innerHTML = '<div class="info">Henter bedrifter fra hand_firma...</div>';
     const r = await hentAlleFirmaRobust();
     window.handAdminKunder = r.data || [];
     if (!window.handAdminKunder.length) {
-      liste.innerHTML = '<div class="melding">Ingen firma vises. Du er sysadmin i appen, men databasen returnerte ingen rader. Hvis det finnes firma i Supabase, sjekk RLS/select-policy for hand_firma mot greknuts@online.no eller rolle=sysadmin i hand_ansatt.</div>';
+      liste.innerHTML = '<div class="melding">Ingen firma vises. Du er sysadmin i appen, men databasen returnerte ingen rader. Hvis det finnes firma i Supabase, sjekk RLS/select-policy for hand_firma mot systemadmin-rolle eller rolle=sysadmin i hand_ansatt.</div>';
       return;
     }
-    liste.innerHTML = '<div class="info">Fant ' + window.handAdminKunder.length + ' firma/kunder.</div>' +
+    liste.innerHTML = '<div class="info">Fant ' + window.handAdminKunder.length + ' bedrifter i hand_firma.</div>' +
       '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>' +
       '<th style="text-align:left;padding:6px;border-bottom:1px solid #374151">Firma</th>' +
       '<th style="text-align:left;padding:6px;border-bottom:1px solid #374151">E-post</th>' +
@@ -635,7 +585,7 @@ window.addEventListener("load", function () {
 
   function visSysadminPanel() {
     const current = norm(window.innloggetEpost || localStorage.getItem('handInnloggetEpost'));
-    if (current === SYS_EMAIL) forceGreknuts(current);
+    if (erRolleSystemadmin()) forceSystembruker(current);
     window.erSystemadmin = true;
     window.erAdmin = true;
     localStorage.setItem('rilSysadminModus', 'ja');
@@ -650,15 +600,15 @@ window.addEventListener("load", function () {
 
   function tilbakeTilAdmin() {
     localStorage.removeItem('rilSysadminModus');
-    forceGreknuts();
+    forceSystembruker();
     if (typeof window.visTimerSide === 'function') window.visTimerSide();
   }
 
   function bind() {
-    forceGreknuts();
+    forceSystembruker();
     const sysBtn = $('sysadminModeKnapp');
     if (sysBtn) {
-      const visKnapp = norm(window.innloggetEpost || localStorage.getItem('handInnloggetEpost')) === SYS_EMAIL &&
+      const visKnapp = erRolleSystemadmin() &&
         localStorage.getItem('rilSysadminModus') !== 'ja';
       sysBtn.classList.toggle('skjult', !visKnapp);
       sysBtn.classList.toggle('hidden', !visKnapp);
@@ -671,12 +621,12 @@ window.addEventListener("load", function () {
     if (tilbake) tilbake.onclick = function (e) { e.preventDefault(); tilbakeTilAdmin(); return false; };
   }
 
-  window.handForceGreknutsSysadmin = async function () {
+  window.handForceSystembrukerSysadmin = async function () {
     const email = await sessionEmail();
-    forceGreknuts(email);
-    await ensureGreknutsAnsattRow();
+    forceSystembruker(email);
+    await ensureSystembrukerAnsattRow();
     bind();
-    return email === SYS_EMAIL;
+    return false;
   };
   window.handLastKundeliste = visKundeliste;
   window.handVisSysadminPanel = visSysadminPanel;
@@ -684,12 +634,12 @@ window.addEventListener("load", function () {
   const gammelSett = window.settInnloggetBrukerVisning;
   window.settInnloggetBrukerVisning = function () {
     if (typeof gammelSett === 'function') gammelSett.apply(this, arguments);
-    forceGreknuts();
+    forceSystembruker();
   };
 
-  document.addEventListener('DOMContentLoaded', function () { bind(); setTimeout(bind, 500); setTimeout(ensureGreknutsAnsattRow, 1200); });
+  document.addEventListener('DOMContentLoaded', function () { bind(); setTimeout(bind, 500); setTimeout(ensureSystembrukerAnsattRow, 1200); });
   document.addEventListener('handPartialerLastet', function () { bind(); setTimeout(bind, 300); });
-  window.addEventListener('load', function () { bind(); setTimeout(bind, 500); setTimeout(ensureGreknutsAnsattRow, 1000); });
+  window.addEventListener('load', function () { bind(); setTimeout(bind, 500); setTimeout(ensureSystembrukerAnsattRow, 1000); });
   // removed prod blink loop
 })();
 

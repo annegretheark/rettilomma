@@ -1,0 +1,51 @@
+<section id="lonnPanel" class="kort skjult" data-modul="lonn">
+      <h2>L&#248;nn</h2>
+      <p>L&#248;nn hentes fra registrerte timer. Her kan du lage l&#248;nnsslipper og regneark.</p>
+
+      <div class="rad">
+        <div>
+          <label for="lonnManed">M&#229;ned</label>
+          <select id="lonnManed">
+            <option value="1">Januar</option>
+            <option value="2">Februar</option>
+            <option value="3">Mars</option>
+            <option value="4">April</option>
+            <option value="5">Mai</option>
+            <option value="6">Juni</option>
+            <option value="7">Juli</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="lonnAar">&#197;r</label>
+          <input id="lonnAar" type="number" value="2026">
+        </div>
+
+        <div>
+          <label for="lonnUtbetalingsdato">Utbetalingsdato</label>
+          <input id="lonnUtbetalingsdato" type="date">
+        </div>
+
+        <div>
+          <label for="lonnAnsattValg">Ansatt</label>
+          <select id="lonnAnsattValg">
+            <option value="">Alle ansatte</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="kjorLonnKnapp" type="button">Kj&#248;r l&#248;nn</button>
+      <button id="lonnsslippKnapp" type="button" onclick="return window.lagLonnsslipper(false)">L&#248;nnsslipp valgt/alle PDF</button>
+      <button id="lonnsslippKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi valgt/alle PDF</button>
+      <button id="lonnsslippAlleKnapp" type="button" onclick="return window.lagLonnsslipper(false)">Alle l&#248;nnsslipper PDF</button>
+      <button id="lonnsslippAlleKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi alle PDF</button>
+      <button id="trekkExcelKnapp" type="button">Skattetrekk Excel</button>
+      <button id="utbetalingExcelKnapp" type="button">Utbetalinger Excel</button>
+
+      <div id="lonnMelding" class="melding"></div>
+    </section>

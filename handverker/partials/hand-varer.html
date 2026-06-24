@@ -1,5 +1,6 @@
 <section id="varerSide" class="kort skjult" data-modul="varer">
       <h2>Vareregister</h2>
+      <div id="vareMelding" class="melding" aria-live="polite"></div>
 
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
         <h3 style="margin:0;">Vareliste</h3>
@@ -68,19 +69,13 @@
   type="file"
   accept=".xlsx,.xls,.csv">
 
-<button
-  id="importVarerKnapp"
-  type="button">
-
-  Importer varer
-
-</button>
+<button id="importVarerKnapp" type="button">Importer varer</button>
 
 <button
   id="lastInnLasLagerKnapp"
   type="button"
   class="secondary"
-  onclick="window.lastInnLasesmedLager && window.lastInnLasesmedLager()">
+  >
 
   Last inn l&#229;sesmed lagervarer
 

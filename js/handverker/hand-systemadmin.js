@@ -16,9 +16,8 @@
     try{ const r = await window.supabaseClient?.auth?.getSession(); return (r?.data?.session?.user?.email || window.innloggetEpost || '').toLowerCase(); }catch(e){ return String(window.innloggetEpost || '').toLowerCase(); }
   }
   async function erSystemadmin(){
-    const email = await innloggetEmail();
-    // Greknuts er alltid systemadmin. Modus bestemmer bare hvilken side som vises.
-    if(email === 'greknuts@online.no') { window.erSystemadmin = true; window.erAdmin = true; window.innloggetRolle = 'sysadmin'; return true; }
+    if (typeof window.handErSysadm === 'function' && window.handErSysadm()) return true;
+    try{ const u = await window.handGetAuthUser?.(); const r = String(u?.user_metadata?.rolle || u?.user_metadata?.role || u?.app_metadata?.rolle || u?.app_metadata?.role || '').toLowerCase(); if(['sysadm','sysadmin','systemadmin'].includes(r)) return true; }catch(e){}
     try{ const {data,error}=await window.supabaseClient.rpc('er_systemadmin'); if(!error && data === true) return true; }catch(e){}
     return window.erSystemadmin === true;
   }
@@ -65,30 +64,105 @@
     if(admin && panelSynlig && typeof window.handLastKundeliste === 'function') { try{ await window.handLastKundeliste(); }catch(e){ console.warn(e); } }
   }
 
+  function fjernIkkeDbFelt(tabell, payload){
+    const p = {...payload};
+    const alltidFjern = [
+      'redirectTo',
+      'passord',
+      'kunde_link',
+      'kundelink',
+      'email',
+      'firmanavn',
+      'guiOpprettetUtenAuthKrav',
+      'er_admin',
+      'rolle'
+    ];
+
+    if(tabell === 'hand_firma'){
+      alltidFjern.forEach(k => delete p[k]);
+      // hand_firma i din DB bruker orgnr, ikke org_nr
+      delete p.org_nr;
+      if(!p.linknavn && payload.linknavn) p.linknavn = payload.linknavn;
+    }
+
+    if(tabell === 'hand_ansatt'){
+      delete p.kundelink;
+      delete p.kunde_link;
+      delete p.linknavn;
+      delete p.orgnr;
+      delete p.org_nr;
+      delete p.adresse;
+      delete p.telefon;
+      delete p.firmanavn;
+      delete p.guiOpprettetUtenAuthKrav;
+      delete p.redirectTo;
+      delete p.passord;
+    }
+
+    Object.keys(p).forEach(k => {
+      if(p[k] === undefined) delete p[k];
+    });
+
+    return p;
+  }
+
+  function kolonneFraFeil(error){
+    const m = String(error?.message || error || '');
+    return (
+      (m.match(/Could not find the '([^']+)' column/i) || [])[1] ||
+      (m.match(/'([^']+)' column/i) || [])[1] ||
+      (m.match(/column "([^"]+)"/i) || [])[1] ||
+      (m.match(/column ([a-zA-Z0-9_]+) of relation/i) || [])[1] ||
+      ''
+    );
+  }
+
   async function supaInsertAdaptive(tabell, payload){
-    let p = {...payload};
-    for(let i=0;i<10;i++){
+    let p = fjernIkkeDbFelt(tabell, payload);
+    let forrige = '';
+
+    for(let i=0;i<20;i++){
       const res = await window.supabaseClient.from(tabell).insert([p]).select('*').maybeSingle();
       if(!res.error) return res.data || p;
-      const m = String(res.error.message || '');
-      const col = (m.match(/'([^']+)' column/) || m.match(/column "([^"]+)"/i) || [])[1];
-      if(col && Object.prototype.hasOwnProperty.call(p,col)){ delete p[col]; continue; }
+
+      const col = kolonneFraFeil(res.error);
+      if(col && Object.prototype.hasOwnProperty.call(p,col)){
+        delete p[col];
+        continue;
+      }
+
+      const tekst = String(res.error.message || '');
+      if(tekst === forrige) throw res.error;
+      forrige = tekst;
       throw res.error;
     }
-    throw new Error('Kunne ikke lagre etter tilpasning av kolonner.');
+
+    throw new Error('Kunne ikke lagre. Databasen avviste feltene: ' + Object.keys(p).join(', '));
   }
+
   async function supaUpdateAdaptive(tabell, id, payload){
-    let p = {...payload};
-    for(let i=0;i<10;i++){
+    let p = fjernIkkeDbFelt(tabell, payload);
+    let forrige = '';
+
+    for(let i=0;i<20;i++){
       const res = await window.supabaseClient.from(tabell).update(p).eq('id', id).select('*').maybeSingle();
       if(!res.error) return res.data || p;
-      const m = String(res.error.message || '');
-      const col = (m.match(/'([^']+)' column/) || m.match(/column "([^"]+)"/i) || [])[1];
-      if(col && Object.prototype.hasOwnProperty.call(p,col)){ delete p[col]; continue; }
+
+      const col = kolonneFraFeil(res.error);
+      if(col && Object.prototype.hasOwnProperty.call(p,col)){
+        delete p[col];
+        continue;
+      }
+
+      const tekst = String(res.error.message || '');
+      if(tekst === forrige) throw res.error;
+      forrige = tekst;
       throw res.error;
     }
-    throw new Error('Kunne ikke oppdatere etter tilpasning av kolonner.');
+
+    throw new Error('Kunne ikke oppdatere. Databasen avviste feltene: ' + Object.keys(p).join(', '));
   }
+
 
 
   async function handSendAuthEpostHvisMulig(epost, redirectTo){
@@ -159,10 +233,19 @@
 
       const payload = {
         navn,
+        epost,
+        telefon: val('nyHandKundeTelefon') || null,
+        adresse: val('nyHandKundeAdresse') || null,
+        orgnr: val('nyHandKundeOrgNr') || null,
+        linknavn: slug,
+        system_type: 'handverker'
+      };
+
+      const authPayload = {
+        navn,
         firmanavn: navn,
         epost,
         email: epost,
-        guiOpprettetUtenAuthKrav: true,
         telefon: val('nyHandKundeTelefon'),
         adresse: val('nyHandKundeAdresse'),
         orgnr: val('nyHandKundeOrgNr'),
@@ -181,7 +264,7 @@
       // Edge Function/Auth forsøkes bare som bonus hvis den finnes.
       let viaFn = null;
       try {
-        viaFn = await kallOpprettHandKunde(payload);
+        viaFn = await kallOpprettHandKunde(authPayload);
       } catch (e) {
         console.warn('Auth/Edge Function hoppes over. GUI-oppretting fortsetter:', e);
         viaFn = null;
@@ -198,17 +281,70 @@
       let firmaRad = finnesEtterFn && finnesEtterFn.length ? finnesEtterFn[0] : null;
 
       if (!firmaRad) {
-        firmaRad = await supaInsertAdaptive('hand_firma', payload);
+        const firmaPayload = {
+          navn: navn,
+          epost: epost,
+          telefon: val('nyHandKundeTelefon') || null,
+          adresse: val('nyHandKundeAdresse') || null,
+          orgnr: val('nyHandKundeOrgNr') || null,
+          linknavn: slug,
+          system_type: 'handverker',
+          moduler_konfigurert: false,
+          moduler: {}
+        };
+
+        let firmaRes = await window.supabaseClient
+          .from('hand_firma')
+          .insert([firmaPayload])
+          .select('id, navn, epost')
+          .maybeSingle();
+
+        if (firmaRes.error) {
+          // fallback hvis noen kolonner mangler
+          const minPayload = {
+            navn: navn,
+            epost: epost,
+            linknavn: slug
+          };
+
+          firmaRes = await window.supabaseClient
+            .from('hand_firma')
+            .insert([minPayload])
+            .select('id, navn, epost')
+            .maybeSingle();
+        }
+
+        if (firmaRes.error) {
+          throw firmaRes.error;
+        }
+
+        firmaRad = firmaRes.data;
       }
 
       if (firmaRad && firmaRad.id) {
         try {
-          const ansattPayload = { firma_id: firmaRad.id, epost, email: epost, navn, rolle: 'admin', er_admin: true, aktiv: true };
+          const ansattPayload = { firma_id: firmaRad.id, epost: epost, navn: navn, rolle: 'admin', er_admin: true, aktiv: true };
           const finnesAnsatt = await window.supabaseClient.from('hand_ansatt').select('id').eq('epost', epost).limit(1);
+
+          let ansattRes;
           if (!finnesAnsatt.error && Array.isArray(finnesAnsatt.data) && finnesAnsatt.data.length) {
-            await supaUpdateAdaptive('hand_ansatt', finnesAnsatt.data[0].id, ansattPayload);
+            ansattRes = await window.supabaseClient
+              .from('hand_ansatt')
+              .update(ansattPayload)
+              .eq('id', finnesAnsatt.data[0].id);
           } else {
-            await supaInsertAdaptive('hand_ansatt', ansattPayload);
+            ansattRes = await window.supabaseClient
+              .from('hand_ansatt')
+              .insert([ansattPayload]);
+          }
+
+          if (ansattRes && ansattRes.error) {
+            const minAnsatt = { firma_id: firmaRad.id, epost: epost, navn: navn, rolle: 'admin' };
+            if (!finnesAnsatt.error && Array.isArray(finnesAnsatt.data) && finnesAnsatt.data.length) {
+              await window.supabaseClient.from('hand_ansatt').update(minAnsatt).eq('id', finnesAnsatt.data[0].id);
+            } else {
+              await window.supabaseClient.from('hand_ansatt').insert([minAnsatt]);
+            }
           }
         } catch(e) { console.warn('Kunne ikke opprette admin i hand_ansatt:', e); }
       }
@@ -306,4 +442,143 @@
   document.addEventListener('DOMContentLoaded', function(){ bindLinkFelter(); bindSystemadminKnapp(); setTimeout(oppdaterSystemadminVisning,300); setTimeout(oppdaterSystemadminVisning,1200); });
   window.addEventListener('load', function(){ bindLinkFelter(); bindSystemadminKnapp(); setTimeout(oppdaterSystemadminVisning,300); setTimeout(oppdaterSystemadminVisning,1200); });
   document.addEventListener('click', function(ev){ if(ev.target && (ev.target.id==='loginKnapp' || ev.target.id==='visFirmaKnapp')) setTimeout(oppdaterSystemadminVisning,800); });
+})();
+
+/*
+  Robust SysAdm kundeoppretting - lagt til av ChatGPT 2026-06-21
+  Gjør opprett håndverkerkunde mer tolerant for ulike Supabase-skjema:
+  - prøver hand_firma, hand_kunder og hand_kunde
+  - prøver både navn/firmanavn/firma_navn og epost/email
+  - fjerner automatisk kolonner som databasen ikke har
+  - viser feilen direkte i appen, ikke bare i konsoll
+*/
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function val(id){ return ($(id)?.value || '').trim(); }
+  function set(id,v){ const e=$(id); if(e) e.value = v || ''; }
+  function msg(t, feil){ const e=$('nyHandKundeMelding') || $('firmaMelding'); if(e){ e.textContent=t||''; e.style.color=feil?'#fca5a5':'#86efac'; } else if(feil) { alert(t); } }
+  function slugify(v){ return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function appBase(){ const p=location.pathname.toLowerCase(); if(p.includes('/rettilomma/')) return location.origin + '/rettilomma/handverker/'; if(p.includes('/handverker/')) return location.origin + '/handverker/'; return location.origin + '/handverker/'; }
+  function rootBase(){ return location.pathname.toLowerCase().includes('/rettilomma/') ? location.origin + '/rettilomma/' : location.origin + '/'; }
+  function kundelink(slug){ return appBase() + '?firma=' + encodeURIComponent(slug||''); }
+  async function innloggetEmail(){ try{ const r = await window.supabaseClient?.auth?.getSession(); return String(r?.data?.session?.user?.email || window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || '').trim().toLowerCase(); }catch(e){ return String(window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || '').trim().toLowerCase(); } }
+  async function erSystemadmin(){ if (typeof window.handErSysadm === 'function' && window.handErSysadm()) return true; try{ const u = await window.handGetAuthUser?.(); const rr = String(u?.user_metadata?.rolle || u?.user_metadata?.role || u?.app_metadata?.rolle || u?.app_metadata?.role || '').toLowerCase(); if(['sysadm','sysadmin','systemadmin'].includes(rr)) return true; }catch(e){} if(window.erSystemadmin === true) return true; try{ const r = await window.supabaseClient.rpc('er_systemadmin'); return r && !r.error && r.data === true; }catch(err){ return false; } }
+  function missingColumn(error){ const m = String(error?.message || error || ''); return ((m.match(/Could not find the '([^']+)' column/i)||[])[1] || (m.match(/'([^']+)' column/i)||[])[1] || (m.match(/column "([^"]+)"/i)||[])[1] || (m.match(/column ([a-zA-Z0-9_]+) of relation/i)||[])[1] || ''); }
+  function cleanPayload(p){ const out = {}; Object.keys(p || {}).forEach(k => { if(p[k] !== undefined && p[k] !== '') out[k] = p[k]; }); return out; }
+
+  async function adaptiveInsert(table, payload){
+    let p = cleanPayload(payload);
+    let lastError = null;
+    for(let i=0;i<30;i++){
+      const r = await window.supabaseClient.from(table).insert([p]).select('*').maybeSingle();
+      if(!r.error) return { data: r.data || p, table };
+      lastError = r.error;
+      const col = missingColumn(r.error);
+      if(col && Object.prototype.hasOwnProperty.call(p, col)) { delete p[col]; continue; }
+      throw r.error;
+    }
+    throw lastError || new Error('Ukjent lagringsfeil');
+  }
+
+  async function findExisting(tables, epost){
+    for(const table of tables){
+      for(const field of ['epost','email']){
+        try{
+          const r = await window.supabaseClient.from(table).select('*').eq(field, epost).limit(1);
+          if(!r.error && Array.isArray(r.data) && r.data.length) return { data: r.data[0], table };
+        }catch(e){}
+      }
+    }
+    return null;
+  }
+
+  async function createFirmaRobust(navn, epost, slug){
+    const telefon = val('nyHandKundeTelefon') || null;
+    const adresse = val('nyHandKundeAdresse') || null;
+    const org = val('nyHandKundeOrgNr') || null;
+    const link = kundelink(slug);
+    const tables = ['hand_firma','hand_kunder','hand_kunde'];
+    const payloads = [
+      { navn, epost, telefon, adresse, orgnr: org, linknavn: slug, kundelink: link, kunde_link: link, system_type:'handverker', moduler_konfigurert:false, moduler:{} },
+      { firmanavn: navn, email: epost, telefon, adresse, org_nr: org, slug, kundelink: link, kunde_link: link, system_type:'handverker' },
+      { firma_navn: navn, email: epost, org_nr: org, slug, linknavn: slug, system_type:'handverker' },
+      { navn, epost, linknavn: slug },
+      { firmanavn: navn, email: epost, slug },
+      { navn, epost }
+    ];
+    let lastError = null;
+    for(const table of tables){
+      for(const p of payloads){
+        try{ return await adaptiveInsert(table, p); }
+        catch(e){ lastError = e; }
+      }
+    }
+    throw lastError || new Error('Fant ingen tabell appen kan lagre kunde i.');
+  }
+
+  async function upsertAnsattRobust(firmaRad, table, navn, epost){
+    const firmaId = firmaRad?.id || firmaRad?.firma_id || firmaRad?.kunde_id || null;
+    const payloads = [
+      { firma_id: firmaId, epost, navn, rolle:'admin', er_admin:true, aktiv:true },
+      { firma_id: firmaId, email: epost, navn, rolle:'admin', er_admin:true, aktiv:true },
+      { kunde_id: firmaId, epost, navn, rolle:'admin', aktiv:true },
+      { epost, navn, rolle:'admin' },
+      { email: epost, navn, rolle:'admin' }
+    ];
+    for(const p of payloads){
+      try{
+        const existing = await window.supabaseClient.from('hand_ansatt').select('*').eq(p.epost ? 'epost' : 'email', epost).limit(1);
+        if(!existing.error && existing.data && existing.data.length){
+          const upd = await window.supabaseClient.from('hand_ansatt').update(cleanPayload(p)).eq('id', existing.data[0].id).select('*').maybeSingle();
+          if(!upd.error) return true;
+        } else {
+          await adaptiveInsert('hand_ansatt', p);
+          return true;
+        }
+      }catch(e){}
+    }
+    return false;
+  }
+
+  async function sendPassordEpost(epost){
+    try{
+      const r = await window.supabaseClient.auth.resetPasswordForEmail(epost, { redirectTo: rootBase() + 'reset.html' });
+      return !r.error;
+    }catch(e){ return false; }
+  }
+
+  window.handOpprettKundeDirekte = async function(){
+    if(window.handOppretterKunde){ msg('Opprettelse pågår allerede. Vent litt.', true); return; }
+    window.handOppretterKunde = true;
+    try{
+      if(!window.supabaseClient){ msg('Supabase er ikke lastet. Last siden på nytt.', true); return; }
+      if(!(await erSystemadmin())){ msg('Bare systemadmin kan opprette kunder.', true); return; }
+      const navn = val('nyHandKundeNavn');
+      const epost = val('nyHandKundeEpost').toLowerCase();
+      if(!navn){ msg('Skriv firmanavn.', true); return; }
+      if(!epost){ msg('Skriv e-post.', true); return; }
+      const slug = slugify(navn);
+      set('nyHandKundeLinknavn', slug);
+      set('nyHandKundeLink', kundelink(slug));
+
+      msg('Sjekker om kunden finnes fra før...');
+      const tables = ['hand_firma','hand_kunder','hand_kunde'];
+      const eksisterende = await findExisting(tables, epost);
+      let firma = eksisterende;
+      if(!firma){
+        msg('Oppretter håndverkerkunde...');
+        firma = await createFirmaRobust(navn, epost, slug);
+      }
+      const ansattOk = await upsertAnsattRobust(firma.data, firma.table, navn, epost);
+      const epostOk = await sendPassordEpost(epost);
+      msg((eksisterende ? 'Kunden fantes fra før. ' : 'Kunde/firma er opprettet. ') + (ansattOk ? 'Adminbruker er lagret. ' : 'Adminbruker kunne ikke lagres automatisk. ') + (epostOk ? 'Passord-e-post er sendt.' : 'Send passordoppretting-knappen kan brukes etterpå.'));
+      if(typeof window.handLastKundeliste === 'function') await window.handLastKundeliste();
+    }catch(e){
+      console.error(e);
+      const tekst = String(e?.message || e || 'Ukjent feil');
+      msg('Feil ved oppretting: ' + tekst, true);
+    }finally{
+      window.handOppretterKunde = false;
+    }
+  };
 })();

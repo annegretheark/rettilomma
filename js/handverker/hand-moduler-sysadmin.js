@@ -7,23 +7,19 @@
     { id: 'biler', navn: 'Bil' },
     { id: 'lonn', navn: 'Lønn' },
     { id: 'fravaer', navn: 'Fravær' },
-    { id: 'hovslager', navn: 'Hovslager' },
-    { id: 'veterinaer', navn: 'Veterinær' }
-  ];
+];
 
   const PAKKER = {
     solo: ['tilbud','faktura'],
     handverker: ['tilbud','faktura','varer','biler'],
-    hovslager: ['tilbud','faktura','varer','biler','hovslager'],
-    veterinaer: ['tilbud','faktura','varer','biler','veterinaer'],
-    pro: MODULER.map(m => m.id)
+pro: MODULER.map(m => m.id)
   };
 
   function $(id){ return document.getElementById(id); }
   function status(txt, feil){ const el = $('modulStatus') || $('modulMelding'); if(el){ el.textContent = txt || ''; el.style.color = feil ? '#b91c1c' : ''; } }
   function erSysadmin(){
     const email = String(window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || '').toLowerCase();
-    return window.erSystemadmin === true || email === 'greknuts@online.no';
+    return (typeof window.handErSysadm === 'function' && window.handErSysadm()) || window.erSystemadmin === true;
   }
   function valgtFirmaId(){
     const fraSelect = $('modulKundeVelger')?.value || '';

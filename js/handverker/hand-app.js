@@ -115,7 +115,8 @@ if (typeof supabaseClient !== "undefined") {
 
 async function startApp() {
   console.log("Starter app");
-  localStorage.removeItem("rilSysadminModus");
+  document.documentElement.classList.remove("ril-auth-ready", "ril-admin-ready");
+  // Sysadm-modus styres av hand-role-core, ikke nullstill her.
   // HAND_FIX_PARTIAL_READY: Vent til HTML-delene i partials er lastet.
   // Dette hindrer blinking/flicker og at knapper kobles før de finnes.
   if (window.handPartialerKlare && !window.__handPartialerVentet) {
@@ -125,7 +126,9 @@ async function startApp() {
 
   try {
     if (!window.supabaseClient || !supabaseClient.auth) {
-      if (typeof window.visLogin === "function") window.visLogin();
+      document.documentElement.classList.remove("ril-admin-ready");
+    document.documentElement.classList.add("ril-auth-ready");
+    if (typeof window.visLogin === "function") window.visLogin();
       return;
     }
 
@@ -134,6 +137,8 @@ async function startApp() {
     const email = String(session?.user?.email || "").toLowerCase();
 
     if (!session || !email) {
+      document.documentElement.classList.remove("ril-admin-ready");
+      document.documentElement.classList.add("ril-auth-ready");
       if (typeof window.visLogin === "function") window.visLogin();
       try {
         const params = new URLSearchParams(window.location.search || "");
@@ -164,20 +169,12 @@ async function startApp() {
       console.warn("Kunne ikke hente ansatt ved oppfrisking:", e);
     }
 
-    let rolle = String(ansattData?.rolle || "").toLowerCase();
-    if (email === "greknuts@online.no") rolle = "sysadmin";
-    window.innloggetRolle = rolle;
-
-    // Greknuts skal alltid ha rettighet til både vanlig bruker, admin og systemadmin.
-    // Aktiv visning styres fortsatt av rilAdminModus/rilSysadminModus.
-    const erGreknuts = email === "greknuts@online.no";
-    const harSystemadminRolle = erGreknuts || ["systemadmin", "sysadmin"].includes(rolle);
-    const harAdminRolle = erGreknuts || ["admin", "systemadmin", "sysadmin"].includes(rolle);
-
-    window.erSystemadmin = harSystemadminRolle;
-
-    const adminModus = localStorage.getItem("rilAdminModus") === "ja";
-    window.erAdmin = harAdminRolle && adminModus;
+    const rolleStatus = typeof window.handResolveRole === "function"
+      ? await window.handResolveRole(ansattData)
+      : { rolle: String(ansattData?.rolle || "").toLowerCase(), admin: false, sys: false };
+    window.innloggetRolle = rolleStatus.rolle;
+    window.erSystemadmin = rolleStatus.sys === true;
+    window.erAdmin = rolleStatus.admin === true;
 
     if (typeof window.visApp === "function") {
       await window.visApp();

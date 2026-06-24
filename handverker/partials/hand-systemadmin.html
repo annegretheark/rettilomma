@@ -1,23 +1,23 @@
 <section id="sysadminPanelSide" class="kort skjult systemadmin-only">
   <h2>Systemadministrasjon</h2>
-  <p class="info">Kun for Greknuts. Her administreres håndverkerkunder, moduler og kundelinker.</p>
+  <p class="info">Kun for Systembruker. Her administreres bedrifter, moduler og kundelinker.</p>
 
   <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-    <button id="sysadminNyKundeKnapp" type="button" style="background:#0f766e;">Ny håndverkerkunde</button>
-    <button id="sysadminKundelisteKnapp" type="button" class="secondary">Oppdater kundeliste</button>
+    <button id="sysadminNyKundeKnapp" type="button" style="background:#0f766e;">Ny bedrift</button>
+    <button id="sysadminKundelisteKnapp" type="button" class="secondary">Oppdater bedriftsliste</button>
     <button id="sysadminModulerKnapp" type="button" class="secondary">Moduler</button>
     <button id="sysadminTilAdminKnapp" type="button" class="secondary">Tilbake til admin</button>
   </div>
 
   <div id="handSystemadminBlokk" class="kort hand-systemadmin-form" style="border:2px solid #0f766e; margin-bottom:14px;">
-    <h3>Håndverkerkunde</h3>
+    <h3>Bedrift</h3>
 
     <input id="redigerHandKundeId" type="hidden">
 
     <label for="nyHandKundeNavn">Firmanavn</label>
     <input id="nyHandKundeNavn" placeholder="F.eks. Hansen Bygg AS" class="hand-wide-input">
 
-    <label for="nyHandKundeEpost">E-post til kunde/admin</label>
+    <label for="nyHandKundeEpost">E-post til bedrift/admin</label>
     <input id="nyHandKundeEpost" type="email" placeholder="kunde@example.no" class="hand-wide-input">
 
     <label for="nyHandKundeTelefon">Telefon</label>
@@ -38,7 +38,7 @@
     <label for="nyHandKundeLink">Kundelink</label>
     <input id="nyHandKundeLink" readonly class="hand-wide-input">
 
-    <button type="button" onclick="handOpprettKundeDirekte()">Opprett ny kunde</button>
+    <button type="button" onclick="handOpprettKundeDirekte()">Opprett ny bedrift</button>
     <button type="button" class="secondary" onclick="handLagreRedigertKunde()">Lagre redigering</button>
     <button type="button" class="secondary" onclick="handNullstillKundeSkjema()">Ny/tøm skjema</button>
     <button type="button" class="secondary" onclick="handSendPassordopprettingDirekte()">Send passordoppretting</button>
@@ -47,7 +47,8 @@
     <div id="nyHandKundeMelding" class="melding"></div>
 
     <hr>
-    <h3>Håndverkerkunder</h3>
-    <div id="handKundeAdminListe" class="info">Ingen kunder lastet ennå.</div>
+    <h3>Bedrifter</h3>
+    <button id="handSysadmRefreshInline" type="button" class="secondary" onclick="handFirmaListeV8()" style="margin-bottom:10px;">Hent/oppdater bedrifter</button>
+    <div id="handKundeAdminListe" class="info">Ingen bedrifter lastet ennå.</div>
   </div>
 </section>

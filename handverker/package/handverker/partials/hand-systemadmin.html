@@ -1,0 +1,53 @@
+<section id="sysadminPanelSide" class="kort skjult systemadmin-only">
+  <h2>Systemadministrasjon</h2>
+  <p class="info">Kun for Systembruker. Her administreres bedrifter, moduler og kundelinker.</p>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+    <button id="sysadminNyKundeKnapp" type="button" style="background:#0f766e;">Ny bedrift</button>
+    <button id="sysadminKundelisteKnapp" type="button" class="secondary">Oppdater bedriftsliste</button>
+    <button id="sysadminModulerKnapp" type="button" class="secondary">Moduler</button>
+    <button id="sysadminTilAdminKnapp" type="button" class="secondary">Tilbake til admin</button>
+  </div>
+
+  <div id="handSystemadminBlokk" class="kort hand-systemadmin-form" style="border:2px solid #0f766e; margin-bottom:14px;">
+    <h3>Bedrift</h3>
+
+    <input id="redigerHandKundeId" type="hidden">
+
+    <label for="nyHandKundeNavn">Firmanavn</label>
+    <input id="nyHandKundeNavn" placeholder="F.eks. Hansen Bygg AS" class="hand-wide-input">
+
+    <label for="nyHandKundeEpost">E-post til bedrift/admin</label>
+    <input id="nyHandKundeEpost" type="email" placeholder="kunde@example.no" class="hand-wide-input">
+
+    <label for="nyHandKundeTelefon">Telefon</label>
+    <input id="nyHandKundeTelefon" placeholder="Telefon" class="hand-wide-input">
+
+    <label for="nyHandKundeAdresse">Adresse</label>
+    <input id="nyHandKundeAdresse" placeholder="Adresse" class="hand-wide-input">
+
+    <label for="nyHandKundeOrgNr">Org.nr</label>
+    <input id="nyHandKundeOrgNr" placeholder="Org.nr" class="hand-wide-input">
+
+    <label for="nyHandKundeLinknavn">Linknavn opprettes automatisk fra firmanavn</label>
+    <input id="nyHandKundeLinknavn" placeholder="automatisk fra firmanavn" readonly class="hand-wide-input">
+
+    <label for="nyHandKundePassord">Midlertidig passord</label>
+    <input id="nyHandKundePassord" type="text" placeholder="Midlertidig passord / brukes ved Auth-epost" class="hand-wide-input">
+
+    <label for="nyHandKundeLink">Kundelink</label>
+    <input id="nyHandKundeLink" readonly class="hand-wide-input">
+
+    <button type="button" onclick="handOpprettKundeDirekte()">Opprett ny bedrift</button>
+    <button type="button" class="secondary" onclick="handLagreRedigertKunde()">Lagre redigering</button>
+    <button type="button" class="secondary" onclick="handNullstillKundeSkjema()">Ny/tøm skjema</button>
+    <button type="button" class="secondary" onclick="handSendPassordopprettingDirekte()">Send passordoppretting</button>
+    <button type="button" class="secondary" onclick="handKopierKundelinkDirekte()">Kopier kundelink</button>
+
+    <div id="nyHandKundeMelding" class="melding"></div>
+
+    <hr>
+    <h3>Bedrifter</h3>
+    <div id="handKundeAdminListe" class="info">Ingen bedrifter lastet ennå.</div>
+  </div>
+</section>
