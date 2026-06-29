@@ -1,0 +1,1 @@
+/* Fjernet fra håndverkerappen. */

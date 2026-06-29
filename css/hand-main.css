@@ -1,0 +1,407 @@
+#prosjektVindu {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      max-width: 90%;
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
+
+    #prosjektOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 9998;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #151819;
+      color: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .kort {
+      background: #171a1b;
+      color: #f3f4f6;
+      max-width: 900px;
+      margin: 0 auto 18px auto;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 11px 14px;
+      margin: 6px 4px 6px 0;
+      border: 0;
+      border-radius: 8px;
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button.danger {
+      background: #b42318;
+    }
+
+    .rad {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .skjult,
+    .hidden {
+      display: none !important;
+    }
+
+    .melding {
+      margin-top: 10px;
+      color: #b42318;
+      font-weight: bold;
+    }
+
+    #lonnPanel {
+      border: 2px solid #1f6feb;
+    }
+
+    #lonnPanel h2 {
+      color: #1f6feb;
+    }
+
+    #testMelding {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      min-height: 140px;
+      max-height: 360px;
+      overflow: auto;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    #testMelding .ok { color: #86efac; }
+    #testMelding .feil { color: #fca5a5; }
+
+    .okonomi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .okonomi-boks {
+      background: #22272a;
+      color: #f3f4f6;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .okonomi-boks strong {
+      display: block;
+      font-size: 18px;
+      margin-top: 4px;
+    }
+
+    .okonomi-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .okonomi-tabell th,
+    .okonomi-tabell td {
+      border-bottom: 1px solid #374151;
+      padding: 6px;
+      text-align: left;
+      vertical-align: top;
+      color: #f3f4f6;
+    }
+
+    .okonomi-tabell th {
+      background: #111827;
+      color: #f3f4f6;
+    }
+
+    .okonomi-advarsel {
+      color: #b42318;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi {
+      cursor: pointer;
+    }
+
+    .okonomi-tabell tr.klikkbar-okonomi:hover {
+      background: #1f2937;
+    }
+
+    .okonomi-mini-knapp {
+      padding: 5px 7px;
+      margin: 0;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .okonomi-detalj {
+      margin-top: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      background: #22272a;
+      color: #f3f4f6;
+    }
+
+    .okonomi-detalj strong,
+    .okonomi-detalj div,
+    .okonomi-detalj p {
+      color: #f3f4f6;
+    }
+
+    .modul-skjult {
+      display: none !important;
+    }
+
+    .modul-rad {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modul-rad label {
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .modul-rad input {
+      width: auto;
+      margin: 0 8px 0 0;
+    }
+
+  
+    .info {
+      color: #cbd5e1;
+    }
+
+    input,
+    select,
+    textarea {
+      background: #f8fafc;
+      color: #111827;
+    }
+
+    h1,
+    h2,
+    h3,
+    label {
+      color: #f3f4f6;
+    }
+
+
+    .bil-tabell {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .bil-tabell th,
+    .bil-tabell td {
+      border-bottom: 1px solid #374151;
+      padding: 6px;
+      text-align: left;
+      vertical-align: middle;
+      color: #f3f4f6;
+    }
+    .bil-tabell th { background: #111827; }
+
+
+    /* Kompakt bil-lager: treffer inputfeltene i varelisten */
+    #bilLagerFyllListe .bil-tabell {
+      font-size: 12px;
+    }
+
+    #bilLagerFyllListe .bil-tabell th,
+    #bilLagerFyllListe .bil-tabell td {
+      padding: 2px 4px !important;
+      line-height: 1.1 !important;
+      vertical-align: middle;
+    }
+
+    #bilLagerFyllListe .bil-tabell input[type="number"] {
+      width: 70px !important;
+      min-width: 70px !important;
+      max-width: 80px !important;
+      height: 24px !important;
+      min-height: 24px !important;
+      padding: 2px 4px !important;
+      margin: 0 !important;
+      border-radius: 4px !important;
+      font-size: 12px !important;
+      line-height: 1.1 !important;
+    }
+
+    #bilLagerFyllListe .bil-tabell td:nth-child(1),
+    #bilLagerFyllListe .bil-tabell th:nth-child(1) {
+      min-width: 70px;
+      max-width: 100px;
+    }
+
+
+    .klikkbar-bilrad {
+      cursor: pointer;
+    }
+
+    .klikkbar-bilrad:hover {
+      background: #1f2937;
+    }
+
+
+    .topplinje {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .meny-gruppe {
+      position: relative;
+      display: inline-block;
+    }
+
+    .meny-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 190px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 6px;
+      z-index: 10000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    .meny-gruppe:hover .meny-panel,
+    .meny-gruppe:focus-within .meny-panel {
+      display: block;
+    }
+
+    .meny-panel button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 3px 0;
+      background: #374151;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    .meny-panel button:hover {
+      background: #4b5563;
+    }
+
+
+    .meny-gruppe.apen .meny-panel {
+      display: block;
+    }
+
+
+    #varerSide #vareListe {
+      max-height: 420px;
+      overflow: auto;
+      margin-bottom: 12px;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+
+    .meny-panel {
+      pointer-events: auto;
+    }
+
+    .meny-panel button {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+
+
+    /* AGK FIX 7086: behold mørkt tema også etter økonomi/purring-fiks */
+    #fakturaSide,
+    #okonomiOversikt,
+    #okonomiDetalj {
+      color: #f3f4f6;
+    }
+
+    #okonomiOversikt .okonomi-boks,
+    #okonomiDetalj.okonomi-detalj {
+      background: #22272a !important;
+      color: #f3f4f6 !important;
+      border-color: #374151 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell th {
+      background: #111827 !important;
+      color: #f3f4f6 !important;
+    }
+
+    #okonomiOversikt .okonomi-tabell td {
+      background: transparent !important;
+      color: #f3f4f6 !important;
+      border-bottom-color: #374151 !important;
+    }
+
+
+    .innlogget-bruker-boks {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .innlogget-bruker-boks strong {
+      color: #93c5fd;
+    }

@@ -1,0 +1,20 @@
+LEGG FILENE SLIK:
+
+C:\inetpub\wwwroot\rettilomma\index.html
+C:\inetpub\wwwroot\rettilomma\hovslager.html
+C:\inetpub\wwwroot\rettilomma\hovslager-login.html
+
+Hvis mappen js ligger i ZIP-en:
+C:\inetpub\wwwroot\rettilomma\js\auth.js
+
+TEST:
+Håndverker:
+http://localhost/rettilomma/index.html
+
+Hovslager startside:
+http://localhost/rettilomma/hovslager-login.html
+
+Hovslager system:
+http://localhost/rettilomma/hovslager.html
+
+Etter kopiering: trykk Ctrl+F5 i nettleseren.

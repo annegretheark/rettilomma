@@ -1,0 +1,25 @@
+﻿navn;kategori;enhet;utsalgspris;minimum_antall;hovedlager_antall
+Influensavaksine hest;medisin;dose;750;5;30
+Stivkrampevaksine hest;medisin;dose;750;5;30
+Rabiesvaksine hund/katt;medisin;dose;890;5;20
+Ormekur hest;medisin;stk;420;10;40
+Ormekur hund/katt;medisin;stk;280;10;50
+Antibiotika injeksjon;medisin;dose;390;10;40
+Smertestillende injeksjon;medisin;dose;350;10;40
+Beroligende/sedasjon;medisin;dose;650;5;20
+Lokalbedøvelse;medisin;dose;240;10;30
+Øyedråper;medisin;flaske;310;5;15
+Ørerens;medisin;flaske;220;5;20
+Sårspray;medisin;flaske;190;5;25
+Sterile kompresser;bandasje;pakke;95;10;50
+Elastisk bandasje;bandasje;rull;85;10;60
+Selvklebende bandasje;bandasje;rull;110;10;60
+Bomullsrull;bandasje;rull;75;10;40
+Sårsalve;bandasje;tube;160;5;25
+Desinfeksjon klorhexidin;forbruk;flaske;140;5;20
+Sprøyte 5 ml;forbruk;stk;8;50;300
+Sprøyte 10 ml;forbruk;stk;10;50;300
+Kanyle blå;forbruk;stk;5;50;300
+Kanyle grønn;forbruk;stk;5;50;300
+Engangshansker;forbruk;par;6;100;500
+Blodprøveglass;forbruk;stk;18;25;150

@@ -1,0 +1,74 @@
+<section id="varerSide" class="kort skjult" data-modul="varer">
+      <h2>Vareregister</h2>
+      <div id="vareMelding" class="melding" aria-live="polite"></div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <h3 style="margin:0;">Vareliste</h3>
+        <button type="button" class="secondary" onclick="document.getElementById('varenr')?.scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('varenr')?.focus();">
+          Ny vare
+        </button>
+      </div>
+
+      <div id="vareListe"></div>
+
+      <hr>
+
+      <h3>Ny / rediger vare</h3>
+
+      <label for="varenr">Varenr</label>
+      <input id="varenr">
+
+      <label for="varenavn">Varenavn</label>
+      <input id="varenavn">
+
+      <label for="varebeskrivelse">Beskrivelse</label>
+      <textarea id="varebeskrivelse"></textarea>
+
+      <div class="rad">
+        <div>
+          <label for="vareinnpris">Innpris eks. mva</label>
+          <input id="vareinnpris" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varepaslag">P&#229;slag faktor</label>
+          <input id="varepaslag" type="number" step="0.01" value="3">
+        </div>
+
+        <div>
+          <label for="varepris">Utpris eks. mva</label>
+          <input id="varepris" type="number" step="0.01">
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="varelagerAntall">Antall p&#229; hovedlager</label>
+          <input id="varelagerAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="vareMinimumAntall">Minimum hovedlager</label>
+          <input id="vareMinimumAntall" type="number" step="0.01" value="0">
+        </div>
+
+        <div>
+          <label for="varemva">MVA %</label>
+          <input id="varemva" type="number" value="25">
+        </div>
+      </div>
+
+      <button id="lagreVareKnapp" type="button">Lagre vare</button>
+      <button id="tilbakeFraVarerKnapp" type="button" class="secondary">Tilbake</button>
+      <label for="importVarerFil">
+  Importer varer fra Excel/CSV
+</label>
+
+<input
+  id="importVarerFil"
+  type="file"
+  accept=".xlsx,.xls,.csv">
+
+<button id="importVarerKnapp" type="button" onclick="return window.importerVarer ? (window.importerVarer('importVarerFil'), false) : false;">Importer varer</button>
+      <hr>
+    </section>

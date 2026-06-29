@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="no">
+<head><meta charset="UTF-8"><title>Test hand_firma</title><link rel="stylesheet" href="css/hand-main.css"></head>
+<body>
+<section class="kort">
+  <h1>Test hand_firma</h1>
+  <p>Denne siden tester direkte om appen kan lese <code>hand_firma</code>.</p>
+  <button id="testKnapp" type="button">Test hand_firma nå</button>
+  <pre id="resultat" style="white-space:pre-wrap;background:#111;padding:12px;border-radius:8px;"></pre>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/core/config.js"></script>
+<script>
+const out = document.getElementById('resultat');
+function log(x){ out.textContent += x + '\n'; }
+function getClient(){ return window.supabaseClient || window.handSupabase || window.supabaseClientHand || null; }
+document.getElementById('testKnapp').onclick = async () => {
+  out.textContent = '';
+  try {
+    const sb = getClient();
+    log('Supabase-klient: ' + (sb ? 'OK' : 'MANGLER'));
+    if(!sb) return log('Finner ikke supabaseClient. Sjekk ../js/core/config.js');
+    const auth = await sb.auth.getUser();
+    log('Innlogget: ' + (auth?.data?.user?.email || 'nei/ukjent'));
+    const res = await sb.from('hand_firma').select('id,navn,orgnr').order('navn',{ascending:true});
+    if(res.error){ log('FEIL: ' + JSON.stringify(res.error,null,2)); return; }
+    log('Antall firma: ' + (res.data||[]).length);
+    log(JSON.stringify(res.data,null,2));
+  } catch(e) { log('JS-FEIL: ' + (e.stack || e.message || e)); }
+};
+</script>
+</body></html>

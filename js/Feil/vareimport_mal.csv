@@ -1,0 +1,4 @@
+varenr,navn,beskrivelse,innpris,paslag_faktor,pris,lager_antall,minimum_antall,mva_sats
+1001,Sylinder standard,,100,3,300,20,5,25
+1002,Muffe 75 mm,,20,3,60,50,10,25
+1003,Tape standard,,50,3,150,10,2,25

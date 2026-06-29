@@ -3,140 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sett nytt passord</title>
-<style>
-body{background:#151819;color:#f3f4f6;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
-.kort{background:#171a1b;padding:32px;border-radius:16px;width:420px;max-width:92%;box-shadow:0 12px 35px rgba(0,0,0,.35)}
-label{display:block;margin-top:14px;color:#cbd5e1}
-input,button{box-sizing:border-box;width:100%;padding:13px;border-radius:10px;margin-top:6px}
-input{border:1px solid #334155;background:#0f1112;color:white}
-button{border:0;background:#1f6feb;color:white;font-size:17px;cursor:pointer}
-.melding{margin-top:14px;color:#86efac}.feil{color:#fca5a5}
-a{display:block;color:#cbd5e1;margin-top:16px}
-</style>
+<title>Sender videre...</title>
 </head>
-<body>
-<div class="kort">
-<h1>Sett nytt passord</h1>
-<p id="intro">Skriv nytt passord.</p>
-
-<label for="nyttPassord">Nytt passord</label>
-<input id="nyttPassord" type="password" autocomplete="new-password">
-
-<label for="gjentaPassord">Gjenta passord</label>
-<input id="gjentaPassord" type="password" autocomplete="new-password">
-
-<button id="lagrePassordKnapp" type="button">Lagre nytt passord</button>
-<div id="melding" class="melding"></div>
-<a id="tilbakeLink" href="./behandler-login.html">Tilbake til innlogging</a>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<body style="background:#151819;color:white;font-family:Arial;padding:30px">
+Sender deg videre til Håndverker passordside...
 <script>
-(function(){
-  const apps = {
-    behandler: {
-      navn: "Dyrebehandler",
-      config: "js/behandler/config.js",
-      login: "behandler-login.html"
-    },
-    hovslager: {
-      navn: "Hovslager",
-      config: "js/hovslager/config.js",
-      login: "hovslager-login.html"
-    },
-    time: {
-      navn: "Timeregistrering",
-      config: "js/time/config.js",
-      login: "timeregistrering-login.html"
-    }
-  };
-
-  const params = new URLSearchParams(window.location.search);
-  const appKey = params.get("app") || localStorage.getItem("rettilommaValgtModul") || "behandler";
-  const app = apps[appKey] || apps.behandler;
-  const melding = document.getElementById("melding");
-  const base = window.location.pathname.replace(/\/[^/]*$/, "/");
-
-  document.getElementById("intro").textContent = "Magic Link er åpnet for " + app.navn + ". Skriv nytt passord.";
-  document.getElementById("tilbakeLink").href = base + app.login;
-  document.getElementById("tilbakeLink").textContent = "Tilbake til " + app.navn;
-
-  function vis(tekst, feil){
-    melding.textContent = tekst || "";
-    melding.className = feil ? "melding feil" : "melding";
-  }
-
-  function lastConfig(){
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = base + app.config + "?v=" + Date.now();
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Fant ikke config: " + script.src));
-      document.head.appendChild(script);
-    });
-  }
-
-  async function ventPaSession(){
-    if(!window.supabaseClient || !window.supabaseClient.auth){
-      vis("Supabase er ikke lastet for " + app.navn + ".", true);
-      return null;
-    }
-
-    for(let i=0; i<12; i++){
-      const { data } = await window.supabaseClient.auth.getSession();
-      if(data && data.session) return data.session;
-      await new Promise(r => setTimeout(r, 250));
-    }
-
-    return null;
-  }
-
-  async function lagre(){
-    const p1 = document.getElementById("nyttPassord").value || "";
-    const p2 = document.getElementById("gjentaPassord").value || "";
-
-    if(p1.length < 6){
-      vis("Passord må være minst 6 tegn.", true);
-      return;
-    }
-
-    if(p1 !== p2){
-      vis("Passordene er ikke like.", true);
-      return;
-    }
-
-    vis("Sjekker Magic Link...");
-    const session = await ventPaSession();
-    if(!session){
-      vis("Fant ikke aktiv Magic Link-session. Send en ny lenke og åpne den nyeste e-posten med en gang.", true);
-      return;
-    }
-
-    vis("Lagrer nytt passord...");
-    const { error } = await window.supabaseClient.auth.updateUser({ password: p1 });
-    if(error){
-      vis("Feil: " + error.message, true);
-      return;
-    }
-
-    vis("Passordet er lagret. Du kan logge inn med nytt passord nå.");
-    setTimeout(function(){
-      window.location.href = base + app.login;
-    }, 1800);
-  }
-
-  document.getElementById("lagrePassordKnapp").addEventListener("click", lagre);
-
-  lastConfig()
-    .then(async function(){
-      const session = await ventPaSession();
-      if(session) vis("Magic Link er aktiv. Skriv nytt passord og trykk Lagre.");
-      else vis("Venter på gyldig Magic Link. Hvis du åpnet en gammel lenke, send en ny.", true);
-    })
-    .catch(function(e){
-      vis(e.message, true);
-    });
+(function () {
+  var target = "http://localhost/rettilomma/handverker/reset.html";
+  var rest = window.location.hash || window.location.search || "";
+  window.location.replace(target + rest);
 })();
 </script>
 </body>

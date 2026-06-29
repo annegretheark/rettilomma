@@ -1,0 +1,85 @@
+<section id="tilbudSide" class="admin-only kort skjult">
+      <h2>Tilbud</h2>
+      <p class="info">Lag tilbud til kunde. Tilbud bruker nye tabellnavn: <code>hand_tilbud</code> og <code>hand_tilbud_linje</code>.</p>
+
+      <input id="tilbudId" type="hidden">
+
+      <div class="rad">
+        <div>
+          <label for="tilbudNr">Tilbudsnummer</label>
+          <input id="tilbudNr" placeholder="F.eks. T-2026-001">
+        </div>
+        <div>
+          <label for="tilbudDato">Dato</label>
+          <input id="tilbudDato" type="date">
+        </div>
+        <div>
+          <label for="tilbudGyldigTil">Gyldig til</label>
+          <input id="tilbudGyldigTil" type="date">
+        </div>
+        <div>
+          <label for="tilbudStatus">Status</label>
+          <select id="tilbudStatus">
+            <option value="utkast">Utkast</option>
+            <option value="sendt">Sendt</option>
+            <option value="akseptert">Akseptert</option>
+            <option value="avslatt">Avslått</option>
+            <option value="utlopt">Utløpt</option>
+            <option value="konvertert_til_prosjekt">Konvertert til prosjekt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="tilbudKundeValg">Kunde</label>
+          <select id="tilbudKundeValg"><option value="">Velg kunde</option></select>
+        </div>
+        <div>
+          <label for="tilbudProsjektValg">Prosjekt</label>
+          <select id="tilbudProsjektValg"><option value="">Ingen / velg prosjekt</option></select>
+        </div>
+      </div>
+
+      <label for="tilbudNotat">Notat / tekst på tilbudet</label>
+      <textarea id="tilbudNotat" placeholder="Kort beskrivelse av arbeidet"></textarea>
+
+      <hr>
+      <h3>Tilbudslinjer</h3>
+      <div class="rad">
+        <div>
+          <label for="tilbudLinjeTekst">Tekst</label>
+          <input id="tilbudLinjeTekst" placeholder="Arbeid, materiell eller fastpris">
+        </div>
+        <div>
+          <label for="tilbudLinjeAntall">Antall</label>
+          <input id="tilbudLinjeAntall" type="number" step="0.01" value="1">
+        </div>
+        <div>
+          <label for="tilbudLinjeEnhet">Enhet</label>
+          <input id="tilbudLinjeEnhet" value="stk">
+        </div>
+        <div>
+          <label for="tilbudLinjePris">Pris eks. mva</label>
+          <input id="tilbudLinjePris" type="number" step="0.01" value="0">
+        </div>
+        <div>
+          <label for="tilbudLinjeMva">MVA %</label>
+          <input id="tilbudLinjeMva" type="number" step="0.01" value="25">
+        </div>
+      </div>
+
+      <button id="leggTilTilbudLinjeKnapp" type="button">Legg til linje</button>
+      <div id="tilbudLinjeListe"></div>
+      <div id="tilbudSummer"></div>
+
+      <button id="lagreTilbudKnapp" type="button">Lagre tilbud</button>
+      <button id="nyttTilbudKnapp" type="button" class="secondary">Nytt / tøm skjema</button>
+      <button id="oppdaterTilbudKnapp" type="button" class="secondary">Oppdater liste</button>
+
+      <div id="tilbudMelding" class="melding"></div>
+
+      <hr>
+      <h3>Tilbudsliste</h3>
+      <div id="tilbudListe"></div>
+    </section>

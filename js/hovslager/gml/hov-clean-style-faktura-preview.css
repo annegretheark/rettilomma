@@ -1,0 +1,78 @@
+:root{--bg:#0f172a;--card:#111827;--soft:#1f2937;--text:#f8fafc;--muted:#94a3b8;--accent:#d6a84f;--danger:#ef4444;--ok:#22c55e;--border:#334155}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#0f172a,#111827);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{max-width:1200px;margin:0 auto;padding:18px}.card{background:rgba(17,24,39,.94);border:1px solid var(--border);border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}h1,h2,h3{margin:.2rem 0 .8rem}.muted{color:var(--muted)}.hidden{display:none!important}.login-card{max-width:430px;margin:8vh auto}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center}.brand{display:flex;gap:14px;align-items:center}.logo,.logo-fallback{width:64px;height:64px;border-radius:14px;object-fit:contain;background:#fff}.logo-fallback{display:grid;place-items:center;color:#111827;font-weight:800;font-size:22px}.userline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pill{background:var(--soft);padding:8px 12px;border-radius:999px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:8px}button{border:0;border-radius:10px;background:var(--accent);color:#111827;font-weight:700;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.08)}button.secondary{background:#334155;color:var(--text)}button.danger{background:var(--danger);color:white}label{display:block;font-size:14px;color:var(--muted);margin:8px 0}input,select,textarea{width:100%;margin-top:4px;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0b1220;color:var(--text)}textarea{min-height:80px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.formgrid>label{grid-column:span 4}.formgrid>.wide{grid-column:span 8}.col-3{grid-column:span 3}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.msg{border:1px solid var(--border);padding:10px;border-radius:10px;margin:10px 0;background:#0b1220}.msg.ok{border-color:var(--ok)}.msg.err{border-color:var(--danger);color:#fecaca}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--border);padding:9px;text-align:left}th{color:#f8fafc;background:#0b1220}.logo-box{border:1px dashed var(--border);border-radius:14px;padding:14px;margin-top:14px}.logo-preview{max-width:220px;max-height:110px;background:white;border-radius:10px;padding:8px;margin:8px 0}@media(max-width:800px){.topbar{display:block}.formgrid>label,.formgrid>.wide,.col-3{grid-column:span 12}.tabs button{flex:1 1 auto}}
+
+.click-row{cursor:pointer;transition:background .15s ease,outline .15s ease}
+.click-row:hover{background:rgba(214,168,79,.12)}
+.selected-row{background:rgba(214,168,79,.2);outline:1px solid var(--accent)}
+input[type="checkbox"]{width:auto;min-width:22px;height:22px;vertical-align:middle}
+
+.image-preview{grid-column:span 8;border:1px dashed var(--border);border-radius:14px;padding:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#0b1220}.thumb{width:110px;height:82px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#fff}.thumb.small{width:54px;height:42px}
+
+.timeline-photo{margin:0;display:flex;flex-direction:column;gap:5px;align-items:center}.timeline-photo figcaption{font-size:12px;color:var(--muted)}
+
+.locked-field{opacity:.75;border-color:var(--accent);background:#111827}
+.lock-note{font-size:12px;color:var(--muted);margin-top:4px}
+
+.small-btn{padding:6px 10px;border-radius:8px;font-size:13px}
+
+
+.quick-job{background:rgba(31,41,55,.78);margin-top:12px}.quick-job textarea{min-height:110px}.quick-job label{max-width:900px}.quick-job button:first-child{font-size:16px}.quick-job .msg{max-width:900px}
+
+code{background:#0b1220;border:1px solid var(--border);border-radius:6px;padding:2px 5px;color:#f8fafc}
+#admin .soft-card{margin-top:12px}
+#admin table code{font-size:12px;word-break:break-all}
+
+
+/* FIX 2026-06-29: tydelige knappefarger etter backup/tale-merge */
+button,
+button[type="button"],
+button[type="submit"],
+.tabs button,
+.actions button,
+.small-btn {
+  background: var(--accent) !important;
+  color: #111827 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+button.secondary,
+.actions button.secondary,
+.tabs button.secondary {
+  background: #334155 !important;
+  color: var(--text) !important;
+}
+button.danger,
+.actions button.danger {
+  background: var(--danger) !important;
+  color: #ffffff !important;
+}
+button:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+}
+
+
+/* HovslagerSystem 2.3 fakturaoversikt */
+#fakturaList .actions{margin:0;display:flex;gap:6px;flex-wrap:wrap}
+#fakturaList .pill{display:inline-block;background:#334155;color:#f8fafc;border-radius:999px;padding:4px 8px;font-size:12px}
+
+
+/* FIX 2026-06-29: fakturaknapper på én linje og forhåndsvisning */
+#fakturaList td.actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+  white-space:nowrap;
+  min-width:max-content;
+}
+#fakturaList .small-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  margin:0;
+}
+#fakturaList table{
+  table-layout:auto;
+}
