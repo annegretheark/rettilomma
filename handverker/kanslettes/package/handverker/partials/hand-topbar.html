@@ -1,0 +1,47 @@
+
+
+    <div class="kort">
+      <h1 id="handSideOverskrift">Timeregistrering</h1>
+
+      <div id="innloggetBrukerBoks" class="innlogget-bruker-boks">
+        Innlogget bruker: <strong id="innloggetBrukerVisning">Ikke innlogget</strong>
+        <span id="innloggetRolleVisning"></span>
+      </div>
+
+      <div class="topplinje">
+        <button id="visTimerKnapp" type="button">Timer</button>
+        <button id="visJobberKnapp" type="button">Jobber</button>
+        <button id="visFravaerKnapp" type="button">Fravær / Flexi</button>
+        <button id="sysadminModeKnapp" class="systemadmin-only sysadmin-entry skjult" type="button" style="display:none; background:#7c3aed;">Sysadm</button>
+
+        <button id="visBilerKnapp" data-modul="biler" data-role="ansatt-bil" type="button">Min bil / fyll lager</button>
+
+        <div class="meny-gruppe admin-only" id="adminMenyGruppe">
+          <button id="adminMenyKnapp" type="button" aria-haspopup="true" aria-expanded="false">Admin ▼</button>
+          <div class="meny-panel" id="adminMenyPanel">
+            <div class="meny-overskrift">Kunder og salg</div>
+            <button id="visKundeKnapp" type="button">Kunder</button>
+            <button id="visTilbudKnapp" type="button">Tilbud</button>
+            <button id="visFakturaKnapp" data-modul="faktura" type="button">Faktura</button>
+
+            <div class="meny-overskrift">Drift</div>
+            <button id="visAdminVarerKnapp" data-modul="varer" type="button" data-admin-target="varer">Lager / Varer</button>
+            <button id="visAdminBilerKnapp" data-modul="biler" type="button" data-admin-target="biler">Biler</button>
+            <button id="visBilBestillingerKnapp" data-modul="bilbestillinger" type="button" data-admin-target="bestillinger">Bestillinger</button>
+            <button id="visLonnKnapp" data-modul="lonn" type="button">Lønn</button>
+            <button id="visBilBestillingerKnapp" data-modul="bilbestillinger" type="button">Bestillinger</button>
+
+            <div class="meny-overskrift">Firma og ansatte</div>
+            <button id="visAnsattKnapp" type="button">Ansatte</button>
+            <button id="visFirmaKnapp" type="button">Firma</button>
+
+            <div class="meny-overskrift">System</div>
+            <button id="visBackupKnapp" type="button">Backup/Restore</button>
+            <button id="visTestKnapp" type="button">Testpanel</button>
+            <button id="visModulerKnapp" class="systemadmin-only" type="button">⚙️ Moduler</button>
+          </div>
+        </div>
+
+        <a id="loggUtKnapp" href="./logout.html" role="button" class="secondary" style="margin-left:auto; display:inline-block; text-decoration:none; background:#444; color:#fff; padding:10px 16px; border-radius:8px;" onclick="return window.handLoggUtHardt ? window.handLoggUtHardt(event) : true;">Logg ut</a>
+</div>
+    </div>

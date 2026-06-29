@@ -1,0 +1,61 @@
+<section id="fravaerSide" class="kort skjult">
+      <h2>Frav&#230;r / Flexi</h2>
+      <p class="info">Ansatte kan registrere frav&#230;r og avspasering. Admin kan godkjenne og se alle.</p>
+
+      <div class="rad admin-only">
+        <div>
+          <label for="fravaerAnsattValg">Ansatt</label>
+          <select id="fravaerAnsattValg">
+            <option value="">Meg selv / valgt ansatt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rad">
+        <div>
+          <label for="fravaerType">Type</label>
+          <select id="fravaerType">
+            <option value="Ferie">Ferie</option>
+            <option value="Egenmelding">Egenmelding</option>
+            <option value="Sykemelding">Sykemelding</option>
+            <option value="Permisjon med l&#248;nn">Permisjon med l&#248;nn</option>
+            <option value="Permisjon uten l&#248;nn">Permisjon uten l&#248;nn</option>
+            <option value="Avspasering">Avspasering</option>
+            <option value="Annet">Annet</option>
+          </select>
+        </div>
+        <div>
+          <label for="fravaerFraDato">Fra dato</label>
+          <input id="fravaerFraDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTilDato">Til dato</label>
+          <input id="fravaerTilDato" type="date">
+        </div>
+        <div>
+          <label for="fravaerTimerPrDag">Timer pr dag</label>
+          <input id="fravaerTimerPrDag" type="number" step="0.25" value="7.5">
+        </div>
+      </div>
+
+      <label for="fravaerKommentar">Kommentar</label>
+      <textarea id="fravaerKommentar" placeholder="F.eks. ferieuke, egenmelding, avspasering"></textarea>
+
+      <button id="lagreFravaerKnapp" type="button">Send til godkjenning</button>
+      <button id="oppdaterFravaerKnapp" type="button" class="secondary">Oppdater</button>
+
+      <div id="fravaerMelding" class="melding"></div>
+
+      <hr>
+
+      <h3>Flexisaldo / timebank</h3>
+      <div id="flexiSaldo"></div>
+
+      <h3>Mine registreringer</h3>
+      <div id="fravaerListe"></div>
+
+      <div class="admin-only">
+        <h3>Til godkjenning</h3>
+        <div id="fravaerGodkjenning"></div>
+      </div>
+    </section>

@@ -1,0 +1,7 @@
+navn,type,pris,beskrivelse
+Konsultasjon,fastpris,1200,Standard konsultasjon
+Timearbeid,timepris,1500,Arbeid per time
+Kjøring pr km,kmpris,5.30,Standard km-pris
+Vaksine hund,fastpris,650,Vaksine
+Ormekur,vare,180,Medisin/vare
+Bandasjemateriell,vare,95,Forbruksmateriell

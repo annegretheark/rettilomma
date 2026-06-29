@@ -39,6 +39,63 @@
     throw new Error("Supabase er ikke klar.");
   }
 
+  function aktivBehandlerId() {
+    return window.behInnloggetBehandlerId || window.behInnloggetBehandler?.id || "";
+  }
+
+  async function finnInnloggetBehandlerHvisMangler() {
+    if (window.behErSystemeier || aktivBehandlerId()) return aktivBehandlerId();
+    const c = await client();
+    const sessionRes = await c.auth.getSession();
+    const user = sessionRes?.data?.session?.user || null;
+    const epost = user?.email || "";
+    if (!epost) return "";
+
+    let r = null;
+    if (user.id) {
+      r = await c.from("beh_behandlere")
+        .select("id,navn,epost,rolle,aktiv,auth_user_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+    }
+
+    if ((!r || r.error || !r.data) && epost) {
+      r = await c.from("beh_behandlere")
+        .select("id,navn,epost,rolle,aktiv,auth_user_id")
+        .ilike("epost", epost)
+        .maybeSingle();
+    }
+
+    if (r?.data) {
+      window.behInnloggetBehandler = r.data;
+      window.behInnloggetBehandlerId = r.data.id || "";
+      const rolle = String(r.data.rolle || "").toLowerCase();
+      if (rolle === "systemeier" || rolle === "admin") window.behErSystemeier = true;
+    }
+
+    return aktivBehandlerId();
+  }
+
+  function medBehandler(rad) {
+    const id = aktivBehandlerId();
+    return id ? { ...rad, behandler_id: id } : rad;
+  }
+
+  function skalFiltrereEgneData() {
+    return !window.behErSystemeier && !!aktivBehandlerId();
+  }
+
+  function egneRader(rader) {
+    if (!skalFiltrereEgneData()) return rader || [];
+    const id = String(aktivBehandlerId());
+    return (rader || []).filter(rad => !rad.behandler_id || String(rad.behandler_id) === id);
+  }
+
+  function leggBehandlerFilter(query) {
+    if (!skalFiltrereEgneData()) return query;
+    return query.eq("behandler_id", aktivBehandlerId());
+  }
+
   function tryggFilnavn(navn) {
     return String(navn || "bilde.jpg")
       .replaceAll(" ", "_")
@@ -85,7 +142,7 @@
         bildetekst: tekst || "Bilde fra behandling"
       };
 
-      const ins = await c.from("beh_behandling_bilder").insert([row]);
+      const ins = await c.from("beh_behandling_bilder").insert([medBehandler(row)]);
       if (ins.error) throw ins.error;
       antall += 1;
     }
@@ -187,7 +244,7 @@
     const mva = eksMva * 0.25;
     const total = eksMva + mva;
 
-    const rad = {
+    const rad = medBehandler({
       kunde_id: kundeId,
       hest_id: hestId,
       dato,
@@ -200,7 +257,7 @@
       mva,
       total,
       fakturert: false
-    };
+    });
 
     melding("behandlingMelding", redigerId ? "Oppdaterer behandling ..." : "Lagrer behandling ...", false);
     const res = redigerId
@@ -320,19 +377,19 @@
     const c = await client();
     panel.innerHTML = '<div class="info">Henter bilder ...</div>';
 
-    const hestRes = await c.from("beh_hester").select("id,navn,bilde_url").eq("id", hestId).maybeSingle();
+    const hestRes = await leggBehandlerFilter(c.from("beh_hester").select("id,navn,bilde_url,behandler_id")).eq("id", hestId).maybeSingle();
     if (hestRes.error) throw hestRes.error;
 
-    const behRes = await c.from("beh_behandlinger").select("id,dato,behandlingtype").eq("hest_id", hestId).order("dato", { ascending: false });
+    const behRes = await leggBehandlerFilter(c.from("beh_behandlinger").select("id,dato,behandlingtype,behandler_id")).eq("hest_id", hestId).order("dato", { ascending: false });
     if (behRes.error) throw behRes.error;
     const behandlinger = behRes.data || [];
     const ids = behandlinger.map(b => b.id).filter(Boolean);
 
     let bilder = [];
     if (ids.length) {
-      const bRes = await c.from("beh_behandling_bilder")
+      const bRes = await leggBehandlerFilter(c.from("beh_behandling_bilder")
         .select("id,behandling_id,filsti,bilde_url,bildetekst,created_at")
-        .in("behandling_id", ids)
+        .in("behandling_id", ids))
         .order("created_at", { ascending: false });
       if (bRes.error) throw bRes.error;
       bilder = bRes.data || [];
@@ -414,6 +471,120 @@
     else meny.appendChild(knapp);
   }
 
+  function fyllSelectMedRader(select, rader, placeholder) {
+    if (!select) return;
+    const valgt = select.value || "";
+    select.innerHTML = "";
+    const tom = document.createElement("option");
+    tom.value = "";
+    tom.textContent = placeholder;
+    select.appendChild(tom);
+    for (const rad of rader || []) {
+      const opt = document.createElement("option");
+      opt.value = rad.id || "";
+      opt.textContent = rad.navn || "Uten navn";
+      if (rad.kunde_id) opt.dataset.kundeId = rad.kunde_id;
+      select.appendChild(opt);
+    }
+    if (valgt && Array.from(select.options).some(o => String(o.value) === String(valgt))) {
+      select.value = valgt;
+    }
+  }
+
+  function tomEierSelect(select, tekst) {
+    if (!select || window.behErSystemeier) return;
+    select.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = tekst || "Laster egne data ...";
+    select.appendChild(opt);
+  }
+
+  function tomEierLister() {
+    ["hestKunde", "behandlingKunde", "fakturaKunde"].forEach(id => tomEierSelect(el(id), "Laster egne kunder ..."));
+    ["hestVelg", "behandlingHest"].forEach(id => tomEierSelect(el(id), id === "hestVelg" ? "Nytt dyr" : "Laster egne dyr ..."));
+  }
+
+  async function ryddValgForInnloggetBehandler() {
+    if (window.behErSystemeier) return false;
+    const c = await client();
+    let behandlerId = aktivBehandlerId();
+    if (!behandlerId) {
+      tomEierLister();
+      behandlerId = await finnInnloggetBehandlerHvisMangler();
+    }
+    if (!behandlerId) {
+      tomEierLister();
+      return false;
+    }
+
+    const kunderRes = await c.from("beh_kunder")
+      .select("id,navn,behandler_id")
+      .eq("behandler_id", behandlerId)
+      .order("navn", { ascending: true });
+    if (kunderRes.error) {
+      console.warn("Kunne ikke filtrere kundeliste:", kunderRes.error);
+      return false;
+    }
+
+    const hesterRes = await c.from("beh_hester")
+      .select("id,navn,kunde_id,behandler_id")
+      .eq("behandler_id", behandlerId)
+      .order("navn", { ascending: true });
+    if (hesterRes.error) {
+      console.warn("Kunne ikke filtrere dyreliste:", hesterRes.error);
+      return false;
+    }
+
+    const kunder = kunderRes.data || [];
+    const dyr = hesterRes.data || [];
+    window.kunderCache = kunder;
+    window.hesterCache = dyr;
+
+    fyllSelectMedRader(el("hestKunde"), kunder, "Velg kunde");
+    fyllSelectMedRader(el("behandlingKunde"), kunder, "Velg kunde");
+    fyllSelectMedRader(el("fakturaKunde"), kunder, "Velg kunde");
+
+    const hestVelg = el("hestVelg");
+    if (hestVelg) {
+      fyllSelectMedRader(hestVelg, dyr, "Nytt dyr");
+      hestVelg.options[0].textContent = "Nytt dyr";
+    }
+
+    const valgtKunde = el("behandlingKunde")?.value || "";
+    const behandlingDyr = valgtKunde ? dyr.filter(d => String(d.kunde_id) === String(valgtKunde)) : dyr;
+    fyllSelectMedRader(el("behandlingHest"), behandlingDyr, "Velg dyr");
+
+    const hestKunde = el("hestKunde")?.value || "";
+    if (hestKunde && !kunder.some(k => String(k.id) === String(hestKunde))) {
+      el("hestKunde").value = "";
+    }
+
+    return true;
+  }
+
+  function startEierVakt() {
+    if (window.behErSystemeier) return;
+    tomEierLister();
+    const forsok = [100, 300, 700, 1200, 2000, 3500, 6000];
+    forsok.forEach(ms => setTimeout(() => {
+      ryddValgForInnloggetBehandler().catch(e => console.warn("Eierfilter feilet:", e));
+    }, ms));
+
+    if (!window.behEierVaktInterval) {
+      let runder = 0;
+      window.behEierVaktInterval = setInterval(() => {
+        runder += 1;
+        if (window.behErSystemeier || runder > 40) {
+          clearInterval(window.behEierVaktInterval);
+          window.behEierVaktInterval = null;
+          return;
+        }
+        ryddValgForInnloggetBehandler().catch(e => console.warn("Eierfilter feilet:", e));
+      }, 500);
+    }
+  }
+
   async function hentFirma() {
     try {
       if (typeof window.hentFirmaData === "function") {
@@ -426,7 +597,7 @@
 
     try {
       const c = await client();
-      const r = await c.from("beh_firma").select("*").limit(1).maybeSingle();
+      const r = await leggBehandlerFilter(c.from("beh_firma").select("*")).limit(1).maybeSingle();
       if (!r.error && r.data) return r.data;
     } catch (e) {
       console.warn("Kunne ikke hente firma:", e);
@@ -449,7 +620,7 @@
 
     melding("fakturaMelding", "Lager faktura ...", false);
 
-    const kundeRes = await c.from("beh_kunder").select("*").eq("id", kundeId).maybeSingle();
+    const kundeRes = await leggBehandlerFilter(c.from("beh_kunder").select("*")).eq("id", kundeId).maybeSingle();
     if (kundeRes.error) throw kundeRes.error;
     const kunde = kundeRes.data;
     if (!kunde) {
@@ -457,8 +628,8 @@
       return false;
     }
 
-    const behRes = await c.from("beh_behandlinger")
-      .select("id,dato,behandlingtype,beskrivelse,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,fakturanr,hest_id,hester:beh_hester(navn,kunde_id)")
+    const behRes = await leggBehandlerFilter(c.from("beh_behandlinger")
+      .select("id,dato,behandlingtype,beskrivelse,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,fakturanr,hest_id,behandler_id,hester:beh_hester(navn,kunde_id)"))
       .or("fakturert.is.false,fakturert.is.null")
       .order("dato", { ascending: true });
     if (behRes.error) throw behRes.error;
@@ -549,7 +720,7 @@
       try { window.tegnBrevfotAlleSiderPdf(doc, firma); } catch (e) { console.warn(e); }
     }
 
-    const fakturaRes = await c.from("beh_fakturaer").insert([{
+    const fakturaRes = await c.from("beh_fakturaer").insert([medBehandler({
       fakturanr,
       kunde_id: kundeId,
       dato: fakturaDato,
@@ -557,7 +728,7 @@
       mva,
       inkl_mva: inklMva,
       betalingsstatus: "ubetalt"
-    }]);
+    })]);
     if (fakturaRes.error) throw fakturaRes.error;
 
     const ids = behandlinger.map(b => b.id).filter(Boolean);
@@ -589,14 +760,16 @@
 
   async function hentFakturaOversiktTrygt() {
     const c = await client();
-    let r = await c.from("beh_fakturaer")
+    let r = await leggBehandlerFilter(c.from("beh_fakturaer")
       .select("*, kunder:beh_kunder(navn)")
+    )
       .order("dato", { ascending: false })
       .order("fakturanr", { ascending: false });
 
     if (r.error && String(r.error.message || "").includes("dato")) {
-      r = await c.from("beh_fakturaer")
+      r = await leggBehandlerFilter(c.from("beh_fakturaer")
         .select("*, kunder:beh_kunder(navn)")
+      )
         .order("created_at", { ascending: false })
         .order("fakturanr", { ascending: false });
     }
@@ -611,7 +784,55 @@
       dato: f.dato || (f.created_at ? String(f.created_at).slice(0, 10) : "")
     }));
 
+    const manglendeNullFakturaer = await hentManglendeNullFakturaer(data);
+    data.push(...manglendeNullFakturaer);
+    data.sort((a, b) => String(b.dato || b.created_at || "").localeCompare(String(a.dato || a.created_at || "")));
+
     tegnFakturaOversiktTrygt(data);
+    fyllKreditFakturaValg(data);
+  }
+
+  async function hentManglendeNullFakturaer(fakturaer) {
+    const c = await client();
+    const eksisterendeNr = new Set((fakturaer || []).map(f => String(f.fakturanr || "")).filter(Boolean));
+    const r = await leggBehandlerFilter(c.from("beh_behandlinger")
+      .select("id,dato,behandlingtype,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,fakturanr,kunde_id,behandler_id,kunder:beh_kunder(navn)"))
+      .eq("fakturert", true)
+      .order("dato", { ascending: false });
+
+    if (r.error) {
+      console.warn("Kunne ikke hente 0-fakturerte behandlinger:", r.error);
+      return [];
+    }
+
+    const kreditertNullMap = await hentKrediterteNullBehandlingerMap(r.data || []);
+    return (r.data || [])
+      .filter(b => {
+        const total = num(b.total) || (num(b.arbeid_belop) + num(b.varer_belop) + (num(b.km) * num(b.km_pris)));
+        const fakturanr = String(b.fakturanr || "");
+        const nr = fakturanr.toLowerCase();
+        const erKreditert = nr.includes("kreditert") || nr.startsWith("kred") || kreditertNullMap.has(String(b.id));
+        return total === 0 && !erKreditert && (!fakturanr || !eksisterendeNr.has(fakturanr));
+      })
+      .map(b => {
+        const fakturanr = b.fakturanr || ("BEH-NULL-" + String(b.id || "").slice(0, 8));
+        return {
+          id: "behandling-" + b.id,
+          fakturanr,
+          kunde_id: b.kunde_id,
+          eks_mva: 0,
+          mva: 0,
+          inkl_mva: 0,
+          betalingsstatus: "ubetalt",
+          kreditert: false,
+          dato: b.dato || "",
+          created_at: b.dato || "",
+          kunder: b.kunder || { navn: "Uten kunde" },
+          behandler_id: b.behandler_id,
+          _fraBehandling: true,
+          _behandlingId: b.id
+        };
+      });
   }
 
   async function hentBildeAntallMap(behandlinger) {
@@ -620,7 +841,7 @@
     if (!ids.length) return map;
     try {
       const c = await client();
-      const r = await c.from("beh_behandling_bilder").select("behandling_id").in("behandling_id", ids);
+      const r = await leggBehandlerFilter(c.from("beh_behandling_bilder").select("behandling_id,behandler_id")).in("behandling_id", ids);
       if (r.error) throw r.error;
       (r.data || []).forEach(b => {
         const key = String(b.behandling_id || "");
@@ -628,6 +849,37 @@
       });
     } catch (e) {
       console.warn("Kunne ikke hente bildeantall:", e);
+    }
+    return map;
+  }
+
+  async function hentKrediterteNullBehandlingerMap(behandlinger) {
+    const map = new Map();
+    const prefixTilId = new Map();
+    const fakturanrListe = (behandlinger || [])
+      .map(b => {
+        const id = String(b.id || "");
+        if (!id) return "";
+        const fakturanr = "BEH-NULL-" + id.slice(0, 8);
+        prefixTilId.set(fakturanr, id);
+        return fakturanr;
+      })
+      .filter(Boolean);
+
+    if (!fakturanrListe.length) return map;
+
+    try {
+      const c = await client();
+      const r = await leggBehandlerFilter(c.from("beh_kreditnotaer")
+        .select("fakturanr,kreditnotanr,behandler_id"))
+        .in("fakturanr", fakturanrListe);
+      if (r.error) throw r.error;
+      (r.data || []).forEach(k => {
+        const id = prefixTilId.get(String(k.fakturanr || ""));
+        if (id) map.set(id, k.kreditnotanr || true);
+      });
+    } catch (e) {
+      console.warn("Kunne ikke hente kreditnotaer for 0-faktura:", e);
     }
     return map;
   }
@@ -649,6 +901,48 @@
     return false;
   }
 
+  async function krediterNullBehandling(behandlingId, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
+    if (!behandlingId) return false;
+
+    const c = await client();
+    const r = await leggBehandlerFilter(c.from("beh_behandlinger")
+      .select("id,dato,kunde_id,behandler_id,kunder:beh_kunder(navn)"))
+      .eq("id", behandlingId)
+      .maybeSingle();
+
+    if (r.error) {
+      alert("Kunne ikke hente behandlingen: " + r.error.message);
+      return false;
+    }
+    if (!r.data) {
+      alert("Fant ikke behandlingen.");
+      return false;
+    }
+
+    const fakturanr = "BEH-NULL-" + String(r.data.id || "").slice(0, 8);
+    window.behFeatureFakturaer = [
+      {
+        fakturanr,
+        kunde_id: r.data.kunde_id,
+        eks_mva: 0,
+        mva: 0,
+        inkl_mva: 0,
+        dato: r.data.dato || "",
+        kunder: r.data.kunder || { navn: "Uten kunde" },
+        _fraBehandling: true,
+        _behandlingId: r.data.id
+      },
+      ...(window.behFeatureFakturaer || []).filter(f => String(f.fakturanr || "") !== fakturanr)
+    ];
+
+    return krediterFaktura(fakturanr, "Kreditert 0-faktura");
+  }
+
   function kortDato(v) {
     const s = String(v || "").slice(0, 10);
     if (s.length === 10 && s.includes("-")) {
@@ -663,8 +957,8 @@
     const liste = el("behandlingListe");
     if (!liste) return;
     const c = await client();
-    const r = await c.from("beh_behandlinger")
-      .select("id,dato,behandlingtype,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,fakturanr,kunde_id,hest_id,kunder:beh_kunder(navn),hester:beh_hester(navn,kunde_id)")
+    const r = await leggBehandlerFilter(c.from("beh_behandlinger")
+      .select("id,dato,behandlingtype,arbeid_belop,varer_belop,km,km_pris,mva,total,fakturert,fakturanr,kunde_id,hest_id,behandler_id,kunder:beh_kunder(navn),hester:beh_hester(navn,kunde_id)"))
       .order("dato", { ascending: false });
 
     if (r.error) {
@@ -674,8 +968,14 @@
 
     const data = r.data || [];
     const bildeMap = await hentBildeAntallMap(data);
-    const ikkeFakturert = data.filter(b => !b.fakturert);
-    const fakturert = data.filter(b => b.fakturert);
+    const kreditertNullMap = await hentKrediterteNullBehandlingerMap(data);
+    const erBehandlingKreditert = b => {
+      const fakturanrTekst = String(b.fakturanr || "");
+      const nr = fakturanrTekst.toLowerCase();
+      return nr.includes("kreditert") || nr.startsWith("kred") || kreditertNullMap.has(String(b.id));
+    };
+    const ikkeFakturert = data.filter(b => !b.fakturert && !erBehandlingKreditert(b));
+    const fakturert = data.filter(b => b.fakturert && !erBehandlingKreditert(b));
     const omsetning = data.reduce((sum, b) => sum + num(b.total), 0);
 
     if (el("antallUfatturerte")) el("antallUfatturerte").textContent = ikkeFakturert.length;
@@ -688,28 +988,32 @@
     }
 
     liste.innerHTML = `
-      <div style="display:grid;gap:2px;">
+      <div style="display:grid;gap:3px;">
         ${data.map(b => {
-          const status = b.fakturert ? "Fakturert" : "U";
-          const statusFarge = b.fakturert ? "#14532d" : "#713f12";
+          const fakturanrTekst = String(b.fakturanr || "");
+          const erKreditert = erBehandlingKreditert(b);
+          const status = erKreditert ? "Kreditert" : (b.fakturert ? "Fakturert" : "U");
+          const statusFarge = erKreditert ? "#7f1d1d" : (b.fakturert ? "#14532d" : "#713f12");
           const kundeId = b.kunde_id || b.hesters?.kunde_id || "";
           const total = num(b.total) || (num(b.arbeid_belop) + num(b.varer_belop) + (num(b.km) * num(b.km_pris)));
           const belop = kr(total).replace(",00", "");
+          const kanKreditereNull = b.fakturert && total === 0 && !erKreditert;
           return `
             <div
               data-behandling-id="${esc(b.id)}"
               onclick="window.visBehBehandlingDetalj && window.visBehBehandlingDetalj('${esc(b.id)}')"
-              style="cursor:pointer;border-bottom:1px solid #374151;display:grid;grid-template-columns:50px minmax(46px,.7fr) minmax(66px,1fr) minmax(58px,.9fr) 56px 26px auto;gap:3px;align-items:center;padding:3px 0;font-size:10px;line-height:1.05;"
+              style="cursor:pointer;border-bottom:1px solid #374151;display:grid;grid-template-columns:58px minmax(56px,.75fr) minmax(76px,1fr) minmax(66px,.9fr) 64px 30px auto;gap:4px;align-items:center;padding:5px 0;font-size:12px;line-height:1.15;"
             >
-              <span style="white-space:nowrap;font-size:9px;">${esc(kortDato(b.dato))}</span>
+              <span style="white-space:nowrap;font-size:11px;">${esc(kortDato(b.dato))}</span>
               <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.hesters?.navn || "")}</span>
               <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.kunder?.navn || "")}</span>
               <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.behandlingtype || "")}</span>
               <span style="text-align:right;white-space:nowrap;font-weight:700;">${belop}</span>
               <span style="white-space:nowrap;text-align:center;">📷${bildeMap.get(String(b.id)) || 0}</span>
               <span style="display:flex;gap:3px;justify-content:flex-end;align-items:center;white-space:nowrap;">
-                <span title="${esc(b.fakturanr || status)}" style="background:${statusFarge};color:#fff;border-radius:999px;padding:2px 4px;font-size:9px;max-width:54px;overflow:hidden;text-overflow:ellipsis;">${esc(status)}</span>
-                ${b.fakturert ? "" : `<button type="button" class="secondary" style="padding:3px 5px;font-size:9px;line-height:1;width:auto;min-height:0;" onclick="return window.behFakturerBehandlingLinje('${esc(kundeId)}', event)">Fakt</button>`}
+                <span title="${esc(b.fakturanr || status)}" style="background:${statusFarge};color:#fff;border-radius:999px;padding:3px 5px;font-size:10px;max-width:68px;overflow:hidden;text-overflow:ellipsis;">${esc(status)}</span>
+                ${kanKreditereNull ? `<button type="button" class="danger" style="padding:4px 6px;font-size:10px;line-height:1;width:auto;min-height:0;" onclick="return window.behKrediterNullBehandling('${esc(b.id)}', event)">Kredit 0</button>` : ""}
+                ${b.fakturert || erKreditert ? "" : `<button type="button" class="secondary" style="padding:4px 6px;font-size:10px;line-height:1;width:auto;min-height:0;" onclick="return window.behFakturerBehandlingLinje('${esc(kundeId)}', event)">Fakt</button>`}
               </span>
             </div>
           `;
@@ -767,6 +1071,36 @@
 
   function finnFaktura(fakturanr) {
     return (window.behFeatureFakturaer || []).find(f => String(f.fakturanr || "") === String(fakturanr || "")) || null;
+  }
+
+  function negativtBelop(v) {
+    const n = Math.abs(num(v));
+    return n ? -n : 0;
+  }
+
+  function fyllKreditFakturaValg(data) {
+    const select = el("kreditFakturaValg");
+    if (!select) return;
+    const valgt = select.value || "";
+    const rader = (data || window.behFeatureFakturaer || []).filter(f => f && !f.kreditert);
+    select.innerHTML = '<option value="">Velg faktura</option>';
+    for (const f of rader) {
+      const opt = document.createElement("option");
+      opt.value = f.fakturanr || "";
+      opt.textContent = `${f.fakturanr || "Uten nr"} - ${f.kunder?.navn || "Uten kunde"} - ${kr(f.inkl_mva)} kr`;
+      select.appendChild(opt);
+    }
+    if (valgt && Array.from(select.options).some(o => o.value === valgt)) select.value = valgt;
+  }
+
+  async function hentFakturaFraBase(fakturanr) {
+    const c = await client();
+    const r = await leggBehandlerFilter(c.from("beh_fakturaer")
+      .select("*, kunder:beh_kunder(navn)"))
+      .eq("fakturanr", fakturanr)
+      .maybeSingle();
+    if (r.error) throw r.error;
+    return r.data || null;
   }
 
   async function settFakturaBetalt(fakturanr) {
@@ -849,47 +1183,92 @@
     return false;
   }
 
-  async function krediterFaktura(fakturanr) {
-    const f = finnFaktura(fakturanr);
-    if (!f) {
-      alert("Fant ikke fakturaen.");
+  async function krediterFaktura(fakturanr, fastGrunn) {
+    const kreditNokkel = String(fakturanr || "");
+    window.behKrediteringAktiv = window.behKrediteringAktiv || {};
+    if (kreditNokkel && window.behKrediteringAktiv[kreditNokkel]) {
+      alert("Denne fakturaen krediteres allerede.");
       return false;
     }
-    const grunn = prompt("Grunn for kreditnota:", "Kreditert faktura");
-    if (grunn === null) return false;
+    if (kreditNokkel) window.behKrediteringAktiv[kreditNokkel] = true;
+
+    let f = finnFaktura(fakturanr);
+    if (!f && fakturanr) {
+      try { f = await hentFakturaFraBase(fakturanr); } catch (e) { console.warn("Kunne ikke hente faktura fra base:", e); }
+    }
+    if (!f) {
+      alert("Fant ikke fakturaen.");
+      if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
+      return false;
+    }
+
+    const c = await client();
+    const status = String(f.betalingsstatus || "").toLowerCase();
+    const nr = String(f.fakturanr || fakturanr || "").toLowerCase();
+    if (f.kreditert || status === "kreditert" || nr.includes("kreditert") || nr.startsWith("kred-")) {
+      alert("Denne fakturaen er allerede kreditert.");
+      if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
+      return false;
+    }
+
+    const finnes = await leggBehandlerFilter(c.from("beh_kreditnotaer")
+      .select("id,kreditnotanr")
+      .eq("fakturanr", f.fakturanr)
+      .limit(1));
+    if (!finnes.error && (finnes.data || []).length) {
+      alert("Denne fakturaen er allerede kreditert.");
+      if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
+      return false;
+    }
+
+    const grunn = fastGrunn !== undefined ? fastGrunn : prompt("Grunn for kreditnota:", "Kreditert faktura");
+    if (grunn === null) {
+      if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
+      return false;
+    }
 
     const kreditnotanr = "KRED-" + Date.now();
-    const c = await client();
-    const kred = await c.from("beh_kreditnotaer").insert([{
+    const eksMva = num(f.eks_mva);
+    const mva = num(f.mva);
+    const inklMva = num(f.inkl_mva);
+    const kred = await c.from("beh_kreditnotaer").insert([medBehandler({
       kreditnotanr,
       fakturanr: f.fakturanr,
       kunde_id: f.kunde_id,
-      eks_mva: -Math.abs(num(f.eks_mva)),
-      mva: -Math.abs(num(f.mva)),
-      inkl_mva: -Math.abs(num(f.inkl_mva)),
+      eks_mva: negativtBelop(eksMva),
+      mva: negativtBelop(mva),
+      inkl_mva: negativtBelop(inklMva),
       grunn: grunn || "Kreditert faktura"
-    }]);
+    })]);
     if (kred.error) {
       alert("Kunne ikke lage kreditnota: " + kred.error.message);
+      if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
       return false;
     }
 
-    const oppdater = await c.from("beh_fakturaer")
-      .update({
-        kreditert: true,
-        kreditert_dato: new Date().toISOString().slice(0, 10),
-        kreditnota_nr: kreditnotanr,
-        betalingsstatus: "kreditert"
-      })
-      .eq("fakturanr", fakturanr);
-    if (oppdater.error) {
-      alert("Kreditnota ble laget, men faktura ble ikke oppdatert: " + oppdater.error.message);
-      return false;
+    if (!f._fraBehandling) {
+      const oppdater = await c.from("beh_fakturaer")
+        .update({
+          kreditert: true,
+          kreditert_dato: new Date().toISOString().slice(0, 10),
+          kreditnota_nr: kreditnotanr,
+          betalingsstatus: "kreditert"
+        })
+        .eq("fakturanr", fakturanr);
+      if (oppdater.error) {
+        alert("Kreditnota ble laget, men faktura ble ikke oppdatert: " + oppdater.error.message);
+        if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
+        return false;
+      }
     }
 
-    const beh = await c.from("beh_behandlinger")
-      .update({ fakturert: false, fakturanr: null })
-      .eq("fakturanr", fakturanr);
+    const beh = f._fraBehandling && f._behandlingId
+      ? await c.from("beh_behandlinger")
+          .update({ fakturert: true, fakturanr: "KREDITERT-" + kreditnotanr })
+          .eq("id", f._behandlingId)
+      : await c.from("beh_behandlinger")
+          .update({ fakturert: false, fakturanr: null })
+          .eq("fakturanr", fakturanr);
     if (beh.error) console.warn("Kunne ikke frigjore behandlinger:", beh.error);
 
     const { jsPDF } = window.jspdf || {};
@@ -902,13 +1281,30 @@
       doc.text("Krediterer faktura: " + String(f.fakturanr || ""), 20, 53);
       doc.text("Kunde: " + String(f.kunder?.navn || ""), 20, 61);
       doc.text("Grunn: " + String(grunn || ""), 20, 69);
-      doc.text("Belop inkl. mva: -" + kr(f.inkl_mva) + " kr", 20, 85);
+      doc.text("Belop inkl. mva: -" + kr(inklMva) + " kr", 20, 85);
       doc.save(kreditnotanr + ".pdf");
     }
 
     melding("fakturaMelding", "Kreditnota laget: " + kreditnotanr, false);
     await hentFakturaOversiktTrygt();
+    if (typeof window.hentBehandlinger === "function") await window.hentBehandlinger();
+    if (kreditNokkel) delete window.behKrediteringAktiv[kreditNokkel];
     return false;
+  }
+
+  async function krediterFraSkjema(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
+    const fakturanr = el("kreditFakturaValg")?.value || "";
+    const grunn = el("kreditGrunn")?.value || "Kreditert faktura";
+    if (!fakturanr) {
+      melding("fakturaMelding", "Velg faktura å kreditere først.", true);
+      return false;
+    }
+    return krediterFaktura(fakturanr, grunn);
   }
 
   function start() {
@@ -919,6 +1315,7 @@
     blankKjoring();
     leggTilHestBildeKnapp();
     leggTilFakturaMenyKnapp();
+    startEierVakt();
 
     const type = el("behandlingType");
     if (type && type.dataset.featurePrisBind !== "1") {
@@ -930,6 +1327,30 @@
 
     const lagre = el("lagreBehandlingKnapp");
     if (lagre) lagre.onclick = lagreBehandlingDirekte;
+
+    const behandlingKunde = el("behandlingKunde");
+    if (behandlingKunde && behandlingKunde.dataset.eierFilterBind !== "1") {
+      behandlingKunde.dataset.eierFilterBind = "1";
+      behandlingKunde.addEventListener("change", () => setTimeout(() => ryddValgForInnloggetBehandler().catch(() => {}), 120), true);
+      behandlingKunde.addEventListener("focus", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+      behandlingKunde.addEventListener("pointerdown", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+    }
+
+    const hestKunde = el("hestKunde");
+    if (hestKunde && hestKunde.dataset.eierFilterBind !== "1") {
+      hestKunde.dataset.eierFilterBind = "1";
+      hestKunde.addEventListener("focus", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+      hestKunde.addEventListener("click", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+      hestKunde.addEventListener("pointerdown", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+    }
+
+    const fakturaKunde = el("fakturaKunde");
+    if (fakturaKunde && fakturaKunde.dataset.eierFilterBind !== "1") {
+      fakturaKunde.dataset.eierFilterBind = "1";
+      fakturaKunde.addEventListener("focus", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+      fakturaKunde.addEventListener("click", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+      fakturaKunde.addEventListener("pointerdown", () => ryddValgForInnloggetBehandler().catch(() => {}), true);
+    }
 
     const fakturaKnapp = el("lagFakturaKnapp");
     if (fakturaKnapp) {
@@ -947,6 +1368,17 @@
       };
     }
 
+    const kreditKnapp = el("lagKreditnotaKnapp");
+    if (kreditKnapp) {
+      kreditKnapp.removeAttribute("onclick");
+      kreditKnapp.onclick = krediterFraSkjema;
+      if (kreditKnapp.dataset.featureKreditBind !== "1") {
+        kreditKnapp.dataset.featureKreditBind = "1";
+        kreditKnapp.addEventListener("click", krediterFraSkjema, true);
+        kreditKnapp.addEventListener("touchend", krediterFraSkjema, true);
+      }
+    }
+
     window.behLagreBehandlingDirekte = lagreBehandlingDirekte;
     window.behFeatureFyllPriser = fyllPriser;
     window.behVisAlleBilderForHest = visAlleBilderForHest;
@@ -957,9 +1389,11 @@
     window.hentBehandlinger = hentBehandlingerMedStatus;
     window.visBehBehandlingDetalj = visBehandlingDetalj;
     window.behFakturerBehandlingLinje = fakturerBehandlingLinje;
+    window.behKrediterNullBehandling = krediterNullBehandling;
     window.behSettFakturaBetalt = settFakturaBetalt;
     window.behLagPurring = lagPurring;
     window.behKrediterFaktura = krediterFaktura;
+    window.behKrediterFraSkjema = krediterFraSkjema;
 
     setTimeout(() => fyllPriser(true).catch(e => melding("behandlingMelding", "Kunne ikke hente priser: " + (e.message || e), true)), 300);
     setTimeout(blankKjoring, 500);

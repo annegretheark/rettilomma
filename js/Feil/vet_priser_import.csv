@@ -1,0 +1,17 @@
+navn,type,pris,beskrivelse
+Konsultasjon smådyr,fastpris,1200.0,Standard konsultasjon
+Konsultasjon hest,fastpris,1800.0,Utebesøk hest
+Vaksine hund,fastpris,650.0,Årlig vaksine
+Vaksine katt,fastpris,550.0,Årlig vaksine
+Tannbehandling hund,fastpris,2500.0,Tannrens
+Tannrasp hest,fastpris,1800.0,Tannrasp
+HD-røntgen,fastpris,2500.0,Røntgenundersøkelse
+Sårbehandling,fastpris,1500.0,Enkel behandling
+Akuttvakt,timepris,2200.0,Vaktarbeid
+Timearbeid,timepris,1500.0,Vanlig timepris
+Kjøring pr km,kmpris,5.3,Kjøregodtgjørelse
+Ormekur,vare,180.0,Medisin
+Bandasjemateriell,vare,95.0,Forbruksmateriell
+Smertestillende,vare,250.0,Medisin
+Antibiotika,vare,320.0,Medisin
+Vaksine dose,vare,350.0,Varelinje vaksine

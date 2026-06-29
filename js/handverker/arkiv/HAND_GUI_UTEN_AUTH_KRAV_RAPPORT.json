@@ -1,0 +1,6 @@
+{
+  "endret": true,
+  "melding_auth_krav_igjen": [],
+  "remaining_old_from": {},
+  "forklaring": "Systemadmin GUI oppretter hand_firma uten å kreve Supabase Auth. Auth/Edge Function er valgfritt."
+}

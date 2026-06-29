@@ -1,0 +1,8 @@
+{
+  "patched": [
+    "hand-firma.js",
+    "index.html"
+  ],
+  "remaining_old_from": {},
+  "added_sql": "HAND_OPPRETT_FORSTE_FIRMA.sql"
+}

@@ -27,6 +27,71 @@
     document.querySelectorAll("[data-greknuts-only]").forEach(el => {
       el.style.display = systemeier ? "" : "none";
     });
+
+    oppdaterInnloggetVisning();
+  }
+
+  function oppdaterInnloggetVisning() {
+    const felt = document.getElementById("innloggetBrukerVisning");
+    if (!felt) return;
+
+    const bruker = window.behInnloggetBruker || null;
+    const behandler = window.behInnloggetBehandler || null;
+    const navn = behandler?.navn || bruker?.user_metadata?.navn || bruker?.user_metadata?.name || bruker?.user_metadata?.full_name || "";
+    const epost = behandler?.epost || bruker?.email || "";
+    const rolle = window.behErSystemeier
+      ? "systemeier"
+      : (behandler?.rolle || "behandler");
+    const hvem = navn && epost ? `${navn} (${epost})` : (navn || epost || "ukjent bruker");
+    felt.textContent = "Innlogget: " + hvem + " - " + rolle;
+  }
+
+  async function hentInnloggetBehandler(session) {
+    const user = session?.user || null;
+    window.behInnloggetBehandler = null;
+    window.behInnloggetBehandlerId = "";
+    if (!user || !window.supabaseClient) return null;
+
+    let r = null;
+    if (user.id) {
+      r = await window.supabaseClient
+        .from("beh_behandlere")
+        .select("id,navn,epost,rolle,aktiv,auth_user_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+    }
+
+    if ((!r || r.error || !r.data) && user.email) {
+      r = await window.supabaseClient
+        .from("beh_behandlere")
+        .select("id,navn,epost,rolle,aktiv,auth_user_id")
+        .ilike("epost", user.email)
+        .maybeSingle();
+    }
+
+    if (r && r.error) {
+      console.warn("Kunne ikke hente innlogget behandler:", r.error);
+      return null;
+    }
+
+    const behandler = r?.data || null;
+    window.behInnloggetBehandler = behandler;
+    window.behInnloggetBehandlerId = behandler?.id || "";
+
+    if (behandler) {
+      const rolle = String(behandler.rolle || "").toLowerCase();
+      const systemeier = window.behErSystemeier || rolle === "systemeier" || rolle === "admin";
+      window.behErSystemeier = systemeier;
+      window.behKanOppretteBehandlere = systemeier;
+      document.documentElement.setAttribute("data-systemeier", systemeier ? "1" : "0");
+      document.querySelectorAll("[data-greknuts-only]").forEach(el => {
+        el.style.display = systemeier ? "" : "none";
+      });
+    }
+
+    oppdaterInnloggetVisning();
+
+    return behandler;
   }
 
   function tilLogin() {
@@ -47,11 +112,15 @@
     }
 
     settRolle(data.session);
+    await hentInnloggetBehandler(data.session);
     visApp();
 
-    window.supabaseClient.auth.onAuthStateChange((event, session) => {
+    window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT" || !session) tilLogin();
-      else settRolle(session);
+      else {
+        settRolle(session);
+        await hentInnloggetBehandler(session);
+      }
     });
   }
 
@@ -128,33 +197,25 @@
   }
 
   async function lagreBehandlerRad(payload, id) {
-    const info = supabaseInfo();
-    if (!info.url || !info.key) throw new Error("Mangler Supabase URL eller nøkkel.");
-
-    const base = info.url.replace(/\/$/, "") + "/rest/v1/beh_behandlere";
-    const endpoint = id
-      ? base + "?id=eq." + encodeURIComponent(id)
-      : base + "?on_conflict=epost";
-
-    const svar = await fetch(endpoint, {
-      method: id ? "PATCH" : "POST",
-      headers: {
-        "apikey": info.key,
-        "Authorization": "Bearer " + info.key,
-        "Content-Type": "application/json",
-        "Prefer": id ? "return=minimal" : "resolution=merge-duplicates,return=representation"
-      },
-      body: JSON.stringify(id ? payload : [payload])
-    });
-
-    if (!svar.ok) {
-      const tekst = await svar.text();
-      throw new Error("Supabase svarte " + svar.status + ": " + (tekst || "tom feilmelding"));
+    if (!window.supabaseClient) throw new Error("Supabase er ikke klar.");
+    if (id) {
+      const r = await window.supabaseClient
+        .from("beh_behandlere")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+      if (r.error) throw r.error;
+      return r.data;
     }
 
-    if (id) return null;
-    const tekst = await svar.text();
-    return tekst ? JSON.parse(tekst) : null;
+    const r = await window.supabaseClient
+      .from("beh_behandlere")
+      .upsert([payload], { onConflict: "epost" })
+      .select("id")
+      .maybeSingle();
+    if (r.error) throw r.error;
+    return r.data;
   }
 
   function behandlerLoginRedirect() {

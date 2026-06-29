@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<title>Åpen demo - HovslagerSystem</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}.kort{background:#171a1b;max-width:1100px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}h1,h2,h3{margin-top:0}label{display:block;margin-top:10px;font-weight:bold}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block}.secondary{background:#555}.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.skjult{display:none!important}.melding{margin-top:10px;color:#86efac;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}.preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.preview img{width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #475569}.galleri{display:flex;gap:10px;flex-wrap:wrap}.galleri img{width:150px;height:115px;object-fit:cover;border-radius:10px;border:1px solid #374151;display:block}.statusok{color:#86efac}.statusfeil{color:#fca5a5}
+</style>
+</head>
+<body>
+<div class="kort">
+  <div class="system-header"><div class="system-logo">♞</div><div><h1 class="system-title">HovslagerSystem</h1><div class="system-subtitle">Åpen demo uten innlogging</div><div class="system-badge">Rett i Lomma demo</div> <button class="secondary" onclick="installerApp()" style="margin-left:10px;">📱 Installer på mobil</button></div></div>
+  <a class="knapp secondary" href="./index.html">Til innlogging</a>
+  <a class="knapp secondary" href="./docs/hovslager/index.html" target="_blank">📖 Brukerdokumentasjon</a>
+  <div class="info">Dette er en ekte demo koblet til Supabase. Den bruker eget demo-firma, så bilder og jobber lagres uten å blandes med ekte kunder.</div>
+  <div id="demoStatus" class="info">Starter demo...</div>
+</div>
+<div class="kort"><button onclick="visSide('jobbSide')">Jobber / timer</button><button onclick="visSide('hesterSide')">Hester</button><button onclick="visSide('kunderSide')">Kunder</button><button onclick="visSide('fakturaSide')">Faktura</button><button onclick="visSide('adminSide')">Admin</button></div>
+<section class="kort" id="jobbSide">
+  <h2>Jobber / timer</h2>
+  <button class="voice" onclick="demoMelding('Taleinnlesing er slått av i åpen demo. I produksjon kan jobber dikteres inn.')">🎙️ Snakk inn og lagre jobb</button>
+  <h3>Manuell registrering</h3>
+  <div class="rad"><div><label>Dato</label><input id="jobbDato" type="date"></div><div><label>Kunde</label><select id="jobbKunde"></select></div><div><label>Hest</label><select id="jobbHest"></select></div></div>
+  <div class="rad"><div><label>Jobbtype</label><select id="jobbType" onchange="settDemoPris()"><option value="">Velg jobbtype</option><option>Fullbeslag</option><option>Forsko</option><option>Baksko</option><option>Barfot/verking</option><option>Brodder</option><option>Vintersko</option></select></div><div><label>Arbeid eks. mva</label><input id="arbeidBelop" type="number" value="0"></div><div><label>Kjøring km</label><input id="jobbKm" type="number" value=""></div><div><label>Pris pr km</label><input id="jobbKmPris" type="number" value="5.30"></div></div>
+  <label>Beskrivelse</label><textarea id="jobbBeskrivelse"></textarea><button type="button" class="secondary" onclick="startDemoBeskrivelseTale()">🎙️ Snakk inn beskrivelse</button>
+  <div class="listekort" style="margin-top:10px;"><strong>📷 Bilder</strong><div class="info">Velg eller ta ett eller flere bilder. Bildene lagres på jobben og vises i bildehistorikk.</div><label class="knapp secondary" for="jobbBilderDemo">📷 Velg / ta bilder</label><input id="jobbBilderDemo" type="file" accept="image/*" multiple style="display:none" onchange="visDemoBilder()"><div id="jobbBildePreviewDemo" class="preview"></div></div>
+  <button onclick="lagreDemoJobb()">Lagre jobb</button><div id="jobbMelding" class="melding"></div><hr>
+  <div class="rad"><div class="listekort"><strong>Ikke fakturert:</strong> <span id="antallUfatturerte">0</span></div><div class="listekort"><strong>Fakturert:</strong> <span id="antallFakturerte">0</span></div><div class="listekort"><strong>Omsetning:</strong> <span id="jobbOmsetning">0 kr</span></div></div>
+  <div class="info">Klikk på en jobb i listen for detaljer og bilder.</div><div id="jobbListe"></div>
+</section>
+<section class="kort skjult" id="hesterSide"><h2>Hester</h2>
+  <div class="listekort">
+    <h3>Ny hest</h3>
+    <label>Eier/kunde</label><select id="demoHestKunde"></select>
+    <label>Navn</label><input id="demoHestNavn" placeholder="Hestenavn">
+    <label>Rase/type</label><input id="demoHestRase" placeholder="Rase/type">
+    <label>Notater</label><textarea id="demoHestNotater" placeholder="Notater"></textarea>
+
+    <div class="listekort" style="margin-top:10px;">
+      <strong>📷 Bilde av hesten</strong>
+      <div class="info">Velg eller ta ett eller flere bilder av hesten.</div>
+      <label class="knapp secondary" for="demoHestBilder">📷 Velg / ta bilder</label>
+      <input id="demoHestBilder" type="file" accept="image/*" multiple style="display:none">
+      <div id="demoHestBildePreview" class="preview"></div>
+    </div>
+
+    <button type="button" onclick="lagreDemoHest()">Lagre hest</button>
+    <div id="demoHestMelding" class="melding"></div>
+  </div>
+  <div id="hesteListe"></div>
+</section>
+<section class="kort skjult" id="kunderSide"><h2>Kunder</h2>
+  <div class="listekort">
+    <h3>Ny kunde</h3>
+    <label>Navn</label><input id="demoKundeNavn" placeholder="Kundenavn">
+    <label>Adresse</label><input id="demoKundeAdresse" placeholder="Adresse">
+    <label>Telefon</label><input id="demoKundeTelefon" placeholder="Telefon">
+    <label>E-post</label><input id="demoKundeEpost" type="email" placeholder="E-post">
+    <button type="button" onclick="lagreDemoKunde()">Lagre kunde</button>
+    <div id="demoKundeMelding" class="melding"></div>
+  </div>
+  <div id="kundeListe"></div>
+</section>
+
+<section class="kort skjult" id="adminSide">
+  <h2>Admin</h2>
+  <div class="info">Her kan demo-firmaet redigeres. Demoen bruker bare sitt eget firma.</div>
+
+  <div class="listekort">
+    <h3>Firma</h3>
+    <input id="demoFirmaId" type="hidden">
+    <label>Firmanavn</label><input id="demoFirmaNavn" placeholder="Firmanavn">
+    <label>Adresse</label><input id="demoFirmaAdresse" placeholder="Adresse">
+    <label>Telefon</label><input id="demoFirmaTelefon" placeholder="Telefon">
+    <label>E-post</label><input id="demoFirmaEpost" type="email" placeholder="E-post">
+    <label>Org.nr</label><input id="demoFirmaOrgnr" placeholder="Org.nr">
+    <button type="button" onclick="lagreDemoFirma()">Lagre firma</button>
+    <div id="demoFirmaMelding" class="melding"></div>
+  </div>
+
+  <div class="listekort">
+    <h3>Backup / Restore</h3>
+    <button type="button" onclick="taDemoBackup()">Ta backup</button>
+    <label>Restore fra backupfil</label>
+    <input id="demoRestoreFil" type="file" accept=".json,application/json">
+    <button type="button" onclick="restoreDemoBackup()">Restore backup</button>
+    <div id="demoBackupMelding" class="melding"></div>
+  </div>
+</section>
+
+<section class="kort skjult" id="fakturaSide"><h2>Faktura</h2><div class="info" style="color:#86efac;font-weight:bold;">Versjon: Dagens dato + blank kjøring + betalt 20260617-2215</div><div class="rad"><div><label>Kunde</label><select id="fakturaKunde"></select></div></div><button onclick="lagFakturaForValgtKunde()">Lag demofaktura</button><button type="button" class="secondary" onclick="tegnFakturaOversikt()">Oppdater fakturaoversikt</button><div id="fakturaMelding" class="melding"></div><div id="fakturaOversikt"></div></section>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://pxlbrywowphkczkehmee.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_tluvA83iCcKfmgfXetvz5g_farKpCTS";
+window.supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+
+// Eget demo-firma. Bytt denne hvis du oppretter en separat demo-rad i hov_firma.
+const DEMO_FIRMA_ID="133fb053-b585-45e2-b730-3f58bf4b8d2e";
+const priser={"Fullbeslag":1200,"Forsko":1100,"Baksko":1100,"Barfot/verking":650,"Brodder":150,"Vintersko":1400};
+let kunder=[],hester=[],jobber=[],fakturaer=[];
+function kr(n){return Number(n||0).toLocaleString("no-NO",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function dagensDatoISO(){const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,"0");const dag=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${dag}`;}
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
+function kundeNavn(id){return kunder.find(k=>String(k.id)===String(id))?.navn||"";}
+function hestNavn(id){return hester.find(h=>String(h.id)===String(id))?.navn||"";}
+function totalJobb(j){return Number(j.total||((Number(j.arbeid_belop||0)+Number(j.varer_belop||0)+Number(j.km||0)*Number(j.km_pris||0))*1.25));}
+function demoMelding(t,feil=false){const e=document.getElementById("jobbMelding");e.textContent=t||"";e.style.color=feil?"#fca5a5":"#86efac";}
+function status(t,feil=false){const e=document.getElementById("demoStatus");e.innerHTML=`<span class="${feil?'statusfeil':'statusok'}">${esc(t)}</span>`;}
+function visSide(id){if(id==="jobbSide"){const d=document.getElementById("jobbDato"); if(d) d.value=dagensDatoISO(); const km=document.getElementById("jobbKm"); if(km && km.value==="0") km.value="";}["jobbSide","hesterSide","kunderSide","fakturaSide","adminSide"].forEach(s=>document.getElementById(s)?.classList.toggle("skjult",s!==id));if(id==="fakturaSide")tegnFakturaOversikt();if(id==="hesterSide")tegnKunderOgHester();if(id==="adminSide")lastDemoFirma();}
+function settDemoPris(){document.getElementById("arbeidBelop").value=priser[document.getElementById("jobbType").value]||0;}
+function rentFilnavn(navn){return String(navn||"bilde.jpg").replaceAll(" ","_").replace(/[æøåÆØÅ]/g,b=>({æ:"ae",ø:"o",å:"a",Æ:"Ae",Ø:"O",Å:"A"}[b]||b)).replace(/[^a-zA-Z0-9._-]/g,"_");}
+async function bildeUrl(filsti){try{const {data,error}=await supabaseClient.storage.from("bilder").createSignedUrl(filsti,60*60*24*7);if(!error&&data?.signedUrl)return data.signedUrl;}catch(e){}try{return supabaseClient.storage.from("bilder").getPublicUrl(filsti).data?.publicUrl||"";}catch(e){return "";}}
+function visDemoBilder(){const filer=Array.from(document.getElementById("jobbBilderDemo")?.files||[]);document.getElementById("jobbBildePreviewDemo").innerHTML=filer.map(f=>`<img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}">`).join("");}
+function visDemoDetaljBilder(){
+  const filer=Array.from(document.getElementById("jobbDetaljBilderDemo")?.files||[]);
+  const preview=document.getElementById("jobbDetaljBildePreviewDemo");
+  if(preview) preview.innerHTML=filer.map(f=>`<img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}">`).join("");
+}
+async function lagreDemoBilderPaApnetJobb(jobbId){
+  const input=document.getElementById("jobbDetaljBilderDemo");
+  const melding=document.getElementById("jobbDetaljBildeMelding");
+  const filer=Array.from(input?.files||[]);
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+  if(!jobbId){ if(melding) melding.textContent="Fant ikke jobben."; return; }
+  if(!filer.length){ if(melding) melding.textContent="Velg ett eller flere bilder først."; return; }
+  try{
+    if(melding) melding.textContent="Lagrer bilder...";
+    let antall=0;
+    for(const fil of filer){
+      const filsti=`demo/hov-jobber/${DEMO_FIRMA_ID}/${jobbId}/${Date.now()}_${rentFilnavn(fil.name)}`;
+      const up=await supabaseClient.storage.from("bilder").upload(filsti,fil,{cacheControl:"3600",upsert:false});
+      if(up.error) throw new Error("Opplasting feilet: "+up.error.message);
+      const url=await bildeUrl(filsti);
+      const ins=await supabaseClient.from("hov_jobb_bilder").insert({firma_id:DEMO_FIRMA_ID,jobb_id:jobbId,filnavn:fil.name,filsti,bilde_url:url||null,bildetekst:"Demo bilde"});
+      if(ins.error) throw new Error("Bildet ble lastet opp, men ikke koblet til jobben: "+ins.error.message);
+      antall++;
+    }
+    if(input) input.value="";
+    const preview=document.getElementById("jobbDetaljBildePreviewDemo");
+    if(preview) preview.innerHTML="";
+    if(melding) melding.textContent=`${antall} bilde(r) lagret på jobben.`;
+    await lastData();
+    await visDemoJobbDetalj(jobbId);
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Bildene ble ikke lagret: "+(e.message||e);}
+  }
+}
+
+async function hentBilderForJobb(jobbId){const {data,error}=await supabaseClient.from("hov_jobb_bilder").select("id,filsti,bilde_url,bildetekst,created_at").eq("jobb_id",jobbId).order("created_at",{ascending:false});if(error){console.warn(error);return [];}const ut=[];for(const b of data||[]){const url=b.filsti?await bildeUrl(b.filsti):(b.bilde_url||"");if(url)ut.push({...b,url});}return ut;}
+async function hentBildeAntall(){const ids=jobber.map(j=>j.id).filter(Boolean);jobber.forEach(j=>j._bilde_antall=0);if(!ids.length)return;const {data,error}=await supabaseClient.from("hov_jobb_bilder").select("jobb_id").in("jobb_id",ids);if(error)return;const m=new Map();(data||[]).forEach(b=>m.set(String(b.jobb_id),(m.get(String(b.jobb_id))||0)+1));jobber.forEach(j=>j._bilde_antall=m.get(String(j.id))||0);}
+async function lastOppJobbBilder(jobbId){const filer=Array.from(document.getElementById("jobbBilderDemo")?.files||[]);let antall=0;for(const fil of filer){const filsti=`demo/hov-jobber/${DEMO_FIRMA_ID}/${jobbId}/${Date.now()}_${rentFilnavn(fil.name)}`;const up=await supabaseClient.storage.from("bilder").upload(filsti,fil,{cacheControl:"3600",upsert:false});if(up.error)throw new Error("Opplasting feilet: "+up.error.message);const url=await bildeUrl(filsti);const ins=await supabaseClient.from("hov_jobb_bilder").insert({firma_id:DEMO_FIRMA_ID,jobb_id:jobbId,filnavn:fil.name,filsti,bilde_url:url||null,bildetekst:"Demo bilde"});if(ins.error)throw new Error("Bildet ble lastet opp, men ikke koblet til jobben: "+ins.error.message);antall++;}document.getElementById("jobbBilderDemo").value="";document.getElementById("jobbBildePreviewDemo").innerHTML="";return antall;}
+async function lastData(){status("Henter demodata...");const [kr,hj,jb]=await Promise.all([supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID).order("navn"),supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID).order("dato",{ascending:false})]);if(kr.error)throw kr.error;if(hj.error)throw hj.error;if(jb.error)throw jb.error;kunder=kr.data||[];hester=hj.data||[];jobber=jb.data||[];if(!kunder.length){await seedDemo();return lastData();}await hentBildeAntall();fyllSelects();tegnJobber();tegnKunderOgHester();tegnFakturaOversikt();status("Demo er koblet til Supabase og lagrer i eget demo-firma.");}
+async function seedDemo(){status("Oppretter første demodata...");const k=await supabaseClient.from("kunder").insert([{firma_id:DEMO_FIRMA_ID,navn:"Anne Lunde",adresse:"Stallveien 10"},{firma_id:DEMO_FIRMA_ID,navn:"Mari Nilsen",adresse:"Hestejordet 4"},{firma_id:DEMO_FIRMA_ID,navn:"Ole Berg",adresse:"Gårdsveien 7"}]).select("id,navn");if(k.error)throw k.error;const a=k.data.find(x=>x.navn==="Anne Lunde"),m=k.data.find(x=>x.navn==="Mari Nilsen"),o=k.data.find(x=>x.navn==="Ole Berg");const h=await supabaseClient.from("hester").insert([{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Quen",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:a.id,navn:"Topsy",rase:"Fjording"},{firma_id:DEMO_FIRMA_ID,kunde_id:m.id,navn:"Dingdoria",rase:"Quarter"},{firma_id:DEMO_FIRMA_ID,kunde_id:o.id,navn:"Kingen",rase:"Varmblods"}]).select("id,navn,kunde_id");if(h.error)throw h.error;const quen=h.data.find(x=>x.navn==="Quen"),ding=h.data.find(x=>x.navn==="Dingdoria"),king=h.data.find(x=>x.navn==="Kingen");const rows=[{kunde_id:a.id,hest_id:quen.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Fullbeslag",arbeid_belop:1200,km:20,km_pris:5.30},{kunde_id:m.id,hest_id:ding.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Brodder",arbeid_belop:150,km:12,km_pris:5.30},{kunde_id:o.id,hest_id:king.id,dato:new Date().toISOString().slice(0,10),jobbtype:"Vintersko",arbeid_belop:1400,km:30,km_pris:5.30}].map(r=>{const eks=Number(r.arbeid_belop)+Number(r.km)*Number(r.km_pris);return {...r,firma_id:DEMO_FIRMA_ID,varer_belop:0,mva:eks*.25,total:eks*1.25,fakturert:false};});const j=await supabaseClient.from("hov_jobber").insert(rows);if(j.error)throw j.error;}
+
+async function lagreDemoKunde(){
+  const navn=(document.getElementById("demoKundeNavn")?.value||"").trim();
+  const adresse=(document.getElementById("demoKundeAdresse")?.value||"").trim();
+  const telefon=(document.getElementById("demoKundeTelefon")?.value||"").trim();
+  const epost=(document.getElementById("demoKundeEpost")?.value||"").trim();
+  const melding=document.getElementById("demoKundeMelding");
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+  if(!navn){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Skriv kundenavn først.";}
+    return;
+  }
+  try{
+    if(melding) melding.textContent="Lagrer kunde...";
+    const {error}=await supabaseClient.from("kunder").insert({
+      firma_id:DEMO_FIRMA_ID,
+      navn:navn,
+      adresse:adresse,
+      telefon:telefon,
+      epost:epost,
+      kontaktperson:navn
+    });
+    if(error) throw error;
+    ["demoKundeNavn","demoKundeAdresse","demoKundeTelefon","demoKundeEpost"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value="";
+    });
+    if(melding) melding.textContent="Kunde lagret.";
+    await lastData();
+    visSide("kunderSide");
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunden ble ikke lagret: "+(e.message||e);}
+  }
+}
+
+
+async function lagreDemoHest(){
+  const kunde_id=(document.getElementById("demoHestKunde")?.value||"").trim();
+  const navn=(document.getElementById("demoHestNavn")?.value||"").trim();
+  const rase=(document.getElementById("demoHestRase")?.value||"").trim();
+  const notater=(document.getElementById("demoHestNotater")?.value||"").trim();
+  const melding=document.getElementById("demoHestMelding");
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+  if(!kunde_id){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg eier/kunde først.";}
+    return;
+  }
+  if(!navn){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Skriv hestenavn først.";}
+    return;
+  }
+  try{
+    if(melding) melding.textContent="Lagrer hest...";
+    const {error}=await supabaseClient.from("hester").insert({
+      firma_id:DEMO_FIRMA_ID,
+      kunde_id:kunde_id,
+      navn:navn,
+      rase:rase,
+      notater:notater
+    });
+    if(error) throw error;
+    ["demoHestNavn","demoHestRase","demoHestNotater"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value="";
+    });
+    if(melding) melding.textContent="Hest lagret.";
+    await lastData();
+    visSide("hesterSide");
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Hesten ble ikke lagret: "+(e.message||e);}
+  }
+}
+
+function fyllSelects(){const opts='<option value="">Velg kunde</option>'+kunder.map(k=>`<option value="${k.id}">${esc(k.navn)}</option>`).join("");document.getElementById("jobbKunde").innerHTML=opts;document.getElementById("fakturaKunde").innerHTML=opts; if(document.getElementById("demoHestKunde")) document.getElementById("demoHestKunde").innerHTML=opts;document.getElementById("jobbKunde").onchange=()=>{const kid=document.getElementById("jobbKunde").value;document.getElementById("jobbHest").innerHTML='<option value="">Velg hest</option>'+hester.filter(h=>String(h.kunde_id)===String(kid)).map(h=>`<option value="${h.id}">${esc(h.navn)}</option>`).join("");};}
+async function lagreDemoJobb(){const kunde_id=document.getElementById("jobbKunde").value,hest_id=document.getElementById("jobbHest").value;if(!kunde_id||!hest_id){demoMelding("Velg kunde og hest først.",true);return;}const kmVerdi=(document.getElementById("jobbKm").value||"").trim(),km=kmVerdi===""?0:Number(kmVerdi),km_pris=Number(document.getElementById("jobbKmPris").value||5.30),arbeid=Number(document.getElementById("arbeidBelop").value||0),eks=arbeid+(km*km_pris),mva=eks*.25,total=eks+mva;demoMelding("Lagrer jobb...");const {data,error}=await supabaseClient.from("hov_jobber").insert({firma_id:DEMO_FIRMA_ID,kunde_id,hest_id,dato:document.getElementById("jobbDato").value||dagensDatoISO(),jobbtype:document.getElementById("jobbType").value||"Annet",beskrivelse:document.getElementById("jobbBeskrivelse").value.trim(),km,km_pris,arbeid_belop:arbeid,varer_belop:0,mva,total,fakturert:false}).select("*").limit(1);if(error){demoMelding(error.message,true);return;}const nyJobb=Array.isArray(data)?data[0]:data;try{const ant=await lastOppJobbBilder(nyJobb.id);demoMelding(ant?`Demojobb og ${ant} bilde(r) lagret.`:"Demojobb lagret.");}catch(e){demoMelding("Jobb lagret, men bilde feilet: "+(e.message||e),true);}await lastData();document.getElementById("jobbDato").value=dagensDatoISO();document.getElementById("jobbKm").value="";}
+async function visDemoJobbDetalj(jobbId){ window.aktivDemoJobbId = jobbId;const j=jobber.find(x=>String(x.id)===String(jobbId));if(!j)return;const bilder=await hentBilderForJobb(j.id);let panel=document.getElementById("demoJobbDetaljPanel");if(!panel){panel=document.createElement("div");panel.id="demoJobbDetaljPanel";panel.className="listekort";const liste=document.getElementById("jobbListe");liste.parentNode.insertBefore(panel,liste);}panel.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">Jobbdetalj</h3><button class="secondary" onclick="document.getElementById('demoJobbDetaljPanel').remove()">Lukk</button></div><div class="rad" style="margin-top:12px;"><div><strong>Dato:</strong><br>${esc(j.dato)}</div><div><strong>Kunde:</strong><br>${esc(kundeNavn(j.kunde_id))}</div><div><strong>Hest:</strong><br>${esc(hestNavn(j.hest_id))}</div><div><strong>Jobb:</strong><br>${esc(j.jobbtype)}</div><div><strong>Kjøring:</strong><br>${esc(j.km||0)} km x ${esc(j.km_pris||0)}</div><div><strong>Beløp inkl. mva:</strong><br>${kr(totalJobb(j))} kr</div><div><strong>Status:</strong><br>${j.fakturert?"Fakturert":"Ikke fakturert"}</div></div>${j.beskrivelse?`<h4>Beskrivelse</h4><div style="white-space:pre-wrap;background:#111827;padding:10px;border-radius:8px;">${esc(j.beskrivelse)}</div>`:""}<h4>Bilder (${bilder.length})</h4><div class="galleri">${bilder.length?bilder.map(b=>`<div style="display:inline-block"><a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"><small>${esc(b.bildetekst||"Åpne bilde")}</small></a><br><button class="danger" onclick="slettDemoBilde('${b.id}','${b.filsti||""}')">🗑️ Slett</button></div>`).join(""):'<div class="info">Ingen bilder på denne jobben ennå.</div>'}</div><button class="secondary" style="margin-top:10px;" onclick="visDemoJobbBilderForHest('${j.hest_id}')">📷 Vis alle jobbilder for denne hesten</button>
+<div class="listekort" style="margin-top:10px;">
+  <strong>📷 Legg til bilder på denne jobben</strong>
+  <div class="info">Velg eller ta ett eller flere bilder. Bildene lagres på denne jobben.</div>
+  <label class="knapp secondary" for="jobbDetaljBilderDemo">📷 Velg / ta bilder</label>
+  <input id="jobbDetaljBilderDemo" type="file" accept="image/*" multiple style="display:none" onchange="visDemoDetaljBilder()">
+  <div id="jobbDetaljBildePreviewDemo" class="preview"></div>
+  <button type="button" onclick="lagreDemoBilderPaApnetJobb('${j.id}')">Lagre bilder på jobben</button>
+  <div id="jobbDetaljBildeMelding" class="melding"></div>
+</div>`;panel.scrollIntoView({behavior:"smooth",block:"start"});}
+function tegnJobber(){const ikke=jobber.filter(j=>!j.fakturert),fakt=jobber.filter(j=>j.fakturert);document.getElementById("antallUfatturerte").textContent=ikke.length;document.getElementById("antallFakturerte").textContent=fakt.length;document.getElementById("jobbOmsetning").textContent=kr(jobber.reduce((s,j)=>s+totalJobb(j),0))+" kr";document.getElementById("jobbListe").innerHTML=`<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th>Dato</th><th>Hest</th><th>Kunde</th><th>Jobb</th><th style="text-align:right">Beløp</th><th>Bilder</th><th>Status</th></tr></thead><tbody>${jobber.map(j=>`<tr onclick="visDemoJobbDetalj('${j.id}')" style="cursor:pointer;"><td style="padding:7px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(kundeNavn(j.kunde_id))}</td><td style="padding:7px;border-bottom:1px solid #374151;">${esc(j.jobbtype)}</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:right;">${kr(totalJobb(j))} kr</td><td style="padding:7px;border-bottom:1px solid #374151;text-align:center;">📷 ${j._bilde_antall||0}</td><td style="padding:7px;border-bottom:1px solid #374151;">${j.fakturert?"Fakturert":"Ikke fakturert"}</td></tr>`).join("")}</tbody></table>`;}
+async function lagFakturaForValgtKunde(){
+  const melding=document.getElementById("fakturaMelding");
+  const kunde_id=document.getElementById("fakturaKunde").value;
+
+  if(melding){melding.textContent=""; melding.style.color="#86efac";}
+
+  if(!kunde_id){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg kunde først.";}
+    return;
+  }
+
+  if(melding){melding.textContent="Henter ufakturerte jobber...";}
+
+  const {data: uf, error: hentError}=await supabaseClient
+    .from("hov_jobber")
+    .select("id,total,arbeid_belop,varer_belop,km,km_pris,fakturert,fakturanr")
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .eq("kunde_id",kunde_id)
+    .or("fakturert.is.false,fakturert.is.null");
+
+  if(hentError){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente ufakturerte jobber: "+hentError.message;}
+    return;
+  }
+
+  const ids=(uf||[]).map(j=>j.id).filter(Boolean);
+  if(!ids.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Ingen ufakturerte jobber på valgt kunde. Bruk Kopi faktura-knappen på fakturert rad.";}
+    await lastData();
+    tegnFakturaOversikt();
+    return;
+  }
+
+  const nr="HOV-DEMO-"+Math.floor(1000+Math.random()*9000);
+
+  const updateRes=await supabaseClient
+    .from("hov_jobber")
+    .update({fakturert:true,fakturanr:nr})
+    .eq("firma_id",DEMO_FIRMA_ID)
+    .in("id",ids)
+    .select("id");
+
+  if(updateRes.error){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble ikke laget: "+updateRes.error.message;}
+    return;
+  }
+
+  let antall=Array.isArray(updateRes.data) ? updateRes.data.length : 0;
+
+  // Supabase/RLS kan noen ganger tillate update, men ikke returnere rader fra .select().
+  // Derfor kontrollerer vi mot fakturanummeret før vi sier at det feilet.
+  if(!antall){
+    const sjekkRes=await supabaseClient
+      .from("hov_jobber")
+      .select("id")
+      .eq("firma_id",DEMO_FIRMA_ID)
+      .eq("kunde_id",kunde_id)
+      .eq("fakturanr",nr);
+
+    if(sjekkRes.error){
+      if(melding){melding.style.color="#fca5a5"; melding.textContent="Faktura ble laget, men kontroll feilet: "+sjekkRes.error.message;}
+      await lastData();
+      return;
+    }
+
+    antall=Array.isArray(sjekkRes.data) ? sjekkRes.data.length : 0;
+  }
+
+  if(!antall){
+    if(melding){
+      melding.style.color="#fca5a5";
+      melding.textContent="Ingen jobber ble fakturert. Databasen stopper update på hov_jobber for åpen demo. Kjør SQL-filen rls-hov-jobber-demo-fix.sql i Supabase.";
+    }
+    await lastData();
+    return;
+  }
+
+  if(melding){melding.textContent=`Demofaktura laget: ${nr} (${antall} jobb(er))`;}
+  await lastData();
+  tegnFakturaOversikt();
+  visDemoFakturaPanel(kunde_id, nr, "faktura");
+  await lagreDemoFakturaPdf(kunde_id, nr, "faktura");
+}
+function lagFakturaForKunde(kunde_id){document.getElementById("fakturaKunde").value=kunde_id;lagFakturaForValgtKunde();}
+
+function finnDemoFakturaJobber(kunde_id, fakturanr){
+  const nr=String(fakturanr||"Fakturert");
+  return jobber.filter(j=>j.fakturert && String(j.kunde_id)===String(kunde_id) && String(j.fakturanr||"Fakturert")===nr);
+}
+
+function visDemoFakturaPanel(kunde_id, fakturanr, type){
+  const melding=document.getElementById("fakturaMelding");
+  const nr=String(fakturanr||"Fakturert");
+  const rader=finnDemoFakturaJobber(kunde_id,nr);
+
+  if(!rader.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ingen fakturerte jobber.";}
+    return;
+  }
+
+  const kunde=kundeNavn(kunde_id);
+  const sum=rader.reduce((s,j)=>s+totalJobb(j),0);
+  const tittel = type==="purring" ? "PURRING" : type==="kreditnota" ? "KREDITNOTA" : type==="kopi" ? "KOPI faktura" : "FAKTURA";
+  const fakturaNrVis = type==="kreditnota" ? nr+"-KREDITNOTA" : type==="purring" ? nr+"-PURRING" : type==="kopi" ? nr+"-KOPI" : nr;
+  const fortegn = type==="kreditnota" ? -1 : 1;
+
+  const linjer=rader.map(j=>`
+    <tr>
+      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(String(j.dato||'').slice(0,10))}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(hestNavn(j.hest_id))}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;">${esc(j.jobbtype||'')}</td>
+      <td style="padding:6px;border-bottom:1px solid #374151;text-align:right;white-space:nowrap;">${kr(totalJobb(j)*fortegn)} kr</td>
+    </tr>`).join("");
+
+  const panel=document.createElement("div");
+  panel.id="demoFakturaPanel";
+  panel.className="listekort";
+  panel.style.marginTop="12px";
+  panel.innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <h3 style="margin:0;color:${type==="kreditnota"?'#fca5a5':'#86efac'};">${tittel}</h3>
+        <div class="info">${type==="kopi" ? "Dette er en kopi. Ingen jobber blir fakturert på nytt." : type==="kreditnota" ? "Dette er en kreditnota. Beløp vises i minus." : type==="purring" ? "Dette er en purring på eksisterende faktura." : "Faktura laget."}</div>
+      </div>
+      <button type="button" class="secondary" onclick="document.getElementById('demoFakturaPanel')?.remove()">Lukk</button>
+    </div>
+    <div style="margin-top:12px;"><b>Fakturanr:</b> ${esc(fakturaNrVis)}</div>
+    <div><b>Kunde:</b> ${esc(kunde)}</div>
+    <div><b>Dato:</b> ${dagensDatoISO()}</div>
+    <div style="overflow-x:auto;margin-top:12px;">
+      <table style="width:100%;border-collapse:collapse;min-width:520px;">
+        <thead><tr><th style="text-align:left">Dato</th><th style="text-align:left">Hest</th><th style="text-align:left">Jobb</th><th style="text-align:right">Beløp</th></tr></thead>
+        <tbody>${linjer}</tbody>
+        <tfoot><tr><td colspan="3" style="padding:8px;text-align:right;"><b>Sum inkl. mva</b></td><td style="padding:8px;text-align:right;"><b>${kr(sum*fortegn)} kr</b></td></tr></tfoot>
+      </table>
+    </div>
+    <button type="button" onclick="lagreDemoFakturaPdf('${esc(String(kunde_id))}','${esc(nr)}','${esc(String(type || "faktura"))}')">Last ned PDF</button>
+  `;
+
+  const oversikt=document.getElementById("fakturaOversikt");
+  document.getElementById("demoFakturaPanel")?.remove();
+  oversikt?.prepend(panel);
+  if(melding){melding.style.color="#86efac"; melding.textContent=tittel+" klar: "+fakturaNrVis;}
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+
+async function lagreDemoFakturaPdf(kunde_id, fakturanr, type="faktura"){
+  const jspdfObj = window.jspdf;
+  if(!jspdfObj || !jspdfObj.jsPDF){
+    alert("PDF-biblioteket er ikke lastet.");
+    return;
+  }
+
+  const nr = String(fakturanr || "Fakturert");
+  const rader = finnDemoFakturaJobber(kunde_id, nr);
+
+  if(!rader.length){
+    alert("Fant ingen fakturerte jobber å lage PDF av.");
+    return;
+  }
+
+  const doc = new jspdfObj.jsPDF();
+  const kunde = kundeNavn(kunde_id) || "Kunde";
+  const tittel = type==="purring" ? "PURRING" : type==="kreditnota" ? "KREDITNOTA" : type==="kopi" ? "KOPI FAKTURA" : "FAKTURA";
+  const fakturaNrVis = type==="kreditnota" ? nr+"-KREDITNOTA" : type==="purring" ? nr+"-PURRING" : type==="kopi" ? nr+"-KOPI" : nr;
+  const fortegn = type==="kreditnota" ? -1 : 1;
+  const dato = dagensDatoISO();
+
+  let y = 18;
+  doc.setFontSize(18);
+  doc.text(tittel, 14, y);
+
+  y += 12;
+  doc.setFontSize(10);
+  doc.text("Fakturanr: " + fakturaNrVis, 14, y); y += 6;
+  doc.text("Kunde: " + kunde, 14, y); y += 6;
+  doc.text("Dato: " + dato, 14, y); y += 10;
+
+  doc.setFontSize(10);
+  doc.text("Dato", 14, y);
+  doc.text("Hest", 42, y);
+  doc.text("Jobb", 82, y);
+  doc.text("Belop", 190, y, {align:"right"});
+  y += 4;
+  doc.line(14, y, 196, y);
+  y += 7;
+
+  let sum = 0;
+  rader.forEach(j=>{
+    if(y > 270){
+      doc.addPage();
+      y = 18;
+    }
+    const belop = totalJobb(j) * fortegn;
+    sum += belop;
+    doc.text(String(j.dato || "").slice(0,10), 14, y);
+    doc.text(String(hestNavn(j.hest_id) || ""), 42, y);
+    doc.text(String(j.jobbtype || ""), 82, y);
+    doc.text(kr(belop) + " kr", 190, y, {align:"right"});
+    y += 7;
+  });
+
+  y += 2;
+  doc.line(120, y, 196, y);
+  y += 8;
+  doc.setFontSize(11);
+  doc.text("Sum inkl. mva", 120, y);
+  doc.text(kr(sum) + " kr", 190, y, {align:"right"});
+
+  const filnavn = String(fakturaNrVis).replace(/[^a-zA-Z0-9_-]/g,"_") + ".pdf";
+  doc.save(filnavn);
+}
+
+function visKopiFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "kopi"); }
+function visPurringFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "purring"); }
+function visKreditnotaFaktura(kunde_id, fakturanr){ visDemoFakturaPanel(kunde_id, fakturanr, "kreditnota"); }
+
+function demoBetaltKey(kunde_id, fakturanr){
+  return "hov_demo_betalt_"+DEMO_FIRMA_ID+"_"+String(kunde_id||"")+"_"+String(fakturanr||"Fakturert");
+}
+function hentDemoBetaltLokalt(kunde_id, fakturanr){
+  try{return localStorage.getItem(demoBetaltKey(kunde_id,fakturanr))==="1";}catch(e){return false;}
+}
+function settDemoBetaltLokalt(kunde_id, fakturanr){
+  try{localStorage.setItem(demoBetaltKey(kunde_id,fakturanr),"1");}catch(e){}
+}
+function erDemoFakturaBetalt(kunde_id, fakturanr){
+  const nr=String(fakturanr||"Fakturert");
+  const rader=finnDemoFakturaJobber(kunde_id,nr);
+  if(hentDemoBetaltLokalt(kunde_id,nr)) return true;
+  if(!rader.length) return false;
+  return rader.every(j=>j.betalt===true || String(j.betalt||"").toLowerCase()==="true" || j.betalt_dato || j.betalt_at);
+}
+async function settDemoFakturaBetalt(kunde_id, fakturanr){
+  const melding=document.getElementById("fakturaMelding");
+  const nr=String(fakturanr||"Fakturert");
+  const rader=finnDemoFakturaJobber(kunde_id,nr);
+  if(!rader.length){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Fant ikke fakturaen som skal markeres betalt.";}
+    return;
+  }
+  const ids=rader.map(j=>j.id).filter(Boolean);
+  const dato=dagensDatoISO();
+  let lagretIDatabase=false;
+  let sisteFeil=null;
+  const forsok=[
+    {betalt:true, betalt_dato:dato},
+    {betalt:true},
+    {betalingsstatus:"betalt"},
+    {status:"betalt"}
+  ];
+  for(const oppdatering of forsok){
+    try{
+      const {error}=await supabaseClient.from("hov_jobber").update(oppdatering).eq("firma_id",DEMO_FIRMA_ID).in("id",ids);
+      if(!error){lagretIDatabase=true; break;}
+      sisteFeil=error;
+      const tekst=String(error.message||"");
+      if(!tekst.includes("Could not find") && !tekst.includes("schema cache") && !tekst.includes("does not exist")) break;
+    }catch(e){sisteFeil=e; break;}
+  }
+  settDemoBetaltLokalt(kunde_id,nr);
+  rader.forEach(j=>{j.betalt=true; j.betalt_dato=dato;});
+  if(melding){
+    melding.style.color="#86efac";
+    melding.textContent=lagretIDatabase
+      ? "Faktura "+nr+" er markert som betalt."
+      : "Faktura "+nr+" er markert som betalt lokalt. Legg til kolonne betalt/betalt_dato i hov_jobber for lagring i database.";
+  }
+  await lastData();
+  tegnFakturaOversikt();
+}
+
+function tegnFakturaOversikt(){
+  const oversikt=document.getElementById("fakturaOversikt");
+  if(!oversikt) return;
+
+  const ikkeGrupper={};
+  jobber.filter(j=>!j.fakturert).forEach(j=>{
+    const kid=String(j.kunde_id||"");
+    if(!kid) return;
+    ikkeGrupper[kid] ||= {kunde_id:kid,kunde:kundeNavn(kid),antall:0,sum:0};
+    ikkeGrupper[kid].antall++;
+    ikkeGrupper[kid].sum += totalJobb(j);
+  });
+
+  const faktGrupper={};
+  jobber.filter(j=>j.fakturert).forEach(j=>{
+    const nr=String(j.fakturanr||"Fakturert");
+    const kid=String(j.kunde_id||"");
+    const key=nr+"|"+kid;
+    faktGrupper[key] ||= {fakturanr:nr,kunde_id:kid,kunde:kundeNavn(kid),antall:0,sum:0};
+    faktGrupper[key].antall++;
+    faktGrupper[key].sum += totalJobb(j);
+  });
+
+  const knappStyle="padding:5px 7px;font-size:11px;line-height:1.05;margin:0 3px 0 0;white-space:nowrap;";
+  const radStyle="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;padding:7px 8px;border:1px solid #374151;border-radius:8px;background:#1f2326;font-size:12px;line-height:1.15;cursor:pointer;";
+  const tekstStyle="display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0;flex:1;";
+  const actionsStyle="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;margin-left:auto;";
+
+  const ikkeHtml=Object.values(ikkeGrupper).map(g=>`
+    <div class="listekort" style="${radStyle}" onclick="lagFakturaForKunde('${esc(g.kunde_id)}')" title="Klikk for å lage faktura">
+      <div style="${tekstStyle}">
+        <b>Ikke fakturert</b>
+        <span>${esc(g.kunde)}</span>
+        <span>${g.antall} jobb</span>
+        <span>${kr(g.sum)} kr</span>
+      </div>
+      <div style="${actionsStyle}">
+        <button type="button" onclick="event.stopPropagation();lagFakturaForKunde('${esc(g.kunde_id)}')" style="${knappStyle}">Lag faktura</button>
+      </div>
+    </div>
+  `).join("");
+
+  const fakturaHtml=Object.values(faktGrupper).map(f=>{
+    const erBetalt=erDemoFakturaBetalt(f.kunde_id,f.fakturanr);
+    const betaltTekst=erBetalt ? '<span style="color:#86efac;font-weight:bold;">✓ Betalt</span>' : '<span style="color:#facc15;">Ubetalt</span>';
+    const betaltKnapp=erBetalt
+      ? `<button type="button" class="secondary" onclick="event.stopPropagation();settDemoFakturaBetalt('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" style="${knappStyle}background:#166534;font-weight:bold;">✓ Betalt</button>`
+      : `<button type="button" class="secondary" onclick="event.stopPropagation();settDemoFakturaBetalt('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" style="${knappStyle}">Sett betalt</button>`;
+    return `
+    <div class="listekort" style="${radStyle}border-left:4px solid ${erBetalt ? '#22c55e' : '#86efac'};${erBetalt ? 'background:#12301f;' : ''}" onclick="visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" title="Klikk på linjen for kopi faktura">
+      <div style="${tekstStyle}">
+        <b>${esc(f.fakturanr)}</b>
+        <span>${esc(f.kunde)}</span>
+        <span>${f.antall} jobb</span>
+        <span>${kr(f.sum)} kr</span>
+        ${betaltTekst}
+      </div>
+      <div style="${actionsStyle}">
+        <button type="button" class="secondary" onclick="event.stopPropagation();visPurringFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" style="${knappStyle}">Purring</button>
+        ${betaltKnapp}
+        <button type="button" class="secondary" onclick="event.stopPropagation();visKopiFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" style="${knappStyle}background:#0f766e;font-weight:bold;">Kopi</button>
+        <button type="button" class="danger" onclick="event.stopPropagation();visKreditnotaFaktura('${esc(f.kunde_id)}','${esc(f.fakturanr)}')" style="${knappStyle}">Kreditnota</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  oversikt.innerHTML=`
+    <div class="listekort" style="margin-top:10px;background:#111827;padding:10px;">
+      <h3 style="margin:0 0 4px 0;font-size:16px;">Fakturaoversikt</h3>
+      <div class="info" style="font-size:12px;margin:0 0 6px 0;">Mobilvisning: små linjer. Klikk fakturalinjen for kopi.</div>
+      ${ikkeHtml || ""}
+      ${fakturaHtml || ""}
+      ${(!ikkeHtml && !fakturaHtml) ? '<div class="info">Ingen fakturaer ennå.</div>' : ''}
+    </div>
+  `;
+}
+async function visDemoJobbBilderForHest(hestId){const h=hester.find(x=>String(x.id)===String(hestId));const rader=jobber.filter(j=>String(j.hest_id)===String(hestId)).sort((a,b)=>String(a.dato).localeCompare(String(b.dato)));let panel=document.getElementById("demoHestBildePanel");if(!panel){panel=document.createElement("div");panel.id="demoHestBildePanel";panel.className="listekort";document.getElementById("hesterSide").prepend(panel);}let html=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;"><h3 style="margin:0;">📷 Jobbilder kronologisk: ${esc(h?.navn||"Hest")}</h3><button class="secondary" onclick="document.getElementById('demoHestBildePanel').remove()">Lukk</button></div>`;for(const j of rader){const bilder=await hentBilderForJobb(j.id);html+=`<div class="listekort"><b>${esc(String(j.dato||'').slice(0,10))} - ${esc(j.jobbtype||"")}</b><br><span class="mini">${kr(totalJobb(j))} kr</span><div class="galleri" style="margin-top:8px;">${bilder.length?bilder.map(b=>`<a href="${esc(b.url)}" target="_blank"><img src="${esc(b.url)}" alt="Bilde"></a>`).join(""):'<div class="info">Ingen bilder på denne jobben.</div>'}</div></div>`;}if(!rader.length)html+='<div class="info">Ingen jobber på denne hesten ennå.</div>';panel.innerHTML=html;panel.scrollIntoView({behavior:"smooth",block:"start"});}
+function tegnKunderOgHester(){document.getElementById("kundeListe").innerHTML=kunder.map(k=>`<div class="listekort"><b>${esc(k.navn)}</b><br>${esc(k.adresse||"")}</div>`).join("");document.getElementById("hesteListe").innerHTML=hester.map(h=>`<div class="listekort"><b>${esc(h.navn)}</b><br>${esc(h.rase||"")}<br>Eier: ${esc(kundeNavn(h.kunde_id))}<br><button type="button" class="secondary" style="margin-top:8px;" onclick="visDemoJobbBilderForHest('${h.id}')">📷 Vis alle jobbilder kronologisk</button></div>`).join("");}
+function startDemoBeskrivelseTale(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){demoMelding("Tale til tekst støttes ikke i denne nettleseren.",true);return;}const r=new SR();r.lang="nb-NO";r.interimResults=false;r.onresult=e=>{document.getElementById("jobbBeskrivelse").value+=(document.getElementById("jobbBeskrivelse").value?" ":"")+e.results[0][0].transcript;};r.onerror=e=>demoMelding("Tale feilet: "+e.error,true);r.start();}
+
+async function slettDemoBilde(id, filsti){
+  if(!confirm('Slette bildet?')) return;
+  try{
+    await supabaseClient.from('hov_jobb_bilder').delete().eq('id', id);
+    if(filsti){
+      await supabaseClient.storage.from('bilder').remove([filsti]);
+    }
+    alert('Bildet er slettet');
+    await lastData();
+    if(window.aktivDemoJobbId){ await visDemoJobbDetalj(window.aktivDemoJobbId); }
+    if(typeof visDemoJobbDetalj==='function'){ await visDemoJobbDetalj(jobber.find(j=>true)?.id || ''); }
+  }catch(e){
+    alert('Feil ved sletting: ' + (e.message || e));
+  }
+}
+
+
+async function lastDemoFirma(){
+  const melding=document.getElementById("demoFirmaMelding");
+  if(melding){melding.textContent="Henter firma..."; melding.style.color="#86efac";}
+  try{
+    const res = await supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).limit(1);
+    if(res.error) throw res.error;
+    const data = (res.data || [])[0];
+    if(!data) throw new Error("Fant ikke demo-firma. Sjekk at demo-firma finnes og at RLS tillater select.");
+    const set=(id,v)=>{const e=document.getElementById(id); if(e) e.value=v||"";};
+    set("demoFirmaId",data.id);
+    set("demoFirmaNavn",data.navn);
+    set("demoFirmaAdresse",data.adresse);
+    set("demoFirmaTelefon",data.telefon);
+    set("demoFirmaEpost",data.epost);
+    set("demoFirmaOrgnr",data.orgnr);
+    if(melding) melding.textContent="Firma lastet.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Kunne ikke hente firma: "+(e.message||e);}
+  }
+}
+
+async function lagreDemoFirma(){
+  const melding=document.getElementById("demoFirmaMelding");
+  if(melding){melding.textContent="Lagrer firma..."; melding.style.color="#86efac";}
+  const get=id=>(document.getElementById(id)?.value||"").trim();
+  try{
+    const {error}=await supabaseClient.from("hov_firma").update({
+      navn:get("demoFirmaNavn"),
+      adresse:get("demoFirmaAdresse"),
+      telefon:get("demoFirmaTelefon"),
+      epost:get("demoFirmaEpost"),
+      orgnr:get("demoFirmaOrgnr")
+    }).eq("id",DEMO_FIRMA_ID);
+    if(error) throw error;
+    if(melding) melding.textContent="Firma lagret.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Firma ble ikke lagret: "+(e.message||e);}
+  }
+}
+
+async function taDemoBackup(){
+  const melding=document.getElementById("demoBackupMelding");
+  if(melding){melding.textContent="Lager backup..."; melding.style.color="#86efac";}
+  try{
+    const [firma,kunderRes,hesterRes,jobberRes,jobbBilderRes,hestBilderRes]=await Promise.all([
+      supabaseClient.from("hov_firma").select("*").eq("id",DEMO_FIRMA_ID).limit(1),
+      supabaseClient.from("kunder").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hester").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_jobber").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_jobb_bilder").select("*").eq("firma_id",DEMO_FIRMA_ID),
+      supabaseClient.from("hov_hest_bilder").select("*").eq("firma_id",DEMO_FIRMA_ID)
+    ]);
+    for(const r of [firma,kunderRes,hesterRes,jobberRes,jobbBilderRes,hestBilderRes]){ if(r.error) throw r.error; }
+    const backup={
+      type:"hovslager-demo-backup",
+      firma_id:DEMO_FIRMA_ID,
+      laget:new Date().toISOString(),
+      firma:Array.isArray(firma.data) ? (firma.data[0] || null) : firma.data,
+      kunder:kunderRes.data||[],
+      hester:hesterRes.data||[],
+      jobber:jobberRes.data||[],
+      jobb_bilder:jobbBilderRes.data||[],
+      hest_bilder:hestBilderRes.data||[]
+    };
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="hovslager-demo-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if(melding) melding.textContent="Backup lastet ned.";
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Backup feilet: "+(e.message||e);}
+  }
+}
+
+async function restoreDemoBackup(){
+  const melding=document.getElementById("demoBackupMelding");
+  const fil=document.getElementById("demoRestoreFil")?.files?.[0];
+  if(!fil){ if(melding){melding.style.color="#fca5a5"; melding.textContent="Velg backupfil først.";} return; }
+  if(!confirm("Restore vil legge data inn i demo-firmaet. Fortsette?")) return;
+  if(melding){melding.textContent="Leser backup..."; melding.style.color="#86efac";}
+  try{
+    const backup=JSON.parse(await fil.text());
+    if(!backup || backup.type!=="hovslager-demo-backup") throw new Error("Dette ser ikke ut som en gyldig demo-backup.");
+    const strip=(arr)=> (arr||[]).map(r=>{
+      const x={...r};
+      delete x.created_at;
+      delete x.updated_at;
+      x.firma_id=DEMO_FIRMA_ID;
+      return x;
+    });
+    if(backup.firma){
+      const f={...backup.firma};
+      delete f.id; delete f.created_at; delete f.updated_at;
+      await supabaseClient.from("hov_firma").update(f).eq("id",DEMO_FIRMA_ID);
+    }
+    const kunderData=strip(backup.kunder);
+    const hesterData=strip(backup.hester);
+    const jobberData=strip(backup.jobber);
+    const jobbBilderData=strip(backup.jobb_bilder);
+    const hestBilderData=strip(backup.hest_bilder);
+    if(kunderData.length){ const {error}=await supabaseClient.from("kunder").upsert(kunderData); if(error) throw error; }
+    if(hesterData.length){ const {error}=await supabaseClient.from("hester").upsert(hesterData); if(error) throw error; }
+    if(jobberData.length){ const {error}=await supabaseClient.from("hov_jobber").upsert(jobberData); if(error) throw error; }
+    if(jobbBilderData.length){ const {error}=await supabaseClient.from("hov_jobb_bilder").upsert(jobbBilderData); if(error) throw error; }
+    if(hestBilderData.length){ const {error}=await supabaseClient.from("hov_hest_bilder").upsert(hestBilderData); if(error) throw error; }
+    if(melding) melding.textContent="Restore fullført.";
+    await lastData();
+    await lastDemoFirma();
+  }catch(e){
+    if(melding){melding.style.color="#fca5a5"; melding.textContent="Restore feilet: "+(e.message||e);}
+  }
+}
+
+
+document.getElementById("jobbDato").value=dagensDatoISO();lastData().catch(e=>{console.error(e);status("Demo kunne ikke lagre i Supabase: "+(e.message||e),true);demoMelding("Supabase/RLS stopper demo-lagring. Sjekk policy for demo-firma.",true);});
+</script>
+
+<script>
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+async function installerApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+  } else {
+    alert("Android:\nMeny → Installer app\n\niPhone/iPad:\nSafari → Del → Legg til på Hjem-skjerm");
+  }
+}
+</script>
+
+<script>
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='demoHestBilder'){
+    const filer=[...(e.target.files||[])];
+    const p=document.getElementById('demoHestBildePreview');
+    if(p) p.innerHTML=filer.map(f=>`<img src="${URL.createObjectURL(f)}">`).join('');
+  }
+});
+</script>
+</body>
+</html>

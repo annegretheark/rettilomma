@@ -1,1616 +1,1133 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="no" class="hand-role-locking">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Håndverker - Rett i Lomma</title>
+  <link rel="stylesheet" href="css/hand-main.css?v=20260623-titlefix">
 
-  <style>
-    #prosjektVindu {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 500px;
-      max-width: 90%;
-      background: white;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      z-index: 9999;
-    }
 
-    #prosjektOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      z-index: 9998;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #151819;
-      color: #f3f4f6;
-      margin: 0;
-      padding: 20px;
-    }
-
-    .kort {
-      background: #171a1b;
-      color: #f3f4f6;
-      max-width: 900px;
-      margin: 0 auto 18px auto;
-      padding: 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    }
-
-    h1, h2 {
-      margin-top: 0;
-    }
-
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
-    input, select, textarea {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 10px;
-      margin-top: 4px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-
-    button {
-      padding: 11px 14px;
-      margin: 6px 4px 6px 0;
-      border: 0;
-      border-radius: 8px;
-      background: #1f6feb;
-      color: white;
-      cursor: pointer;
-      font-size: 15px;
-    }
-
-    button.secondary {
-      background: #555;
-    }
-
-    button.danger {
-      background: #b42318;
-    }
-
-    .rad {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-    }
-
-    .skjult {
-      display: none;
-    }
-
-    .melding {
-      margin-top: 10px;
-      color: #b42318;
-      font-weight: bold;
-    }
-
-    #lonnPanel {
-      border: 2px solid #1f6feb;
-    }
-
-    #lonnPanel h2 {
-      color: #1f6feb;
-    }
-
-    #testMelding {
-      background: #111827;
-      color: #e5e7eb;
-      padding: 12px;
-      border-radius: 8px;
-      min-height: 140px;
-      max-height: 360px;
-      overflow: auto;
-      font-family: Consolas, monospace;
-      font-size: 13px;
-      white-space: pre-wrap;
-    }
-
-    #testMelding .ok { color: #86efac; }
-    #testMelding .feil { color: #fca5a5; }
-
-    .okonomi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .okonomi-boks {
-      background: #22272a;
-      color: #f3f4f6;
-      border: 1px solid #374151;
-      border-radius: 10px;
-      padding: 12px;
-    }
-
-    .okonomi-boks strong {
-      display: block;
-      font-size: 18px;
-      margin-top: 4px;
-    }
-
-    .okonomi-tabell {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 13px;
-    }
-
-    .okonomi-tabell th,
-    .okonomi-tabell td {
-      border-bottom: 1px solid #374151;
-      padding: 6px;
-      text-align: left;
-      vertical-align: top;
-      color: #f3f4f6;
-    }
-
-    .okonomi-tabell th {
-      background: #111827;
-      color: #f3f4f6;
-    }
-
-    .okonomi-advarsel {
-      color: #b42318;
-    }
-
-    .okonomi-tabell tr.klikkbar-okonomi {
-      cursor: pointer;
-    }
-
-    .okonomi-tabell tr.klikkbar-okonomi:hover {
-      background: #1f2937;
-    }
-
-    .okonomi-mini-knapp {
-      padding: 5px 7px;
-      margin: 0;
-      font-size: 12px;
-      border-radius: 6px;
-      white-space: nowrap;
-    }
-
-    .okonomi-detalj {
-      margin-top: 12px;
-      border: 1px solid #374151;
-      border-radius: 10px;
-      padding: 12px;
-      background: #22272a;
-      color: #f3f4f6;
-    }
-
-    .okonomi-detalj strong,
-    .okonomi-detalj div,
-    .okonomi-detalj p {
-      color: #f3f4f6;
-    }
-
-    .modul-skjult {
-      display: none !important;
-    }
-
-    .modul-rad {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    .modul-rad label {
-      margin: 0;
-      font-weight: normal;
-    }
-
-    .modul-rad input {
-      width: auto;
-      margin: 0 8px 0 0;
-    }
-
-  
-    .info {
-      color: #cbd5e1;
-    }
-
-    input,
-    select,
-    textarea {
-      background: #f8fafc;
-      color: #111827;
-    }
-
-    h1,
-    h2,
-    h3,
-    label {
-      color: #f3f4f6;
-    }
-
-
-    .bil-tabell {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 13px;
-    }
-    .bil-tabell th,
-    .bil-tabell td {
-      border-bottom: 1px solid #374151;
-      padding: 6px;
-      text-align: left;
-      vertical-align: middle;
-      color: #f3f4f6;
-    }
-    .bil-tabell th { background: #111827; }
-
-
-    /* Kompakt bil-lager: treffer inputfeltene i varelisten */
-    #bilLagerFyllListe .bil-tabell {
-      font-size: 12px;
-    }
-
-    #bilLagerFyllListe .bil-tabell th,
-    #bilLagerFyllListe .bil-tabell td {
-      padding: 2px 4px !important;
-      line-height: 1.1 !important;
-      vertical-align: middle;
-    }
-
-    #bilLagerFyllListe .bil-tabell input[type="number"] {
-      width: 70px !important;
-      min-width: 70px !important;
-      max-width: 80px !important;
-      height: 24px !important;
-      min-height: 24px !important;
-      padding: 2px 4px !important;
-      margin: 0 !important;
-      border-radius: 4px !important;
-      font-size: 12px !important;
-      line-height: 1.1 !important;
-    }
-
-    #bilLagerFyllListe .bil-tabell td:nth-child(1),
-    #bilLagerFyllListe .bil-tabell th:nth-child(1) {
-      min-width: 70px;
-      max-width: 100px;
-    }
-
-
-    .klikkbar-bilrad {
-      cursor: pointer;
-    }
-
-    .klikkbar-bilrad:hover {
-      background: #1f2937;
-    }
-
-
-    .topplinje {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .meny-gruppe {
-      position: relative;
-      display: inline-block;
-    }
-
-    .meny-panel {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      min-width: 190px;
-      background: #111827;
-      border: 1px solid #374151;
-      border-radius: 10px;
-      padding: 6px;
-      z-index: 10000;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-    }
-
-    .meny-gruppe:hover .meny-panel,
-    .meny-gruppe:focus-within .meny-panel {
-      display: block;
-    }
-
-    .meny-panel button {
-      display: block;
-      width: 100%;
-      text-align: left;
-      margin: 3px 0;
-      background: #374151;
-      padding: 8px 10px;
-      font-size: 14px;
-    }
-
-    .meny-panel button:hover {
-      background: #4b5563;
-    }
-
-
-    .meny-gruppe.apen .meny-panel {
-      display: block;
-    }
-
-
-    #varerSide #vareListe {
-      max-height: 420px;
-      overflow: auto;
-      margin-bottom: 12px;
-      border: 1px solid #374151;
-      border-radius: 10px;
-      padding: 4px;
-    }
-
-
-    .meny-panel {
-      pointer-events: auto;
-    }
-
-    .meny-panel button {
-      cursor: pointer;
-      pointer-events: auto;
-    }
-
-
-
-    /* AGK FIX 7086: behold mørkt tema også etter økonomi/purring-fiks */
-    #fakturaSide,
-    #okonomiOversikt,
-    #okonomiDetalj {
-      color: #f3f4f6;
-    }
-
-    #okonomiOversikt .okonomi-boks,
-    #okonomiDetalj.okonomi-detalj {
-      background: #22272a !important;
-      color: #f3f4f6 !important;
-      border-color: #374151 !important;
-    }
-
-    #okonomiOversikt .okonomi-tabell th {
-      background: #111827 !important;
-      color: #f3f4f6 !important;
-    }
-
-    #okonomiOversikt .okonomi-tabell td {
-      background: transparent !important;
-      color: #f3f4f6 !important;
-      border-bottom-color: #374151 !important;
-    }
-
+<style id="ril-clean-admin-menu-css">
+  .meny-panel .meny-overskrift{font-size:12px;font-weight:700;opacity:.75;padding:8px 10px 4px;margin-top:4px;text-align:left;color:#d1d5db;}
+  .meny-panel .meny-overskrift:first-child{margin-top:0;}
 </style>
-</head>
 
+<style id="ril-no-start-blink-css">
+  /* RIL: unngå blink fra admin/kunde/tilbud mens appen starter */
+  #appSide.ril-starter #timerSide,
+  #appSide.ril-starter #jobberSide,
+  #appSide.ril-starter #kundeSide,
+  #appSide.ril-starter #kunderSide,
+  #appSide.ril-starter #tilbudSide,
+  #appSide.ril-starter #fakturaSide,
+  #appSide.ril-starter #varerSide,
+  #appSide.ril-starter #bilerSide,
+  #appSide.ril-starter #ansattSide,
+  #appSide.ril-starter #ansatteSide,
+  #appSide.ril-starter #firmaSide,
+  #appSide.ril-starter #lonnPanel,
+  #appSide.ril-starter #lonnSide,
+  #appSide.ril-starter #sysadminPanelSide,
+  #appSide.ril-starter #adminSide { display:none !important; }
+</style>
+
+<style id="hand-role-no-blink-final-css">
+  html:not(.ril-role-ready) #handTopbarKort { visibility: hidden !important; }
+</style>
+
+<style id="hand-no-blink-v6-css">
+  html.hand-role-locking #appSide { visibility: hidden !important; }
+  html.hand-role-locking #handTopbarKort { visibility: hidden !important; }
+  html.hand-is-sysadm #sysadminModeKnapp,
+  html.hand-is-sysadm #sysadminNyKundeKnapp,
+  html.hand-is-sysadm #sysadminKundelisteKnapp,
+  html.hand-is-sysadm #sysadminModulerKnapp { display: inline-block !important; visibility: visible !important; }
+</style>
+
+<style id="hand-moduler-kun-sysadm-panel-v9-css">
+  /* Modulvalg skal bare åpnes via Sysadm-panelet, ikke i vanlig Admin/kundevisning. */
+  #visModulerKnapp,
+  #velgModulKnapp { display:none !important; visibility:hidden !important; }
+</style>
+
+<style id="ril-panel-lock-css">
+  /*
+    Bare aktivt valgt panelside får vises.
+    Hindrer gamle inline-scripts fra å vise Backup/Tilbud i bakgrunnen.
+  */
+  #appSide.ril-panel-lock #adminKonsollSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #timerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #jobberSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #tilbudSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #backupSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #fakturaSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #varerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #bilerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #kundeSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #kunderSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #ansattSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #ansatteSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #firmaSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #bilBestillingerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #adminBilBestillinger:not(.ril-active-side),
+  #appSide.ril-panel-lock #adminBilBestillingerPanel:not(.ril-active-side),
+  #appSide.ril-panel-lock #testSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #testpanelSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #lonnPanel:not(.ril-active-side),
+  #appSide.ril-panel-lock #lonnSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #fravaerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #modulerSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #sysadminPanelSide:not(.ril-active-side),
+  #appSide.ril-panel-lock #adminSide:not(.ril-active-side) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+</style>
+
+</head>
 <body>
   <img id="fakturaLogoBilde" src="../bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
 
-  <!-- LOGIN -->
-  <section id="loginSide" class="kort">
-    <h1>Timeregistrering</h1>
-
-    <label for="loginEpost">E-post</label>
-    <input id="loginEpost" type="email" autocomplete="username">
-
-    <label for="loginPassord">Passord</label>
-    <input id="loginPassord" type="password" autocomplete="current-password">
-
-    <label>
-      <input id="loginSomAdmin" type="checkbox" style="width:auto;">
-      Logg inn som admin
-    </label>
-
-    <button id="loginKnapp" type="button">Logg inn</button>
-<button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
-
-    <div id="loginMelding" class="melding"></div>
-  </section>
-
-  <!-- NYTT PASSORD -->
-  <section id="nyttPassordSide" class="kort skjult">
-    <h2>Nytt passord</h2>
-
-    <label for="nyttPassord">Nytt passord</label>
-    <input id="nyttPassord" type="password">
-
-    <label for="gjentaNyttPassord">Gjenta nytt passord</label>
-    <input id="gjentaNyttPassord" type="password">
-
-    <button id="lagreNyttPassordKnapp" type="button">Lagre nytt passord</button>
-    <button id="tilbakeTilLoginKnapp" type="button" class="secondary">Tilbake</button>
-
-    <div id="nyttPassordMelding" class="melding"></div>
-  </section>
-
-  <!-- APP -->
-  <section id="appSide" class="skjult">
-
-    <div class="kort">
-      <h1>Timeregistrering</h1>
-
-      <div class="topplinje">
-        <button id="visTimerKnapp" type="button">Timer</button>
-        <button id="visJobberKnapp" type="button">Jobber</button>
-        <button id="visKundeKnapp" class="admin-only" type="button">Kunder</button>
-        <button id="visFakturaKnapp" class="admin-only" data-modul="faktura" type="button">Faktura</button>
-        <button id="visLonnKnapp" class="admin-only" data-modul="lonn" type="button">L&#248;nn</button>
-        <button id="visFravaerKnapp" type="button">Frav&#230;r / Flexi</button>
-
-        <button id="visBilerKnapp" data-modul="biler" type="button" onclick="window.visBilerSide && window.visBilerSide()">Min bil</button>
-
-        <div class="meny-gruppe admin-only">
-          <button id="adminMenyKnapp" type="button">Admin &#9660;</button>
-          <div class="meny-panel">
-            <button id="visAnsattKnapp" type="button">Ansatte</button>
-            <button id="visFirmaKnapp" type="button">Firma</button>
-            <button id="visModulerKnapp" class="systemadmin-only" type="button">&#9881;&#65039; Moduler</button>
-            <button id="visBackupKnapp" type="button">Backup/Restore</button>
-            <button id="visTestKnapp" type="button">Testpanel</button>
-            <button id="visHovslagerKnapp" data-modul="hovslager" type="button" onclick="window.visHovslagerModul && window.visHovslagerModul()">Hovslager</button>
-            <button id="visVeterinaerKnapp" data-modul="veterinaer" type="button" onclick="window.visVeterinaerModul && window.visVeterinaerModul()">Veterin&#230;r</button>
-          </div>
-        </div>
-
-        <button id="loggUtKnapp" type="button" class="danger" onclick="
-  localStorage.removeItem('rettilommaValgtModul');
-  localStorage.removeItem('aktivBilId');
-  localStorage.removeItem('aktivBilNavn');
-  if (window.supabaseClient && supabaseClient.auth) {
-    supabaseClient.auth.signOut().finally(function () {
-      window.location.href = '../handverker-login.html';
-    });
-  } else {
-    window.location.href = '../handverker-login.html';
-  }
-">Logg ut</button>
-      </div>
-    </div>
-
-
-    <section id="backupSide" class="kort admin-only skjult">
-      <h2>Admin-konsoll</h2>
-      <h3>Backup / Restore</h3>
-      <p>Ta full backup f&#248;r st&#248;rre endringer, og bruk restore hvis noe m&#229; rulles tilbake.</p>
-
-      <button id="backupKnapp" type="button">
-        Ta backup
-      </button>
-
-      <label for="importFil" style="font-weight:bold; display:block; margin-top:14px;">
-        Restore fra backupfil
-      </label>
-
-      <input id="importFil" type="file" accept=".json">
-
-      <div id="backupMelding" class="melding"></div>
-    </section>
-
-    <!-- JOBBER -->
-    <section id="jobberSide" class="kort skjult">
-      <h2>Jobber</h2>
-      <p id="jobberForklaring" class="info">Vanlig bruker ser egne jobber. Admin ser alle jobber.</p>
-      <button id="oppdaterJobberKnapp" type="button" class="secondary">Oppdater jobber</button>
-      <div id="jobberMelding" class="melding"></div>
-      <div id="jobberListe"></div>
-    </section>
-
-    <!-- TIMER -->
-    <section id="timerSide" class="kort">
-      <h2>Registrer timer</h2>
-
-      <div class="rad">
-        <div>
-          <label for="dato">Dato</label>
-          <input id="dato" type="date">
-        </div>
-
-        <div>
-          <label for="kundeValg">Kunde</label>
-          <select id="kundeValg">
-            <option value="">Velg kunde</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="kundeNrVisning">Kundenr</label>
-          <input id="kundeNrVisning" readonly>
-        </div>
-      </div>
-
-      <div class="rad">
-        <div>
-          <label for="prosjektValg">Prosjekt</label>
-          <select id="prosjektValg">
-            <option value="">Velg kunde f&#248;rst</option>
-          </select>
-        </div>
-      </div>
-      <div id="adminAnsattRad" class="rad admin-only skjult" style="display:none;">
-        <div>
-          <label for="adminAnsattValg">Registrer timer for ansatt</label>
-          <select id="adminAnsattValg">
-            <option value="">Meg selv / innlogget bruker</option>
-          </select>
-          <div class="info" style="font-size:0.9em; margin-top:4px;">Vises bare n&#229;r admin logger inn som admin.</div>
-        </div>
-      </div>
-  <div class="rad">
-  <div>
-    <label for="start">Start</label>
-    <input id="startTid" type="time" value="08:00">
-  </div>
-
-  <div>
-    <label for="slutt">Slutt</label>
-    <input id="sluttTid" type="time" value="16:00">
-  </div>
-
-  <div>
-    <label for="timepris">Timepris</label>
-    <input id="timepris" type="number" value="1100">
-  </div>
-</div>
-  <div class="rad" data-modul="biler">
-  <div>
-    <label for="bilValg">Standard/aktiv bil</label>
-    <select id="bilValg">
-      <option value="">Velg bil</option>
-    </select>
-    <div id="aktivBilInfo" class="melding" style="font-size:0.9em; margin-top:4px;"></div>
-    <button id="byttBilKnapp" type="button" class="secondary" style="margin-top:6px;">Bytt bil denne gangen</button>
-  </div>
-
-  <div data-modul="varer">
-    <label for="vareValg">Vare</label>
-    <select id="vareValg">
-      <option value="">Velg vare</option>
-    </select>
-  </div>
-
-  
-
-  <div data-modul="varer">
-    <label for="vareAntall">Antall</label>
-    <input id="vareAntall" type="number" value="1" step="1" min="1">
-  </div>
-  <div data-modul="varer">
-  <label for="varePris">Varepris</label>
-  <input id="varePris" type="number" value="0" step="0.01">
-</div>
-
-</div>
-
-<button id="leggTilVarelinjeKnapp" type="button" data-modul="varer">
-  Legg til vare p&#229; faktura
-</button>
-<div id="varelinjeListe" data-modul="varer" style="margin-top:10px;"></div>
-
-      <div class="rad">
-  <div>
-    <label for="utgiftType">Utgiftstype</label>
-    <select id="utgiftType">
-      <option value="">Ingen utgift</option>
-      <option value="kjoring">Kj&#248;ring</option>
-      <option value="bompenger">Bompenger</option>
-      <option value="parkering">Parkering</option>
-      <option value="ferge">Ferge</option>
-      <option value="diett">Diett</option>
-      <option value="billetter">Billetter</option>
-      <option value="annet">Annet</option>
-    </select>
-  </div>
-
-  <div>
-    <label for="utgiftBelop">Bel&#248;p</label>
-    <input id="utgiftBelop" type="number" value="0" step="0.01">
-  </div>
-
-  <div>
-    <label for="utgiftKm">Km</label>
-    <input id="utgiftKm" type="number" value="0" step="0.1">
-  </div>
-
-  <div>
-    <label for="utgiftKmPris">Pris pr km</label>
-    <input id="utgiftKmPris" type="number" value="5.30" step="0.01">
-  </div>
-
-  <div>
-    <label for="fakturerbar">Fakturerbar</label>
-    <select id="fakturerbar">
-      <option value="ja">Ja</option>
-      <option value="nei">Nei</option>
-    </select>
-  
-        </div>
-      </div>
-<button id="leggTilUtleggKnapp" type="button">
-  Legg til utlegg p&#229; faktura
-</button>
-
-<div id="utleggListe" style="margin-top:10px;">
-  Utlegg som legges her kommer med p&#229; neste faktura.
-</div>
-      <label for="beskrivelse">Beskrivelse</label>
-      <textarea id="beskrivelse"></textarea>
-      <label for="timerBildeGalleri">
-  Velg bilde
-</label>
-
-<input
-  id="timerBildeGalleri"
-  type="file"
-  accept="image/*"
-  multiple>
-
-<label for="timerBildeKamera">
-  Ta bilde
-</label>
-
-<input
-  id="timerBildeKamera"
-  type="file"
-  accept="image/*"
-  capture="environment"
-  multiple>
-
-<label for="timerBildeTekst">
-  Bildetekst
-</label>
-
-<input
-  id="timerBildeTekst"
-  type="text"
-  placeholder="F.eks. f&#248;r arbeid">
-
-      <button id="lagreTimerKnapp" type="button">Lagre timer</button>
-
-      <div id="timerMelding" class="melding"></div>
-    </section>
-
-
-    <!-- FRAVÆR / FLEXI -->
-    <section id="fravaerSide" class="kort skjult">
-      <h2>Frav&#230;r / Flexi</h2>
-      <p class="info">Ansatte kan registrere frav&#230;r og avspasering. Admin kan godkjenne og se alle.</p>
-
-      <div class="rad admin-only">
-        <div>
-          <label for="fravaerAnsattValg">Ansatt</label>
-          <select id="fravaerAnsattValg">
-            <option value="">Meg selv / valgt ansatt</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="rad">
-        <div>
-          <label for="fravaerType">Type</label>
-          <select id="fravaerType">
-            <option value="Ferie">Ferie</option>
-            <option value="Egenmelding">Egenmelding</option>
-            <option value="Sykemelding">Sykemelding</option>
-            <option value="Permisjon med l&#248;nn">Permisjon med l&#248;nn</option>
-            <option value="Permisjon uten l&#248;nn">Permisjon uten l&#248;nn</option>
-            <option value="Avspasering">Avspasering</option>
-            <option value="Annet">Annet</option>
-          </select>
-        </div>
-        <div>
-          <label for="fravaerFraDato">Fra dato</label>
-          <input id="fravaerFraDato" type="date">
-        </div>
-        <div>
-          <label for="fravaerTilDato">Til dato</label>
-          <input id="fravaerTilDato" type="date">
-        </div>
-        <div>
-          <label for="fravaerTimerPrDag">Timer pr dag</label>
-          <input id="fravaerTimerPrDag" type="number" step="0.25" value="7.5">
-        </div>
-      </div>
-
-      <label for="fravaerKommentar">Kommentar</label>
-      <textarea id="fravaerKommentar" placeholder="F.eks. ferieuke, egenmelding, avspasering"></textarea>
-
-      <button id="lagreFravaerKnapp" type="button">Send til godkjenning</button>
-      <button id="oppdaterFravaerKnapp" type="button" class="secondary">Oppdater</button>
-
-      <div id="fravaerMelding" class="melding"></div>
-
-      <hr>
-
-      <h3>Flexisaldo / timebank</h3>
-      <div id="flexiSaldo"></div>
-
-      <h3>Mine registreringer</h3>
-      <div id="fravaerListe"></div>
-
-      <div class="admin-only">
-        <h3>Til godkjenning</h3>
-        <div id="fravaerGodkjenning"></div>
-      </div>
-    </section>
-
-    <!-- FAKTURA -->
-    <section id="fakturaSide" class="kort skjult admin-only" data-modul="faktura">
-      <h2>Faktura</h2>
-      <p>Velg kunde og lag faktura kun for den kunden. Timer og varelinjer som allerede er fakturert blir ikke tatt med.</p>
-
-      <label for="fakturaKundeValg">Kunde som skal faktureres</label>
-      <select id="fakturaKundeValg">
-        <option value="">Velg kunde</option>
-      </select>
-
-      <div id="fakturaMelding" class="melding"></div>
-
-      <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
-      <button id="excelKnapp" type="button">MVA Excel</button>
-      <button id="purringKnapp" type="button">Kj&#248;r purring</button>
-      <button id="purrAlleKnapp" type="button">Purr alle forfalte</button>
-      <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
-      <button id="kreditnotaKnapp" type="button">Kreditnota</button>
-
-      <div id="fakturaKopiOmrade" style="display:none; margin-top:15px;">
-        <label for="fakturaKopiValg">Velg faktura for kopi</label>
-
-        <select id="fakturaKopiValg">
-          <option value="">Velg faktura</option>
-        </select>
-
-        <button id="skrivUtFakturaKopiKnapp" type="button">
-          Skriv ut fakturakopi
-        </button>
-      </div>
-
-      <div id="kreditnotaOmrade" style="display:none; margin-top:15px;">
-        <label id="kreditnotaLabel" for="kreditnotaFakturaValg">
-          Velg faktura for kreditnota
-        </label>
-
-        <select id="kreditnotaFakturaValg">
-          <option value="">Velg faktura</option>
-        </select>
-
-        <button id="skrivUtKreditnotaKnapp" type="button">
-          Skriv ut kreditnota
-        </button>
-      </div>
-
-      <div id="fakturaMelding" class="melding"></div>
-    
-      <hr>
-
-      <h3>&#216;konomioversikt</h3>
-      <p>Se hva som ikke er fakturert, hva som er fakturert, og hva som er ubetalt eller forfalt.</p>
-
-      <div class="rad">
-        <div>
-          <label for="okonomiFraDato">Fra dato</label>
-          <input id="okonomiFraDato" type="date">
-        </div>
-
-        <div>
-          <label for="okonomiTilDato">Til dato</label>
-          <input id="okonomiTilDato" type="date">
-        </div>
-
-        <div>
-          <label for="okonomiKundeValg">Kunde</label>
-          <select id="okonomiKundeValg">
-            <option value="">Alle kunder</option>
-          </select>
-        </div>
-      </div>
-
-      <button id="okonomiOversiktKnapp" type="button">Vis &#248;konomioversikt</button>
-
-      <div id="okonomiMelding" class="melding"></div>
-      <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
-      <div id="okonomiOversikt"></div>
-
+  <div data-hand-partial="partials/hand-login.html"></div>
+
+  <section id="appSide" class="skjult ril-starter ril-panel-lock" style="display:none">
+      <div data-hand-partial="partials/hand-topbar.html"></div>
+      <div data-hand-partial="partials/hand-admin.html"></div>
+      <div data-hand-partial="partials/hand-jobber.html"></div>
+      <div data-hand-partial="partials/hand-timer.html"></div>
+      <div data-hand-partial="partials/hand-fravaer.html"></div>
+      <div data-hand-partial="partials/hand-tilbud.html"></div>
+      <div data-hand-partial="partials/hand-faktura.html"></div>
+      <div data-hand-partial="partials/hand-biler.html"></div>
+      <div data-hand-partial="partials/hand-varer.html"></div>
+      <div data-hand-partial="partials/hand-lonn.html"></div>
+      <div data-hand-partial="partials/hand-kunder.html"></div>
+      <div data-hand-partial="partials/hand-ansatte.html"></div>
+      <div data-hand-partial="partials/hand-firma.html"></div>
+      <div data-hand-partial="partials/hand-systemadmin.html"></div>
+      <div data-hand-partial="partials/hand-moduler.html"></div>
+      <div data-hand-partial="partials/hand-testpanel.html"></div>
 </section>
 
-
-    <!-- BILER -->
-    <section id="bilerSide" class="kort skjult" data-modul="biler">
-      <h2>Min bil / lager</h2>
-      <p>Opprett biler her. Etterp&#229; kan bilen velges p&#229; ansatt under Standard bil.</p>
-
-      <button id="nyBilKnapp" type="button" onclick="window.nyBilSkjema && window.nyBilSkjema()">Registrer ny bil</button>
-
-      <div id="bilSkjemaOmrade" style="display:block; margin-top:18px; padding-top:4px;">
-        <h3 id="nyBilTittel">Registrer ny bil</h3>
-        <input id="bilId" type="hidden">
-
-        <div class="rad" id="bilSkjemaRad" style="display:grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
-          <div>
-            <label for="bilNavn">Bilnavn</label>
-            <input id="bilNavn" type="text" placeholder="Servicebil 1" autocomplete="off">
-          </div>
-          <div>
-            <label for="bilRegnr">Regnr</label>
-            <input id="bilRegnr" type="text" placeholder="AB12345" autocomplete="off">
-          </div>
-        </div>
-
-        <button id="lagreBilKnapp" type="button" style="background:#16a34a !important; font-weight:bold; font-size:16px; display:inline-block !important;" onclick="window.lagreBil && window.lagreBil()">&#128190; Lagre bil</button>
-        <button id="tilbakeFraBilerKnapp" type="button" class="secondary">Tilbake til timer</button>
-      </div>
-
-      <div id="bilMelding" class="melding"></div>
-      <div id="bilListe"></div>
-
-      <hr>
-      <h3>Bil-lager</h3>
-      <p>Velg bil &#233;n gang. Skriv antall p&#229; flere varer i listen og lagre alt samtidig.</p>
-      <div class="rad">
-        <div>
-          <label for="bilLagerBilValg">Bil som skal fylles</label>
-          <select id="bilLagerBilValg"><option value="">Velg bil</option></select>
-        </div>
-        <div>
-          <label for="bilLagerHentetAv">Hvem henter varene</label>
-          <input id="bilLagerHentetAv" type="text" placeholder="Navn p&#229; den som henter" autocomplete="off">
-        </div>
-      </div>
-
-      <h4>Fyll bilen fra vareregister</h4>
-      <p class="info">Listen viser varenr, varenavn, innpris, utpris, hovedlager, minimum og MVA.</p>
-      <div id="bilLagerFyllListe"></div>
-      <button id="lagreBilLagerListeKnapp" type="button">Lagre alle valgte varer p&#229; bilen</button>
-
-      <h4>Varer som ligger p&#229; bil</h4>
-      <div id="bilLagerListe"></div>
-    </section>
-
-    <!-- VARER -->
-    <section id="varerSide" class="kort skjult" data-modul="varer">
-      <h2>Vareregister</h2>
-
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-        <h3 style="margin:0;">Vareliste</h3>
-        <button type="button" class="secondary" onclick="document.getElementById('varenr')?.scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('varenr')?.focus();">
-          Ny vare
-        </button>
-      </div>
-
-      <div id="vareListe"></div>
-
-      <hr>
-
-      <h3>Ny / rediger vare</h3>
-
-      <label for="varenr">Varenr</label>
-      <input id="varenr">
-
-      <label for="varenavn">Varenavn</label>
-      <input id="varenavn">
-
-      <label for="varebeskrivelse">Beskrivelse</label>
-      <textarea id="varebeskrivelse"></textarea>
-
-      <div class="rad">
-        <div>
-          <label for="vareinnpris">Innpris eks. mva</label>
-          <input id="vareinnpris" type="number" step="0.01" value="0">
-        </div>
-
-        <div>
-          <label for="varepaslag">P&#229;slag faktor</label>
-          <input id="varepaslag" type="number" step="0.01" value="3">
-        </div>
-
-        <div>
-          <label for="varepris">Utpris eks. mva</label>
-          <input id="varepris" type="number" step="0.01">
-        </div>
-      </div>
-
-      <div class="rad">
-        <div>
-          <label for="varelagerAntall">Antall p&#229; hovedlager</label>
-          <input id="varelagerAntall" type="number" step="0.01" value="0">
-        </div>
-
-        <div>
-          <label for="vareMinimumAntall">Minimum hovedlager</label>
-          <input id="vareMinimumAntall" type="number" step="0.01" value="0">
-        </div>
-
-        <div>
-          <label for="varemva">MVA %</label>
-          <input id="varemva" type="number" value="25">
-        </div>
-      </div>
-
-      <button id="lagreVareKnapp" type="button">Lagre vare</button>
-      <button id="tilbakeFraVarerKnapp" type="button" class="secondary">Tilbake</button>
-      <label for="importVarerFil">
-  Importer varer fra Excel/CSV
-</label>
-
-<input
-  id="importVarerFil"
-  type="file"
-  accept=".xlsx,.xls,.csv">
-
-<button
-  id="importVarerKnapp"
-  type="button">
-
-  Importer varer
-
-</button>
-
-<button
-  id="lastInnLasLagerKnapp"
-  type="button"
-  class="secondary"
-  onclick="window.lastInnLasesmedLager && window.lastInnLasesmedLager()">
-
-  Last inn l&#229;sesmed lagervarer
-
-</button>
-
-      <hr>
-
-      <hr>
-
-      <h3>Bil-lager</h3>
-      <p>
-        Biler opprettes og vedlikeholdes p&#229; egen side under knappen <strong>Biler</strong>.
-        Varer beholdes her i vareregisteret.
-      </p>
-      <button type="button" class="secondary" onclick="window.visBilerSide && window.visBilerSide()">
-        &#197;pne bilregister
-      </button>
-      <hr>
-
-    </section>
-
-    <!-- L&#216;NN -->
-    <section id="lonnPanel" class="kort skjult" data-modul="lonn">
-      <h2>L&#248;nn</h2>
-      <p>L&#248;nn hentes fra registrerte timer. Her kan du lage l&#248;nnsslipper og regneark.</p>
-
-      <div class="rad">
-        <div>
-          <label for="lonnManed">M&#229;ned</label>
-          <select id="lonnManed">
-            <option value="1">Januar</option>
-            <option value="2">Februar</option>
-            <option value="3">Mars</option>
-            <option value="4">April</option>
-            <option value="5">Mai</option>
-            <option value="6">Juni</option>
-            <option value="7">Juli</option>
-            <option value="8">August</option>
-            <option value="9">September</option>
-            <option value="10">Oktober</option>
-            <option value="11">November</option>
-            <option value="12">Desember</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="lonnAar">&#197;r</label>
-          <input id="lonnAar" type="number" value="2026">
-        </div>
-
-        <div>
-          <label for="lonnUtbetalingsdato">Utbetalingsdato</label>
-          <input id="lonnUtbetalingsdato" type="date">
-        </div>
-
-        <div>
-          <label for="lonnAnsattValg">Ansatt</label>
-          <select id="lonnAnsattValg">
-            <option value="">Alle ansatte</option>
-          </select>
-        </div>
-      </div>
-
-      <button id="kjorLonnKnapp" type="button">Kj&#248;r l&#248;nn</button>
-      <button id="lonnsslippKnapp" type="button" onclick="return window.lagLonnsslipper(false)">L&#248;nnsslipp valgt/alle PDF</button>
-      <button id="lonnsslippKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi valgt/alle PDF</button>
-      <button id="lonnsslippAlleKnapp" type="button" onclick="return window.lagLonnsslipper(false)">Alle l&#248;nnsslipper PDF</button>
-      <button id="lonnsslippAlleKopiKnapp" type="button" onclick="return window.lagLonnsslipper(true)">Kopi alle PDF</button>
-      <button id="trekkExcelKnapp" type="button">Skattetrekk Excel</button>
-      <button id="utbetalingExcelKnapp" type="button">Utbetalinger Excel</button>
-
-      <div id="lonnMelding" class="melding"></div>
-    </section>
-
-    <!-- KUNDER -->
-    <section id="kundeSide" class="kort skjult">
-      <h2>Kunder</h2>
-
-      <input id="kundeId" type="hidden">
-
-      <label for="kundeNavn">Navn</label>
-      <input id="kundeNavn">
-
-      <label for="kundeAdresse">Adresse</label>
-      <input id="kundeAdresse">
-
-      <label for="kundeEpost">E-post</label>
-      <input id="kundeEpost">
-
-      <label for="kundeKontonr">Kontonr</label>
-      <input id="kundeKontonr" type="text">
-
-      <button type="button" class="secondary" onclick="visProsjektVindu()">
-        Legg til prosjekt
-      </button>
-
-      <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
-
-      <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
-        <h3>Legg til prosjekt</h3>
-
-        <label for="prosjektNr">Prosjektnr</label>
-        <input id="prosjektNr" type="text" placeholder="Prosjektnr">
-
-        <label for="prosjektNavn">Prosjektnavn</label>
-        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
-
-        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
-        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
-
-        <button type="button" onclick="lagreProsjektForValgtKunde()">
-          Lagre prosjekt
-        </button>
-
-        <button type="button" class="secondary" onclick="skjulProsjektVindu()">
-          Lukk
-        </button>
-      </div>
-
-      <label for="kundeKontaktperson">Kontaktperson</label>
-      <input id="kundeKontaktperson">
-
-      <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
-      <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
-
-      <div id="kundeMelding" class="melding"></div>
-      <div id="kundeListe"></div>
-    </section>
-
-    <!-- ANSATTE -->
-    <section id="ansattSide" class="kort skjult">
-      <h2>Ansatte</h2>
-
-      <input id="ansattId" type="hidden">
-
-      <label for="ansattNavn">Navn</label>
-      <input id="ansattNavn">
-
-      <label for="ansattEpost">E-post</label>
-      <input id="ansattEpost">
-
-      <label for="ansattMobil">Mobil</label>
-      <input id="ansattMobil">
-
-      <label for="ansattRolle">Rolle</label>
-      <select id="ansattRolle">
-        <option value="bruker">Bruker</option>
-        <option value="admin">Admin</option>
-        <option value="systemadmin">Systemadmin</option>
-      </select>
-
-
-      <label for="ansattStandardBil">Standard bil</label>
-      <select id="ansattStandardBil">
-        <option value="">Ingen fast bil</option>
-      </select>
-
-      <label for="ansattTimepris">Timepris</label>
-      <input id="ansattTimepris" type="number" value="1100">
-
-      <h3>Trekk</h3>
-
-      <div class="rad">
-        <div>
-          <label for="trekkType">Type trekk</label>
-
-          <select id="trekkType">
-            <option value="">Velg trekk</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="trekkBelop">Bel&#248;p</label>
-          <input id="trekkBelop" type="number" value="0">
-        </div>
-      </div>
-
-      <button id="leggTilTrekkKnapp" type="button">Legg til trekk</button>
-      <button id="lagreAnsattKnapp" type="button">Lagre ansatt</button>
-      <button id="tilbakeFraAnsattKnapp" type="button" class="secondary">Tilbake</button>
-
-      <div id="trekkListe"></div>
-      <div id="ansattListe"></div>
-    </section>
-
-    <!-- FIRMA -->
-    <section id="firmaSide" class="kort skjult">
-      <h2>Firma</h2>
-
-      <label for="firmaNavn">Firmanavn</label>
-      <input id="firmaNavn">
-
-      <label for="firmaAdresse">Adresse</label>
-      <input id="firmaAdresse">
-
-      <label for="firmaEpost">E-post</label>
-      <input id="firmaEpost">
-
-      <label for="firmaKontonr">Kontonr</label>
-      <input id="firmaKontonr">
-
-      <label for="firmaVippsNummer">Vippsnummer</label>
-      <input id="firmaVippsNummer">
-
-      <label for="firmaVippsMottaker">Vipps mottaker</label>
-      <input id="firmaVippsMottaker">
-
-      <label for="firmaBrevhode">Brevhode</label>
-      <textarea id="firmaBrevhode" placeholder="Tekst &#248;verst p&#229; faktura / PDF"></textarea>
-
-      <label for="firmaBrevfot">Brevfot / brevhale</label>
-      <textarea id="firmaBrevfot" placeholder="Tekst nederst p&#229; faktura / PDF"></textarea>
-
-      <label for="firmaOrgNr">Org nr</label>
-      <input id="firmaOrgNr">
-
-      <label for="firmaMvaNr">MVA nr</label>
-      <input id="firmaMvaNr">
-
-      <label for="firmaLogo">Logo</label>
-      <input id="firmaLogo" type="file" accept="image/*">
-
-      <button id="lagreFirmaKnapp" type="button">Lagre firma</button>
-      <button id="tilbakeFraFirmaKnapp" type="button" class="secondary">Tilbake</button>
-
-      <div id="firmaMelding" class="melding"></div>
-    </section>
-
-    <!-- TESTPANEL -->
-
-
-
-
-    <section id="modulerSide" class="kort skjult admin-only systemadmin-only">
-      <h2>Moduler</h2>
-      <p>Skru av det kunden ikke trenger. Valget lagres i Supabase for denne kunden.</p>
-
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-        <button type="button" class="secondary" onclick="brukModulPakke('solo')">Solo</button>
-        <button type="button" class="secondary" onclick="brukModulPakke('handverker')">H&#229;ndverker</button>
-        <button type="button" class="secondary" onclick="brukModulPakke('hovslager')">Hovslager</button>
-        <button type="button" class="secondary" onclick="brukModulPakke('pro')">Pro</button>
-          <button type="button" class="secondary" onclick="brukModulPakke('veterinaer')">Veterin&#230;r</button>
-      </div>
-
-      <div id="modulListe"></div>
-
-      <button id="lagreModulerKnapp" type="button">Lagre moduler</button>
-      <button type="button" class="secondary" onclick="visTimerSide()">Tilbake</button>
-
-      <div id="modulStatus" class="melding"></div>
-      <div id="modulMelding" class="melding"></div>
-    </section>
-
-    <section id="testSide" class="kort skjult admin-only">
-      <h2>Testpanel</h2>
-
-      <button id="testFakturaProsjektGrupperingKnapp" type="button" onclick="testFakturaProsjektGruppering()">Test faktura per prosjekt</button>
-      <button id="kjorHelsetestKnapp" type="button">Kj&#248;r helsetest</button>
-      <button id="kjorStresstestKnapp" type="button">Kj&#248;r stresstest</button>
-      <button id="testDobbeltregistreringKnapp" type="button">Test dobbeltregistrering</button>
-      <button id="testBlankLagringKnapp" type="button">Test blank lagring</button>
-      <button id="testLonnKnapp" type="button">Test l&#248;nn</button>
-      <button id="testFakturaGrunnlagKnapp" type="button">Test fakturagrunnlag</button>
-      <button id="testMvaKnapp" type="button">Test MVA</button>
-      <button id="testFakturaSperreKnapp" type="button">Test fakturasperre</button>
-      <button id="testMvaSperreKnapp" type="button">Test MVA-sperre</button>
-      <button id="testRettigheterKnapp" type="button">Test rettigheter</button>
-      <button id="lagStresstestFakturaKnapp" type="button">Lag stresstest faktura</button>
-<button id="slettKunTestdataKnapp" type="button" class="danger">Slett kun testdata</button>
-
-      <div id="testMelding"></div>
-    </section>
-
-  </section>
-
-<script charset="UTF-8" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<script charset="UTF-8" src="../js/core/config.js?v=5001"></script>
-<script charset="UTF-8" src="../js/core/state.js?v=999"></script>
-<script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
-<script charset="UTF-8" src="../js/handverker/navigation.js?v=7060"></script>
-<script charset="UTF-8" src="../js/handverker/auth.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/kunder.js?v=7044"></script>
-<script charset="UTF-8" src="../js/handverker/prosjekter.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/ansatte.js?v=7044"></script>
-<script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/firma.js?v=7058"></script>
-<script charset="UTF-8" src="../js/handverker/timer.js?v=7044"></script>
-<script charset="UTF-8" src="../js/handverker/admin-timer-ansatt.js?v=7058"></script>
-<script charset="UTF-8" src="../js/handverker/utils.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaData.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/vipps-faktura-fix.js?v=20260608"></script>
-<script charset="UTF-8" src="../js/handverker/pdfLayout.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaPdf.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/faktura.js?v=7086"></script>
-<script charset="UTF-8" src="../js/handverker/okonomi.js?v=7086"></script>
-<script charset="UTF-8" src="../js/handverker/fakturaValg.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/backup.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/lonn.js?v=7100"></script>
-<script charset="UTF-8" src="../js/handverker/fravaer.js?v=7090"></script>
-<script charset="UTF-8" src="../js/handverker/tester.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/app.js?v=7100"></script>
-<script charset="UTF-8" src="../js/handverker/varer.js?v=7066"></script>
-<script charset="UTF-8" src="../js/handverker/biler.js?v=88888"></script>
-  <script charset="UTF-8" src="../js/handverker/lager-patch.js?v=7300"></script>
-<script charset="UTF-8" src="../js/handverker/jobber-rolle.js?v=7068"></script>
-<script charset="UTF-8" src="../js/handverker/bruker-billager.js?v=7055"></script>
-<script charset="UTF-8" src="../js/handverker/bilvalg-repair.js?v=7059"></script>
-
-
-<script>
-window.addEventListener("load", function () {
-  async function nodLoggInn() {
-    const loginMelding = document.getElementById("loginMelding");
-    if (loginMelding) loginMelding.textContent = "";
-
-    const email = document.getElementById("loginEpost")?.value?.trim()?.toLowerCase() || "";
-    const password = document.getElementById("loginPassord")?.value || "";
-    const vilAdmin = document.getElementById("loginSomAdmin")?.checked === true;
-
-    if (!email || !password) {
-      if (loginMelding) loginMelding.textContent = "Skriv inn e-post og passord.";
-      return;
+  <script>
+  (function () {
+    function partialUrl(holder) {
+      return holder.getAttribute("data-hand-partial") + "?v=20260623-inline-app-hidden";
     }
 
-    if (!window.supabaseClient || !supabaseClient.auth) {
-      if (loginMelding) loginMelding.textContent = "Supabase er ikke lastet. Sjekk js/core/config.js.";
-      return;
+    function hentPartialer() {
+      return Array.from(document.querySelectorAll("[data-hand-partial]"));
     }
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
-
-    if (error) {
-      if (loginMelding) loginMelding.textContent = "Innlogging feilet: " + error.message;
-      return;
+    function varslePartialerKlare() {
+      document.dispatchEvent(new Event("handPartialerLastet"));
+      if (typeof window.handFyllFirmaVelgereDirekte === "function") window.handFyllFirmaVelgereDirekte();
+      if (typeof window.handKobleKnapperEtterPartials === "function") window.handKobleKnapperEtterPartials();
+      if (typeof window.handKobleVarerKnapper === "function") window.handKobleVarerKnapper();
     }
 
-    window.innloggetEpost = email;
-    window.erAdmin = false;
+    function lastPartialerSynkront() {
+      const holders = hentPartialer();
+      for (const holder of holders) {
+        const url = partialUrl(holder);
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, false);
+        xhr.setRequestHeader("Cache-Control", "no-store");
+        xhr.send(null);
+        if ((xhr.status < 200 || xhr.status >= 300) && xhr.status !== 0) {
+          throw new Error("Kunne ikke laste " + url);
+        }
+        holder.outerHTML = xhr.responseText;
+      }
+    }
 
-    let ansattData = null;
+    async function lastPartialerAsynkront() {
+      const holders = hentPartialer();
+      for (const holder of holders) {
+        const url = partialUrl(holder);
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("Kunne ikke laste " + url);
+        holder.outerHTML = await res.text();
+      }
+    }
 
     try {
-      const { data, error: ansattError } = await supabaseClient
-        .from("ansatte")
-        .select("*")
-        .eq("epost", email)
-        .limit(1);
-
-      if (!ansattError && Array.isArray(data) && data.length) {
-        ansattData = data[0];
-        window.innloggetAnsattId = ansattData.id || "";
-      }
+      lastPartialerSynkront();
+      window.__handPartialerLastet = true;
+      window.handPartialerKlare = Promise.resolve();
     } catch (e) {
-      console.warn("Kunne ikke hente ansattdata i n\u00F8dinnlogging:", e);
-    }
-
-    const rolle = String(ansattData?.rolle || "").toLowerCase();
-    window.innloggetRolle = rolle;
-    window.erSystemadmin = ["systemadmin", "sysadmin"].includes(rolle);
-    const harAdminRolle = ["admin", "systemadmin", "sysadmin"].includes(rolle);
-    window.erAdmin = harAdminRolle && vilAdmin;
-    localStorage.setItem("rilAdminModus", window.erAdmin ? "ja" : "nei");
-
-    if (typeof window.visApp === "function") {
-      await window.visApp();
-    } else {
-      const loginSide = document.getElementById("loginSide");
-      const appSide = document.getElementById("appSide");
-      if (loginSide) loginSide.classList.add("skjult");
-      if (appSide) appSide.classList.remove("skjult");
-    }
-
-    if (window.erAdmin) {
-      document.querySelectorAll(".admin-only").forEach(el => {
-        el.style.display = "";
-        el.classList.remove("skjult", "hidden");
+      console.warn("Synkron lasting av partials feilet, bruker asynkron fallback:", e);
+      window.handPartialerKlare = lastPartialerAsynkront().then(function () {
+        window.__handPartialerLastet = true;
       });
-      if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
-      if (typeof window.skjulSystemadminHvisIkkeSystemadmin === "function") window.skjulSystemadminHvisIkkeSystemadmin();
-    } else {
-      document.querySelectorAll(".admin-only").forEach(el => {
-        el.style.display = "none";
-        el.classList.add("skjult");
-      });
-      if (typeof window.visTimerSide === "function") window.visTimerSide();
     }
+
+    window.handPartialerKlare
+      .then(function () { setTimeout(varslePartialerKlare, 0); })
+      .catch(function (e) {
+        console.error("Partialer ble ikke ferdig lastet:", e);
+        const appSide = document.getElementById("appSide");
+        if (appSide) {
+          appSide.innerHTML = '<section class="kort"><h2>Kunne ikke laste Håndverker</h2><div class="melding">Oppdater siden. Hvis feilen fortsetter, sjekk at partial-filene ligger i handverker/partials.</div></section>';
+          appSide.classList.remove("skjult");
+        }
+      });
+  })();
+  </script>
+
+
+
+<script id="hand-minbil-prod-7084">
+/* PROD 7084: Min bil for ansatte. Denne ligger i index tidlig, etter partials og før alle andre moduler,
+   slik at knappen virker selv om senere admin/bestillingsscript har feil. */
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  function show(el){
+    if(!el) return;
+    el.hidden = false;
+    el.style.display = '';
+    el.style.visibility = 'visible';
+    if(el.classList) el.classList.remove('skjult','hidden','modul-skjult','ril-starter');
+    if(el.removeAttribute) el.removeAttribute('aria-hidden');
   }
-
-  async function nodGlemtPassord() {
-    const loginMelding = document.getElementById("loginMelding");
-    const email = document.getElementById("loginEpost")?.value?.trim()?.toLowerCase() || "";
-
-    if (!email) {
-      if (loginMelding) loginMelding.textContent = "Skriv inn e-postadressen f\u00F8rst.";
-      return;
-    }
-
-    if (!window.supabaseClient || !supabaseClient.auth) {
-      if (loginMelding) loginMelding.textContent = "Supabase er ikke lastet. Sjekk js/core/config.js.";
-      return;
-    }
-
-    const redirectUrl = window.location.origin + "/rettilomma/reset.html";
-
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
+  function hide(el){
+    if(!el) return;
+    el.hidden = true;
+    el.style.display = 'none';
+    if(el.classList) el.classList.add('skjult','hidden');
+    if(el.setAttribute) el.setAttribute('aria-hidden','true');
+  }
+  var sideIds = ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide','adminKonsollSide'];
+  function ensureBilerSide(){
+    var side = $('bilerSide');
+    if(side) return side;
+    var app = $('appSide') || document.body;
+    side = document.createElement('section');
+    side.id = 'bilerSide';
+    side.className = 'kort';
+    side.setAttribute('data-modul','biler');
+    side.innerHTML = '<h2>Min bil / lager</h2><div id="bilMelding" class="melding"></div><div id="bilLagerListe"></div><div id="bilLagerFyllListe"></div>';
+    app.appendChild(side);
+    return side;
+  }
+  function initBiler(){
+    ['lastBiler','lastBilLager','lastBilerOgBilLager','handLastBiler','fyllAlleBilvalg','fyllBilvalg','fyllBilvalgTrygt','begrensBilLagerForVanligBruker','fyllBilLagerVareValg','fyllVarevalgFraAktivBil'].forEach(function(fn){
+      if(typeof window[fn] === 'function') setTimeout(function(){ try{ window[fn](); }catch(e){ console.warn('Min bil init feilet:', fn, e); } }, 20);
     });
-
-    if (loginMelding) {
-      loginMelding.textContent = error
-        ? "Kunne ikke sende e-post: " + error.message
-        : "E-post for tilbakestilling av passord er sendt.";
-    }
   }
-
-  if (typeof window.loggInn !== "function") {
-    window.loggInn = nodLoggInn;
-    console.warn("Bruker n\u00F8dinnlogging fordi auth.js ikke registrerte window.loggInn.");
+  function openMinBil(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    var app = $('appSide');
+    show(app);
+    if(app){ app.classList.remove('ril-starter','skjult','hidden'); app.hidden=false; app.style.display=''; app.removeAttribute('aria-hidden'); }
+    sideIds.forEach(function(id){ hide($(id)); });
+    var side = ensureBilerSide();
+    show(side);
+    var h = $('handSideOverskrift') || document.querySelector('#appSide h1');
+    if(h) h.textContent = 'Min bil / fyll lager';
+    var h2 = side.querySelector('h2');
+    if(h2) h2.textContent = 'Min bil / lager';
+    initBiler();
+    [40,120,300,700].forEach(function(ms){ setTimeout(function(){ show(app); if(app) app.classList.remove('ril-starter'); show(side); }, ms); });
+    return false;
   }
-
-  if (typeof window.glemtPassord !== "function") {
-    window.glemtPassord = nodGlemtPassord;
+  window.handOpenMinBilHard = openMinBil;
+  window.handOpenMinBil = openMinBil;
+  window.visBilerSide = openMinBil;
+  window.handVisMinBilAnsatt = openMinBil;
+  function bind(){
+    var b = $('visBilerKnapp');
+    if(!b) return;
+    b.type = 'button';
+    b.textContent = 'Min bil / fyll lager';
+    b.setAttribute('data-modul','biler');
+    b.setAttribute('data-role','ansatt-bil');
+    b.onclick = openMinBil;
+    show(b);
   }
-
-  const loginKnapp = document.getElementById("loginKnapp");
-  if (loginKnapp) {
-    loginKnapp.onclick = function () {
-      window.loggInn();
-    };
-  }
-
-  const glemtKnapp = document.getElementById("glemtPassordKnapp");
-  if (glemtKnapp) {
-    glemtKnapp.onclick = function () {
-      window.glemtPassord();
-    };
-  }
-});
-</script>
-
-
-
-
-
-
-<script>
-window.addEventListener("load", function () {
-  var backupKnapp = document.getElementById("backupKnapp");
-  var importFil = document.getElementById("importFil");
-
-  if (backupKnapp) {
-    backupKnapp.onclick = function () {
-      if (typeof window.backup === "function") {
-        window.backup();
-      } else {
-        alert("Backup-funksjonen er ikke lastet. Sjekk js/backup.js.");
-      }
-    };
-  }
-
-  if (importFil) {
-    importFil.onchange = function (event) {
-      if (typeof window.importerBackup === "function") {
-        window.importerBackup(event);
-      } else {
-        alert("Restore-funksjonen er ikke lastet. Sjekk js/backup.js.");
-      }
-    };
-  }
-});
-</script>
-
-<script>
-window.addEventListener("load", function () {
-  const loginKnapp = document.getElementById("loginKnapp");
-  const glemtKnapp = document.getElementById("glemtPassordKnapp");
-
-  if (loginKnapp) {
-    loginKnapp.onclick = function () {
-      if (typeof window.loggInn === "function") {
-        window.loggInn();
-        return;
-      }
-
-      const melding = document.getElementById("loginMelding");
-      if (melding) {
-        melding.textContent =
-          "Innlogging er ikke klar. Sjekk at js/auth.js og js/core/config.js ligger riktig.";
-      }
-    };
-  }
-
-  if (glemtKnapp) {
-    glemtKnapp.onclick = function () {
-      if (typeof window.glemtPassord === "function") {
-        window.glemtPassord();
-        return;
-      }
-
-      const melding = document.getElementById("loginMelding");
-      if (melding) {
-        melding.textContent =
-          "Glemt passord er ikke klar. Sjekk at js/auth.js er lastet.";
-      }
-    };
-  }
-});
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-<script>
-// N\u00D8D-FIX 7063: s\u00F8rger for at Lagre bil alltid er klikkbar selv om en annen fil overskriver onclick.
-(function () {
-  function $(id) { return document.getElementById(id); }
-  function msg(t, feil) {
-    var m = $("bilMelding");
-    if (m) { m.textContent = t || ""; m.style.color = feil ? "#fca5a5" : "#86efac"; }
-    if (feil) console.error(t); else if (t) console.log(t);
-  }
-  function visBilSkjemaNod() {
-    var o = $("bilSkjemaOmrade");
-    var r = $("bilSkjemaRad");
-    var k = $("lagreBilKnapp");
-    if (o) { o.classList.remove("skjult", "hidden", "modul-skjult"); o.style.display = "block"; }
-    if (r) { r.classList.remove("skjult", "hidden", "modul-skjult"); r.style.display = "grid"; }
-    if (k) { k.style.display = "inline-block"; k.disabled = false; k.textContent = "\uD83D\uDCBE Lagre bil"; }
-  }
-  async function lagreBilNod() {
-    try {
-      visBilSkjemaNod();
-      msg("Lagrer bil...");
-      if (!window.supabaseClient) { msg("Supabase er ikke lastet. Sjekk js/core/config.js.", true); return; }
-      var id = ($("bilId") && $("bilId").value || "").trim();
-      var navn = ($("bilNavn") && $("bilNavn").value || "").trim();
-      var regnr = ($("bilRegnr") && $("bilRegnr").value || "").trim();
-      if (!navn && !regnr) { msg("Skriv bilnavn eller regnr.", true); alert("Skriv bilnavn eller regnr."); return; }
-      var rad = { navn: navn || regnr, regnr: regnr || null, aktiv: true };
-      var q = id
-        ? window.supabaseClient.from("biler").update(rad).eq("id", id).select().single()
-        : window.supabaseClient.from("biler").insert([rad]).select().single();
-      var res = await q;
-      if (res.error && String(res.error.message || "").toLowerCase().includes("aktiv")) {
-        var rad2 = { navn: navn || regnr, regnr: regnr || null };
-        res = id
-          ? await window.supabaseClient.from("biler").update(rad2).eq("id", id).select().single()
-          : await window.supabaseClient.from("biler").insert([rad2]).select().single();
-      }
-      if (res.error) { msg("Kunne ikke lagre bil: " + res.error.message, true); alert("Kunne ikke lagre bil: " + res.error.message); return; }
-      if (res.data && res.data.id) {
-        localStorage.setItem("aktivBilId", String(res.data.id));
-        localStorage.setItem("aktivBilNavn", (res.data.navn || "Bil") + (res.data.regnr ? " - " + res.data.regnr : ""));
-        window.aktivBilId = String(res.data.id);
-      }
-      if ($("bilId")) $("bilId").value = "";
-      if ($("bilNavn")) $("bilNavn").value = "";
-      if ($("bilRegnr")) $("bilRegnr").value = "";
-      msg(id ? "Bil oppdatert." : "Ny bil lagret.");
-      if (typeof window.lastBilerOgBilLager === "function") await window.lastBilerOgBilLager();
-      else if (typeof window.lastBiler === "function") await window.lastBiler();
-    } catch (e) {
-      var tekst = "Feil ved lagring av bil: " + (e && e.message ? e.message : String(e));
-      msg(tekst, true); alert(tekst);
-    }
-  }
-  function koble() {
-    visBilSkjemaNod();
-    var ny = $("nyBilKnapp");
-    var lagre = $("lagreBilKnapp");
-    if (ny) ny.onclick = function (e) { if (e) e.preventDefault(); visBilSkjemaNod(); if ($("bilNavn")) $("bilNavn").focus(); };
-    if (lagre) lagre.onclick = function (e) { if (e) e.preventDefault(); return lagreBilNod(); };
-    window.lagreBilNod = lagreBilNod;
-  }
-  document.addEventListener("DOMContentLoaded", koble);
-  window.addEventListener("load", koble);
-  setTimeout(koble, 500);
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest ? e.target.closest('#visBilerKnapp,[data-role="ansatt-bil"]') : null;
+    if(!b) return;
+    return openMinBil(e);
+  }, true);
+  document.addEventListener('handPartialerLastet', function(){ bind(); setTimeout(bind,50); setTimeout(bind,300); });
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+  window.addEventListener('load', function(){ bind(); setTimeout(bind,300); });
 })();
 </script>
+
+  <script charset="UTF-8" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script charset="UTF-8" src="../js/core/config.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/core/state.js?v=999"></script>
+<script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
+<script charset="UTF-8" src="../js/handverker/hand-role-core.js?v=7076"></script>
+<script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=20260627-panel-lock"></script>
+<script charset="UTF-8" src="../js/handverker/hand-auth.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-kunder.js?v=7089"></script>
+<script charset="UTF-8" src="../js/handverker/hand-prosjekter.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-ansatte.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-firma.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-timer.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="../js/handverker/hand-admin-timer-ansatt.js?v=7058"></script>
+<script charset="UTF-8" src="../js/handverker/hand-utils.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-data.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-vipps-faktura-fix.js?v=20260608"></script>
+<script charset="UTF-8" src="../js/handverker/hand-pdf-layout.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-pdf.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-okonomi.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-faktura-valg.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-backup.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-lonn.js?v=7100"></script>
+<script charset="UTF-8" src="../js/handverker/hand-fravaer.js?v=7090"></script>
+<script charset="UTF-8" src="../js/handverker/hand-tilbud.js?v=1"></script>
+<script charset="UTF-8" src="../js/handverker/hand-tester.js?v=5003"></script>
+<script charset="UTF-8" src="../js/handverker/hand-app.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-systemadmin.js?v=20260620-splitt"></script>
+<script charset="UTF-8" src="../js/handverker/hand-moduler-sysadmin.js?v=20260625-v13-redigerfirma"></script>
+<script charset="UTF-8" src="../js/handverker/hand-varer.js?v=7076"></script>
+<script charset="UTF-8" src="../js/handverker/hand-biler.js?v=7086"></script>
+<script charset="UTF-8" src="../js/handverker/hand-lager-patch.js?v=7300"></script>
+<script charset="UTF-8" src="../js/handverker/hand-jobber-rolle.js?v=7068"></script>
+<script charset="UTF-8" src="../js/handverker/hand-bruker-billager.js?v=7084"></script>
+<script charset="UTF-8" src="../js/handverker/hand-ui.js?v=20260623-auth-no-admin-blink"></script>
+
+<script charset="UTF-8" src="../js/handverker/hand-admin-vanlig-fix.js?v=20260621-vanligadmin"></script>
+
+<!-- 7079: gamle kunde-lock scripts fjernet fordi de brukte hand_ansatt og filtrerte bort kunder. -->
+<!-- hand-title-auto-fix fjernet: ga Moduler-blink. -->
+<script charset="UTF-8" src="../js/handverker/hand-admin-bestillinger-no-pdf-final.js?v=7091"></script>
 
 
 <script charset="UTF-8">
-// FIX 7067: Jobboversikt skal ikke vise rene utlegg/refusjon-rader med 0 kr som egne jobber.
-(function () {
-  function tekst(e) { return (e && e.textContent ? e.textContent : "").trim(); }
-  function erNullKroner(t) {
-    var x = String(t || "").replace(/\s+/g, "").toLowerCase();
-    return x === "0kr" || x === "0,00kr" || x === "0.00kr" || x === "0";
+/* RIL 2026-06-23 BESTILLING BEKREFT REST BILLAGER:
+   - Stopper PDF/about:blank for ansatt-bestilling.
+   - Sender bestilling digitalt til hand_bil_bestilling.
+   - Admin viser navn/varetekst, Bekreft-knapp og historikk.
+   - Bekreftede ordre skjules fra aktive og kan ikke bekreftes igjen.
+   - Admin bekrefter godkjent/rest og sender liste til ansatt på Fyll bil.
+   - Ansatt trykker Godkjenn og legg på bil; først da oppdateres hand_bil_lager og hand_lagerlogg.
+*/
+(function(){
+  'use strict';
+  if (window.__rilBestillingBillagerRest) return;
+  window.__rilBestillingBillagerRest = true;
+
+  var busySend = false, busyConfirm = false, showHistory = false, blokkPdfTil = 0;
+  var realOpen = window.open;
+  function s(v){ return String(v == null ? '' : v); }
+  function low(v){ return s(v).toLowerCase(); }
+  function num(v){ var n = Number(s(v).replace(',', '.')); return Number.isFinite(n) ? n : 0; }
+  function intNum(v){ return Math.max(0, Math.round(num(v))); }
+  function $(id){ return document.getElementById(id); }
+  function client(){ return window.supabaseClient || window.supabase || null; }
+  function nowIso(){ return new Date().toISOString(); }
+  function esc(v){ return s(v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function text(el){ return s(el && (el.innerText || el.textContent || el.value || el.title || (el.getAttribute && el.getAttribute('aria-label')))).trim(); }
+
+  window.open = function(url, name, specs){
+    var combined = s(url)+' '+s(name)+' '+s(specs);
+    if (Date.now() < blokkPdfTil && (/about:blank|lagerliste|fyll bil|pdf|print/i.test(combined) || !s(url))) {
+      console.warn('Stoppet PDF/lagerliste-popup fra bestilling:', combined);
+      return { document:{ open:function(){}, write:function(){}, close:function(){} }, focus:function(){}, print:function(){}, close:function(){} };
+    }
+    return realOpen ? realOpen.apply(window, arguments) : null;
+  };
+
+  async function firmaId(){
+    try{ if(typeof window.hentAktivFirmaId === 'function') return await window.hentAktivFirmaId(); }catch(e){}
+    return window.aktivFirmaId || localStorage.getItem('aktivFirmaId') || localStorage.getItem('firmaId') || localStorage.getItem('firma_id') || null;
   }
-  function ryddJobbListe() {
-    var c = document.getElementById("jobberListe");
-    if (!c) return;
-    var rader = Array.from(c.querySelectorAll("tbody tr"));
-    rader.forEach(function (tr) {
-      var celler = Array.from(tr.children);
-      if (!celler.length) return;
-      var radtekst = tekst(tr).toLowerCase();
-      var beskrivelse = celler[4] ? tekst(celler[4]).toLowerCase() : radtekst;
-      var belop = celler[5] ? tekst(celler[5]) : "";
-      var erRenUtleggRad = beskrivelse.indexOf("utlegg/refusjon") !== -1 || radtekst.indexOf("utlegg/refusjon") !== -1;
-      if (erRenUtleggRad && erNullKroner(belop)) {
-        tr.style.display = "none";
-        tr.setAttribute("data-skjult-utlegg-null", "ja");
+  function innloggetEpost(){ return window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem('innloggetEpost') || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('epost') || null; }
+  function innloggetNavn(){ return window.innloggetNavn || window.handInnloggetNavn || localStorage.getItem('handInnloggetNavn') || localStorage.getItem('innloggetNavn') || ''; }
+  async function innloggetAnsattData(){
+    var c=client();
+    var epost=innloggetEpost();
+    var userId=null, navn=innloggetNavn();
+    try{
+      if(c && c.auth && c.auth.getUser){
+        var ur=await c.auth.getUser();
+        var u=ur && ur.data && ur.data.user ? ur.data.user : null;
+        if(u){
+          userId=u.id||null;
+          epost=u.email||epost;
+          navn=navn || (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
+        }
+      }
+    }catch(e){}
+    try{
+      if(c && userId){
+        var r1=await c.from('hand_ansatt').select('id,navn,epost,user_id').eq('user_id', userId).limit(1).maybeSingle();
+        if(!r1.error && r1.data) return { id:r1.data.id||null, navn:r1.data.navn||navn||r1.data.epost||epost||'', epost:r1.data.epost||epost||'' };
+      }
+    }catch(e){}
+    try{
+      if(c && epost){
+        var r2=await c.from('hand_ansatt').select('id,navn,epost,user_id').ilike('epost', epost).limit(1).maybeSingle();
+        if(!r2.error && r2.data) return { id:r2.data.id||null, navn:r2.data.navn||navn||r2.data.epost||epost||'', epost:r2.data.epost||epost||'' };
+      }
+    }catch(e){}
+    return { id:null, navn:navn||epost||'', epost:epost||'' };
+  }
+  function bilId(){
+    try{ if(typeof window.hentValgtBilIdForBilLager === 'function') return window.hentValgtBilIdForBilLager() || ''; }catch(e){}
+    var el = $('bilLagerBilValg') || document.querySelector('select[id*="bil" i],select[name*="bil" i]');
+    return (el && el.value) || localStorage.getItem('aktivBilId') || null;
+  }
+  function bilNavn(){
+    var el = $('bilLagerBilValg') || document.querySelector('select[id*="bil" i],select[name*="bil" i]');
+    if(el && el.selectedIndex >= 0 && el.options[el.selectedIndex]) return text(el.options[el.selectedIndex]);
+    return localStorage.getItem('aktivBilNavn') || '';
+  }
+  function melding(msg, bad){
+    var el = $('bilLagerMelding') || $('bilMelding') || $('lagerMelding') || document.querySelector('.melding');
+    if(el){ el.textContent = msg; el.style.color = bad ? '#fca5a5' : '#86efac'; }
+    else alert(msg);
+  }
+
+  function isSendButton(el){
+    var b = el && el.closest && el.closest('button,a,input[type="button"],input[type="submit"],[role="button"]');
+    if(!b) return null;
+    var id = low((b.id||'')+' '+(b.name||'')+' '+(b.className||'')+' '+(b.getAttribute && (b.getAttribute('onclick')||'')));
+    var t = low(text(b));
+    if (id.indexOf('lagpdffyllbiltilagerknapp') >= 0) return b;
+    if (id.indexOf('sendbillagerbestillingknapp') >= 0) return b;
+    if (t.indexOf('send bestilling til admin') >= 0) return b;
+    if (t.indexOf('lag bestilling til admin') >= 0) return b;
+    return null;
+  }
+  function isAdminBestillingButton(el){
+    var b = el && el.closest && el.closest('button,a,[role="button"],[data-side],[data-modul],[data-target]');
+    if(!b) return null;
+    var t = low(text(b)).trim();
+    var id = low(b.id||'');
+    var d = low((b.getAttribute && (b.getAttribute('data-side')||b.getAttribute('data-modul')||b.getAttribute('data-target')||'')) || '');
+    if(t === 'bestillinger' || id === 'visbilbestillingerknapp' || d.indexOf('bestilling') >= 0) return b;
+    return null;
+  }
+  function isFyllBilButton(el){
+    var b = el && el.closest && el.closest('button,a,[role="button"],[data-side],[data-modul],[data-target]');
+    if(!b) return null;
+    var t = low(text(b));
+    var id = low(b.id||'');
+    var d = low((b.getAttribute && (b.getAttribute('data-side')||b.getAttribute('data-modul')||b.getAttribute('data-target')||'')) || '');
+    if(t.indexOf('biler') >= 0 || t.indexOf('bil-lager') >= 0 || t.indexOf('fyll bil') >= 0 || id.indexOf('bil') >= 0 || d.indexOf('bil') >= 0) return b;
+    return null;
+  }
+
+  function ordrelinjerFraSkjerm(){
+    var list = [];
+    document.querySelectorAll('.bil-lager-antall-liste,input[data-vare-id][type="number"],input[data-vare-id][inputmode="numeric"]').forEach(function(inp){
+      var antall = intNum(inp.value);
+      if(antall <= 0) return;
+      var vareId = inp.dataset.vareId || inp.getAttribute('data-vare-id') || '';
+      var row = inp.closest('tr,.vare-rad,.lager-rad,.rad,li,div');
+      var min = null;
+      if(vareId){ try{ min = document.querySelector('.bil-lager-min-liste[data-vare-id="'+(window.CSS&&CSS.escape?CSS.escape(vareId):vareId)+'"]'); }catch(e){} }
+      var cells = row ? Array.from(row.querySelectorAll('td,th')) : [];
+      var varenr = cells[0] ? text(cells[0]) : '';
+      var varenavn = cells[1] ? text(cells[1]) : (row ? text(row).replace(s(inp.value),'').trim() : 'Vare');
+      list.push({ vare_id: vareId || null, varenr: varenr || null, varenavn: varenavn || null, antall: antall, minimum_antall: intNum(min && min.value) });
+    });
+    return list;
+  }
+  async function fetchMap(table, ids){
+    var c=client(), map=new Map(); ids=Array.from(new Set((ids||[]).filter(Boolean).map(String)));
+    if(!c || !ids.length) return map;
+    try{ var r=await c.from(table).select('*').in('id', ids); if(!r.error) (r.data||[]).forEach(function(x){ map.set(String(x.id), x); }); }catch(e){}
+    return map;
+  }
+  async function insertTrygt(table, rows){
+    var c=client(), data=rows.map(function(x){return Object.assign({},x);});
+    for(var i=0;i<80;i++){
+      var res=await c.from(table).insert(data).select('*');
+      if(!res.error) return res;
+      var msg=s(res.error.message);
+      var col=(msg.match(/Could not find the '([^']+)' column/i)||[])[1] || (msg.match(/column "([^"]+)".*does not exist/i)||[])[1];
+      if(col){ data.forEach(function(r){ delete r[col]; }); continue; }
+      var bad=(msg.match(/invalid input syntax for type uuid:\s*"([^"]+)"/i)||[])[1];
+      if(bad){ data.forEach(function(r){ Object.keys(r).forEach(function(k){ if(s(r[k])===s(bad)) delete r[k]; }); }); continue; }
+      return res;
+    }
+    return { error:{ message:'Kunne ikke lagre i '+table } };
+  }
+  async function updateTrygt(table, id, changes){
+    var c=client(), data=Object.assign({}, changes);
+    for(var i=0;i<80;i++){
+      var res=await c.from(table).update(data).eq('id', id).select('*');
+      if(!res.error) return res;
+      var msg=s(res.error.message);
+      var col=(msg.match(/Could not find the '([^']+)' column/i)||[])[1] || (msg.match(/column "([^"]+)".*does not exist/i)||[])[1];
+      if(col && Object.prototype.hasOwnProperty.call(data,col)){ delete data[col]; continue; }
+      return res;
+    }
+    return { error:{ message:'Kunne ikke oppdatere '+table } };
+  }
+  async function sendDigital(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(busySend) return false; busySend=true; blokkPdfTil=Date.now()+12000;
+    try{
+      var c=client(); if(!c){ melding('Supabase er ikke lastet. Oppdater siden.', true); return false; }
+      var bid=bilId(); if(!bid){ melding('Velg bil først.', true); return false; }
+      var linjer=ordrelinjerFraSkjerm(); if(!linjer.length){ melding('Skriv antall på minst én vare før du sender bestilling til admin.', true); return false; }
+      melding('Sender bestilling til admin...');
+      var varer=await fetchMap('hand_vare', linjer.map(function(x){return x.vare_id;}));
+      var now=nowIso(), batch=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('bestilling-'+Date.now());
+      var fid=await firmaId(), epost=innloggetEpost(), ansatt=await innloggetAnsattData();
+      var bestiltAvNavn=ansatt.navn || innloggetNavn() || epost || '';
+      var bestiltAvEpost=ansatt.epost || epost || '';
+      var payload=linjer.map(function(l){ var v=l.vare_id?(varer.get(String(l.vare_id))||{}):{}; return {
+        bestilling_id:batch, firma_id:fid||null, ansatt_id:ansatt.id||null, bil_id:bid||null, bil_navn:bilNavn()||null,
+        vare_id:l.vare_id||null, varenr:l.varenr||v.varenr||v.varenr||v.nr||null, varenavn:l.varenavn||v.navn||v.varenavn||v.beskrivelse||null,
+        bruker_epost:bestiltAvEpost, bruker_navn:bestiltAvNavn, opprettet_av:bestiltAvEpost,
+        bestilt_av_epost:bestiltAvEpost, bestilt_av_navn:bestiltAvNavn,
+        bestilt:l.antall, antall:l.antall, levert:0, mottatt:0, godkjent:0, rest:l.antall,
+        minimum_antall:l.minimum_antall||0, status:'venter', opprettet:now, created_at:now
+      }; });
+      var res=await insertTrygt('hand_bil_bestilling', payload);
+      if(res.error){ melding('Kunne ikke sende bestilling til admin: '+(res.error.message||res.error), true); return false; }
+      document.querySelectorAll('.bil-lager-antall-liste,input[data-vare-id][type="number"],input[data-vare-id][inputmode="numeric"]').forEach(function(i){ i.value=''; });
+      melding('Bestilling sendt til admin.');
+      setTimeout(visAnsattBekreftelser, 600);
+      return false;
+    } finally { setTimeout(function(){ busySend=false; },900); }
+  }
+
+  function show(el){ if(!el) return; el.hidden=false; el.style.display=''; el.style.visibility='visible'; el.classList.remove('skjult','hidden','modul-skjult'); el.removeAttribute('aria-hidden'); }
+  function hide(el){ if(!el) return; el.hidden=true; el.style.display='none'; el.classList.add('skjult','hidden'); }
+  function adminShell(){
+    var app=$('appSide')||document.body; show(app);
+    ['timerSide','jobberSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','lonnPanel','fravaerSide','modulerSide','sysadminPanelSide'].forEach(function(id){ hide($(id)); });
+    var side=$('bilBestillingerSide')||$('adminBilBestillinger')||$('adminBilBestillingerPanel');
+    if(!side){ side=document.createElement('section'); side.id='bilBestillingerSide'; side.className='kort'; app.appendChild(side); }
+    show(side); var h=$('handSideOverskrift'); if(h) h.textContent='Bestillinger';
+    side.innerHTML='<h2 style="text-align:center;margin-top:0;color:#f8fafc">Bestillinger fra ansatte</h2><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><button id="rilVisAktiveBestillinger" type="button" style="background:#1f6feb;color:white;border:0;border-radius:8px;padding:9px 12px">Aktive</button><button id="rilVisBekreftedeBestillinger" type="button" style="background:#374151;color:white;border:0;border-radius:8px;padding:9px 12px">Finn bekreftede</button></div><div id="rilOrdersMsg" style="padding:14px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:#e5e7eb;font-weight:700">Ingen bestillinger</div><div id="rilOrdersContent"></div>';
+    $('rilVisAktiveBestillinger').onclick=function(){showHistory=false;showOrders();}; $('rilVisBekreftedeBestillinger').onclick=function(){showHistory=true;showOrders();};
+  }
+  function isConfirmed(r){ return /^(bekreftet|admin_bekreftet|admin_besvart|admin_godkjent|godkjent|besvart|rest_hos_admin|restordre_admin|restordre|delvis_admin|delvis_bekreftet|lagt_pa_bil|ferdig|avsluttet|utlevert|fullfort|fullført|arkivert)$/.test(low(r&&r.status)) || r&&r.bekreftet===true || r&&r.admin_godkjent===true || r&&r.admin_svar_sendt===true; }
+  function rilLagtIds(){ try{return JSON.parse(localStorage.getItem('ril_lagt_pa_bil_ids')||'[]').map(String);}catch(e){return [];} }
+  function rilMerkLagtIds(ids){ try{ var a=rilLagtIds(); (ids||[]).map(String).forEach(function(id){ if(id && a.indexOf(id)<0) a.push(id); }); localStorage.setItem('ril_lagt_pa_bil_ids', JSON.stringify(a.slice(-2000))); }catch(e){} }
+  function ansattHarLagtPaBil(r){
+    if(!r) return false;
+    // Skjul straks i UI når bruker har lagt på bil, og skjul også historiske rader
+    // der DB allerede viser at mottatt >= godkjent.
+    var id=s(r.id||'');
+    if(id && rilLagtIds().indexOf(id)>=0) return true;
+    var st=low(r.status);
+    if(/^(lagt_pa_bil|ansatt_godkjent|utlevert|arkivert|ferdig|mottatt|avsluttet|fullfort|fullført)$/.test(st)) return true;
+    if(r.ansatt_godkjent===true || r.lagt_pa_bil===true || r.arkivert===true || r.lukket===true) return true;
+    if(r.lagt_pa_bil_at || r.ansatt_godkjent_at || r.ferdig_dato || r.mottatt_dato) return true;
+    var godkjent=confirmedAmount(r);
+    if(godkjent>0 && intNum(r.mottatt)>=godkjent) return true;
+    return false;
+  }
+  function bestilt(r){ return intNum(r.bestilt || r.antall || r.bestilt_antall || r.rest); }
+  function confirmedAmount(r){
+    var direct = intNum(r && (r.godkjent || r.levert || r.bekreftet_antall || r.admin_godkjent_antall || r.godkjent_antall || 0));
+    if(direct > 0) return direct;
+    var b = bestilt(r);
+    var rest = intNum(r && r.rest);
+    if(isConfirmed(r) && b > 0) return Math.max(0, b - rest);
+    return 0;
+  }
+  function restAmount(r){ var b=bestilt(r), g=confirmedAmount(r); return Math.max(b-g,0); }
+  function lineName(r){ return (r.varenr ? r.varenr+' - ' : '') + (r.varenavn || r.vare_navn || r.vare_navn || r.vare_id || 'Vare'); }
+  function groupKey(r){ return s(r.bestilling_id||r.batch_id||r.ordre_id||r.id)+'|'+s(r.bil_id||r.bil_navn)+'|'+s(r.bruker_epost||r.opprettet_av)+'|'+s(r.opprettet||r.created_at).slice(0,19); }
+  function groupsFrom(rows){ var m=new Map(); (rows||[]).forEach(function(r){ var k=groupKey(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); }); return Array.from(m.values()); }
+  function meldingFor(lines){
+    var f=lines[0]||{};
+    var rows=lines.map(function(r){return lineName(r)+': bestilt '+bestilt(r)+', bekreftet '+confirmedAmount(r)+', rest '+restAmount(r);});
+    return 'Bestilling bekreftet for '+(f.bil_navn||f.bil_id||'bil')+'. Rest og liste: '+rows.join(' | ');
+  }
+  async function hydrateRows(rows){
+    rows=rows||[];
+    var vareMap=await fetchMap('hand_vare', rows.map(function(r){return r.vare_id;}));
+    var bilMap=await fetchMap('hand_bil', rows.map(function(r){return r.bil_id;}));
+    var ansattIds=rows.map(function(r){return r.ansatt_id||r.bruker_id||r.opprettet_av_id;}).filter(Boolean);
+    var ansattMap=await fetchMap('hand_ansatt', ansattIds);
+    rows.forEach(function(r){
+      var v=r.vare_id ? vareMap.get(String(r.vare_id)) : null;
+      if(v){ r.varenr = r.varenr || v.varenr || v.nr || v.varenr; r.varenavn = r.varenavn || v.navn || v.varenavn || v.beskrivelse; }
+      var b=r.bil_id ? bilMap.get(String(r.bil_id)) : null;
+      if(b){ r.bil_navn = r.bil_navn || b.navn || b.regnr || b.registreringsnummer || b.bilnavn; }
+      var a=(r.ansatt_id||r.bruker_id||r.opprettet_av_id) ? ansattMap.get(String(r.ansatt_id||r.bruker_id||r.opprettet_av_id)) : null;
+      if(a){ r.bruker_navn = r.bruker_navn || r.bestilt_av_navn || a.navn || a.fullt_navn || a.epost || a.email; r.bruker_epost = r.bruker_epost || r.bestilt_av_epost || a.epost || a.email; }
+      if(!r.bruker_navn) r.bruker_navn = r.bestilt_av_navn || r.bestilt_av_epost || r.bruker_epost || r.opprettet_av || '';
+      if(!r.bruker_epost) r.bruker_epost = r.bestilt_av_epost || r.opprettet_av || '';
+      if(!r.bruker_navn && r.bruker_epost) r.bruker_navn = r.bruker_epost;
+    });
+    return rows;
+  }
+  async function loadOrders(){
+    var c=client(); if(!c) throw new Error('Supabase er ikke lastet.');
+    var q=c.from('hand_bil_bestilling').select('*').order('opprettet',{ascending:false}).limit(1000);
+    try{ var fid=await firmaId(); if(fid) q=q.eq('firma_id', fid); }catch(e){}
+    var r=await q; if(r.error) throw r.error;
+    return hydrateRows(r.data||[]);
+  }
+  function renderOrders(rows){
+    var msg=$('rilOrdersMsg'), content=$('rilOrdersContent'); if(!content) return;
+    var filtered=(rows||[]).filter(function(r){return showHistory ? isConfirmed(r) : !isConfirmed(r);});
+    if(!filtered.length){ if(msg) msg.textContent=showHistory?'Ingen bekreftede bestillinger':'Ingen bestillinger'; content.innerHTML=''; return; }
+    if(msg) msg.textContent=showHistory?'Bekreftede bestillinger':'Nye bestillinger fra ansatte';
+    content.innerHTML=groupsFrom(filtered).map(function(lines,gi){
+      var f=lines[0]||{}, done=lines.every(isConfirmed);
+      var lineHtml=lines.map(function(r){ var b=bestilt(r), g=done?confirmedAmount(r):b, rest=done?restAmount(r):0; return '<div class="ril-order-line" data-row-id="'+esc(r.id)+'" style="display:grid;grid-template-columns:minmax(260px,1fr) 90px 130px 90px;gap:10px;align-items:center;border-bottom:1px solid #273244;padding:8px 0"><strong>'+esc(lineName(r))+'</strong><span>Bestilt: '+b+'</span>'+(done?'<span>Bekreftet: '+g+'</span><span>Rest: '+rest+'</span>':'<input class="ril-godkjent-input" data-bestilt="'+b+'" type="number" min="0" max="'+b+'" value="'+b+'" style="width:100%;padding:7px;border-radius:7px;border:1px solid #475569;background:#0b1220;color:#fff"><span class="ril-rest-vis">Rest: 0</span>')+'</div>'; }).join('');
+      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>Bestilt av: '+esc(f.bruker_navn||f.bestilt_av_navn||f.bruker_epost||f.bestilt_av_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft bestilling</button>')+'</div></details>';
+    }).join('');
+    content.querySelectorAll('.ril-godkjent-input').forEach(function(inp){ function upd(){ var b=intNum(inp.dataset.bestilt), g=Math.max(0,Math.min(intNum(inp.value),b)); inp.value=g; var rv=inp.parentElement.querySelector('.ril-rest-vis'); if(rv) rv.textContent='Rest: '+Math.max(b-g,0); } inp.addEventListener('input',upd); upd(); });
+    content.querySelectorAll('.ril-bekreft-bestilling').forEach(function(btn){ btn.addEventListener('click',confirmGroup); });
+  }
+  async function showOrders(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    adminShell();
+    try{ renderOrders(await loadOrders()); } catch(e){ var m=$('rilOrdersMsg'); if(m)m.textContent='Ingen bestillinger'; var c=$('rilOrdersContent'); if(c)c.innerHTML=''; console.error(e); }
+    return false;
+  }
+
+  async function leggPaBilLager(row, antall, admin){
+    var c=client(); antall=intNum(antall); if(!c||!antall||!row.bil_id||!row.vare_id) return {ok:false, error:'Mangler bil, vare eller antall.'};
+    var fid = row.firma_id || await firmaId() || null;
+    var eksisterende=await c.from('hand_bil_lager').select('*').eq('bil_id', row.bil_id).eq('vare_id', row.vare_id).limit(1);
+    if(eksisterende.error) return {ok:false,error:eksisterende.error.message};
+    if(eksisterende.data && eksisterende.data.length){
+      var ny=intNum(eksisterende.data[0].antall)+antall;
+      var res=await updateTrygt('hand_bil_lager', eksisterende.data[0].id, {antall:ny, minimum_antall:intNum(row.minimum_antall||eksisterende.data[0].minimum_antall||0)});
+      if(res.error) return {ok:false,error:res.error.message};
+    } else {
+      var ins=await insertTrygt('hand_bil_lager', [{firma_id:fid,bil_id:row.bil_id,vare_id:row.vare_id,antall:antall,minimum_antall:intNum(row.minimum_antall||0)}]);
+      if(ins.error) return {ok:false,error:ins.error.message};
+    }
+    var henter=await innloggetAnsattData();
+    var hentetAvTekst=(henter.navn || henter.epost || admin || '').trim();
+    await insertTrygt('hand_lager_bevegelse', [{
+      firma_id:fid, type:'ansatt_godkjent_lagt_pa_bil', bil_id:row.bil_id, vare_id:row.vare_id,
+      antall:antall, ansatt_id:henter.id || row.ansatt_id || null,
+      kommentar:'Hentet av: '+hentetAvTekst+' | Vare: '+lineName(row),
+      created_at:nowIso()
+    }]);
+    return {ok:true};
+  }
+  async function confirmGroup(ev){
+    ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    if(busyConfirm) return false; busyConfirm=true;
+    try{
+      var card=ev.target.closest('details'), lines=Array.from(card.querySelectorAll('.ril-order-line'));
+      if(!lines.length) return false;
+      if(!confirm('Bekrefte denne bestillingen og sende liste/rest til ansatt? Billager og lagerlogg oppdateres først når ansatt trykker Godkjenn og legg på bil.')) return false;
+      var allRows=await loadOrders();
+      var ids=lines.map(function(l){return l.getAttribute('data-row-id');}).filter(Boolean);
+      var selected=allRows.filter(function(r){return ids.indexOf(s(r.id))>=0;});
+      if(selected.some(isConfirmed)){ alert('Denne bestillingen er allerede bekreftet og kan ikke bekreftes på nytt.'); return false; }
+      var now=nowIso(), admin=innloggetEpost(), updates=[];
+      lines.forEach(function(line){ var id=line.getAttribute('data-row-id'), inp=line.querySelector('.ril-godkjent-input'), b=intNum(inp&&inp.dataset.bestilt), g=Math.max(0,Math.min(intNum(inp&&inp.value),b)), rest=Math.max(b-g,0); updates.push({id:id,bestilt:b,godkjent:g,rest:rest}); });
+      var fake=selected.map(function(r){ var u=updates.find(function(x){return s(x.id)===s(r.id);})||{}; return Object.assign({},r,{godkjent:u.godkjent,levert:u.godkjent,mottatt:u.godkjent,rest:u.rest}); });
+      var msg=meldingFor(fake);
+      for(var i=0;i<updates.length;i++){
+        var u=updates[i], row=selected.find(function(r){return s(r.id)===s(u.id);});
+        if(!row) continue;
+        var changes={status:'admin_bekreftet',bekreftet:true,godkjent:u.godkjent,levert:u.godkjent,rest:u.rest,bekreftet_at:now,bekreftet_dato:now,bekreftet_av:admin,admin_bekreftet_av:admin,ansatt_melding:msg,melding_til_ansatt:msg,svar_til_ansatt:msg};
+        var res=await updateTrygt('hand_bil_bestilling', u.id, changes);
+        if(res.error){ alert('Kunne ikke bekrefte: '+(res.error.message||res.error)); return false; }
+      }
+      alert('Bestillingen er bekreftet og sendt til ansatt med liste/rest. Billager oppdateres når ansatt trykker Godkjenn og legg på bil.');
+      showHistory=false; await showOrders();
+      return false;
+    } finally { busyConfirm=false; }
+  }
+
+  async function hentAnsattBestillingRows(ids){
+    var all=await loadOrders();
+    ids=(ids||[]).map(String);
+    return all.filter(function(r){ return ids.indexOf(s(r.id))>=0; });
+  }
+  async function ansattGodkjennOgLeggPaBil(ev){
+    ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    var btn=ev.currentTarget || ev.target;
+    var ids=s(btn.getAttribute('data-ids')).split(',').filter(Boolean);
+    if(!ids.length) return false;
+    if(!confirm('Godkjenn mottatt bestilling og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg.')) return false;
+    btn.disabled=true; btn.textContent='Legger på bil...';
+    var svarBox=document.getElementById('rilAnsattBestillingSvar');
+    if(svarBox) svarBox.innerHTML='<div style="color:#bbf7d0;font-weight:800">Legger på bil og lukker bestillingen...</div>';
+    try{
+      var rows=await hentAnsattBestillingRows(ids);
+      rows=rows.filter(function(r){ return isConfirmed(r) && !ansattHarLagtPaBil(r) && confirmedAmount(r) > 0; });
+      if(!rows.length){ alert('Denne bestillingen mangler godkjent antall fra admin, er allerede lagt på bil eller er ikke klar.'); await visAnsattBekreftelser(); return false; }
+      var bruker=innloggetEpost(), now=nowIso();
+      for(var i=0;i<rows.length;i++){
+        var row=rows[i], ant=confirmedAmount(row);
+        if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ alert('Kunne ikke legge på bil-lager: '+lag.error); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; } }
+        var changes={status:'ferdig',ansatt_godkjent:true,lagt_pa_bil:true,arkivert:true,lukket:true,lagt_pa_bil_at:now,ansatt_godkjent_at:now,ferdig_dato:now,mottatt_dato:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant,rest:0};
+        var res=await updateTrygt('hand_bil_bestilling', row.id, changes);
+        if(res.error){ alert('Kunne ikke oppdatere bestilling: '+(res.error.message||res.error)); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; }
+        rilMerkLagtIds([row.id]);
+      }
+      alert('Bestillingen er godkjent av ansatt. Godkjent antall er lagt på bil, og lagerlogg er oppdatert.');
+      try{ if(typeof window.lastBilLager==='function') await window.lastBilLager(); }catch(e){}
+      await visAnsattBekreftelser();
+      return false;
+    }catch(e){ console.error(e); alert('Feil ved godkjenning: '+(e.message||e)); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; }
+  }
+
+  async function ansattGodkjennAlleOgLeggPaBil(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(!confirm('Godkjenn ALLE synlige bekreftede bestillinger og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg for hver vare.')) return false;
+    var btn=ev && (ev.currentTarget || ev.target);
+    if(btn){ btn.disabled=true; btn.textContent='Legger alle på bil...'; }
+    var svarBox=document.getElementById('rilAnsattBestillingSvar');
+    if(svarBox) svarBox.innerHTML='<div style="color:#bbf7d0;font-weight:800">Legger på bil og lukker bestillingene...</div>';
+    try{
+      var epost=innloggetEpost() || '', navn=innloggetNavn() || '', aktivBil=bilId() || '';
+      var all=await loadOrders();
+      var rows=(all||[]).filter(isConfirmed).filter(function(r){ return !ansattHarLagtPaBil(r) && confirmedAmount(r) > 0; }).filter(function(r){ return ansattMatch(r, epost, navn, aktivBil); });
+      rows=await hydrateRows(rows);
+      if(!rows.length){ alert('Ingen nye bekreftede bestillinger å legge på bil.'); await visAnsattBekreftelser(); return false; }
+      var bruker=innloggetEpost(), now=nowIso(), ok=0, fail=[];
+      for(var i=0;i<rows.length;i++){
+        var row=rows[i], ant=confirmedAmount(row);
+        try{
+          if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ fail.push((lineName(row)||row.id)+': '+lag.error); continue; } }
+          var changes={status:'ferdig',ansatt_godkjent:true,lagt_pa_bil:true,arkivert:true,lukket:true,lagt_pa_bil_at:now,ansatt_godkjent_at:now,ferdig_dato:now,mottatt_dato:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant,rest:0};
+          var res=await updateTrygt('hand_bil_bestilling', row.id, changes);
+          if(res.error){ fail.push((lineName(row)||row.id)+': '+(res.error.message||res.error)); continue; }
+          rilMerkLagtIds([row.id]);
+          ok++;
+        }catch(e){ fail.push((lineName(row)||row.id)+': '+(e.message||e)); }
+      }
+      try{ if(typeof window.lastBilLager==='function') await window.lastBilLager(); }catch(e){}
+      await visAnsattBekreftelser();
+      if(fail.length){ alert('Lagt på bil: '+ok+'. Noen feilet:\n'+fail.slice(0,8).join('\n')); }
+      else alert('Alle bekreftede bestillinger er godkjent av ansatt, lagt på bil, og lagerlogg er oppdatert.');
+      return false;
+    }catch(e){ console.error(e); alert('Feil ved godkjenning av alle: '+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='Godkjenn alle og legg på bil'; } return false; }
+  }
+
+  function ansattMatch(row, epost, navn, aktivBil){
+    var ids=[epost, navn, localStorage.getItem('handInnloggetEpost'), localStorage.getItem('innloggetEpost'), localStorage.getItem('handInnloggetNavn'), localStorage.getItem('innloggetNavn')]
+      .map(function(x){return low(x).trim();}).filter(Boolean);
+    var fields=[row.bruker_epost,row.opprettet_av,row.hentet_av,row.ansatt_epost,row.email,row.epost,row.bruker_navn,row.ansatt_navn,row.navn]
+      .map(function(x){return low(x).trim();}).filter(Boolean);
+    for(var i=0;i<ids.length;i++){
+      for(var j=0;j<fields.length;j++){
+        if(fields[j]===ids[i] || fields[j].indexOf(ids[i])>=0 || ids[i].indexOf(fields[j])>=0) return true;
+      }
+    }
+    // Fallback: hvis ansatt står på valgt bil, vis bekreftede ordre for denne bilen også.
+    // Dette gjør at meldingen vises selv om gamle ordre mangler epost/ansatt-id i databasen.
+    if(aktivBil && s(row.bil_id)===s(aktivBil)) return true;
+    return false;
+  }
+  function finnSynligFyllBilHost(){
+    document.querySelectorAll('#rilAnsattBestillingSvar').forEach(function(old){ old.remove(); });
+    var candidates=['bilLagerFyllListe','bilLagerInnhold','bilLagerSide','bilerSide','appSide'];
+    for(var i=0;i<candidates.length;i++){
+      var el=$(candidates[i]);
+      if(el) return el;
+    }
+    var visible=Array.from(document.querySelectorAll('section.kort,.kort,section,main,div')).filter(function(el){
+      if(!el || el.id==='rilAnsattBestillingSvar') return false;
+      var cs=window.getComputedStyle ? getComputedStyle(el) : null;
+      if(cs && (cs.display==='none' || cs.visibility==='hidden')) return false;
+      var tx=low(text(el));
+      return tx.indexOf('fyll bil')>=0 || tx.indexOf('bil-lager')>=0 || tx.indexOf('send bestilling til admin')>=0;
+    });
+    return visible[0] || $('appSide') || document.body;
+  }
+  async function visAnsattBekreftelser(){
+    var c=client(); if(!c) return;
+    var epost=innloggetEpost() || '', navn=innloggetNavn() || '', aktivBil=bilId() || '';
+    var host=finnSynligFyllBilHost(); if(!host) return;
+    try{
+      var all=await loadOrders();
+      var rows=(all||[]).filter(isConfirmed).filter(function(r){ return ansattMatch(r, epost, navn, aktivBil); });
+      rows=await hydrateRows(rows);
+      var pending=groupsFrom(rows.filter(function(r){ return !ansattHarLagtPaBil(r); })).slice(0,10);
+      var doneRows=rows.filter(ansattHarLagtPaBil);
+      var done=groupsFrom(doneRows).slice(0,50);
+      var restRows=rows.filter(function(r){ return restAmount(r)>0 && !ansattHarLagtPaBil(r); });
+      var restGroups=groupsFrom(restRows).slice(0,20);
+      var box=document.createElement('div'); box.id='rilAnsattBestillingSvar'; box.style.cssText='margin:14px 0;padding:14px;border:1px solid #14532d;border-radius:12px;background:#052e16;color:#dcfce7';
+      function groupHtml(lines, withButton){
+        var f=lines[0]||{}, ids=lines.map(function(r){return s(r.id);}).join(',');
+        var msg=f.ansatt_melding||f.melding_til_ansatt||f.svar_til_ansatt||meldingFor(lines);
+        return '<details open style="margin:8px 0;padding:10px;border:1px solid #166534;border-radius:10px;background:#064e3b"><summary style="cursor:pointer;font-weight:700">'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.bekreftet_at||f.bekreftet_dato||f.created_at||f.opprettet).slice(0,19))+'</summary><div style="margin:8px 0;color:#bbf7d0;font-weight:700">'+esc(msg)+'</div><div style="margin-top:8px;display:grid;gap:6px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - bestilt '+bestilt(r)+', godkjent '+confirmedAmount(r)+', rest '+restAmount(r)+'</div>';}).join('')+'</div>'+(withButton?'<button type="button" class="ril-ansatt-legg-pa-bil" onclick="return window.rilAnsattLeggPaBilKnapp(event)" data-ids="'+esc(ids)+'" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Godkjenn og legg på bil</button>':'')+'</details>';
+      }
+      function restHtml(lines){
+        var f=lines[0]||{};
+        var rs=lines.filter(function(r){return restAmount(r)>0;});
+        if(!rs.length) return '';
+        return '<div style="margin:8px 0;padding:10px;border:1px solid #854d0e;border-radius:10px;background:#422006;color:#fde68a"><strong>Rest for '+esc(f.bil_navn||f.bil_id||'bil')+'</strong><div style="margin-top:8px;display:grid;gap:6px">'+rs.map(function(r){return '<div>'+esc(lineName(r))+' - rest '+restAmount(r)+'</div>';}).join('')+'</div></div>';
+      }
+      function varerPaBilHtml(groups){
+        /* PROD 7089: Ikke bruk <details> her. Native details + globale bil-click-handlere ga blink/kollaps.
+           Visningen er nå statisk og stabil: ingen klikk, ingen re-render, ingen blinking. */
+        if(!groups.length) return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:8px;color:#cbd5e1">Ingen varer lagt på bil ennå.</div></div>';
+        return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:10px;display:grid;gap:8px">'+groups.map(function(lines){ var f=lines[0]||{}; return '<div style="padding:8px;border:1px solid #14532d;border-radius:8px;background:#042f1a"><strong>'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.lagt_pa_bil_at||f.ansatt_godkjent_at||f.bekreftet_at||f.created_at).slice(0,19))+'</strong><div style="margin-top:6px;display:grid;gap:4px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - på bil '+confirmedAmount(r)+'</div>';}).join('')+'</div></div>'; }).join('')+'</div></div>';
+      }
+      if(!pending.length && !restGroups.length){ return; }
+      box.innerHTML='<h3 style="margin:0 0 10px 0;color:#bbf7d0">Bekreftet bestilling fra admin</h3>'+(pending.length?'<button type="button" id="rilGodkjennAllePaBil" onclick="return window.rilAnsattLeggAllePaBilKnapp(event)" style="margin:0 0 12px 0;background:#22c55e;color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:800">Godkjenn alle og legg på bil</button>'+pending.map(function(g){return groupHtml(g,true);}).join(''):'')+(restGroups.length?'<h4 style="margin:14px 0 6px 0;color:#fde68a">Rest</h4>'+restGroups.map(restHtml).join(''):'');
+      if(host.id==='appSide' || host===document.body) host.prepend(box); else host.parentNode ? host.parentNode.insertBefore(box, host) : host.prepend(box);
+      var alleBtn=box.querySelector('#rilGodkjennAllePaBil'); if(alleBtn) alleBtn.addEventListener('click', ansattGodkjennAlleOgLeggPaBil, true);
+      box.querySelectorAll('.ril-ansatt-legg-pa-bil').forEach(function(b){ b.addEventListener('click', ansattGodkjennOgLeggPaBil, true); });
+    }catch(e){ console.warn('Kunne ikke vise ansattbekreftelser:', e); }
+  }
+
+  function patchButtons(){
+    document.querySelectorAll('button,a,input[type="button"],input[type="submit"],[role="button"]').forEach(function(b){
+      if(isSendButton(b) && b.dataset.rilNoPdf !== '1'){
+        b.dataset.rilNoPdf='1'; if(b.tagName==='A') b.removeAttribute('href'); if(b.tagName==='BUTTON') b.type='button'; b.removeAttribute && b.removeAttribute('onclick');
+        if('textContent' in b && b.tagName!=='INPUT') b.textContent='Send bestilling til admin'; if(b.tagName==='INPUT') b.value='Send bestilling til admin'; b.onclick=sendDigital;
+      }
+      if(isAdminBestillingButton(b) && b.dataset.rilAdminOrders !== '1'){
+        b.dataset.rilAdminOrders='1'; b.addEventListener('click',showOrders,true);
       }
     });
   }
-  var gammelVisJobberSide = window.visJobberSide;
-  if (typeof gammelVisJobberSide === "function") {
-    window.visJobberSide = async function () {
-      var res = await gammelVisJobberSide.apply(this, arguments);
-      setTimeout(ryddJobbListe, 100);
-      setTimeout(ryddJobbListe, 600);
-      return res;
-    };
-  }
-  document.addEventListener("DOMContentLoaded", function () {
-    ryddJobbListe();
-    var c = document.getElementById("jobberListe");
-    if (c && window.MutationObserver) {
-      new MutationObserver(function () { ryddJobbListe(); }).observe(c, { childList: true, subtree: true });
-    }
-    var k = document.getElementById("oppdaterJobberKnapp");
-    if (k) k.addEventListener("click", function () { setTimeout(ryddJobbListe, 400); });
-  });
-  window.ryddJobbListe = ryddJobbListe;
+  window.addEventListener('click', function(e){
+    if(e.target && e.target.closest && e.target.closest('#rilAnsattBestillingSvar,#rilVarerPaBilStabil')) return;
+    if(isSendButton(e.target)) return sendDigital(e);
+    if(isAdminBestillingButton(e.target)) return showOrders(e);
+    var fyllKnapp = isFyllBilButton(e.target);
+    if(fyllKnapp && fyllKnapp.id === 'visBilerKnapp') setTimeout(visAnsattBekreftelser, 1200);
+  }, true);
+  window.lagPdfFyllBilTilLager=sendDigital; window.handLagPdfFyllBilTilLager=sendDigital; window.sendBilLagerBestilling=sendDigital; window.opprettBilLagerBestillingListe=sendDigital;
+  window.visBilBestillingerSide=showOrders; window.renderAdminBilBestillinger=showOrders; window.handLastAdminBilBestillinger=showOrders; window.handLastBilBestillinger=showOrders; window.rilVisBestillinger=showOrders;
+  window.rilAnsattLeggPaBilKnapp=ansattGodkjennOgLeggPaBil;
+  window.rilAnsattLeggAllePaBilKnapp=ansattGodkjennAlleOgLeggPaBil;
+  window.rilVisAnsattBestillingSvar=visAnsattBekreftelser;
+  window.addEventListener('click', function(e){
+    var one=e.target&&e.target.closest&&e.target.closest('.ril-ansatt-legg-pa-bil');
+    if(one) return ansattGodkjennOgLeggPaBil(e);
+    var all=e.target&&e.target.closest&&e.target.closest('#rilGodkjennAllePaBil');
+    if(all) return ansattGodkjennAlleOgLeggPaBil(e);
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){ patchButtons(); setTimeout(patchButtons,150); setTimeout(patchButtons,800); setTimeout(visAnsattBekreftelser,2500); });
+  document.addEventListener('handPartialerLastet', function(){ setTimeout(patchButtons,50); setTimeout(patchButtons,600); setTimeout(visAnsattBekreftelser,1200); });
 })();
 </script>
 
+
+
+
+
+
+
+
+
+<script>
+(function(){
+  /* RIL 2026-06-23 CLEANUP: fjern gamle ekstra Fyll bil-kontroller.
+     Ikke tegn nye knapper her. Original Min bil/Bil-lager styrer visningen. */
+  function ryddEkstraFyllBilKnapper(){
+    document.querySelectorAll('#rilFinalFyllBilKontroll,#rilCleanFyllBilKontroll,#rilStabilFyllBilKontroll,#rilRenFyllBilKontroll,#rilHardFyllBilKontroll').forEach(function(e){ e.remove(); });
+    Array.from(document.querySelectorAll('button')).forEach(function(b){
+      var txt=(b.innerText||b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if((txt==='fyll bil' || txt==='skjul vareliste') && /^ril/i.test(b.id||'')){ b.remove(); }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(ryddEkstraFyllBilKnapper,50); setTimeout(ryddEkstraFyllBilKnapper,500); });
+  document.addEventListener('handPartialerLastet', function(){ setTimeout(ryddEkstraFyllBilKnapper,50); setTimeout(ryddEkstraFyllBilKnapper,500); });
+  window.addEventListener('load', function(){ setTimeout(ryddEkstraFyllBilKnapper,100); });
+  window.addEventListener('click', function(){ setTimeout(ryddEkstraFyllBilKnapper,100); }, true);
+})();
+</script>
+
+
+
+<!-- Kunde-overstyringer/tenant-lock fjernet i 7079. Kundelogikk ligger kun i ../js/handverker/hand-kunder.js -->
+
+
+
+<!-- RIL: gammel kolliderende Admin-meny fjernet. Styres av ril-admin-menu-final nederst. -->
+<script>
+/* RIL 20260624: Stabil start uten blink.
+   Etter innlogging skal bare toppmenyen vises.
+   Ingen modul skal åpnes automatisk: ikke Timer, ikke Jobber, ikke Tilbud, ikke Kunder. */
+(function(){
+  'use strict';
+  if (window.__rilStartKunMenyUtenBlink20260624) return;
+  window.__rilStartKunMenyUtenBlink20260624 = true;
+
+  var startSatt = false;
+  var brukerKlikketNavigasjon = false;
+  var alleSideIder = ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide'];
+
+  function el(id){ return document.getElementById(id); }
+  function skjul(node){ if(!node) return; node.hidden=true; node.style.display='none'; node.classList && node.classList.add('skjult','hidden'); }
+  function app(){ return el('appSide'); }
+  function appSynlig(){ var a=app(); return !!(a && a.style.display !== 'none' && !a.hidden && !a.classList.contains('skjult')); }
+  function skjulAlleSider(){ alleSideIder.forEach(function(id){ skjul(el(id)); }); }
+
+  function lukkAdminMeny(){
+    var panel=el('adminMenyPanel');
+    if(panel){ panel.style.display='none'; panel.classList.remove('open'); }
+    var knapp=el('adminMenyKnapp');
+    if(knapp) knapp.setAttribute('aria-expanded','false');
+  }
+
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('#importVarerKnapp,#lastInnLasLagerKnapp,#importVarerFil')) return;
+    var t = e.target && e.target.closest && e.target.closest('button,a,[data-admin-target]');
+    if(!t) return;
+    if(t.id === 'loginKnapp') return;
+    brukerKlikketNavigasjon = true;
+
+    // RIL fix: når vanlig bruker trykker en toppknapp må startlåsen fjernes.
+    // Ellers overstyrer CSS-en #appSide.ril-starter ... display:none !important,
+    // og sidene virker som om knappene er døde.
+    var a = app();
+    if (a) a.classList.remove('ril-starter');
+  }, true);
+
+  function visKunMenySomStart(){
+    var a=app();
+    if(!a || !appSynlig() || startSatt || brukerKlikketNavigasjon) return;
+    startSatt = true;
+
+    skjulAlleSider();
+    lukkAdminMeny();
+    a.classList.remove('ril-starter');
+
+    // Gamle scripts kan prøve å åpne en modul etter innlogging.
+    // Derfor tvinger vi alle panelsider skjult et par ganger etterpå.
+    [50, 200, 500, 1000].forEach(function(ms){
+      setTimeout(function(){
+        if(!brukerKlikketNavigasjon){
+          skjulAlleSider();
+          lukkAdminMeny();
+        }
+        a.classList.remove('ril-starter');
+      }, ms);
+    });
+  }
+
+  function overvåk(){
+    var a=app();
+    if(!a || window.__rilStartOvervakKjort7070) return;
+    window.__rilStartOvervakKjort7070 = true;
+    if(!brukerKlikketNavigasjon){ a.classList.add('ril-starter'); skjulAlleSider(); }
+    setTimeout(visKunMenySomStart, 25);
+    setTimeout(visKunMenySomStart, 150);
+    setTimeout(visKunMenySomStart, 500);
+  }
+
+  document.addEventListener('DOMContentLoaded', overvåk);
+  document.addEventListener('handPartialerLastet', function(){ setTimeout(overvåk, 0); });
+})();
+</script>
+
+
+<!-- ril-ansatt-toppmeny-inline-fallback fjernet: håndteres stabilt i hand-navigation.js -->
+<!-- Kundenr blink-fix fjernet i 7088. Kundenr styres kun av hand-kunder.js. -->
+
+
+<script charset="UTF-8" src="../js/handverker/hand-sysadm-stable-panel.js?v=20260624-existing-edit"></script>
+<script charset="UTF-8" src="../js/handverker/hand-sysadm-bedrifter-fix.js?v=20260624-force-v9"></script>
+<script charset="UTF-8" src="../js/handverker/hand-role-guard-strict.js?v=20260624-admin-not-sysadm-v31"></script>
+
+<!-- 7084: gammel inline Min bil/bestilling-blokk fjernet. Min bil styres av hand-minbil-prod-7084 og hand-navigation.js. -->
+
+
+<!-- LES_MEG_7084_MIN_BIL_ANSATT: Min bil bruker produksjonsnavigasjon handOpenMinBilHard. -->
+
+<script id="hand-sysadm-no-blink-v6">
+(function(){
+  'use strict';
+  if (window.__handSysadmNoBlinkV6) return;
+  window.__handSysadmNoBlinkV6 = true;
+  var GRE='greknuts@online.no';
+  function n(v){return String(v==null?'':v).trim().toLowerCase();}
+  function client(){return window.supabaseClient||(window.supabase&&window.supabase.from?window.supabase:null);}
+  function show(el){if(!el)return;el.classList.remove('hidden','skjult','modul-skjult');el.hidden=false;el.style.display='';el.style.visibility='visible';el.removeAttribute('aria-hidden');}
+  function hide(el){if(!el)return;el.classList.add('hidden','skjult');el.hidden=true;el.style.display='none';el.setAttribute('aria-hidden','true');}
+  function storedEmail(){return n(window.innloggetEpost||window.innloggetBrukerEpost||localStorage.getItem('handInnloggetEpost')||localStorage.getItem('innloggetEpost')||localStorage.getItem('rettilommaSistEpost')||localStorage.getItem('epost'));}
+  async function getEmail(){
+    var c=client();
+    try{if(c&&c.auth&&c.auth.getUser){var u=await c.auth.getUser();var e=n(u&&u.data&&u.data.user&&u.data.user.email);if(e)return e;}}catch(e){}
+    try{if(c&&c.auth&&c.auth.getSession){var r=await c.auth.getSession();var e2=n(r&&r.data&&r.data.session&&r.data.session.user&&r.data.session.user.email);if(e2)return e2;}}catch(e){}
+    return storedEmail();
+  }
+  async function checkSys(e){
+    e=n(e); if(!e) return false; if(e===GRE) return true;
+    var c=client(); if(!c) return false;
+    try{var r=await c.from('system_adminer').select('id').ilike('epost',e).eq('aktiv',true).limit(1); return !r.error && r.data && r.data.length>0;}catch(err){return false;}
+  }
+  function lockFlag(name, value){
+    try{Object.defineProperty(window,name,{configurable:true,get:function(){return value;},set:function(v){if(v===true)value=true;}});}catch(e){window[name]=value;}
+  }
+  function apply(e,isSys){
+    e=n(e)||storedEmail();
+    if(e){window.innloggetEpost=e;window.innloggetBrukerEpost=e;try{localStorage.setItem('handInnloggetEpost',e);localStorage.setItem('innloggetEpost',e);localStorage.setItem('rettilommaSistEpost',e);}catch(x){}}
+    if(isSys){
+      lockFlag('erSystemadmin', true); window.erAdmin=true; window.innloggetRolle='sysadm'; window.handInnloggetRolle='sysadm';
+      try{localStorage.setItem('handInnloggetRolle','sysadm');localStorage.setItem('innloggetRolle','sysadm');localStorage.setItem('rilSysadminModus','ja');localStorage.setItem('sysadminModus','ja');localStorage.setItem('handSysadminModus','ja');}catch(x){}
+      document.documentElement.classList.add('hand-is-sysadm','ril-sysadm-ready','ril-admin-ready');
+      document.querySelectorAll('.admin-only').forEach(show);
+      ['sysadminModeKnapp','sysadminNyKundeKnapp','sysadminKundelisteKnapp','sysadminModulerKnapp','adminMenyGruppe'].forEach(function(id){show(document.getElementById(id));});
+    } else {
+      window.erSystemadmin=false;
+      document.documentElement.classList.remove('hand-is-sysadm','ril-sysadm-ready');
+      document.querySelectorAll('.systemadmin-only,.sysadmin-entry').forEach(hide);
+      hide(document.getElementById('sysadminPanelSide'));
+    }
+    var rv=document.getElementById('innloggetRolleVisning');
+    if(rv) rv.textContent='';
+    var bv=document.getElementById('innloggetBrukerVisning'); if(bv&&e) bv.textContent=e;
+    document.documentElement.classList.add('ril-role-ready','hand-role-ready');
+    document.documentElement.classList.remove('hand-role-locking');
+  }
+  async function run(){var e=await getEmail(); var ok=await checkSys(e); apply(e,ok);}
+  // Start skjult, vis først når rollen er avgjort. Dette fjerner blink.
+  document.documentElement.classList.add('hand-role-locking');
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run,{once:true}); else run();
+  document.addEventListener('handPartialerLastet',function(){ if(!document.documentElement.classList.contains('hand-role-ready')) run(); },{once:true});
+  window.handFinalSysadmRefresh=run;
+})();
+</script>
+
+<script id="hand-sysadm-clean-noblink-v9">
+(function(){
+  'use strict';
+  if(window.__handSysadmCleanNoBlinkV9) return;
+  window.__handSysadmCleanNoBlinkV9 = true;
+  function $(id){ return document.getElementById(id); }
+  function n(v){ return String(v==null?'':v).trim().toLowerCase(); }
+  function show(el){ if(!el) return; el.classList.remove('hidden','skjult','modul-skjult'); el.hidden=false; el.style.display=''; el.style.visibility='visible'; el.removeAttribute('aria-hidden'); }
+  function hide(el){ if(!el) return; el.classList.add('hidden','skjult'); el.hidden=true; el.style.display='none'; el.style.visibility='hidden'; el.setAttribute('aria-hidden','true'); }
+  function isSys(){ var r=n(window.innloggetRolle||window.handInnloggetRolle||localStorage.getItem('handInnloggetRolle')||localStorage.getItem('innloggetRolle')); return window.erSystemadmin===true || r==='sysadm' || r==='sysadmin' || r==='systemadmin'; }
+  function cleanTopbar(){
+    var rv=$('innloggetRolleVisning'); if(rv && rv.textContent) rv.textContent='';
+    var e=n(window.innloggetEpost||window.innloggetBrukerEpost||localStorage.getItem('handInnloggetEpost')||localStorage.getItem('innloggetEpost')||localStorage.getItem('rettilommaSistEpost'));
+    var bv=$('innloggetBrukerVisning'); if(bv && e) bv.textContent=e;
+    if(isSys()){
+      document.documentElement.classList.add('hand-is-sysadm','ril-role-ready','hand-role-ready');
+      show($('sysadminModeKnapp')); show($('adminMenyGruppe'));
+      show($('sysadminNyKundeKnapp')); show($('sysadminKundelisteKnapp')); hide($('sysadminModulerKnapp'));
+      document.querySelectorAll('.admin-only').forEach(show);
+    }
+    hide($('visModulerKnapp')); hide($('velgModulKnapp'));
+  }
+  function openModuler(){
+    if(!isSys()) return false;
+    ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','sysadminPanelSide','adminSide'].forEach(function(id){hide($(id));});
+    var app=$('appSide'); if(app){ show(app); app.classList.remove('ril-starter','skjult','hidden'); }
+    show($('modulerSide'));
+    try{ if(typeof window.handFyllModulKundeVelger==='function') window.handFyllModulKundeVelger(); }catch(e){}
+    try{ if(typeof window.lastModulerFraDatabase==='function') window.lastModulerFraDatabase(); }catch(e){}
+    try{ if(typeof window.tegnModulGui==='function') window.tegnModulGui(); }catch(e){}
+    cleanTopbar();
+    return true;
+  }
+  document.addEventListener('click', function(ev){
+    var b=ev.target && ev.target.closest && ev.target.closest('#sysadminModulerKnapp,#visModulerKnapp,#velgModulKnapp');
+    if(!b) return;
+    ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    if(b.id==='sysadminModulerKnapp') openModuler(); else hide(b);
+    return false;
+  }, true);
+  var mo=new MutationObserver(function(){ var rv=$('innloggetRolleVisning'); if(rv && rv.textContent) rv.textContent=''; });
+  function start(){ cleanTopbar(); var rv=$('innloggetRolleVisning'); if(rv) mo.observe(rv,{childList:true,subtree:true,characterData:true}); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
+  document.addEventListener('handPartialerLastet',start,{once:true});
+})();
+</script>
+
+
+
+
+
+
+
+<script id="hand-firma-moduler-rediger-synlig-v21">
+(function(){
+  'use strict';
+  if (window.__handFirmaModulerRedigerSynligV21) return;
+  window.__handFirmaModulerRedigerSynligV21 = true;
+
+  function $(id){ return document.getElementById(id); }
+  function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
+  function erSysadm(){
+    var r = norm(window.innloggetRolle || window.handInnloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
+    var e = norm(localStorage.getItem('rettilommaSistEpost') || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost') || '');
+    return window.erSystemadmin === true || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin' || e === 'greknuts@online.no';
+  }
+  function firmaId(){ return String(($('redigerHandKundeId') && $('redigerHandKundeId').value) || '').trim(); }
+  function panel(){ return $('handFirmaModulerPanel'); }
+  function status(msg, ok){ var s=$('handFirmaModulerStatus'); if(s){ s.textContent=msg||''; s.style.color = ok ? '#4ade80' : ''; } }
+  function bokser(){ return Array.prototype.slice.call(document.querySelectorAll('[data-hand-firma-modul]')); }
+  function setVisible(){
+    var p=panel(); if(!p) return;
+    if(erSysadm()){ p.hidden=false; p.style.setProperty('display','block','important'); p.style.visibility='visible'; p.removeAttribute('aria-hidden'); }
+    else { p.hidden=true; p.style.setProperty('display','none','important'); p.setAttribute('aria-hidden','true'); }
+  }
+  function lesValgte(){ var arr=[]; bokser().forEach(function(cb){ if(cb.checked) arr.push(cb.getAttribute('data-hand-firma-modul')); }); return arr; }
+  function settValgte(moduler){
+    var arr=[];
+    if(Array.isArray(moduler)) arr=moduler;
+    else if(typeof moduler==='string'){ try{ var j=JSON.parse(moduler); arr=Array.isArray(j)?j:moduler.split(','); }catch(e){ arr=moduler.split(','); } }
+    arr=arr.map(norm).filter(Boolean);
+    bokser().forEach(function(cb){ cb.checked = arr.indexOf(norm(cb.getAttribute('data-hand-firma-modul'))) !== -1; });
+  }
+  async function lastModuler(){
+    setVisible();
+    if(!erSysadm()) return;
+    var id=firmaId();
+    if(!id){ settValgte([]); status('Velg eller rediger en bedrift først.'); return; }
+    if(!window.supabaseClient){ status('Supabase-klient ikke klar.'); return; }
+    try{
+      var res = await window.supabaseClient.from('hand_firma').select('moduler').eq('id', id).maybeSingle();
+      if(res && res.error){ status('Kunne ikke hente moduler: ' + res.error.message); return; }
+      settValgte(res && res.data ? res.data.moduler : []);
+      status('Moduler for valgt bedrift er lastet.', true);
+    }catch(err){ status('Kunne ikke hente moduler: ' + (err && err.message ? err.message : err)); }
+  }
+  async function lagreModuler(){
+    setVisible();
+    if(!erSysadm()) return;
+    var id=firmaId();
+    if(!id){ status('Velg eller rediger en bedrift først.'); return; }
+    if(!window.supabaseClient){ status('Supabase-klient ikke klar.'); return; }
+    try{
+      var arr=lesValgte();
+      var res = await window.supabaseClient.from('hand_firma').update({ moduler: arr }).eq('id', id);
+      if(res && res.error){ status('Kunne ikke lagre moduler: ' + res.error.message); return; }
+      status('Moduler lagret.', true);
+      window.handAktuelleKundeModuler = arr;
+    }catch(err){ status('Kunne ikke lagre moduler: ' + (err && err.message ? err.message : err)); }
+  }
+  function bind(){
+    setVisible();
+    var b=$('handFirmaLagreModulerKnapp');
+    if(b && b.dataset.v21bind !== '1'){ b.dataset.v21bind='1'; b.addEventListener('click', function(e){ e.preventDefault(); lagreModuler(); }); }
+    if(window.handRedigerKunde && window.handRedigerKunde.__modulerV21 !== true){
+      var orig=window.handRedigerKunde;
+      window.handRedigerKunde=function(){ var ret=orig.apply(this, arguments); setTimeout(lastModuler,80); setTimeout(lastModuler,400); return ret; };
+      window.handRedigerKunde.__modulerV21 = true;
+    }
+  }
+  document.addEventListener('click', function(ev){
+    var b=ev.target && ev.target.closest && ev.target.closest('[data-hand-edit-v9], button');
+    if(!b) return;
+    var t=(b.textContent||'').toLowerCase();
+    if(t.indexOf('rediger') !== -1){ setTimeout(lastModuler,100); setTimeout(lastModuler,500); }
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){ bind(); setTimeout(bind,400); setTimeout(lastModuler,700); });
+  document.addEventListener('handPartialerLastet', function(){ bind(); setTimeout(bind,300); setTimeout(lastModuler,700); });
+  window.addEventListener('load', function(){ bind(); setTimeout(bind,500); setTimeout(lastModuler,1000); });
+  window.handFirmaLastModulerV21 = lastModuler;
+  window.handFirmaLagreModulerV21 = lagreModuler;
+})();
+</script>
+
+<script charset="UTF-8" src="../js/handverker/hand-send-admin-hardfix.js?v=20260626-hardfix"></script>
+
+<!-- ril-admin-menu-final-20260626 fjernet: håndteres stabilt i hand-navigation.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

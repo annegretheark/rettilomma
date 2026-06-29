@@ -1,0 +1,17 @@
+Veterinær backup/import-pakke
+
+1. Kjør vet_backup_import.sql i Supabase.
+2. Bytt ut:
+   - veterinaer.html
+   - js/veterinaer/vet-app.js
+3. I veterinærmodulen får du ny knapp: Backup / Import.
+4. CSV-import bruker kolonnene:
+   navn,type,pris,beskrivelse
+
+Gyldige typer:
+- fastpris
+- timepris
+- kmpris
+- vare
+
+Restore legger data inn igjen med upsert på id. Den sletter ikke eksisterende data.

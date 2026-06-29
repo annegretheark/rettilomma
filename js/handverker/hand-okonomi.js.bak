@@ -1,0 +1,807 @@
+console.log("okonomi.js er lastet - klikkbar økonomioversikt med fakturastatus");
+
+(function okonomiInstallerMobilCss() {
+  if (document.getElementById("okonomiMobilCss")) return;
+  const style = document.createElement("style");
+  style.id = "okonomiMobilCss";
+  style.textContent = `
+    #okonomiOversikt { max-width: 100%; overflow-x: hidden; }
+    #okonomiOversikt h4 { margin: 8px 0 3px 0; font-size: 13px; }
+    #okonomiOversikt .okonomi-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+    }
+    #okonomiOversikt table.okonomi-tabell {
+      width: 100%;
+      min-width: 0;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 10px;
+      line-height: 1.08;
+    }
+    #okonomiOversikt .okonomi-tabell th,
+    #okonomiOversikt .okonomi-tabell td {
+      padding: 2px 3px;
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-bottom: 1px solid rgba(128,128,128,.18);
+    }
+    #okonomiOversikt .okonomi-tabell tr.klikkbar-okonomi { cursor: pointer; }
+    #okonomiOversikt .okonomi-tabell tr.klikkbar-okonomi:hover { background: rgba(128,128,128,.09); }
+
+    /* Kolonnebredder: bare tekstkolonner får plass. Tall og handlinger tar minst mulig. */
+    #okonomiOversikt .okonomi-tabell th:nth-child(1),
+    #okonomiOversikt .okonomi-tabell td:nth-child(1) { width: 62px; max-width: 62px; }
+    #okonomiOversikt .okonomi-tabell th:nth-child(2),
+    #okonomiOversikt .okonomi-tabell td:nth-child(2) { width: 92px; max-width: 92px; }
+    #okonomiOversikt .okonomi-tabell th:nth-child(3),
+    #okonomiOversikt .okonomi-tabell td:nth-child(3) { width: 66px; max-width: 66px; }
+    #okonomiOversikt .okonomi-tabell th:nth-child(4),
+    #okonomiOversikt .okonomi-tabell td:nth-child(4) { width: auto; max-width: 170px; }
+    #okonomiOversikt .okonomi-tabell th:nth-last-child(3),
+    #okonomiOversikt .okonomi-tabell td:nth-last-child(3) { width: 42px; max-width: 48px; text-align: right; }
+    #okonomiOversikt .okonomi-tabell th:nth-last-child(2),
+    #okonomiOversikt .okonomi-tabell td:nth-last-child(2) { width: 72px; max-width: 82px; text-align: right; }
+    #okonomiOversikt .okonomi-tabell th:last-child,
+    #okonomiOversikt .okonomi-tabell td:last-child {
+      width: 1%;
+      min-width: 112px;
+      max-width: 126px;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+      text-align: left;
+    }
+    #okonomiOversikt .okonomi-mini-knapp {
+      font-size: 8px !important;
+      line-height: 1 !important;
+      padding: 1px 3px !important;
+      margin: 0 !important;
+      min-height: 17px !important;
+      max-height: 20px !important;
+      border-radius: 4px !important;
+      white-space: nowrap !important;
+      min-width: 0 !important;
+    }
+    #okonomiOversikt .okonomi-handlinger {
+      display: inline-flex;
+      gap: 1px;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: flex-start;
+      width: auto;
+      max-width: 126px;
+    }
+    #okonomiOversikt .okonomi-status-merke {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 999px;
+      color: white;
+      font-size: 8px;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    #okonomiOversikt .okonomi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 5px;
+      margin: 7px 0;
+    }
+    #okonomiOversikt .okonomi-boks {
+      font-size: 11px;
+      padding: 6px;
+      border: 1px solid rgba(128,128,128,.25);
+      border-radius: 8px;
+    }
+    #okonomiOversikt .okonomi-boks strong { display: block; font-size: 12px; margin-top: 2px; }
+    #okonomiOversikt .okonomi-mini-knapp.okonomi-inaktiv {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    #okonomiOversikt .okonomi-detalj {
+      border: 1px solid rgba(128,128,128,.25);
+      border-radius: 8px;
+      padding: 8px;
+      margin: 8px 0;
+      font-size: 12px;
+      background: rgba(128,128,128,.06);
+    }
+    @media (max-width: 700px) {
+      #okonomiOversikt { font-size: 10px; }
+      #okonomiOversikt table.okonomi-tabell { width: 100%; min-width: 0; font-size: 8.5px; }
+      #okonomiOversikt .okonomi-tabell th,
+      #okonomiOversikt .okonomi-tabell td { padding: 1px 2px; }
+      #okonomiOversikt .okonomi-tabell th:nth-child(1),
+      #okonomiOversikt .okonomi-tabell td:nth-child(1) { width: 54px; max-width: 54px; }
+      #okonomiOversikt .okonomi-tabell th:nth-child(2),
+      #okonomiOversikt .okonomi-tabell td:nth-child(2) { width: 78px; max-width: 78px; }
+      #okonomiOversikt .okonomi-tabell th:nth-child(3),
+      #okonomiOversikt .okonomi-tabell td:nth-child(3) { width: 52px; max-width: 52px; }
+      #okonomiOversikt .okonomi-tabell th:nth-child(4),
+      #okonomiOversikt .okonomi-tabell td:nth-child(4) { max-width: 120px; }
+      #okonomiOversikt .okonomi-tabell th:nth-last-child(3),
+      #okonomiOversikt .okonomi-tabell td:nth-last-child(3) { width: 34px; max-width: 38px; }
+      #okonomiOversikt .okonomi-tabell th:nth-last-child(2),
+      #okonomiOversikt .okonomi-tabell td:nth-last-child(2) { width: 58px; max-width: 65px; }
+      #okonomiOversikt .okonomi-tabell th:last-child,
+      #okonomiOversikt .okonomi-tabell td:last-child { width: 1%; min-width: 104px; max-width: 108px; }
+      #okonomiOversikt .okonomi-mini-knapp { font-size: 7.5px !important; padding: 1px 2px !important; min-height: 15px !important; }
+      #okonomiOversikt .okonomi-handlinger { max-width: 108px; gap: 1px; }
+      #okonomiOversikt .okonomi-status-merke { font-size: 7.5px; padding: 1px 3px; }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+
+function okonomiBelop(verdi) {
+  const tall = Number(verdi || 0);
+  return tall.toLocaleString("nb-NO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function okonomiDato(verdi) {
+  if (!verdi) return "";
+  return String(verdi).slice(0, 10);
+}
+
+function okonomiTryggTekst(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+function okonomiKortTekst(verdi, maks = 14) {
+  const tekst = String(verdi ?? "").trim();
+  if (!tekst) return "";
+  return tekst.length > maks ? tekst.slice(0, Math.max(1, maks - 1)) + "…" : tekst;
+}
+
+function okonomiTryggJs(verdi) {
+  return String(verdi ?? "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("'", "\\'")
+    .replaceAll("\n", " ")
+    .replaceAll("\r", " ");
+}
+
+function okonomiVisStatus(rad) {
+  const status = String(rad?.status || rad?.betalingsstatus || "").toLowerCase();
+  const inkl = Number(rad?.inkl_mva || rad?.total || 0);
+  const betalt = Number(rad?.betalt_belop || 0);
+
+  if (status === "betalt" || (inkl > 0 && betalt >= inkl)) return "Betalt";
+  if (status === "purret" || status === "purring") return "Purret";
+  if (status === "kreditert" || status === "kreditnota") return "Kreditert";
+
+  if (
+    rad?.fakturert === true ||
+    String(rad?.fakturert || "").toLowerCase() === "true" ||
+    String(rad?.fakturert || "").toLowerCase() === "ja" ||
+    rad?.fakturanr ||
+    rad?.faktura_id ||
+    rad?.fakturert_dato
+  ) {
+    return "Fakturert / ikke betalt";
+  }
+
+  return "Ikke fakturert";
+}
+
+function okonomiStatusMerke(rad) {
+  const status = okonomiVisStatus(rad);
+  let bg = "#374151";
+  if (status === "Betalt") bg = "#166534";
+  if (status === "Fakturert / ikke betalt") bg = "#92400e";
+  if (status === "Ikke fakturert") bg = "#7f1d1d";
+  if (status === "Purret") bg = "#b45309";
+  if (status === "Kreditert") bg = "#4b5563";
+
+  return `<span class="okonomi-status-merke" style="background:${bg};">${okonomiTryggTekst(status)}</span>`;
+}
+
+function okonomiInaktivKnapp(tekst, melding) {
+  return `<button type="button" class="secondary okonomi-mini-knapp okonomi-inaktiv" onclick="event.stopPropagation(); alert('${okonomiTryggJs(melding)}')">${okonomiTryggTekst(tekst)}</button>`;
+}
+
+function okonomiBetaltKnapp(f) {
+  const status = okonomiVisStatus(f);
+  if (status === "Betalt" || status === "Kreditert") return "✓";
+
+  const fakturanr = okonomiHarFakturanr(f);
+  if (!fakturanr) return okonomiInaktivKnapp("Bet.", "Linjen må faktureres før den kan settes betalt.");
+
+  return `<button type="button"
+    class="secondary okonomi-mini-knapp"
+    onclick="event.stopPropagation(); okonomiSettBetalt('${okonomiTryggJs(fakturanr)}', ${Number(f?.inkl_mva || f?.total || 0)})">
+    Bet.
+  </button>`;
+}
+
+
+function okonomiPurringKnapp(f) {
+  const status = okonomiVisStatus(f);
+  if (status === "Betalt" || status === "Kreditert") return okonomiInaktivKnapp("Purr", "Betalte/krediterte linjer kan ikke purres.");
+  const fakturanr = okonomiHarFakturanr(f);
+  if (!fakturanr) return okonomiInaktivKnapp("Purr", "Linjen må faktureres før den kan purres.");
+  return `<button type="button"
+    class="secondary okonomi-mini-knapp"
+    onclick="event.stopPropagation(); lagPurringFraOkonomi('${okonomiTryggJs(fakturanr)}')">
+    Purr
+  </button>`;
+}
+
+
+function okonomiRadKundeId(rad) {
+  return String(rad?.kunde_id || rad?.kunden_id || rad?.kundeId || "");
+}
+
+function okonomiHarFakturanr(rad) {
+  return String(rad?.fakturanr || rad?.faktura_nr || rad?.faktura_id || "").trim();
+}
+
+function okonomiKopiKnapp(f) {
+  const fakturanr = okonomiHarFakturanr(f);
+  if (!fakturanr) return okonomiInaktivKnapp("Kopi", "Kopi kan bare lages etter fakturering.");
+  return `<button type="button" class="secondary okonomi-mini-knapp" onclick="event.stopPropagation(); okonomiLagKopi('${okonomiTryggJs(fakturanr)}')">Kopi</button>`;
+}
+
+function okonomiKreditnotaKnapp(f) {
+  const status = okonomiVisStatus(f);
+  const fakturanr = okonomiHarFakturanr(f);
+  if (status === "Kreditert") return okonomiInaktivKnapp("Kred.", "Fakturaen er allerede kreditert.");
+  if (!fakturanr) return okonomiInaktivKnapp("Kred.", "Linjen må faktureres før kreditnota kan lages.");
+  return `<button type="button" class="secondary okonomi-mini-knapp" onclick="event.stopPropagation(); okonomiLagKreditnota('${okonomiTryggJs(fakturanr)}')">Kred.</button>`;
+}
+
+function okonomiFakturerKnapp(type, indeks, rad) {
+  const status = okonomiVisStatus(rad);
+  if (status !== "Ikke fakturert") {
+    const fakturanr = okonomiHarFakturanr(rad);
+    return fakturanr ? okonomiKopiKnapp(rad) : "";
+  }
+  return `<button type="button" class="secondary okonomi-mini-knapp" onclick="event.stopPropagation(); okonomiFakturerRad('${okonomiTryggJs(type)}', ${Number(indeks)})">Fakt.</button>`;
+}
+
+function okonomiHandlingerHtml(type, rad, indeks) {
+  const fakturanr = okonomiHarFakturanr(rad);
+  const status = okonomiVisStatus(rad);
+  const deler = [];
+
+  if (status === "Ikke fakturert") {
+    // Alle knapper vises kompakt. Bare Fakt. er aktiv før fakturering.
+    deler.push(okonomiFakturerKnapp(type, indeks, rad));
+    deler.push(okonomiPurringKnapp(rad));
+    deler.push(okonomiBetaltKnapp(rad));
+    deler.push(okonomiKreditnotaKnapp(rad));
+  } else {
+    // Etter fakturering skal Fakturer ikke kunne kjøres igjen. Kopi erstatter Fakt.
+    deler.push(okonomiKopiKnapp(rad));
+    deler.push(okonomiPurringKnapp(rad));
+    deler.push(okonomiBetaltKnapp(rad));
+    deler.push(okonomiKreditnotaKnapp(rad));
+  }
+
+  return `<div class="okonomi-handlinger">${deler.filter(Boolean).join("")}</div>`;
+}
+
+async function okonomiFakturerRad(type, indeks) {
+  const data = window.__okonomiKlikkData || {};
+  const rad = data[type]?.[indeks];
+  if (!rad) {
+    alert("Fant ikke raden som skal faktureres.");
+    return;
+  }
+
+  if (okonomiVisStatus(rad) !== "Ikke fakturert" || okonomiHarFakturanr(rad)) {
+    alert("Denne linjen er allerede fakturert. Bruk kopi i stedet.");
+    return;
+  }
+
+  const kundeId = okonomiRadKundeId(rad);
+  if (!kundeId) {
+    alert("Fant ikke kunde på linjen.");
+    return;
+  }
+
+  if (!confirm("Fakturere denne kunden nå? Alle åpne ikke-fakturerte timer, varer og utlegg for samme kunde tas med, og sperres etterpå.")) return;
+
+  const fakturaKundeValg = document.getElementById("fakturaKundeValg") || document.getElementById("okonomiKundeValg");
+  if (fakturaKundeValg) fakturaKundeValg.value = kundeId;
+
+  if (typeof window.lagFakturaPdf !== "function") {
+    alert("Fant ikke fakturafunksjonen lagFakturaPdf().");
+    return;
+  }
+
+  await window.lagFakturaPdf();
+  if (typeof visOkonomiOversikt === "function") await visOkonomiOversikt();
+}
+
+async function okonomiLagKopi(fakturanr) {
+  if (!fakturanr) return;
+  const select = document.getElementById("fakturaKopiValg") || document.getElementById("fakturaKopiFakturaValg");
+  if (typeof window.fyllFakturaKopiValg === "function") window.fyllFakturaKopiValg();
+  if (select) select.value = fakturanr;
+  if (typeof window.lagFakturaKopiPdf === "function") {
+    await window.lagFakturaKopiPdf();
+  } else {
+    alert("Fant ikke funksjonen for fakturakopi.");
+  }
+}
+
+async function okonomiLagKreditnota(fakturanr) {
+  if (!fakturanr) return;
+  if (!confirm("Lage kreditnota for faktura " + fakturanr + "?")) return;
+  if (typeof window.fyllKreditnotaFakturaValg === "function") window.fyllKreditnotaFakturaValg();
+  const select = document.getElementById("kreditnotaFakturaValg");
+  if (select) select.value = fakturanr;
+  if (typeof window.lagKreditnotaPdf === "function") {
+    await window.lagKreditnotaPdf();
+    if (typeof visOkonomiOversikt === "function") await visOkonomiOversikt();
+  } else {
+    alert("Fant ikke kreditnotafunksjonen.");
+  }
+}
+
+async function okonomiSettBetalt(fakturanr, belop) {
+  if (!fakturanr) {
+    alert("Mangler fakturanr.");
+    return;
+  }
+
+  if (!confirm("Sette faktura " + fakturanr + " som betalt?")) return;
+
+  const dato = new Date().toISOString().slice(0, 10);
+
+  let res = await supabaseClient
+    .from("hand_faktura")
+    .update({
+      betalingsstatus: "betalt",
+      status: "betalt",
+      betalt_belop: Number(belop || 0),
+      betalt_dato: dato
+    })
+    .eq("fakturanr", fakturanr);
+
+  if (res.error) {
+    res = await supabaseClient
+      .from("hand_faktura")
+      .update({
+        betalt_belop: Number(belop || 0),
+        betalt_dato: dato
+      })
+      .eq("fakturanr", fakturanr);
+  }
+
+  if (res.error) {
+    alert("Kunne ikke sette betalt: " + res.error.message);
+    return;
+  }
+
+  await visOkonomiOversikt();
+}
+
+function okonomiKundeNavn(kundeId, fallback) {
+  const kunde = (window.kunder || []).find(k =>
+    String(k.id || "") === String(kundeId || "")
+  );
+
+  return kunde?.navn || fallback || "";
+}
+
+function okonomiErInnenDato(rad, fraDato, tilDato) {
+  const dato = okonomiDato(rad.dato || rad.created_at || rad.fakturert_dato);
+  if (!dato) return true;
+
+  if (fraDato && dato < fraDato) return false;
+  if (tilDato && dato > tilDato) return false;
+
+  return true;
+}
+
+function okonomiErSammeKunde(rad, kundeId) {
+  if (!kundeId) return true;
+
+  return (
+    String(rad.kunde_id || rad.kunden_id || "") === String(kundeId) ||
+    String(rad.kundeId || "") === String(kundeId)
+  );
+}
+
+function okonomiTimerEksMva(time) {
+  if (time.sum !== undefined && time.sum !== null && Number(time.sum) > 0) {
+    return Number(time.sum || 0);
+  }
+
+  return Number(time.timer || 0) * Number(time.timepris || 0);
+}
+
+function okonomiErIkkeFakturertTimer(time) {
+  if (time.fakturerbar === false) return false;
+  if (String(time.fakturerbar || "").toLowerCase() === "nei") return false;
+  if (time.fakturert === true) return false;
+  if (time.fakturanr || time.faktura_id || time.fakturert_dato) return false;
+
+  return true;
+}
+
+function fyllOkonomiKundeValg() {
+  const valg = document.getElementById("okonomiKundeValg");
+  const fakturaValg = document.getElementById("fakturaKundeValg");
+
+  const kunder = window.kunder || [];
+
+  [valg, fakturaValg].forEach(select => {
+    if (!select) return;
+
+    const valgt = select.value || "";
+    const startTekst = select.id === "okonomiKundeValg" ? "Alle kunder" : "Velg kunde";
+
+    select.innerHTML = `<option value="">${startTekst}</option>`;
+
+    kunder.forEach(kunde => {
+      const option = document.createElement("option");
+      option.value = kunde.id;
+      option.textContent = `${kunde.kundenr || kunde.id || ""} ${kunde.navn || ""}`.trim();
+      select.appendChild(option);
+    });
+
+    if (valgt) select.value = valgt;
+  });
+}
+
+async function okonomiHentTabell(tabellnavn) {
+  try {
+    const { data, error } = await supabaseClient
+      .from(tabellnavn)
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Kunne ikke hente " + tabellnavn + ":", error.message);
+      return [];
+    }
+
+    return data || [];
+  } catch (e) {
+    console.warn("Kunne ikke hente " + tabellnavn + ":", e);
+    return [];
+  }
+}
+
+function okonomiDetaljHtml(type, rad) {
+  const kunde = okonomiKundeNavn(rad.kunde_id || rad.kunden_id, rad.kunde_navn || "");
+  const status = okonomiVisStatus(rad);
+  const fakturanr = rad.fakturanr || rad.faktura_id || "";
+  const dato = okonomiDato(rad.dato || rad.created_at || rad.fakturert_dato);
+  const tekst = rad.beskrivelse || rad.kommentar || rad.type || rad.utgift_type || "";
+  const belop = rad.inkl_mva || rad.total || rad.sum || rad.belop || (Number(rad.antall || 1) * Number(rad.pris || 0));
+
+  return `
+    <div class="okonomi-detalj">
+      <strong>${okonomiTryggTekst(type)}</strong>
+      <div>Dato: ${okonomiTryggTekst(dato)}</div>
+      <div>Kunde: ${okonomiTryggTekst(kunde)}</div>
+      <div>Status: ${okonomiStatusMerke(rad)}</div>
+      ${fakturanr ? `<div>Fakturanr: ${okonomiTryggTekst(fakturanr)}</div>` : ""}
+      <div>Beløp: ${okonomiBelop(belop)} kr</div>
+      ${tekst ? `<p>${okonomiTryggTekst(tekst)}</p>` : ""}
+      ${type === "Faktura" ? okonomiBetaltKnapp(rad) : ""}
+      ${type === "Faktura" ? okonomiPurringKnapp(rad) : ""}
+    </div>
+  `;
+}
+
+function okonomiVisDetalj(type, indeks) {
+  const data = window.__okonomiKlikkData || {};
+  const rad = data[type]?.[indeks];
+  if (!rad) return;
+
+  let detalj = document.getElementById("okonomiDetalj");
+  const container = document.getElementById("okonomiOversikt");
+
+  if (!detalj && container) {
+    detalj = document.createElement("div");
+    detalj.id = "okonomiDetalj";
+    container.prepend(detalj);
+  }
+
+  if (detalj) {
+    detalj.innerHTML = okonomiDetaljHtml(type, rad);
+    detalj.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function okonomiKolonneInnhold(k, rad, indeks) {
+  return k.html ? k.html(rad, indeks) : okonomiTryggTekst(k.verdi(rad));
+}
+
+function okonomiFinnKolonne(kolonner, navn) {
+  const sok = String(navn || "").toLowerCase();
+  return kolonner.find(k => String(k.tittel || "").toLowerCase() === sok)
+    || kolonner.find(k => String(k.tittel || "").toLowerCase().includes(sok));
+}
+
+function okonomiFinnForsteKolonne(kolonner, navnListe) {
+  for (const navn of navnListe) {
+    const k = okonomiFinnKolonne(kolonner, navn);
+    if (k) return k;
+  }
+  return null;
+}
+
+function okonomiLagKompaktRad(tittel, rad, indeks, kolonner, klikkType) {
+  const datoK = okonomiFinnForsteKolonne(kolonner, ["Dato"]);
+  const kundeK = okonomiFinnForsteKolonne(kolonner, ["Kunde"]);
+  const statusK = okonomiFinnForsteKolonne(kolonner, ["Status"]);
+  const valgK = okonomiFinnForsteKolonne(kolonner, ["Valg", "Handlinger"]);
+  const belopK = okonomiFinnForsteKolonne(kolonner, ["Inkl", "Eks", "Beløp"]);
+  const tekstK = okonomiFinnForsteKolonne(kolonner, ["Vare", "Beskr.", "Beskrivelse", "Type", "Fakturanr"]);
+  const ekstraK = okonomiFinnForsteKolonne(kolonner, ["Timer", "Antall", "Forfall"]);
+
+  const dato = datoK ? okonomiKolonneInnhold(datoK, rad, indeks) : "";
+  const kunde = kundeK ? okonomiKolonneInnhold(kundeK, rad, indeks) : "";
+  const status = statusK ? okonomiKolonneInnhold(statusK, rad, indeks) : "";
+  const belop = belopK ? okonomiKolonneInnhold(belopK, rad, indeks) : "";
+  const tekst = tekstK ? okonomiKolonneInnhold(tekstK, rad, indeks) : "";
+  const ekstra = ekstraK ? okonomiKolonneInnhold(ekstraK, rad, indeks) : "";
+  const valg = valgK ? okonomiKolonneInnhold(valgK, rad, indeks) : "";
+
+  const klikk = klikkType
+    ? ` onclick="okonomiVisDetalj('${okonomiTryggJs(klikkType)}', ${indeks})" title="Klikk for detaljer"`
+    : "";
+
+  return `
+    <div class="okonomi-kort klikkbar-okonomi"${klikk}>
+      <div class="okonomi-kort-topp">
+        <span class="okonomi-kort-dato">${dato}</span>
+        <span class="okonomi-kort-belop">${belop}</span>
+      </div>
+      <div class="okonomi-kort-linje">
+        <span class="okonomi-kort-kunde">${kunde}</span>
+        <span class="okonomi-kort-status">${status}</span>
+      </div>
+      <div class="okonomi-kort-linje okonomi-kort-linje2">
+        <span class="okonomi-kort-tekst">${tekst}</span>
+        <span class="okonomi-kort-ekstra">${ekstra}</span>
+      </div>
+      <div class="okonomi-kort-valg" onclick="event.stopPropagation();">${valg}</div>
+    </div>
+  `;
+}
+
+function okonomiLagTabell(tittel, rader, kolonner, tomTekst, klikkType) {
+  if (!rader.length) {
+    return `<h4>${okonomiTryggTekst(tittel)}</h4><p>${okonomiTryggTekst(tomTekst || "Ingen rader.")}</p>`;
+  }
+
+  const header = kolonner
+    .map(k => `<th title="${okonomiTryggTekst(k.tittel)}">${okonomiTryggTekst(k.tittel)}</th>`)
+    .join("");
+
+  const body = rader.map((rad, indeks) => {
+    const klikk = klikkType
+      ? ` onclick="okonomiVisDetalj('${okonomiTryggJs(klikkType)}', ${indeks})" title="Klikk for detaljer"`
+      : "";
+
+    const celler = kolonner.map(k => {
+      const innhold = okonomiKolonneInnhold(k, rad, indeks);
+      const erValg = String(k.tittel || "").toLowerCase().includes("valg") || String(k.tittel || "").toLowerCase().includes("handling");
+      return `<td${erValg ? ' onclick="event.stopPropagation();"' : ''} title="${okonomiTryggTekst(String(innhold).replace(/<[^>]*>/g, ''))}">${innhold}</td>`;
+    }).join("");
+
+    return `<tr class="klikkbar-okonomi"${klikk}>${celler}</tr>`;
+  }).join("");
+
+  return `
+    <h4>${okonomiTryggTekst(tittel)}</h4>
+    <div class="okonomi-scroll">
+      <table class="okonomi-tabell">
+        <thead><tr>${header}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function visOkonomiOversikt() {
+  const container = document.getElementById("okonomiOversikt");
+  const melding = document.getElementById("okonomiMelding");
+
+  if (!container) {
+    alert("Fant ikke området for økonomioversikt.");
+    return;
+  }
+
+  const fraDato = document.getElementById("okonomiFraDato")?.value || "";
+  const tilDato = document.getElementById("okonomiTilDato")?.value || "";
+  const kundeId = document.getElementById("okonomiKundeValg")?.value || "";
+
+  if (melding) melding.textContent = "Henter økonomioversikt...";
+  container.innerHTML = "";
+
+  if (typeof lastKunder === "function") {
+    await lastKunder();
+    fyllOkonomiKundeValg();
+  }
+
+  if (typeof lastTimer === "function") {
+    await lastTimer();
+  }
+
+  const alleTimer = window.timer || [];
+  const alleVarer = await okonomiHentTabell("hand_faktura_vare");
+  const alleUtlegg = await okonomiHentTabell("hand_faktura_utlegg");
+  const alleFakturaer = await okonomiHentTabell("hand_faktura");
+
+  const ikkeFakturerteTimer = alleTimer
+    .filter(okonomiErIkkeFakturertTimer)
+    .filter(rad => okonomiErInnenDato(rad, fraDato, tilDato))
+    .filter(rad => okonomiErSammeKunde(rad, kundeId));
+
+  const ikkeFakturerteVarer = alleVarer
+    .filter(v => v.fakturert !== true && !v.fakturanr)
+    .filter(rad => okonomiErInnenDato(rad, fraDato, tilDato))
+    .filter(rad => okonomiErSammeKunde(rad, kundeId));
+
+  const ikkeFakturerteUtlegg = alleUtlegg
+    .filter(u => u.fakturert !== true && !u.fakturanr)
+    .filter(rad => okonomiErInnenDato(rad, fraDato, tilDato))
+    .filter(rad => okonomiErSammeKunde(rad, kundeId));
+
+  const fakturaer = alleFakturaer
+    .filter(rad => okonomiErInnenDato(rad, fraDato, tilDato))
+    .filter(rad => okonomiErSammeKunde(rad, kundeId));
+
+  window.__okonomiKlikkData = {
+    "Faktura": fakturaer,
+    "Time": ikkeFakturerteTimer,
+    "Vare": ikkeFakturerteVarer,
+    "Utlegg": ikkeFakturerteUtlegg
+  };
+
+  const timerEks = ikkeFakturerteTimer.reduce((sum, t) => sum + okonomiTimerEksMva(t), 0);
+  const varerEks = ikkeFakturerteVarer.reduce((sum, v) => sum + Number(v.antall || 1) * Number(v.pris || 0), 0);
+  const utleggEks = ikkeFakturerteUtlegg.reduce((sum, u) => sum + Number(u.belop || 0), 0);
+
+  const ikkeFakturertEks = timerEks + varerEks + utleggEks;
+  const ikkeFakturertMva = (timerEks + varerEks) * 0.25;
+  const ikkeFakturertInk = ikkeFakturertEks + ikkeFakturertMva;
+
+  const fakturertInk = fakturaer.reduce((sum, f) => sum + Number(f.inkl_mva || f.total || 0), 0);
+
+  const betalt = fakturaer
+    .filter(f => okonomiVisStatus(f) === "Betalt")
+    .reduce((sum, f) => sum + Number(f.inkl_mva || f.total || f.betalt_belop || 0), 0);
+
+  const ubetalt = Math.max(0, fakturertInk - betalt);
+
+  const iDag = new Date().toISOString().slice(0, 10);
+  const forfalteFakturaer = fakturaer.filter(f => {
+    const erBetalt = okonomiVisStatus(f) === "Betalt";
+    const forfall = okonomiDato(f.forfallsdato);
+    return !erBetalt && forfall && forfall < iDag;
+  });
+
+  const forfaltSum = forfalteFakturaer.reduce((sum, f) => sum + Number(f.inkl_mva || f.total || 0), 0);
+
+  const sammendrag = `
+    <div id="okonomiDetalj"></div>
+    <div class="okonomi-grid">
+      <div class="okonomi-boks">Ikke fakturert eks. mva<strong>${okonomiBelop(ikkeFakturertEks)} kr</strong></div>
+      <div class="okonomi-boks">Ikke fakturert inkl. mva<strong>${okonomiBelop(ikkeFakturertInk)} kr</strong></div>
+      <div class="okonomi-boks">Fakturert inkl. mva<strong>${okonomiBelop(fakturertInk)} kr</strong></div>
+      <div class="okonomi-boks">Betalt<strong>${okonomiBelop(betalt)} kr</strong></div>
+      <div class="okonomi-boks">Ubetalt faktura<strong>${okonomiBelop(ubetalt)} kr</strong></div>
+      <div class="okonomi-boks">Forfalt<strong class="okonomi-advarsel">${okonomiBelop(forfaltSum)} kr</strong></div>
+    </div>
+
+    <div class="okonomi-grid">
+      <div class="okonomi-boks">Ikke fakturerte timer<strong>${ikkeFakturerteTimer.length}</strong></div>
+      <div class="okonomi-boks">Ikke fakturerte varer<strong>${ikkeFakturerteVarer.length}</strong></div>
+      <div class="okonomi-boks">Ikke fakturerte utlegg<strong>${ikkeFakturerteUtlegg.length}</strong></div>
+      <div class="okonomi-boks">Fakturaer i utvalg<strong>${fakturaer.length}</strong></div>
+    </div>
+  `;
+
+  const fakturaTabell = okonomiLagTabell(
+    "Fakturaer",
+    fakturaer,
+    [
+      { tittel: "Dato", verdi: f => okonomiDato(f.dato || f.created_at) },
+      { tittel: "Fakturanr", verdi: f => f.fakturanr || "" },
+      { tittel: "Kunde", verdi: f => okonomiKortTekst(okonomiKundeNavn(f.kunden_id || f.kunde_id, ""), 16) },
+      { tittel: "Status", html: f => okonomiStatusMerke(f) },
+      { tittel: "Forfall", verdi: f => okonomiDato(f.forfallsdato) },
+      { tittel: "Inkl", verdi: f => okonomiBelop(f.inkl_mva || f.total || 0) + " kr" },
+      { tittel: "Handlinger", html: (f, indeks) => okonomiHandlingerHtml("Faktura", f, indeks) }
+    ],
+    "Ingen fakturaer i dette utvalget.",
+    "Faktura"
+  );
+
+  const timerTabell = okonomiLagTabell(
+    "Ikke fakturerte timer",
+    ikkeFakturerteTimer,
+    [
+      { tittel: "Dato", verdi: t => okonomiDato(t.dato) },
+      { tittel: "Kunde", verdi: t => okonomiKortTekst(okonomiKundeNavn(t.kunde_id, t.kunde_navn), 16) },
+      { tittel: "Status", html: t => okonomiStatusMerke(t) },
+      { tittel: "Beskr.", verdi: t => okonomiKortTekst(t.beskrivelse || t.kommentar || "", 18) },
+      { tittel: "Timer", verdi: t => okonomiBelop(t.timer || 0) },
+      { tittel: "Eks", verdi: t => okonomiBelop(okonomiTimerEksMva(t)) + " kr" },
+      { tittel: "Handlinger", html: (t, indeks) => okonomiHandlingerHtml("Time", t, indeks) }
+    ],
+    "Ingen ikke-fakturerte timer i dette utvalget.",
+    "Time"
+  );
+
+  const vareTabell = okonomiLagTabell(
+    "Ikke fakturerte varer",
+    ikkeFakturerteVarer,
+    [
+      { tittel: "Dato", verdi: v => okonomiDato(v.created_at) },
+      { tittel: "Kunde", verdi: v => okonomiKortTekst(okonomiKundeNavn(v.kunde_id, ""), 16) },
+      { tittel: "Status", html: v => okonomiStatusMerke(v) },
+      { tittel: "Vare", verdi: v => okonomiKortTekst(v.navn || v.vare_navn || v.beskrivelse || "", 18) },
+      { tittel: "Antall", verdi: v => v.antall || 1 },
+      { tittel: "Eks", verdi: v => okonomiBelop(Number(v.antall || 1) * Number(v.pris || 0)) + " kr" },
+      { tittel: "Handlinger", html: (v, indeks) => okonomiHandlingerHtml("Vare", v, indeks) }
+    ],
+    "Ingen ikke-fakturerte varer i dette utvalget.",
+    "Vare"
+  );
+
+  const utleggTabell = okonomiLagTabell(
+    "Ikke fakturerte utlegg",
+    ikkeFakturerteUtlegg,
+    [
+      { tittel: "Dato", verdi: u => okonomiDato(u.created_at) },
+      { tittel: "Kunde", verdi: u => okonomiKortTekst(okonomiKundeNavn(u.kunde_id, ""), 16) },
+      { tittel: "Status", html: u => okonomiStatusMerke(u) },
+      { tittel: "Type", verdi: u => u.type || u.utgift_type || "" },
+      { tittel: "Beskr.", verdi: u => okonomiKortTekst(u.beskrivelse || "", 18) },
+      { tittel: "Beløp", verdi: u => okonomiBelop(u.belop || 0) + " kr" },
+      { tittel: "Handlinger", html: (u, indeks) => okonomiHandlingerHtml("Utlegg", u, indeks) }
+    ],
+    "Ingen ikke-fakturerte utlegg i dette utvalget.",
+    "Utlegg"
+  );
+
+  container.innerHTML = sammendrag + fakturaTabell + timerTabell + vareTabell + utleggTabell;
+
+  if (melding) {
+    melding.textContent = "Økonomioversikt oppdatert. Klikk på en linje for detaljer.";
+  }
+}
+
+window.fyllOkonomiKundeValg = fyllOkonomiKundeValg;
+window.visOkonomiOversikt = visOkonomiOversikt;
+window.okonomiSettBetalt = okonomiSettBetalt;
+window.okonomiPurringKnapp = okonomiPurringKnapp;
+window.okonomiVisDetalj = okonomiVisDetalj;
+window.okonomiFakturerRad = okonomiFakturerRad;
+window.okonomiLagKopi = okonomiLagKopi;
+window.okonomiLagKreditnota = okonomiLagKreditnota;
+window.okonomiHandlingerHtml = okonomiHandlingerHtml;
+
+window.addEventListener("load", function () {
+  fyllOkonomiKundeValg();
+
+  const knapp = document.getElementById("okonomiOversiktKnapp");
+  if (knapp) {
+    knapp.onclick = visOkonomiOversikt;
+  }
+});

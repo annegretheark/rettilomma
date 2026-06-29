@@ -1,0 +1,85 @@
+{
+  "changed": {
+    "hand-ansatte.js": {
+      "timer": 1
+    },
+    "hand-backup.js": {
+      "lager_bevegelser": 2,
+      "faktura_utlegg": 2,
+      "faktura_varer": 2,
+      "ansatt_trekk": 2,
+      "trekk_typer": 2,
+      "prosjekter": 2,
+      "fakturaer": 2,
+      "bil_varer": 2,
+      "ansatte": 2,
+      "kunder": 2,
+      "firma": 2,
+      "timer": 2,
+      "varer": 2,
+      "biler": 2
+    },
+    "hand-fravaer.js": {
+      "fravaer": 2,
+      "timer": 3
+    },
+    "hand-jobber-rolle.js": {
+      "timer": 1
+    },
+    "hand-lonn.js": {
+      "timer": 1
+    },
+    "hand-okonomi.js": {
+      "faktura_utlegg": 1,
+      "faktura_varer": 1,
+      "fakturaer": 1
+    },
+    "hand-systemadmin.js": {
+      "firma": 2
+    },
+    "hand-tester.js": {
+      "ansatt_trekk": 1,
+      "trekk_typer": 1,
+      "fakturaer": 1,
+      "ansatte": 1,
+      "kunder": 1,
+      "firma": 1,
+      "timer": 1
+    },
+    "hand-timer.js": {
+      "timer": 2
+    }
+  },
+  "removed_old_folder_files": [
+    "gammelt/admin-timer-ansatt.js",
+    "gammelt/ansatte.js",
+    "gammelt/app.js",
+    "gammelt/auth.js",
+    "gammelt/backup.js",
+    "gammelt/bil-bestillinger.js",
+    "gammelt/biler.js",
+    "gammelt/bilvalg-repair.js",
+    "gammelt/bruker-billager.js",
+    "gammelt/faktura.js",
+    "gammelt/fakturaData.js",
+    "gammelt/fakturaPdf.js",
+    "gammelt/fakturaValg.js",
+    "gammelt/firma.js",
+    "gammelt/fravaer.js",
+    "gammelt/jobber-rolle.js",
+    "gammelt/kunder.js",
+    "gammelt/lager-patch.js",
+    "gammelt/lonn.js",
+    "gammelt/navigation.js",
+    "gammelt/okonomi.js",
+    "gammelt/pdfLayout.js",
+    "gammelt/prosjekter.js",
+    "gammelt/tester.js",
+    "gammelt/timer.js",
+    "gammelt/utils.js",
+    "gammelt/varer.js",
+    "gammelt/vipps-faktura-fix.js"
+  ],
+  "remaining_from": {},
+  "remaining_quoted": {}
+}

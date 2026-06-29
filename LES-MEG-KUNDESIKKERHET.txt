@@ -1,0 +1,29 @@
+Kundesikkerhet for behandler
+
+Denne pakken tetter at behandlere kan se hverandres kunder.
+
+Gjor dette:
+
+1. Last opp/erstatt filene fra denne pakken pa webhotellet/prosjektet.
+2. Kjor SQL-filen sql/behandler-security-rls.sql i Supabase SQL Editor.
+3. Logg helt ut og inn igjen som en vanlig behandler.
+4. Sjekk at kundenlisten, dyr-listen, behandlinger og faktura bare viser egne data.
+
+Hvis vanlig behandler ikke far valgt behandlingstype:
+
+Kjor sql/behandler-priser-valg-fix.sql i Supabase SQL Editor.
+Den apner bare prislisten/behandlingstypene, ikke kundedata.
+
+Hvis "Vis alle fakturaer og status" viser "Ingen fakturaer aa vise":
+
+Kjor sql/behandler-fakturaoversikt-repair.sql i Supabase SQL Editor.
+Den reparerer gamle fakturaer/behandlinger som mangler fakturarad eller behandler-kobling.
+Du trenger ikke kjoere alle SQL-filene paa nytt for denne feilen.
+
+Viktig:
+
+Appfilene filtrerer visningen, men Supabase SQL-reglene er selve lasen.
+Hvis SQL-reglene ikke er kjort, kan gamle apper eller direkte databasekall fortsatt hente for mye.
+
+Systemeier/greknuts kan fortsatt se alle data. Vanlige behandlere skal bare se rader der
+behandler_id er deres egen behandler.
