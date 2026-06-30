@@ -1,11 +1,13 @@
-/* Handverker - streng rolle-vakt v31
-   Database-rollen i hand_ansatt bestemmer. Gammel localStorage/window sysadm ignoreres.
-   Vanlig firma-admin skal aldri få Sysadm. */
+/* Handverker - streng rolle-vakt v37
+   Database-rollen styrer vanlige brukere.
+   Systembruker greknuts@online.no skal alltid ha sysadm-tilgang i appen. */
 (function(){
   'use strict';
-  window.__handRoleGuardStrict = 'v32-admin-hide';
+  window.__handRoleGuardStrict = 'v37-greknuts-sysadm-no-black-screen';
 
   var state = { loaded:false, verified:false, email:'', role:'', isSys:false, isAdmin:false };
+  var SYSADMIN_EMAILS = ['greknuts@online.no']; // Systembruker: greknuts skal alltid ha sysadm-tilgang i appen
+  function isSysEmail(email){ return SYSADMIN_EMAILS.indexOf(norm(email)) >= 0; }
   function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
   function byId(id){ return document.getElementById(id); }
   function hide(el){ if(!el) return; el.classList.add('hidden','skjult'); el.hidden = true; el.style.display = 'none'; el.setAttribute('aria-hidden','true'); }
@@ -41,6 +43,7 @@
 
   async function fetchDbRole(email){
     var c = client();
+    if(isSysEmail(email)) return 'sysadm';
     if(!c || !email) return '';
     var res = await c.from('hand_ansatt').select('rolle,epost,firma_id,navn').eq('epost', email);
     if(res && res.error){ throw res.error; }
@@ -124,11 +127,16 @@
   async function refresh(){
     state.email = await getEmail();
     var dbRole = '';
-    try{ dbRole = await fetchDbRole(state.email); state.verified = !!dbRole; }catch(e){ state.verified = false; }
+    if(isSysEmail(state.email)){
+      dbRole = 'sysadm';
+      state.verified = true;
+    }
+    if(!dbRole){ try{ dbRole = await fetchDbRole(state.email); state.verified = !!dbRole; }catch(e){ state.verified = false; } }
     // Viktig: ikke bruk gammel localStorage sysadm som fallback. Uverifisert = ikke sysadm.
     state.role = dbRole || norm(window.innloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
     if(!dbRole && isSysRole(state.role)) state.role = '';
-    state.isSys = isSysRole(state.role);
+    if(isSysEmail(state.email)) state.role = 'sysadm';
+    state.isSys = isSysRole(state.role) || isSysEmail(state.email);
     state.isAdmin = isAdminRole(state.role);
     state.loaded = true;
     applyVisibility();
@@ -158,8 +166,9 @@
     }
   }, true);
 
-  document.addEventListener('DOMContentLoaded', function(){ applyVisibility(); refresh(); setTimeout(refresh,300); setTimeout(refresh,1200); });
-  window.addEventListener('load', function(){ applyVisibility(); refresh(); setTimeout(refresh,500); setTimeout(refresh,1500); setTimeout(refresh,3000); });
-  setInterval(function(){ refresh(); }, 1200);
+  // Ikke kjør applyVisibility før rollen er lest. Det ga kortvarig skjuling av adminmeny.
+  // Ikke poll hvert 1,2 sekund. Det konkurrerte med navigasjonen og ga blink/lukking.
+  document.addEventListener('DOMContentLoaded', function(){ refresh(); setTimeout(refresh,300); setTimeout(refresh,1200); });
+  window.addEventListener('load', function(){ refresh(); setTimeout(refresh,500); setTimeout(refresh,1500); });
   window.handRefreshStrictRole = refresh;
 })();

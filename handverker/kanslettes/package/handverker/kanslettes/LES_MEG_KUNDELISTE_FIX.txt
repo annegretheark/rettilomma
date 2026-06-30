@@ -1,8 +1,0 @@
-FIKS:
-1) index.html pekte til ../css/hand-main.css, men CSS ligger i css/hand-main.css.
-2) hand-firma-kundeliste-direct.js lå ikke i app-pakken og ble ikke lastet av index.html.
-3) Denne pakken har derfor hand-firma-kundeliste-direct.js i samme mappe som index.html og laster den til slutt.
-4) test-hand-firma.html er lagt inn i rotmappen for direkte test av Supabase hand_firma.
-
-Åpne:
-http://localhost/rettilomma/handverker/test-hand-firma.html

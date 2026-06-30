@@ -52,48 +52,13 @@
   #visModulerKnapp,
   #velgModulKnapp { display:none !important; visibility:hidden !important; }
 </style>
-
-<style id="ril-panel-lock-css">
-  /*
-    Bare aktivt valgt panelside får vises.
-    Hindrer gamle inline-scripts fra å vise Backup/Tilbud i bakgrunnen.
-  */
-  #appSide.ril-panel-lock #adminKonsollSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #timerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #jobberSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #tilbudSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #backupSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #fakturaSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #varerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #bilerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #kundeSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #kunderSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #ansattSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #ansatteSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #firmaSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #bilBestillingerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #adminBilBestillinger:not(.ril-active-side),
-  #appSide.ril-panel-lock #adminBilBestillingerPanel:not(.ril-active-side),
-  #appSide.ril-panel-lock #testSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #testpanelSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #lonnPanel:not(.ril-active-side),
-  #appSide.ril-panel-lock #lonnSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #fravaerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #modulerSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #sysadminPanelSide:not(.ril-active-side),
-  #appSide.ril-panel-lock #adminSide:not(.ril-active-side) {
-    display: none !important;
-    visibility: hidden !important;
-  }
-</style>
-
 </head>
 <body>
   <img id="fakturaLogoBilde" src="../bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
 
   <div data-hand-partial="partials/hand-login.html"></div>
 
-  <section id="appSide" class="skjult ril-starter ril-panel-lock" style="display:none">
+  <section id="appSide" class="skjult ril-starter" style="display:none">
       <div data-hand-partial="partials/hand-topbar.html"></div>
       <div data-hand-partial="partials/hand-admin.html"></div>
       <div data-hand-partial="partials/hand-jobber.html"></div>
@@ -265,7 +230,7 @@
 <script charset="UTF-8" src="../js/core/state.js?v=999"></script>
 <script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
 <script charset="UTF-8" src="../js/handverker/hand-role-core.js?v=7076"></script>
-<script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=20260627-panel-lock"></script>
+<script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=9001"></script>
 <script charset="UTF-8" src="../js/handverker/hand-auth.js?v=20260623-auth-no-admin-blink"></script>
 <script charset="UTF-8" src="../js/handverker/hand-kunder.js?v=7089"></script>
 <script charset="UTF-8" src="../js/handverker/hand-prosjekter.js?v=5003"></script>
@@ -345,35 +310,6 @@
   }
   function innloggetEpost(){ return window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem('innloggetEpost') || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('epost') || null; }
   function innloggetNavn(){ return window.innloggetNavn || window.handInnloggetNavn || localStorage.getItem('handInnloggetNavn') || localStorage.getItem('innloggetNavn') || ''; }
-  async function innloggetAnsattData(){
-    var c=client();
-    var epost=innloggetEpost();
-    var userId=null, navn=innloggetNavn();
-    try{
-      if(c && c.auth && c.auth.getUser){
-        var ur=await c.auth.getUser();
-        var u=ur && ur.data && ur.data.user ? ur.data.user : null;
-        if(u){
-          userId=u.id||null;
-          epost=u.email||epost;
-          navn=navn || (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
-        }
-      }
-    }catch(e){}
-    try{
-      if(c && userId){
-        var r1=await c.from('hand_ansatt').select('id,navn,epost,user_id').eq('user_id', userId).limit(1).maybeSingle();
-        if(!r1.error && r1.data) return { id:r1.data.id||null, navn:r1.data.navn||navn||r1.data.epost||epost||'', epost:r1.data.epost||epost||'' };
-      }
-    }catch(e){}
-    try{
-      if(c && epost){
-        var r2=await c.from('hand_ansatt').select('id,navn,epost,user_id').ilike('epost', epost).limit(1).maybeSingle();
-        if(!r2.error && r2.data) return { id:r2.data.id||null, navn:r2.data.navn||navn||r2.data.epost||epost||'', epost:r2.data.epost||epost||'' };
-      }
-    }catch(e){}
-    return { id:null, navn:navn||epost||'', epost:epost||'' };
-  }
   function bilId(){
     try{ if(typeof window.hentValgtBilIdForBilLager === 'function') return window.hentValgtBilIdForBilLager() || ''; }catch(e){}
     var el = $('bilLagerBilValg') || document.querySelector('select[id*="bil" i],select[name*="bil" i]');
@@ -478,14 +414,11 @@
       melding('Sender bestilling til admin...');
       var varer=await fetchMap('hand_vare', linjer.map(function(x){return x.vare_id;}));
       var now=nowIso(), batch=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('bestilling-'+Date.now());
-      var fid=await firmaId(), epost=innloggetEpost(), ansatt=await innloggetAnsattData();
-      var bestiltAvNavn=ansatt.navn || innloggetNavn() || epost || '';
-      var bestiltAvEpost=ansatt.epost || epost || '';
+      var fid=await firmaId(), epost=innloggetEpost();
       var payload=linjer.map(function(l){ var v=l.vare_id?(varer.get(String(l.vare_id))||{}):{}; return {
-        bestilling_id:batch, firma_id:fid||null, ansatt_id:ansatt.id||null, bil_id:bid||null, bil_navn:bilNavn()||null,
+        bestilling_id:batch, firma_id:fid||null, bil_id:bid||null, bil_navn:bilNavn()||null,
         vare_id:l.vare_id||null, varenr:l.varenr||v.varenr||v.varenr||v.nr||null, varenavn:l.varenavn||v.navn||v.varenavn||v.beskrivelse||null,
-        bruker_epost:bestiltAvEpost, bruker_navn:bestiltAvNavn, opprettet_av:bestiltAvEpost,
-        bestilt_av_epost:bestiltAvEpost, bestilt_av_navn:bestiltAvNavn,
+        bruker_epost:epost, bruker_navn:innloggetNavn()||epost, opprettet_av:epost,
         bestilt:l.antall, antall:l.antall, levert:0, mottatt:0, godkjent:0, rest:l.antall,
         minimum_antall:l.minimum_antall||0, status:'venter', opprettet:now, created_at:now
       }; });
@@ -514,16 +447,12 @@
   function rilMerkLagtIds(ids){ try{ var a=rilLagtIds(); (ids||[]).map(String).forEach(function(id){ if(id && a.indexOf(id)<0) a.push(id); }); localStorage.setItem('ril_lagt_pa_bil_ids', JSON.stringify(a.slice(-2000))); }catch(e){} }
   function ansattHarLagtPaBil(r){
     if(!r) return false;
-    // Skjul straks i UI når bruker har lagt på bil, og skjul også historiske rader
-    // der DB allerede viser at mottatt >= godkjent.
-    var id=s(r.id||'');
-    if(id && rilLagtIds().indexOf(id)>=0) return true;
-    var st=low(r.status);
-    if(/^(lagt_pa_bil|ansatt_godkjent|utlevert|arkivert|ferdig|mottatt|avsluttet|fullfort|fullført)$/.test(st)) return true;
-    if(r.ansatt_godkjent===true || r.lagt_pa_bil===true || r.arkivert===true || r.lukket===true) return true;
-    if(r.lagt_pa_bil_at || r.ansatt_godkjent_at || r.ferdig_dato || r.mottatt_dato) return true;
-    var godkjent=confirmedAmount(r);
-    if(godkjent>0 && intNum(r.mottatt)>=godkjent) return true;
+    // Ikke bruk localStorage som fasit for varer på bil. DB-status/flagg avgjør.
+    // Admin-bekreftelse kan bruke feltene levert/mottatt som GODKJENT antall.
+    // Det betyr ikke at ansatt har lagt varene på bilen. Kun ansatt-status/flagg skal skjule bekreftelsen.
+    if(/^(lagt_pa_bil|ansatt_godkjent|utlevert|arkivert)$/.test(low(r.status))) return true;
+    if(r.ansatt_godkjent===true || r.lagt_pa_bil===true) return true;
+    if(r.lagt_pa_bil_at || r.ansatt_godkjent_at) return true;
     return false;
   }
   function bestilt(r){ return intNum(r.bestilt || r.antall || r.bestilt_antall || r.rest); }
@@ -556,9 +485,7 @@
       var b=r.bil_id ? bilMap.get(String(r.bil_id)) : null;
       if(b){ r.bil_navn = r.bil_navn || b.navn || b.regnr || b.registreringsnummer || b.bilnavn; }
       var a=(r.ansatt_id||r.bruker_id||r.opprettet_av_id) ? ansattMap.get(String(r.ansatt_id||r.bruker_id||r.opprettet_av_id)) : null;
-      if(a){ r.bruker_navn = r.bruker_navn || r.bestilt_av_navn || a.navn || a.fullt_navn || a.epost || a.email; r.bruker_epost = r.bruker_epost || r.bestilt_av_epost || a.epost || a.email; }
-      if(!r.bruker_navn) r.bruker_navn = r.bestilt_av_navn || r.bestilt_av_epost || r.bruker_epost || r.opprettet_av || '';
-      if(!r.bruker_epost) r.bruker_epost = r.bestilt_av_epost || r.opprettet_av || '';
+      if(a){ r.bruker_navn = r.bruker_navn || a.navn || a.fullt_navn || a.epost || a.email; r.bruker_epost = r.bruker_epost || a.epost || a.email; }
       if(!r.bruker_navn && r.bruker_epost) r.bruker_navn = r.bruker_epost;
     });
     return rows;
@@ -578,7 +505,7 @@
     content.innerHTML=groupsFrom(filtered).map(function(lines,gi){
       var f=lines[0]||{}, done=lines.every(isConfirmed);
       var lineHtml=lines.map(function(r){ var b=bestilt(r), g=done?confirmedAmount(r):b, rest=done?restAmount(r):0; return '<div class="ril-order-line" data-row-id="'+esc(r.id)+'" style="display:grid;grid-template-columns:minmax(260px,1fr) 90px 130px 90px;gap:10px;align-items:center;border-bottom:1px solid #273244;padding:8px 0"><strong>'+esc(lineName(r))+'</strong><span>Bestilt: '+b+'</span>'+(done?'<span>Bekreftet: '+g+'</span><span>Rest: '+rest+'</span>':'<input class="ril-godkjent-input" data-bestilt="'+b+'" type="number" min="0" max="'+b+'" value="'+b+'" style="width:100%;padding:7px;border-radius:7px;border:1px solid #475569;background:#0b1220;color:#fff"><span class="ril-rest-vis">Rest: 0</span>')+'</div>'; }).join('');
-      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>Bestilt av: '+esc(f.bruker_navn||f.bestilt_av_navn||f.bruker_epost||f.bestilt_av_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft bestilling</button>')+'</div></details>';
+      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>'+esc(f.bruker_navn||f.bruker_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft bestilling</button>')+'</div></details>';
     }).join('');
     content.querySelectorAll('.ril-godkjent-input').forEach(function(inp){ function upd(){ var b=intNum(inp.dataset.bestilt), g=Math.max(0,Math.min(intNum(inp.value),b)); inp.value=g; var rv=inp.parentElement.querySelector('.ril-rest-vis'); if(rv) rv.textContent='Rest: '+Math.max(b-g,0); } inp.addEventListener('input',upd); upd(); });
     content.querySelectorAll('.ril-bekreft-bestilling').forEach(function(btn){ btn.addEventListener('click',confirmGroup); });
@@ -603,14 +530,7 @@
       var ins=await insertTrygt('hand_bil_lager', [{firma_id:fid,bil_id:row.bil_id,vare_id:row.vare_id,antall:antall,minimum_antall:intNum(row.minimum_antall||0)}]);
       if(ins.error) return {ok:false,error:ins.error.message};
     }
-    var henter=await innloggetAnsattData();
-    var hentetAvTekst=(henter.navn || henter.epost || admin || '').trim();
-    await insertTrygt('hand_lager_bevegelse', [{
-      firma_id:fid, type:'ansatt_godkjent_lagt_pa_bil', bil_id:row.bil_id, vare_id:row.vare_id,
-      antall:antall, ansatt_id:henter.id || row.ansatt_id || null,
-      kommentar:'Hentet av: '+hentetAvTekst+' | Vare: '+lineName(row),
-      created_at:nowIso()
-    }]);
+    await insertTrygt('hand_lagerlogg', [{firma_id:fid,type:'bestilling',handling:'ansatt_godkjent_lagt_pa_bil',bil_id:row.bil_id,bil_navn:row.bil_navn||null,vare_id:row.vare_id,varenr:row.varenr||null,varenavn:row.varenavn||null,antall:antall,hentet_av:admin||null,bruker_epost:row.bruker_epost||null,opprettet:nowIso(),created_at:nowIso()}]);
     return {ok:true};
   }
   async function confirmGroup(ev){
@@ -653,8 +573,6 @@
     if(!ids.length) return false;
     if(!confirm('Godkjenn mottatt bestilling og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg.')) return false;
     btn.disabled=true; btn.textContent='Legger på bil...';
-    var svarBox=document.getElementById('rilAnsattBestillingSvar');
-    if(svarBox) svarBox.innerHTML='<div style="color:#bbf7d0;font-weight:800">Legger på bil og lukker bestillingen...</div>';
     try{
       var rows=await hentAnsattBestillingRows(ids);
       rows=rows.filter(function(r){ return isConfirmed(r) && !ansattHarLagtPaBil(r) && confirmedAmount(r) > 0; });
@@ -663,7 +581,7 @@
       for(var i=0;i<rows.length;i++){
         var row=rows[i], ant=confirmedAmount(row);
         if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ alert('Kunne ikke legge på bil-lager: '+lag.error); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; } }
-        var changes={status:'ferdig',ansatt_godkjent:true,lagt_pa_bil:true,arkivert:true,lukket:true,lagt_pa_bil_at:now,ansatt_godkjent_at:now,ferdig_dato:now,mottatt_dato:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant,rest:0};
+        var changes={status:'lagt_pa_bil',ansatt_godkjent:true,lagt_pa_bil:true,lagt_pa_bil_at:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant};
         var res=await updateTrygt('hand_bil_bestilling', row.id, changes);
         if(res.error){ alert('Kunne ikke oppdatere bestilling: '+(res.error.message||res.error)); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; }
         rilMerkLagtIds([row.id]);
@@ -680,8 +598,6 @@
     if(!confirm('Godkjenn ALLE synlige bekreftede bestillinger og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg for hver vare.')) return false;
     var btn=ev && (ev.currentTarget || ev.target);
     if(btn){ btn.disabled=true; btn.textContent='Legger alle på bil...'; }
-    var svarBox=document.getElementById('rilAnsattBestillingSvar');
-    if(svarBox) svarBox.innerHTML='<div style="color:#bbf7d0;font-weight:800">Legger på bil og lukker bestillingene...</div>';
     try{
       var epost=innloggetEpost() || '', navn=innloggetNavn() || '', aktivBil=bilId() || '';
       var all=await loadOrders();
@@ -693,7 +609,7 @@
         var row=rows[i], ant=confirmedAmount(row);
         try{
           if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ fail.push((lineName(row)||row.id)+': '+lag.error); continue; } }
-          var changes={status:'ferdig',ansatt_godkjent:true,lagt_pa_bil:true,arkivert:true,lukket:true,lagt_pa_bil_at:now,ansatt_godkjent_at:now,ferdig_dato:now,mottatt_dato:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant,rest:0};
+          var changes={status:'lagt_pa_bil',ansatt_godkjent:true,lagt_pa_bil:true,lagt_pa_bil_at:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant};
           var res=await updateTrygt('hand_bil_bestilling', row.id, changes);
           if(res.error){ fail.push((lineName(row)||row.id)+': '+(res.error.message||res.error)); continue; }
           rilMerkLagtIds([row.id]);
@@ -770,8 +686,7 @@
         if(!groups.length) return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:8px;color:#cbd5e1">Ingen varer lagt på bil ennå.</div></div>';
         return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:10px;display:grid;gap:8px">'+groups.map(function(lines){ var f=lines[0]||{}; return '<div style="padding:8px;border:1px solid #14532d;border-radius:8px;background:#042f1a"><strong>'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.lagt_pa_bil_at||f.ansatt_godkjent_at||f.bekreftet_at||f.created_at).slice(0,19))+'</strong><div style="margin-top:6px;display:grid;gap:4px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - på bil '+confirmedAmount(r)+'</div>';}).join('')+'</div></div>'; }).join('')+'</div></div>';
       }
-      if(!pending.length && !restGroups.length){ return; }
-      box.innerHTML='<h3 style="margin:0 0 10px 0;color:#bbf7d0">Bekreftet bestilling fra admin</h3>'+(pending.length?'<button type="button" id="rilGodkjennAllePaBil" onclick="return window.rilAnsattLeggAllePaBilKnapp(event)" style="margin:0 0 12px 0;background:#22c55e;color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:800">Godkjenn alle og legg på bil</button>'+pending.map(function(g){return groupHtml(g,true);}).join(''):'')+(restGroups.length?'<h4 style="margin:14px 0 6px 0;color:#fde68a">Rest</h4>'+restGroups.map(restHtml).join(''):'');
+      box.innerHTML='<h3 style="margin:0 0 10px 0;color:#bbf7d0">Bekreftet bestilling fra admin</h3>'+(pending.length?'<button type="button" id="rilGodkjennAllePaBil" onclick="return window.rilAnsattLeggAllePaBilKnapp(event)" style="margin:0 0 12px 0;background:#22c55e;color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:800">Godkjenn alle og legg på bil</button>'+pending.map(function(g){return groupHtml(g,true);}).join(''):'<div style="color:#cbd5e1">Ingen nye bekreftede bestillinger å legge på bil.</div>')+(restGroups.length?'<h4 style="margin:14px 0 6px 0;color:#fde68a">Rest</h4>'+restGroups.map(restHtml).join(''):'')+varerPaBilHtml(done);
       if(host.id==='appSide' || host===document.body) host.prepend(box); else host.parentNode ? host.parentNode.insertBefore(box, host) : host.prepend(box);
       var alleBtn=box.querySelector('#rilGodkjennAllePaBil'); if(alleBtn) alleBtn.addEventListener('click', ansattGodkjennAlleOgLeggPaBil, true);
       box.querySelectorAll('.ril-ansatt-legg-pa-bil').forEach(function(b){ b.addEventListener('click', ansattGodkjennOgLeggPaBil, true); });
@@ -1128,6 +1043,5 @@
 <script charset="UTF-8" src="../js/handverker/hand-send-admin-hardfix.js?v=20260626-hardfix"></script>
 
 <!-- ril-admin-menu-final-20260626 fjernet: håndteres stabilt i hand-navigation.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

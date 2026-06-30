@@ -1,0 +1,107 @@
+<section id="kundeSide" class="kort skjult">
+  <h2>Kunder</h2>
+
+  <input id="kundeId" type="hidden">
+
+  <div class="kunde-knapperad" style="margin-bottom:12px;">
+    <button id="nyKundeKnapp" type="button" class="secondary">Ny kunde</button>
+  </div>
+
+  <div class="kunde-form-grid">
+    <div class="felt">
+      <label for="kundeNr">Kundenr</label>
+      <input id="kundeNr" type="text" placeholder="Genereres automatisk" readonly>
+    </div>
+
+    <div class="felt">
+      <label for="kundeNavn">Navn</label>
+      <input id="kundeNavn">
+    </div>
+
+    <div class="felt">
+      <label for="kundeAdresse">Adresse</label>
+      <input id="kundeAdresse">
+    </div>
+
+    <div class="felt">
+      <label for="kundeEpost">E-post</label>
+      <input id="kundeEpost">
+    </div>
+
+    <div class="felt">
+      <label for="kundeTelefon">Telefon</label>
+      <input id="kundeTelefon" type="text">
+    </div>
+
+    <div class="felt">
+      <label for="kundeTimepris">Standard timepris</label>
+      <input id="kundeTimepris" type="number" min="0" step="0.01" placeholder="F.eks. 850">
+    </div>
+
+    <div class="felt kunde-kontonr-felt">
+      <label for="kundeKontonr">Kontonr</label>
+      <input id="kundeKontonr" type="text">
+    </div>
+
+    <div class="felt kunde-kontaktperson-felt">
+      <label for="kundeKontaktperson">Kontaktperson</label>
+      <input id="kundeKontaktperson">
+    </div>
+  </div>
+
+  <div class="kunde-knapperad">
+    <button id="leggTilKundeKnapp" type="button">Lagre kunde</button>
+    <button id="avbrytKundeRedigeringKnapp" type="button" class="secondary">Avbryt / nullstill</button>
+    <button type="button" class="secondary" onclick="visProsjektVindu()">Legg til prosjekt</button>
+    <button id="tilbakeTilTimerKnapp" type="button" class="secondary">Tilbake</button>
+  </div>
+
+  <div id="prosjektOverlay" style="display:none;" onclick="skjulProsjektVindu()"></div>
+
+  <div id="prosjektVindu" class="kort" style="display:none; margin-top:12px;">
+    <h3>Legg til prosjekt</h3>
+
+    <div class="kunde-form-grid prosjekt-form-grid">
+      <div class="felt">
+        <label for="prosjektNr">Prosjektnr</label>
+        <input id="prosjektNr" type="text" placeholder="Genereres automatisk" readonly>
+      </div>
+
+      <div class="felt">
+        <label for="prosjektNavn">Prosjektnavn</label>
+        <input id="prosjektNavn" type="text" placeholder="Prosjektnavn">
+      </div>
+
+      <div class="felt">
+        <label for="prosjektFakturatype">Fakturatype</label>
+        <select id="prosjektFakturatype">
+          <option value="time">Time</option>
+          <option value="fastpris">Fastpris</option>
+        </select>
+      </div>
+
+      <div class="felt" id="prosjektTimeprisFelt">
+        <label for="prosjektTimepris">Timepris</label>
+        <input id="prosjektTimepris" type="number" min="0" step="0.01" placeholder="F.eks. 850">
+      </div>
+
+      <div class="felt" id="prosjektFastprisFelt" style="display:none;">
+        <label for="prosjektFastpris">Fastpris</label>
+        <input id="prosjektFastpris" type="number" min="0" step="0.01" placeholder="F.eks. 25000">
+      </div>
+
+      <div class="felt prosjekt-beskrivelse-felt">
+        <label for="prosjektBeskrivelse">Prosjektbeskrivelse</label>
+        <textarea id="prosjektBeskrivelse" placeholder="Beskrivelse av prosjektet"></textarea>
+      </div>
+    </div>
+
+    <div class="kunde-knapperad">
+      <button type="button" onclick="lagreProsjektForValgtKunde()">Lagre prosjekt</button>
+      <button type="button" class="secondary" onclick="skjulProsjektVindu()">Lukk</button>
+    </div>
+  </div>
+
+  <div id="kundeMelding" class="melding"></div>
+  <div id="kundeListe"></div>
+</section>

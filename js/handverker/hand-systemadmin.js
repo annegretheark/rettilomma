@@ -18,7 +18,7 @@
   async function erSystemadmin(){
     const email = await innloggetEmail();
     // Systembruker er alltid systemadmin. Modus bestemmer bare hvilken side som vises.
-    
+    if(email === 'greknuts@online.no' || email === 'sysadmin@rettilomma.no') return true;
     try{ const {data,error}=await window.supabaseClient.rpc('er_systemadmin'); if(!error && data === true) return true; }catch(e){}
     return window.erSystemadmin === true;
   }
@@ -477,7 +477,7 @@
   function rootBase(){ return location.pathname.toLowerCase().includes('/rettilomma/') ? location.origin + '/rettilomma/' : location.origin + '/'; }
   function kundelink(slug){ return appBase() + '?firma=' + encodeURIComponent(slug||''); }
   async function innloggetEmail(){ try{ const r = await window.supabaseClient?.auth?.getSession(); return String(r?.data?.session?.user?.email || window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || '').trim().toLowerCase(); }catch(e){ return String(window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || '').trim().toLowerCase(); } }
-  async function erSystemadmin(){ const e = await innloggetEmail();  if(window.erSystemadmin === true) return true; try{ const r = await window.supabaseClient.rpc('er_systemadmin'); return r && !r.error && r.data === true; }catch(err){ return false; } }
+  async function erSystemadmin(){ const e = await innloggetEmail(); if(e === 'greknuts@online.no' || e === 'sysadmin@rettilomma.no') return true; if(window.erSystemadmin === true) return true; try{ const r = await window.supabaseClient.rpc('er_systemadmin'); return r && !r.error && r.data === true; }catch(err){ return false; } }
   function missingColumn(error){ const m = String(error?.message || error || ''); return ((m.match(/Could not find the '([^']+)' column/i)||[])[1] || (m.match(/'([^']+)' column/i)||[])[1] || (m.match(/column "([^"]+)"/i)||[])[1] || (m.match(/column ([a-zA-Z0-9_]+) of relation/i)||[])[1] || ''); }
   function cleanPayload(p){ const out = {}; Object.keys(p || {}).forEach(k => { if(p[k] !== undefined && p[k] !== '') out[k] = p[k]; }); return out; }
 

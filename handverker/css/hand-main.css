@@ -75,16 +75,16 @@
 /* === TIMER SIDE CLEAN LAYOUT FIX 2026-06-21 === */
 #timerSide.kort,
 section#timerSide{
-  max-width: 1120px !important;
+  max-width: 760px !important;
   margin-left: auto !important;
   margin-right: auto !important;
 }
 #timerSide .rad{
   display: grid !important;
-  grid-template-columns: 120px minmax(260px, 1fr) 100px !important;
-  gap: 6px !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px 12px !important;
   align-items: end !important;
-  margin: 4px 0 !important;
+  margin: 8px 0 10px !important;
 }
 #timerSide .timer-row-2{
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -235,108 +235,3 @@ textarea[name="kommentar"]{
 /* PROD 7069: demp blinking fra oppstarts- og rollejusteringer */
 html:not(.ril-role-ready) #handTopbarKort{visibility:hidden;}
 #appSide.ril-starter > section:not(#handTopbarKort){display:none!important;}
-
-
-/* === RIL KOMPRIMERT LAYOUT 2026-06-28 ===
-   Kun visuell CSS. Ingen JS/logikk endret.
-   Fjerner luft, gjør dato/kundenr smale og holder knapper synlige. */
-#timerSide.kort,
-section#timerSide,
-#fakturaSide.kort,
-section#fakturaSide{
-  max-width:1120px !important;
-}
-
-#timerSide,
-#fakturaSide{
-  padding:12px !important;
-}
-
-#timerSide .rad{
-  display:grid !important;
-  grid-template-columns:120px minmax(260px,1fr) 100px !important;
-  gap:6px !important;
-  margin:4px 0 !important;
-  align-items:end !important;
-}
-
-#timerSide .timer-row-2{
-  grid-template-columns:minmax(260px,1fr) minmax(180px,280px) !important;
-}
-
-#timerSide .timer-row-vare{
-  grid-template-columns:minmax(260px,1fr) 80px 110px !important;
-}
-
-#timerSide .timer-row-utgift{
-  grid-template-columns:150px 100px 80px 90px 110px !important;
-}
-
-#timerSide label,
-#fakturaSide label{
-  margin:3px 0 2px !important;
-  line-height:1.15 !important;
-}
-
-#timerSide input,
-#timerSide select,
-#timerSide textarea,
-#fakturaSide input,
-#fakturaSide select,
-#fakturaSide textarea{
-  padding:6px 8px !important;
-  font-size:14px !important;
-  min-width:0 !important;
-}
-
-#timerSide textarea{
-  min-height:64px !important;
-}
-
-#timerSide button,
-#fakturaSide button{
-  width:auto !important;
-  margin:2px !important;
-  padding:7px 9px !important;
-  font-size:13px !important;
-  line-height:1.1 !important;
-  white-space:nowrap !important;
-}
-
-#timerSide table,
-#fakturaSide table{
-  font-size:13px !important;
-}
-
-#timerSide th,
-#timerSide td,
-#fakturaSide th,
-#fakturaSide td{
-  padding:4px 5px !important;
-  line-height:1.15 !important;
-}
-
-#fakturaSide .rad,
-#fakturaSide .button-row{
-  gap:5px !important;
-  margin:4px 0 !important;
-}
-
-#fakturaSide .handlinger,
-#fakturaSide td:last-child{
-  white-space:nowrap !important;
-}
-
-@media (max-width:800px){
-  #timerSide .rad,
-  #timerSide .timer-row-2,
-  #timerSide .timer-row-vare,
-  #timerSide .timer-row-utgift{
-    grid-template-columns:1fr !important;
-  }
-
-  #timerSide button,
-  #fakturaSide button{
-    width:100% !important;
-  }
-}

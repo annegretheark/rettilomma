@@ -472,21 +472,46 @@
     if(!app.isSysadm) return;
     const el=$('adminBackupList');
     if(el) el.innerHTML='<div class="msg">Laster backup-logg...</div>';
-    const {data,error}=await app.sb.from('hov_backup_log').select('*').order('created_at',{ascending:false}).limit(20);
-    if(error){
-      if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message)+'</div>';
-      return;
+    try{
+      // Bruk Edge Function i stedet for direkte tabell-lesing.
+      // Da får sysadm også signed_url, og samme logikk fungerer for slettede firma.
+      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'list' } });
+      if(error){
+        if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message||JSON.stringify(error))+'</div>';
+        return;
+      }
+      if(!data || !data.ok){
+        if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(JSON.stringify(data||{}))+'</div>';
+        return;
+      }
+      app.data.backupLogg=data.backups||[];
+      renderBackupLogg();
+    }catch(err){
+      if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(err.message||String(err))+'</div>';
     }
-    app.data.backupLogg=data||[];
-    renderBackupLogg();
   }
 
+  function backupMeta(b){ return (b && typeof b.meta === 'object' && b.meta) ? b.meta : {}; }
   function adminBackupFirmaNavn(b){
     const firmaer = app.data.adminFirmaer || [];
-    if(b.firma_id) return firmaer.find(f=>String(f.id)===String(b.firma_id))?.navn || b.firma_id;
-    const m=String(b.file_path||b.backup_prefix||'').match(/^firma\/([^\/]+)/);
-    if(m) return firmaer.find(f=>String(f.id)===String(m[1]))?.navn || m[1];
+    const meta = backupMeta(b);
+    const idFromPath = String(b?.file_path||b?.backup_prefix||'').match(/^firma\/([^\/]+)/)?.[1] || '';
+    const id = b?.firma_id || meta.firma_id || idFromPath;
+    const live = id ? firmaer.find(f=>String(f.id)===String(id)) : null;
+    // Hvis firmaet finnes i admin-listen, er det aktivt uansett hva eldre list-kall sier.
+    if(live) return live.navn || live.epost || live.id;
+    const navn = b?.firma_navn || meta.firma_navn || meta.firma?.navn || '';
+    if(navn) return b?.firma_deleted ? navn + ' (slettet)' : navn;
+    if(id) return b?.firma_deleted ? id + ' (slettet)' : id;
     return '';
+  }
+  function adminBackupFirmaEier(b){
+    const meta = backupMeta(b);
+    return b?.firma_epost || meta.firma_epost || meta.owner_email || b?.requested_email || '';
+  }
+  function adminBackupFirmaOrgnr(b){
+    const meta = backupMeta(b);
+    return b?.firma_orgnr || meta.firma_orgnr || meta.orgnr || '';
   }
 
   function renderAdminRestoreOptions(){
@@ -495,39 +520,102 @@
     const backups=(app.data.backupLogg||[]).filter(b=>b.status==='ok' && b.file_path && String(b.backup_type||'') !== 'restore');
     sel.innerHTML = '<option value="">Velg backup</option>' + backups.map(b=>{
       const t=fmtDateTime(b.created_at);
-      const firma=adminBackupFirmaNavn(b);
+      const firma=adminBackupFirmaNavn(b) || 'Slettet/ukjent firma';
+      const eier=adminBackupFirmaEier(b);
+      const org=adminBackupFirmaOrgnr(b);
       const size=b.file_size ? ` - ${Math.round(Number(b.file_size)/1024)} KB` : '';
-      const label=`${t} - ${firma || b.backup_scope || 'backup'}${size}`;
-      return `<option value="${esc(b.file_path||'')}">${esc(label)}</option>`;
+      const label=`${t} - ${firma}${eier ? ' - '+eier : ''}${org ? ' - org '+org : ''}${size}`;
+      // Bruk backup-logg ID i GUI. Edge Function finner file_path selv.
+      return `<option value="${esc(b.id||'')}" data-file-path="${esc(b.file_path||'')}">${esc(label)}</option>`;
     }).join('');
     if(old) sel.value=old;
   }
 
+  function backupSearchText(b){
+    return [fmtDateTime(b.created_at), b.status, b.backup_scope, adminBackupFirmaNavn(b), adminBackupFirmaEier(b), adminBackupFirmaOrgnr(b), b.backup_type, b.file_path, b.backup_prefix, b.error_message]
+      .map(x=>String(x||'').toLowerCase()).join(' ');
+  }
+
+  function renderBackupToolbar(list){
+    const total=(app.data.backupLogg||[]).length;
+    const shown=list.length;
+    const filter=app.adminBackupFilter||'all';
+    const btn=(key,label)=>`<button type="button" class="small-btn ${filter===key?'ok':'secondary'}" data-backup-filter="${key}">${label}</button>`;
+    return `<div class="msg" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <strong>Backup v2</strong>
+      ${btn('all','Alle')}${btn('active','Aktive firma')}${btn('deleted','Slettede firma')}${btn('system','System')}
+      <input id="adminBackupSearch" type="search" placeholder="Søk firma, e-post, org.nr, dato ..." value="${esc(app.adminBackupSearch||'')}" style="min-width:320px;max-width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e5e7eb">
+      <span class="muted">Viser ${shown} av ${total}. Velg Alle for å se både aktive og slettede firma.</span>
+    </div>`;
+  }
+
+  function backupFilterMatch(b){
+    const filter=app.adminBackupFilter||'all';
+    if(filter==='active'){
+      const idFromPath = String(b?.file_path||b?.backup_prefix||'').match(/^firma\/([^\/]+)/)?.[1] || '';
+      const firmaId = b?.firma_id || backupMeta(b).firma_id || idFromPath;
+      const liveFirma = firmaId ? (app.data.adminFirmaer||[]).some(f=>String(f.id)===String(firmaId)) : false;
+      return b.backup_scope==='firma' && (liveFirma || !b.firma_deleted);
+    }
+    if(filter==='deleted'){
+      const idFromPath = String(b?.file_path||b?.backup_prefix||'').match(/^firma\/([^\/]+)/)?.[1] || '';
+      const firmaId = b?.firma_id || backupMeta(b).firma_id || idFromPath;
+      const liveFirma = firmaId ? (app.data.adminFirmaer||[]).some(f=>String(f.id)===String(firmaId)) : false;
+      return b.backup_scope==='firma' && !!b.firma_deleted && !liveFirma;
+    }
+    if(filter==='system') return b.backup_scope==='system';
+    return true;
+  }
+
   function renderBackupLogg(){
-    const rows=(app.data.backupLogg||[]).map(b=>{
-      const firmaNavn = adminBackupFirmaNavn(b);
+    const search=String(app.adminBackupSearch||'').trim().toLowerCase();
+    const list=(app.data.backupLogg||[])
+      .filter(b=>backupFilterMatch(b))
+      .filter(b=>!search || backupSearchText(b).includes(search))
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const rows=list.map(b=>{
+      const firmaNavn = adminBackupFirmaNavn(b) || (b.backup_scope === 'firma' ? 'Slettet/ukjent firma' : 'Systembackup');
+      const eier=adminBackupFirmaEier(b);
+      const org=adminBackupFirmaOrgnr(b);
       const file=b.file_path || b.backup_prefix || '';
-      return `<tr><td>${esc(fmtDateTime(b.created_at))}</td><td>${esc(b.status||'')}</td><td>${esc(b.backup_scope||'system')}</td><td>${esc(firmaNavn)}</td><td>${esc(b.backup_type||'')}</td><td>${esc(file)}</td><td>${b.file_size ? esc(Math.round(Number(b.file_size)/1024)+' KB') : ''}</td><td>${esc(b.error_message||'')}</td></tr>`;
+      const idFromPath = String(b?.file_path||b?.backup_prefix||'').match(/^firma\/([^\/]+)/)?.[1] || '';
+      const firmaId = b?.firma_id || backupMeta(b).firma_id || idFromPath;
+      const liveFirma = firmaId ? (app.data.adminFirmaer||[]).find(f=>String(f.id)===String(firmaId)) : null;
+      const isDeleted = b.backup_scope==='firma' && !!firmaId && !liveFirma && !!b.firma_deleted;
+      const deleted=isDeleted ? '<br><span class="pill">Slettet firma</span>' : (b.backup_scope==='firma' ? '<br><span class="pill">Aktivt firma</span>' : '');
+      const dl=b.signed_url ? `<a href="${esc(b.signed_url)}" target="_blank" rel="noopener">Last ned</a>` : '';
+      const restoreBtn=(b.status==='ok' && b.file_path && String(b.backup_type||'') !== 'restore')
+        ? `<button type="button" class="small-btn ok" data-admin-restore-id="${esc(b.id||'')}">Gjenopprett</button>` : '<span class="muted">Logg</span>';
+      const actions=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${restoreBtn}${dl}</div>`;
+      return `<tr><td>${esc(fmtDateTime(b.created_at))}</td><td>${esc(b.status||'')}</td><td>${esc(b.backup_scope||'system')}</td><td><strong>${esc(firmaNavn)}</strong>${deleted}${org ? '<br><span class="muted">Org: '+esc(org)+'</span>' : ''}</td><td>${esc(eier)}</td><td>${esc(b.backup_type||'')}</td><td>${esc(file)}</td><td>${b.file_size ? esc(Math.round(Number(b.file_size)/1024)+' KB') : ''}</td><td>${actions}</td><td>${esc(b.error_message||'')}</td></tr>`;
     });
     renderAdminRestoreOptions();
     const el=$('adminBackupList');
-    if(el) el.innerHTML = table(['Tid','Status','Omfang','Firma','Type','Fil/prefix','Str.','Feil'], rows);
+    if(el){
+      el.innerHTML = renderBackupToolbar(list) + table(['Tid','Status','Omfang','Firma','Eier/e-post','Type','Fil/prefix','Str.','Handling','Feil'], rows);
+      const searchEl=$('adminBackupSearch');
+      if(searchEl){ searchEl.addEventListener('input',()=>{ app.adminBackupSearch=searchEl.value; renderBackupLogg(); }); }
+      el.querySelectorAll('[data-backup-filter]').forEach(btn=>btn.addEventListener('click',()=>{ app.adminBackupFilter=btn.dataset.backupFilter||'all'; renderBackupLogg(); }));
+      el.querySelectorAll('[data-admin-restore-id]').forEach(btn=>btn.addEventListener('click',()=>adminRestoreBackup(btn.dataset.adminRestoreId)));
+    }
   }
 
-  async function adminRestoreBackup(){
+  async function adminRestoreBackup(backupIdArg){
     if(!app.isSysadm){ msg('adminBackupMsg','Bare sysadm kan gjenopprette backup fra adminpanelet.','err'); return; }
-    const filePath=val('adminRestoreSelect');
-    if(!filePath){ msg('adminBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
-    if(!confirm('Gjenopprette valgt backup? Dette vil skrive tilbake data fra backupfilen. Fortsette?')) return;
+    const backupId=backupIdArg || val('adminRestoreSelect');
+    if(!backupId){ msg('adminBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
+    const backup=(app.data.backupLogg||[]).find(b=>String(b.id)===String(backupId));
+    const firma=backup ? (adminBackupFirmaNavn(backup) || 'slettet/ukjent firma') : 'valgt backup';
+    if(!confirm('Gjenopprette backup for '+firma+'? Dette vil skrive tilbake data fra backupfilen. Fortsette?')) return;
     msg('adminBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', file_path:filePath } });
+      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', backup_id:backupId } });
       if(error){ msg('adminBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         msg('adminBackupMsg','Backup er gjenopprettet. Laster adminliste og backup-logg på nytt...','ok');
         await loadAdminData();
         await loadBackupLogg();
-        if(String(filePath).startsWith('firma/') && app.firmaId){ await loadAll(); }
+        if(backup?.file_path && String(backup.file_path).startsWith('firma/') && app.firmaId){ await loadAll(); }
       }else{
         msg('adminBackupMsg','Restore svarte uventet: '+esc(JSON.stringify(data||{})),'err');
       }
@@ -543,7 +631,7 @@
       const {data,error}=await app.sb.functions.invoke('hov-backup', { body });
       if(error){ msg('adminBackupMsg','Backup feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
-        msg('adminBackupMsg','Backup ferdig: '+(data.prefix||'')+' ('+(data.backup_scope||body.scope||'')+')','ok');
+        msg('adminBackupMsg','Backup ferdig: '+(data.file_path||data.prefix||'')+' ('+(data.backup_scope||body.scope||'')+')','ok');
       } else {
         msg('adminBackupMsg','Backup svarte uventet: '+esc(JSON.stringify(data||{})),'err');
       }

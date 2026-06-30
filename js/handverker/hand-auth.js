@@ -232,7 +232,7 @@ async function loggInn() {
   innloggetEpost = email;
   window.innloggetEpost = email;
   window.erSystemadmin = false;
-  var handErSystemadminFraTabell = (email === "greknuts@online.no");
+  var handErSystemadminFraTabell = false;
   try {
     const sr = await supabaseClient.from("system_adminer").select("id").ilike("epost", email).eq("aktiv", true).limit(1);
     if (!sr.error && sr.data && sr.data.length) handErSystemadminFraTabell = true;
@@ -381,6 +381,7 @@ async function loggInn() {
     rolle === "sysadmin" ||
     erFirmaEierAdmin ||
     !!firmaBrukerData ||
+    email === "greknuts@online.no" ||
     false;
 
   erAdmin = harAdminRolle;

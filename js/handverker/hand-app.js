@@ -234,13 +234,13 @@ async function startApp() {
     }
 
     let rolle = String((firmaBrukerData && firmaBrukerData.rolle) || ansattData?.rolle || "").toLowerCase();
-    if (email === "greknuts@online.no") rolle = "systemadmin";
+    // Stabil 2.0: greknuts er ikke hardkodet sysadm. Fallback admin håndteres i hand-stabil-2.0.js.
     window.innloggetRolle = rolle;
 
-    // Systembruker skal alltid ha rettighet til både vanlig bruker, admin og systemadmin.
-    const erSystembruker = email === "greknuts@online.no";
-    const harSystemadminRolle = erSystembruker || ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
-    const harAdminRolle = erSystembruker || !!firmaBrukerData || ["admin", "eier", "owner", "administrator", "systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    // Stabil 2.0: systemadmin gis kun av rolle/tabell, ikke hardkodet e-post.
+    const erSystembruker = ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    const harSystemadminRolle = erSystembruker;
+    const harAdminRolle = !!firmaBrukerData || email === "greknuts@online.no" || ["admin", "eier", "owner", "administrator", "systemadmin", "sysadmin", "sysadm"].includes(rolle);
 
     window.erSystemadmin = harSystemadminRolle;
 

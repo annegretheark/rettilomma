@@ -1,4 +1,4 @@
-console.log("NY hand-timer.js er lastet - ansatt jobber fix 20260627");
+console.log("NY hand-timer.js er lastet");
 
 const MAKS_TIMER_PER_DAG = 24;
 const MAKS_TIMER_PER_MANED = 300;
@@ -40,9 +40,73 @@ function oppdaterAktivBilVisning() {
 }
 
 
+async function settStandardBilForInnloggetAnsatt() {
+  try {
+    if (!window.supabaseClient) return;
 
-// RIL FIX: Tildelt/standard bil settes av hand-auth.js etter innlogging.
-// hand-timer.js skal bare bruke window.aktivBilId/localStorage, ikke slå opp og overstyre bil.
+    let ansatt = null;
+
+    if (window.innloggetAnsattId) {
+      const { data, error } = await supabaseClient
+        .from("hand_ansatt")
+        .select("id, navn, epost, standard_bil_id")
+        .eq("id", window.innloggetAnsattId)
+        .limit(1);
+
+      if (!error && data && data.length) ansatt = data[0];
+    }
+
+    if (!ansatt && window.innloggetEpost) {
+      const { data, error } = await supabaseClient
+        .from("hand_ansatt")
+        .select("id, navn, epost, standard_bil_id")
+        .eq("epost", String(window.innloggetEpost).toLowerCase())
+        .limit(1);
+
+      if (!error && data && data.length) {
+        ansatt = data[0];
+        window.innloggetAnsattId = ansatt.id || window.innloggetAnsattId;
+      }
+    }
+
+    const standardBilId = ansatt?.standard_bil_id || "";
+    if (!standardBilId) {
+      oppdaterAktivBilVisning();
+      return;
+    }
+
+    window.aktivBilId = String(standardBilId);
+    localStorage.setItem("aktivBilId", String(standardBilId));
+
+    const bilValg = document.getElementById("bilValg");
+
+    if (bilValg) {
+      if (!bilValg.options.length || bilValg.options.length <= 1) {
+        if (typeof window.fyllAlleBilvalg === "function") {
+          await window.fyllAlleBilvalg();
+        } else if (typeof window.fyllBilvalg === "function") {
+          await window.fyllBilvalg();
+        }
+      }
+
+      const finnes = Array.from(bilValg.options).some(o => String(o.value) === String(standardBilId));
+      if (finnes) {
+        bilValg.value = String(standardBilId);
+        const valgtOption = bilValg.options[bilValg.selectedIndex];
+        window.aktivBilNavn = valgtOption ? valgtOption.textContent : "";
+        localStorage.setItem("aktivBilNavn", window.aktivBilNavn || "");
+      }
+    }
+
+    oppdaterAktivBilVisning();
+
+    if (typeof window.fyllVarevalgFraAktivBil === "function") {
+      await window.fyllVarevalgFraAktivBil();
+    }
+  } catch (e) {
+    console.warn("Kunne ikke sette standard bil for innlogget ansatt:", e);
+  }
+}
 
 
 async function fyllVarevalgFraAktivBil() {
@@ -305,73 +369,6 @@ async function hentFirmaIdForTimerTilgang() {
   return direkte || "";
 }
 
-async function hentRiktigInnloggetAnsattIdForLagring() {
-  if (!window.supabaseClient) return window.innloggetAnsattId || "";
-
-  let authUser = null;
-  try {
-    const r = await supabaseClient.auth.getUser();
-    authUser = r?.data?.user || null;
-  } catch (_) {}
-
-  const userId = String(
-    authUser?.id ||
-    window.innloggetUserId ||
-    window.authUserId ||
-    localStorage.getItem("innloggetUserId") ||
-    localStorage.getItem("authUserId") ||
-    ""
-  ).trim();
-
-  const epost = String(
-    authUser?.email ||
-    window.innloggetEpost ||
-    localStorage.getItem("innloggetEpost") ||
-    localStorage.getItem("handInnloggetEpost") ||
-    ""
-  ).trim().toLowerCase();
-
-  async function sett(rad) {
-    if (!rad || !rad.id) return "";
-    window.innloggetAnsattId = String(rad.id);
-    if (rad.firma_id) window.aktivFirmaId = String(rad.firma_id);
-    try {
-      localStorage.setItem("innloggetAnsattId", String(rad.id));
-      localStorage.setItem("ansattId", String(rad.id));
-      if (rad.firma_id) localStorage.setItem("aktivFirmaId", String(rad.firma_id));
-    } catch (_) {}
-    return String(rad.id);
-  }
-
-  try {
-    if (userId) {
-      const r = await supabaseClient
-        .from("hand_ansatt")
-        .select("id, firma_id, epost, user_id, rolle, aktiv")
-        .eq("user_id", userId)
-        .neq("aktiv", false)
-        .limit(1)
-        .maybeSingle();
-      if (!r.error && r.data) return await sett(r.data);
-    }
-
-    if (epost) {
-      const r = await supabaseClient
-        .from("hand_ansatt")
-        .select("id, firma_id, epost, user_id, rolle, aktiv")
-        .ilike("epost", epost)
-        .neq("aktiv", false)
-        .limit(1)
-        .maybeSingle();
-      if (!r.error && r.data) return await sett(r.data);
-    }
-  } catch (e) {
-    console.warn("Kunne ikke finne riktig innlogget ansatt for lagring:", e);
-  }
-
-  return window.innloggetAnsattId || localStorage.getItem("innloggetAnsattId") || localStorage.getItem("ansattId") || "";
-}
-
 function adminVilOverstyre(tekst) {
   if (!erAdmin) return false;
 
@@ -381,198 +378,26 @@ function adminVilOverstyre(tekst) {
   );
 }
 
-
-async function hentInnloggetAnsattKontekstForJobber() {
-  let authUser = null;
-  try {
-    const r = await supabaseClient.auth.getUser();
-    authUser = r && r.data && r.data.user ? r.data.user : null;
-  } catch (e) {}
-
-  const userId = String(
-    (authUser && authUser.id) ||
-    window.innloggetUserId ||
-    window.authUserId ||
-    localStorage.getItem("innloggetUserId") ||
-    localStorage.getItem("authUserId") ||
-    ""
-  ).trim();
-
-  const epost = String(
-    (authUser && authUser.email) ||
-    window.innloggetEpost ||
-    localStorage.getItem("innloggetEpost") ||
-    localStorage.getItem("handInnloggetEpost") ||
-    ""
-  ).trim().toLowerCase();
-
-  const lagretId = String(
-    window.innloggetAnsattId ||
-    localStorage.getItem("innloggetAnsattId") ||
-    localStorage.getItem("ansattId") ||
-    ""
-  ).trim();
-
-  const funnet = [];
-  const sett = new Set();
-
-  function leggTil(rad) {
-    if (!rad || !rad.id) return;
-    const id = String(rad.id);
-    if (sett.has(id)) return;
-    sett.add(id);
-    funnet.push(rad);
-  }
-
-  async function hent(filterFn) {
-    try {
-      let q = supabaseClient
-        .from("hand_ansatt")
-        .select("id, firma_id, epost, user_id, auth_id, auth_user_id, aktiv");
-      q = filterFn(q);
-      const r = await q.limit(20);
-      if (!r.error && Array.isArray(r.data)) r.data.forEach(leggTil);
-    } catch (e) {
-      console.warn("Ansattoppslag hoppet over:", e);
-    }
-  }
-
-  if (lagretId) await hent(q => q.eq("id", lagretId));
-  if (userId) {
-    await hent(q => q.eq("user_id", userId));
-    await hent(q => q.eq("auth_id", userId));
-    await hent(q => q.eq("auth_user_id", userId));
-  }
-  if (epost) {
-    await hent(q => q.ilike("epost", epost));
-    await hent(q => q.ilike("email", epost));
-  }
-
-  const aktiv = funnet.filter(r => r.aktiv !== false);
-  const ansatte = aktiv.length ? aktiv : funnet;
-  const valgt = ansatte[0] || null;
-
-  if (valgt) {
-    window.innloggetAnsattId = String(valgt.id);
-    if (valgt.firma_id) window.aktivFirmaId = String(valgt.firma_id);
-    if (epost) window.innloggetEpost = epost;
-    if (userId) window.innloggetUserId = userId;
-    try {
-      localStorage.setItem("innloggetAnsattId", String(valgt.id));
-      localStorage.setItem("ansattId", String(valgt.id));
-      if (valgt.firma_id) localStorage.setItem("aktivFirmaId", String(valgt.firma_id));
-      if (epost) localStorage.setItem("innloggetEpost", epost);
-      if (userId) localStorage.setItem("innloggetUserId", userId);
-    } catch (e) {}
-  }
-
-  return {
-    ansattIder: ansatte.map(r => String(r.id)).filter(Boolean),
-    firmaIder: ansatte.map(r => String(r.firma_id || "")).filter(Boolean),
-    userId,
-    epost
-  };
-}
-
-async function hentEgneJobberForAnsatt() {
-  const ctx = await hentInnloggetAnsattKontekstForJobber();
-  const melding = hentTimerMelding();
-
-  if (!ctx.ansattIder.length && !ctx.userId && !ctx.epost) {
-    if (melding) melding.textContent = "Fant ikke innlogget ansatt. Sjekk at brukeren finnes i hand_ansatt med riktig user_id eller e-post.";
-    return [];
-  }
-
-  // Prøv de mest sannsynlige koblingene først. Noen installasjoner lagrer hand_time.ansatt_id
-  // som hand_ansatt.id, andre eldre rader kan være koblet via bruker_id/user_id eller e-post.
-  const forsok = [];
-  if (ctx.ansattIder.length) forsok.push(q => q.in("ansatt_id", ctx.ansattIder));
-  if (ctx.userId) forsok.push(q => q.eq("bruker_id", ctx.userId));
-  if (ctx.userId) forsok.push(q => q.eq("user_id", ctx.userId));
-  if (ctx.epost) forsok.push(q => q.ilike("ansatt_epost", ctx.epost));
-  if (ctx.epost) forsok.push(q => q.ilike("epost", ctx.epost));
-
-  let sisteFeil = null;
-  for (const filterFn of forsok) {
-    try {
-      let q = supabaseClient
-        .from("hand_time")
-        .select("*")
-        .order("dato", { ascending: false });
-      q = filterFn(q);
-      const r = await q;
-      if (!r.error && Array.isArray(r.data) && r.data.length) return r.data;
-      if (!r.error && Array.isArray(r.data) && r.data.length === 0) continue;
-      if (r.error) sisteFeil = r.error;
-    } catch (e) {
-      sisteFeil = e;
-    }
-  }
-
-  // Siste fallback: hent firmaets timer og filtrer lokalt på alle kjente identifikatorer.
-  // Dette redder visningen hvis kolonnenavnene varierer mellom installasjoner.
-  try {
-    const firmaId = ctx.firmaIder[0] || window.aktivFirmaId || localStorage.getItem("aktivFirmaId") || "";
-    if (firmaId) {
-      const r = await supabaseClient
-        .from("hand_time")
-        .select("*")
-        .eq("firma_id", firmaId)
-        .order("dato", { ascending: false });
-      if (!r.error && Array.isArray(r.data)) {
-        const ids = new Set(ctx.ansattIder.map(String));
-        const egne = r.data.filter(t =>
-          ids.has(String(t.ansatt_id || "")) ||
-          (ctx.userId && [t.bruker_id, t.user_id, t.auth_id, t.auth_user_id].some(v => String(v || "") === ctx.userId)) ||
-          (ctx.epost && [t.ansatt_epost, t.epost, t.bruker_epost, t.opprettet_av_epost].some(v => String(v || "").toLowerCase() === ctx.epost))
-        );
-        return egne;
-      }
-      if (r.error) sisteFeil = r.error;
-    }
-  } catch (e) {
-    sisteFeil = e;
-  }
-
-  if (sisteFeil) console.warn("Kunne ikke hente egne jobber for ansatt:", sisteFeil);
-  return [];
-}
-
 async function lastTimer() {
-  const melding = hentTimerMelding();
+  let query = supabaseClient
+    .from("hand_time")
+    .select("*")
+    .order("dato", { ascending: false });
 
-  if (!window.supabaseClient) {
-    if (melding) melding.textContent = "Supabase er ikke lastet.";
-    return;
-  }
-
-  const adminAktiv = window.erAdmin === true || (typeof erAdmin !== "undefined" && erAdmin === true);
-  const systemadminAktiv = window.erSystemadmin === true;
   const firmaId = await hentFirmaIdForTimerTilgang();
 
-  let data = [];
-  let error = null;
-
-  if (adminAktiv || systemadminAktiv) {
-    let query = supabaseClient
-      .from("hand_time")
-      .select("*")
-      .order("dato", { ascending: false });
-
-    if (adminAktiv && !systemadminAktiv && firmaId) {
-      query = query.eq("firma_id", firmaId);
-    }
-
-    const res = await query;
-    data = res.data || [];
-    error = res.error || null;
-  } else {
-    data = await hentEgneJobberForAnsatt();
+  if (erAdmin && window.erSystemadmin !== true && firmaId) {
+    query = query.eq("firma_id", firmaId);
+  } else if (!erAdmin && window.innloggetAnsattId) {
+    query = query.eq("ansatt_id", window.innloggetAnsattId);
   }
 
+  const { data, error } = await query;
+
   if (error) {
-    if (melding) melding.textContent = "Feil ved henting av timer/jobber: " + error.message;
-    console.error("Feil ved henting av timer/jobber:", error);
+    const melding = hentTimerMelding();
+    if (melding) melding.textContent = "Feil ved henting av timer: " + error.message;
+    console.error("Feil ved henting av timer:", error);
     return;
   }
 
@@ -580,12 +405,13 @@ async function lastTimer() {
   await hentBildeAntallForTimer();
   tegnTimer();
 }
+
 async function sjekkTimerGrenser(ansattId, dato, nyeTimer) {
   const melding = hentTimerMelding();
 
   const { data: dagTimer, error: dagFeil } = await supabaseClient
     .from("hand_time")
-    .select("timer")
+    .select("hand_time")
     .eq("ansatt_id", ansattId)
     .eq("dato", dato);
 
@@ -613,7 +439,7 @@ async function sjekkTimerGrenser(ansattId, dato, nyeTimer) {
 
   const { data: manedTimer, error: manedFeil } = await supabaseClient
     .from("hand_time")
-    .select("timer")
+    .select("hand_time")
     .eq("ansatt_id", ansattId)
     .gte("dato", manedStart)
     .lt("dato", nesteManedStart);
@@ -725,7 +551,7 @@ function hentTimeprisFraKundeProsjekt(kundeObjekt, prosjektId) {
 }
 
 async function lagreTimer() {
-  const ansattId = await hentRiktigInnloggetAnsattIdForLagring();
+  const ansattId = window.innloggetAnsattId || "";
   const melding = hentTimerMelding();
 
   if (melding) melding.textContent = "";
@@ -1048,11 +874,8 @@ async function hentBilderForTimer(timerId) {
 
   if (t?.bilde_path || t?.filsti || t?.bilde_url) {
     const sti = t.bilde_path || t.filsti || "";
-    // Bilag/kvitteringer for utlegg skal ikke vises som vanlige jobb-bilder.
-    if (!String(sti).includes("/utlegg_") && !String(sti).includes("utlegg_")) {
-      const url = sti ? await lagSignertTimerBildeUrl(sti) : (t.bilde_url || "");
-      if (url) bilder.push({ url, tekst: "" });
-    }
+    const url = sti ? await lagSignertTimerBildeUrl(sti) : (t.bilde_url || "");
+    if (url) bilder.push({ url, tekst: "" });
   }
 
   try {
@@ -1070,10 +893,6 @@ async function hentBilderForTimer(timerId) {
     for (const b of (data || [])) {
       const sti = b.filsti || "";
       const url = sti ? await lagSignertTimerBildeUrl(sti) : "";
-      const stiTekst = String(sti || "");
-      const tekstTekst = String(b.bildetekst || "");
-      // Hold bilag-bilder separat fra jobb-bilder.
-      if ((stiTekst.includes("/utlegg_") || stiTekst.includes("utlegg_") || tekstTekst.startsWith("Bilag utlegg #"))) continue;
       if (url && !bilder.some(x => x.url === url)) {
         bilder.push({ url, tekst: b.bildetekst || "" });
       }
@@ -1693,43 +1512,36 @@ if (excelKnapp) {
 
 
 
-async function hentOgVisUtleggForValgtKunde(timerId = null) {
+async function hentOgVisUtleggForValgtKunde() {
   const liste = document.getElementById("utleggListe");
   if (!liste) return;
 
-  // RIL FIX: Utlegg skal vises per jobb, ikke samlet på kunden.
-  // Når ingen jobb er valgt/opprettet enda, viser vi ikke gamle åpne utlegg for kunden.
-  const aktivTimerId = String(
-    timerId ||
-    window.rilApenTimerId ||
-    window.aktivTimerId ||
-    window.aktivJobbId ||
-    ""
-  ).trim();
+  const kundeValg = document.getElementById("kundeValg");
+  const valgtKunde = hentValgtKundeRobust();
 
-  if (!aktivTimerId) {
-    liste.innerHTML = "Utlegg legges på aktuell jobb. Gamle åpne utlegg på kunden vises ikke her.";
+  if (!kundeValg || !kundeValg.value || !valgtKunde || !valgtKunde.id) {
+    liste.innerHTML = "Utlegg som legges her kommer med på neste faktura.";
     return;
   }
 
-  liste.innerHTML = "Laster utlegg for aktuell jobb...";
+  liste.innerHTML = "Laster utlegg...";
 
   const { data, error } = await supabaseClient
     .from("hand_faktura_utlegg")
-    .select("id, timer_id, type, beskrivelse, belop, fakturert, fakturanr, created_at")
-    .eq("timer_id", aktivTimerId)
+    .select("id, type, beskrivelse, belop, fakturert, fakturanr, created_at")
+    .eq("kunde_id", valgtKunde.id)
     .eq("fakturert", false)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Feil ved henting av utlegg for jobb:", error);
-    liste.innerHTML = "Kunne ikke hente utlegg for aktuell jobb: " + error.message;
+    console.error("Feil ved henting av utlegg:", error);
+    liste.innerHTML = "Kunne ikke hente utlegg: " + error.message;
     return;
   }
 
   const utlegg = data || [];
   if (!utlegg.length) {
-    liste.innerHTML = "Ingen åpne utlegg på aktuell jobb.";
+    liste.innerHTML = "Ingen åpne utlegg på valgt kunde.";
     return;
   }
 
@@ -1739,67 +1551,18 @@ async function hentOgVisUtleggForValgtKunde(timerId = null) {
     maximumFractionDigits: 2
   });
 
-  // Bilag/kvitteringsbilder for utlegg: maks ett bilde per utlegg.
-  // Jobb-bilder ligger fortsatt separat og kan ha flere bilder.
-  const bilderPerUtlegg = {};
-  for (const u of utlegg) {
-    try {
-      const key = String(u.id);
-      const bilagTekst = "Bilag utlegg #" + key;
-      let bildeRader = [];
-
-      let res = await supabaseClient
-        .from("hand_time_bilde")
-        .select("filsti,bilde_path,bilde_url,bildetekst")
-        .eq("bildetekst", bilagTekst)
-        .limit(1);
-
-      if (!res.error && res.data && res.data.length) {
-        bildeRader = res.data;
-      } else {
-        res = await supabaseClient
-          .from("hand_time_bilde")
-          .select("filsti,bilde_path,bilde_url,bildetekst")
-          .ilike("filsti", "%/utlegg_" + key + "/%")
-          .limit(1);
-        if (!res.error && res.data) bildeRader = res.data;
-      }
-
-      for (const b of (bildeRader || []).slice(0, 1)) {
-        const sti = b.filsti || b.bilde_path || "";
-        let url = sti ? await lagSignertTimerBildeUrl(sti) : "";
-        if (!url && b.bilde_url) url = b.bilde_url;
-        if (!url) continue;
-        bilderPerUtlegg[key] = [{ url, tekst: "Bilag" }];
-      }
-    } catch (e) {
-      console.warn("Hoppet over bilagsbilde for utlegg:", e);
-    }
-  }
-
   liste.innerHTML = `
-    <div style="margin:4px 0 6px 0;font-size:0.95em;font-weight:600;color:inherit;">Åpne utlegg på aktuell jobb: ${utlegg.length} stk - ${formatterBelop.format(total)} kr</div>
+    <div style="margin:4px 0 6px 0;font-size:0.95em;font-weight:600;color:inherit;">Åpne utlegg på valgt kunde: ${utlegg.length} stk - ${formatterBelop.format(total)} kr</div>
     <div style="display:grid;gap:2px;font-size:0.95em;color:inherit;">
       ${utlegg.map(u => {
         const typeTekst = (u.type || "Utlegg").replace(/^./, c => c.toUpperCase());
         const datoTekst = u.created_at ? new Date(u.created_at).toLocaleDateString("no-NO") : "";
         const belopTekst = formatterBelop.format(Number(u.belop || 0)) + " kr";
-        const bilag = bilderPerUtlegg[String(u.id)] || [];
-        const bilagHtml = bilag.length ? `
-          <div style="grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px 22px;">
-            ${bilag.map(b => `
-              <a href="${b.url}" target="_blank" rel="noopener" title="${b.tekst || "Åpne bilag"}" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:inherit;border:1px solid rgba(128,128,128,.35);border-radius:6px;padding:3px 6px;background:rgba(128,128,128,.08);">
-                <img src="${b.url}" alt="Bilag" style="width:42px;height:42px;object-fit:cover;border-radius:4px;border:1px solid rgba(128,128,128,.25);" />
-                <span>Bilag</span>
-              </a>
-            `).join("")}
-          </div>` : "";
         return `
           <div style="padding:2px 0;color:inherit;display:grid;grid-template-columns:minmax(90px,1fr) auto auto;gap:10px;align-items:center;border-bottom:1px solid rgba(128,128,128,.25);">
             <div style="font-weight:400;color:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🧾 ${typeTekst}</div>
             <div style="font-weight:400;color:inherit;white-space:nowrap;text-align:right;">${belopTekst}</div>
             <button type="button" class="slett-utlegg-knapp" data-utlegg-id="${u.id}" title="Slett ${typeTekst} ${datoTekst}" style="padding:0 4px;background:transparent;color:inherit;border:0;cursor:pointer;font-size:1em;line-height:1;">🗑️</button>
-            ${bilagHtml}
           </div>
         `;
       }).join("")}
@@ -1810,7 +1573,7 @@ async function hentOgVisUtleggForValgtKunde(timerId = null) {
     knapp.onclick = async function () {
       const id = knapp.dataset.utleggId;
       if (!id) return;
-      if (!confirm("Slette dette utlegget fra aktuell jobb? Merk: lønnsrad må eventuelt slettes fra timelisten/lønn hvis den allerede er opprettet.")) return;
+      if (!confirm("Slette dette utlegget fra faktura? Merk: lønnsrad må eventuelt slettes fra timelisten/lønn hvis den allerede er opprettet.")) return;
 
       const { error: slettFeil } = await supabaseClient
         .from("hand_faktura_utlegg")
@@ -1822,7 +1585,7 @@ async function hentOgVisUtleggForValgtKunde(timerId = null) {
         return;
       }
 
-      await hentOgVisUtleggForValgtKunde(aktivTimerId);
+      await hentOgVisUtleggForValgtKunde();
     };
   });
 }
@@ -1855,7 +1618,7 @@ async function lagreUtleggTilFaktura() {
     return;
   }
 
-  const ansattId = await hentRiktigInnloggetAnsattIdForLagring();
+  const ansattId = window.innloggetAnsattId || "";
   if (!ansattId) {
     alert("Fant ikke innlogget ansatt.");
     return;
@@ -2010,17 +1773,6 @@ async function lagreUtleggTilFaktura() {
     }
   }
 
-  // Viktig: bilag/kvittering for utlegg skal lagres separat fra vanlige jobb-bilder.
-  // De legges i mappen <jobb>/utlegg_<utleggId>/, slik at jobb-bilder og bilag-bilder ikke blandes.
-  if (timerData?.id && fakturaRes.data?.id) {
-    try {
-      await lastOppBilagBildeForUtlegg(timerData.id, fakturaRes.data.id);
-    } catch (e) {
-      console.error("Bildefeil på utlegg:", e);
-      alert("Utlegget ble lagret, men bilaget/bildet feilet: " + (e.message || JSON.stringify(e)));
-    }
-  }
-
   settFeltHvisFinnes("utgiftType", "");
   settFeltHvisFinnes("utgiftBelop", "0");
   settFeltHvisFinnes("utgiftKm", "0");
@@ -2033,7 +1785,7 @@ async function lagreUtleggTilFaktura() {
   }
 
   await lastTimer();
-  await hentOgVisUtleggForValgtKunde(timerData?.id || null);
+  await hentOgVisUtleggForValgtKunde();
 }
 
 function visSkjulKjoringFelter() {
@@ -2163,73 +1915,21 @@ async function lastOppTimerBilde(timerId) {
   if (tekstInput) tekstInput.value = "";
 }
 
-async function lastOppBilagBildeForUtlegg(timerId, utleggId) {
-  const filInputGalleri = document.getElementById("utleggBilagBilde");
-  const filInputKamera = document.getElementById("utleggBilagKamera");
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    if (!window.standardBilInitKoblet7035) {
+      window.standardBilInitKoblet7035 = true;
+      settStandardBilForInnloggetAnsatt();
+    }
+  }, 700);
 
-  // Ett bilag-bilde per utlegg. Bruk egne bilag-felt, ikke jobb-bilde-feltene.
-  const fil = (filInputKamera?.files && filInputKamera.files[0])
-    || (filInputGalleri?.files && filInputGalleri.files[0])
-    || null;
+  setTimeout(function () {
+    settStandardBilForInnloggetAnsatt();
+  }, 1800);
+});
 
-  if (!fil) return 0;
-  if (!timerId || !utleggId) throw new Error("Mangler jobb eller utlegg for bilag.");
+window.settStandardBilForInnloggetAnsatt = settStandardBilForInnloggetAnsatt;
 
-  const rentFilnavn = String(fil.name || "bilag.jpg")
-    .replaceAll(" ", "_")
-    .replace(/[æøåÆØÅ]/g, function (bokstav) {
-      return { æ: "ae", ø: "o", å: "a", Æ: "Ae", Ø: "O", Å: "A" }[bokstav] || bokstav;
-    })
-    .replace(/[^a-zA-Z0-9._-]/g, "_");
-
-  const filsti = String(timerId) + "/utlegg_" + String(utleggId) + "/" + Date.now() + "_" + rentFilnavn;
-
-  const { error: uploadError } = await supabaseClient
-    .storage
-    .from("timer-bilder")
-    .upload(filsti, fil, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: fil.type || "image/jpeg"
-    });
-
-  if (uploadError) throw new Error("Opplasting av bilag feilet: " + uploadError.message);
-
-  const bildeUrl = await lagSignertTimerBildeUrl(filsti);
-  const bildeRad = {
-    timer_id: timerId,
-    filnavn: fil.name || rentFilnavn,
-    filsti: filsti,
-    bilde_path: filsti,
-    bilde_url: bildeUrl || null,
-    bildetekst: "Bilag utlegg #" + String(utleggId)
-  };
-
-  let { error: dbError } = await supabaseClient
-    .from("hand_time_bilde")
-    .insert([bildeRad]);
-
-  if (dbError && /bilde_path|bilde_url/i.test(String(dbError.message || ""))) {
-    const enklereRad = {
-      timer_id: timerId,
-      filnavn: fil.name || rentFilnavn,
-      filsti: filsti,
-      bildetekst: "Bilag utlegg #" + String(utleggId)
-    };
-    const res = await supabaseClient.from("hand_time_bilde").insert([enklereRad]);
-    dbError = res.error;
-  }
-
-  if (dbError) {
-    try { await supabaseClient.storage.from("timer-bilder").remove([filsti]); } catch (e) {}
-    throw new Error("Bilaget ble lastet opp, men ikke lagret: " + dbError.message);
-  }
-
-  if (filInputKamera) filInputKamera.value = "";
-  if (filInputGalleri) filInputGalleri.value = "";
-
-  return 1;
-}
 /* RIL HARD FIX 2026-06-05:
    Fast bildepanel som dukker opp når en jobb åpnes.
    Dette er med vilje uavhengig av selve jobbdetaljvisningen,
@@ -2669,7 +2369,7 @@ window.lastOppTimerBildeFraFil = lastOppTimerBildeFraFil;
 
     [
       "timerSide", "jobberSide", "fravaerSide", "tilbudSide", "backupSide", "fakturaSide",
-      "varerSide", "kundeSide", "kunderSide", "ansattSide", "firmaSide",
+      "varerSide", "kundeSide", "kunderSide", "ansattSide", "ansatteSide", "firmaSide",
       "testSide", "testpanelSide", "lonnPanel", "lonnSide", "bilBestillingerSide",
       "adminBilBestillinger", "adminBilBestillingerPanel", "modulerSide", "sysadminPanelSide",
       "adminSide", "adminKonsollSide"
@@ -2702,17 +2402,10 @@ window.lastOppTimerBildeFraFil = lastOppTimerBildeFraFil;
     knapp.textContent = "Min bil / fyll lager";
     knapp.setAttribute("data-modul", "biler");
     knapp.setAttribute("data-role", "ansatt-bil");
-    const admin = window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja";
-    if (admin) {
-      knapp.classList && knapp.classList.add("skjult", "hidden");
-      knapp.hidden = true;
-      knapp.style.display = "none";
-    } else {
-      knapp.classList && knapp.classList.remove("skjult", "hidden", "modul-skjult");
-      knapp.hidden = false;
-      knapp.style.display = "";
-      knapp.style.visibility = "visible";
-    }
+    knapp.classList && knapp.classList.remove("skjult", "hidden", "modul-skjult");
+    knapp.hidden = false;
+    knapp.style.display = "";
+    knapp.style.visibility = "visible";
     knapp.onclick = visMinBil;
   }
 
@@ -2749,8 +2442,7 @@ window.lastOppTimerBildeFraFil = lastOppTimerBildeFraFil;
     }
 
     const mulige = [
-      // Bruk den nye hand_bil_bestilling-flyten først.
-      // Den gamle hand_lager_bestilling-flyten kan feile på eldre/ulike kolonnenavn.
+      'handOpprettLagerbestillingFraFyllListe',
       'opprettBilLagerBestillingListe',
       'sendBilLagerBestillingTilAdmin',
       'sendBilLagerBestilling',

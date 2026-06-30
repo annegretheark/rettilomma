@@ -22,6 +22,30 @@
     return ansatt.epost || ansatt.email || "";
   }
 
+  function rolleTekst() {
+    return String(
+      window.innloggetRolle ||
+      window.handInnloggetRolle ||
+      localStorage.getItem("handInnloggetRolle") ||
+      localStorage.getItem("innloggetRolle") ||
+      ""
+    ).toLowerCase();
+  }
+
+  function erAdminSomKanRegistrereForAndre() {
+    const rolle = rolleTekst();
+    return window.erAdmin === true ||
+      ["admin", "administrator", "eier", "firmaeier", "owner", "sysadm", "sysadmin", "systemadmin"].includes(rolle);
+  }
+
+  function nullstillValgtAnsatt() {
+    window.adminValgtAnsattId = "";
+    window.adminValgtAnsattNavn = "";
+    window.adminValgtAnsattEpost = "";
+    const select = hent("adminAnsattValg");
+    if (select) select.value = "";
+  }
+
   async function hentAnsatteHvisTomt() {
     const lokale = finnAnsatte();
     if (lokale.length) return lokale;
@@ -67,18 +91,22 @@
   function visAdminAnsattRadHvisAdmin() {
     const rad = hent("adminAnsattRad");
     if (!rad) return;
-    if (window.erAdmin === true) {
+    if (erAdminSomKanRegistrereForAndre()) {
       rad.classList.remove("hidden", "skjult", "modul-skjult");
       rad.style.display = "";
       fyllAdminAnsattValg();
     } else {
+      nullstillValgtAnsatt();
       rad.classList.add("hidden", "skjult");
       rad.style.display = "none";
     }
   }
 
   function settValgtAnsattForLagring() {
-    if (window.erAdmin !== true) return;
+    if (!erAdminSomKanRegistrereForAndre()) {
+      nullstillValgtAnsatt();
+      return;
+    }
     const select = hent("adminAnsattValg");
     if (!select || !select.value) return;
 
@@ -102,6 +130,13 @@
     if (lagre && lagre.dataset.adminAnsattBindet !== "1") {
       lagre.dataset.adminAnsattBindet = "1";
       lagre.addEventListener("click", settValgtAnsattForLagring, true);
+    }
+    const select = hent("adminAnsattValg");
+    if (select && select.dataset.adminOnlyBindet !== "1") {
+      select.dataset.adminOnlyBindet = "1";
+      select.addEventListener("change", function () {
+        if (!erAdminSomKanRegistrereForAndre()) nullstillValgtAnsatt();
+      });
     }
     if (typeof window.oppdaterAdminVisning === "function") window.oppdaterAdminVisning();
     visAdminAnsattRadHvisAdmin();

@@ -374,8 +374,7 @@ async function lagEnFakturaPdf(
   erKopi = false,
   eksisterendeFakturanr = null,
   direkteVarer = [],
-  direkteUtlegg = [],
-  valg = {}
+  direkteUtlegg = []
 ) {
   const jspdfObj = window.jspdf;
 
@@ -385,7 +384,6 @@ async function lagEnFakturaPdf(
   }
 
   const doc = new jspdfObj.jsPDF();
-  const erForhandsvisning = !!(valg && valg.forhandsvisning);
 
   fakturaTimer = fakturaTimer || [];
 
@@ -410,7 +408,6 @@ async function lagEnFakturaPdf(
 
   const fakturanr =
     eksisterendeFakturanr ||
-    (erForhandsvisning ? "FORHÅNDSVISNING" : "") ||
     fakturaRef?.fakturanr ||
     fakturaRef?.faktura_nr ||
     (
@@ -431,10 +428,7 @@ async function lagEnFakturaPdf(
   doc.setFontSize(20);
   doc.text("FAKTURA", 14, y);
 
-  if (erForhandsvisning) {
-    doc.setFontSize(16);
-    doc.text("VISNING", 155, y);
-  } else if (erKopi) {
+  if (erKopi) {
     doc.setFontSize(16);
     doc.text("KOPI", 165, y);
   }
@@ -584,24 +578,24 @@ async function lagEnFakturaPdf(
       : "";
 
   const filnavn =
-    `${tryggFilnavn(hentKundeNavn(kunde, fakturaRef))}${prosjektFilnavn}_${maaned}${erForhandsvisning ? "_VISNING" : (erKopi ? "_KOPI" : "")}.pdf`;
+    `${tryggFilnavn(hentKundeNavn(kunde, fakturaRef))}${prosjektFilnavn}_${maaned}${erKopi ? "_KOPI" : ""}.pdf`;
 
   doc.save(filnavn);
 
-  if (!erKopi && !erForhandsvisning) {
-    await supabaseClient
-      .from("hand_faktura")
-      .insert({
-        kunden_id: kunde?.id || null,
-        fakturanr: fakturanr,
-        dato: fakturaDato.toISOString(),
-        forfallsdato: forfallsDato.toISOString(),
-        status: status,
-        eks_mva: summer.sumEksMva,
-        mva: summer.mva,
-        inkl_mva: summer.sumInkMva
-      });
+  await supabaseClient
+    .from("hand_faktura")
+    .insert({
+      kunden_id: kunde?.id || null,
+      fakturanr: fakturanr,
+      dato: fakturaDato.toISOString(),
+      forfallsdato: forfallsDato.toISOString(),
+      status: status,
+      eks_mva: summer.sumEksMva,
+      mva: summer.mva,
+      inkl_mva: summer.sumInkMva
+    });
 
+  if (!erKopi) {
 
     if (fakturaTimer.length) {
       const timerSperret = await sperrFakturerteTimer(
@@ -677,8 +671,8 @@ async function lagFakturaPdf() {
         .filter(t => String(t.dato || "").slice(0, 7) === maaned)
         .filter(t => erSammeKunde(t, valgtKunde));
 
-    const direkteVarer = await hentDirekteFakturaVarer(valgtKunde);
-    const direkteUtlegg = fjernDuplikatUtlegg(await hentDirekteFakturaUtlegg(valgtKunde));
+  const direkteVarer = await hentDirekteFakturaVarer(valgtKunde);
+  const direkteUtlegg = fjernDuplikatUtlegg(await hentDirekteFakturaUtlegg(valgtKunde));
 
     if (!timerForMaaned.length && !direkteVarer.length && !direkteUtlegg.length) {
       if (melding) {
@@ -689,24 +683,52 @@ async function lagFakturaPdf() {
       return;
     }
 
-    await lagEnFakturaPdf(
-      valgtKunde,
-      timerForMaaned,
-      maaned,
-      firma,
-      false,
-      null,
-      direkteVarer,
-      direkteUtlegg
-    );
+    const timerGrupper = grupperTimerPerKundeOgProsjekt(timerForMaaned);
+    const vareGrupper = grupperDirekteVarerPerKundeOgProsjekt(direkteVarer);
 
+    const alleNokler = new Set();
+
+    timerGrupper.forEach(g => alleNokler.add(g.key));
+    Object.keys(vareGrupper).forEach(key => alleNokler.add(key));
+    if (direkteUtlegg.length && alleNokler.size === 0) {
+      alleNokler.add(String(valgtKunde.id || valgtKunde.kundenr || "kunde") + "_utenprosjekt");
+    }
+
+    let utleggBrukt = false;
+
+    for (const key of alleNokler) {
+      const gruppeTimer =
+        (timerGrupper.find(g => g.key === key) || {}).timer || [];
+
+      const gruppeVarer = vareGrupper[key] || [];
+
+      const kunde =
+        valgtKunde ||
+        (gruppeTimer.length ? finnKundeForTime(gruppeTimer[0]) : null) ||
+        (gruppeVarer.length ? finnKundeForDirekteVare(gruppeVarer[0]) : null) ||
+        null;
+
+      const gruppeUtlegg = utleggBrukt ? [] : direkteUtlegg;
+      utleggBrukt = true;
+
+      await lagEnFakturaPdf(
+        kunde,
+        gruppeTimer,
+        maaned,
+        firma,
+        false,
+        null,
+        gruppeVarer,
+        gruppeUtlegg
+      );
+  }
     if (typeof window.lastTimer === "function") {
       try { await window.lastTimer(); } catch (e) { console.warn("Kunne ikke laste timer på nytt etter faktura:", e); }
     }
 
     if (melding) {
       melding.textContent =
-        "Faktura PDF laget for valgt kunde. Timer, varelinjer og utlegg er samlet på samme faktura og sperret mot ny fakturering.";
+        "Faktura PDF laget for valgt kunde. Jobber, varelinjer og utlegg er sperret mot ny fakturering.";
     }
 
     if (typeof fyllKreditnotaFakturaValg === "function") {
@@ -716,12 +738,48 @@ async function lagFakturaPdf() {
     const feiltekst =
       "Faktura feilet: " +
       (e && e.message ? e.message : String(e));
-    console.error(e);
+
+    console.error("Faktura feilet:", e);
+
     if (melding) {
       melding.textContent = feiltekst;
     }
+
     alert(feiltekst);
   }
+}
+
+function fyllFakturaKopiValg() {
+  if (typeof window.fyllFellesFakturaValg === "function") {
+    window.fyllFellesFakturaValg(
+      "fakturaKopiValg",
+      "Velg faktura for kopi",
+      "Ingen fakturaer funnet"
+    );
+  }
+}
+
+function hentFakturaKopiSelect() {
+  return (
+    document.getElementById("fakturaKopiValg") ||
+    document.getElementById("fakturaKopiFakturaValg")
+  );
+}
+
+function hentValgtFakturanrForKopi() {
+  const select = hentFakturaKopiSelect();
+
+  if (!select) {
+    return "";
+  }
+
+  let verdi = String(select.value || "").trim();
+
+  if (!verdi && select.selectedIndex >= 0) {
+    verdi = String(select.options[select.selectedIndex].text || "").trim();
+  }
+
+  return verdi;
 }
 
 async function lagFakturaKopiPdf() {
@@ -1272,56 +1330,6 @@ function koblePurringKnapp() {
   };
 }
 
-
-async function visIkkeFakturertFakturaFraOkonomi(gruppe) {
-  if (!gruppe || !gruppe._okonomiSamlet) {
-    alert("Visning kan bare lages fra samlet kunde/prosjekt-linje.");
-    return;
-  }
-
-  const kundeId = String(gruppe.kunde_id || gruppe.kunden_id || "");
-  let kunde = (window.kunder || []).find(k => String(k.id || "") === kundeId) || null;
-
-  if (!kunde && kundeId && window.supabaseClient) {
-    try {
-      const { data } = await supabaseClient
-        .from("hand_kunde")
-        .select("*")
-        .eq("id", kundeId)
-        .limit(1);
-      kunde = (data || [])[0] || null;
-    } catch (e) {
-      console.warn("Kunne ikke hente kunde til fakturavisning:", e);
-    }
-  }
-
-  const timer = gruppe.timer || [];
-  const varer = gruppe.varer || [];
-  const utlegg = gruppe.utlegg || [];
-
-  if (!timer.length && !varer.length && !utlegg.length) {
-    alert("Fant ingen timer, varer eller utlegg å vise på denne linjen.");
-    return;
-  }
-
-  const firma = await hentFirmaData();
-  const dato = String(gruppe.dato || timer[0]?.dato || varer[0]?.created_at || utlegg[0]?.created_at || new Date().toISOString());
-  const maaned = dato.slice(0, 7);
-
-  await lagEnFakturaPdf(
-    kunde,
-    timer,
-    maaned,
-    firma,
-    false,
-    "FORHÅNDSVISNING",
-    varer,
-    utlegg,
-    { forhandsvisning: true }
-  );
-}
-
-window.visIkkeFakturertFakturaFraOkonomi = visIkkeFakturertFakturaFraOkonomi;
 window.lagKreditnotaPdf = lagKreditnotaPdf;
 window.lagPurringFraOkonomi = lagPurringFraOkonomi;
 kobleFakturaKnapp();

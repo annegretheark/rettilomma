@@ -8,6 +8,7 @@
 (function(){
   'use strict';
   const SYS_ROLES = ['sysadm','sysadmin','systemadmin'];
+  const SYSADMIN_EMAILS = ['greknuts@online.no'];
   const ADMIN_ROLES = ['admin','administrator','eier','owner','firmaeier'].concat(SYS_ROLES);
   let lockedSysadm = false;
   let roleValue = '';
@@ -17,6 +18,7 @@
   function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
   function raw(v){ return String(v == null ? '' : v).trim(); }
   function isSysRole(r){ return SYS_ROLES.includes(norm(r)); }
+  function isSysEmail(email){ return SYSADMIN_EMAILS.includes(norm(email)); }
   function isAdminRole(r){ return ADMIN_ROLES.includes(norm(r)); }
   function isOwnerRole(r){ return ['eier','owner','firmaeier','firma-eier','hovedbruker','admin'].includes(norm(r)); }
 
@@ -122,6 +124,7 @@
     const user = await hentAuthUser();
     const uid = raw(user && user.id);
     const email = norm((user && user.email) || window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('rettilommaSistEpost') || localStorage.getItem('innloggetEpost'));
+    if(isSysEmail(email)){ applyFlags('sysadm', {admin:true}); window.handFirmaTilgang = { firma_id:'', rolle:'sysadm', kilde:'sysadmin-email', rad:null }; return window.handFirmaTilgang; }
     const idForsok = [];
     if(uid) ['user_id','auth_id','auth_user_id','bruker_id','uid','owner_id','eier_id'].forEach(c => idForsok.push([c, uid]));
     if(email) ['epost','email','bruker_epost','user_email','auth_email','eier_epost','owner_email'].forEach(c => idForsok.push([c, email]));

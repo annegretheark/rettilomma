@@ -1,6 +1,0 @@
-{
-  "systemadmin_endret": true,
-  "auth_epost_flyt": "GUI oppretter hand_firma, kaller Edge Function opprett-hand-kunde for Auth/epost, og forsøker resetPasswordForEmail dersom Auth-bruker allerede finnes.",
-  "viktig": "Ny Auth-bruker kan ikke opprettes trygt direkte fra nettleser uten Edge Function/service-role. Edge Function må være aktiv for nye Auth-brukere.",
-  "remaining_old_from": {}
-}

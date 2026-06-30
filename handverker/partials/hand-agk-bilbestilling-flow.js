@@ -111,11 +111,9 @@
     if (res.error) throw res.error;
     return (res.data || []).filter(r => {
       const st = String(r.status || '').toLowerCase();
-      if (['venter','ny','sendt','ferdig','mottatt','avsluttet','arkivert','delvis_mottatt'].includes(st)) return false;
+      if (['venter','ny','sendt','ferdig','mottatt','avsluttet','arkivert'].includes(st)) return false;
       const approvedLeft = Math.max(0, num(r.levert) - num(r.mottatt));
-      // Vis bare linjer der det faktisk finnes godkjent antall som ikke er lagt på bil ennå.
-      // Rest alene skal ikke bli liggende på brukerens Min bil-skjerm etter at varen er lagt på bil.
-      return approvedLeft > 0;
+      return approvedLeft > 0 || num(r.rest) > 0 || ['godkjent','delvis','delvis_levert','rest','restordre'].includes(st);
     });
   }
 
@@ -150,8 +148,7 @@
       const active = rows.filter(r => Math.max(0, num(r.levert) - num(r.mottatt)) > 0 || num(r.rest) > 0);
       const canReceive = active.some(r => Math.max(0, num(r.levert) - num(r.mottatt)) > 0);
       if (!active.length) {
-        // Når bruker har trykket Godkjenn og legg på bil skal bestillingen bort fra skjermen.
-        host.innerHTML = '';
+        host.innerHTML = '<div class="info">Ingen godkjent liste fra admin for ' + esc(valgtBilTekst()) + '.</div>';
         setReceiveEnabled(false);
         return;
       }

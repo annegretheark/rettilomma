@@ -566,7 +566,7 @@ window.addEventListener("load", function () {
   }
 
   async function ensureSystembrukerAnsattRow() {
-    // Ingen hardkodet systemadmin-e-post. Tilgang styres av rolle/RPC i databasen.
+    // Systembruker greknuts@online.no skal alltid ha sysadm-tilgang i appen.
     return;
   }
 

@@ -4,6 +4,29 @@
 (function () {
   'use strict';
 
+
+  /* TOPPMENY-ONLY FIX 20260630
+     Starter admin uten valgt side: bare toppmenyen skal vises.
+     Hindrer at admin-konsoll/andre paneler blinker fram før bruker klikker en knapp. */
+  var RIL_SIDE_IDS = [
+    'adminKonsollSide','timerSide','jobberSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide',
+    'kundeSide','kunderSide','ansattSide','firmaSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel',
+    'testSide','testpanelSide','lonnPanel','lonnSide','fravaerSide','modulerSide','sysadminPanelSide','adminSide'
+  ];
+  function installTopMenuOnlyCss(){
+    if(document.getElementById('rilTopMenuOnlyCss')) return;
+    var st=document.createElement('style');
+    st.id='rilTopMenuOnlyCss';
+    st.textContent =
+      'html.ril-topmenu-only #adminKonsollSide,html.ril-topmenu-only #timerSide,html.ril-topmenu-only #jobberSide,html.ril-topmenu-only #tilbudSide,html.ril-topmenu-only #backupSide,html.ril-topmenu-only #fakturaSide,html.ril-topmenu-only #varerSide,html.ril-topmenu-only #bilerSide,html.ril-topmenu-only #kundeSide,html.ril-topmenu-only #kunderSide,html.ril-topmenu-only #ansattSide,html.ril-topmenu-only #firmaSide,html.ril-topmenu-only #bilBestillingerSide,html.ril-topmenu-only #adminBilBestillinger,html.ril-topmenu-only #adminBilBestillingerPanel,html.ril-topmenu-only #testSide,html.ril-topmenu-only #testpanelSide,html.ril-topmenu-only #lonnPanel,html.ril-topmenu-only #lonnSide,html.ril-topmenu-only #fravaerSide,html.ril-topmenu-only #modulerSide,html.ril-topmenu-only #sysadminPanelSide,html.ril-topmenu-only #adminSide{display:none!important;visibility:hidden!important}' +
+      '#adminMenyPanel[hidden],#adminMenyPanel:not(.apen):not(.open){display:none!important;visibility:hidden!important;pointer-events:none!important}' +
+      'html.ril-topmenu-only #adminMenyPanel{display:none!important;visibility:hidden!important;pointer-events:none!important}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+  installTopMenuOnlyCss();
+  document.documentElement.classList.add('ril-topmenu-only');
+  document.documentElement.classList.remove('ril-side-selected');
+
   var SIDE_IDS = [
     'adminKonsollSide','timerSide','jobberSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide',
     'kundeSide','kunderSide','ansattSide','firmaSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel',
@@ -82,6 +105,9 @@
   function openAdminMenu() {
     if (!erAdmin()) return;
     adminMenuHoldOpenUntil = Date.now() + 1200;
+    installTopMenuOnlyCss();
+    document.documentElement.classList.add('ril-topmenu-only');
+    document.documentElement.classList.remove('ril-side-selected');
     showApp();
     clearActiveSides();
     SIDE_IDS.forEach(hideSide);
@@ -121,14 +147,20 @@
   }
 
   function visKunToppmenyForAdmin() {
+    installTopMenuOnlyCss();
+    document.documentElement.classList.add('ril-topmenu-only');
+    document.documentElement.classList.remove('ril-side-selected');
     showApp();
     clearActiveSides();
     SIDE_IDS.forEach(hideSide);
     setTitle('');
-    closeAdminMenu();
+    closeAdminMenu(true);
   }
 
   function showOnly(sideId, title) {
+    installTopMenuOnlyCss();
+    document.documentElement.classList.remove('ril-topmenu-only');
+    document.documentElement.classList.add('ril-side-selected');
     showApp();
     SIDE_IDS.forEach(hideSide);
     var side = activateSide(sideId);
@@ -300,6 +332,11 @@
     Object.keys(ACTIONS).forEach(function(id){ var b=$(id); if(b){ b.type='button'; b.onclick=function(e){ if(e){e.preventDefault(); e.stopPropagation();} handleButton(id); return false; }; } });
     var admin=$('adminMenyKnapp'); if(admin){ admin.type='button'; admin.onclick=function(e){ if(e){e.preventDefault(); e.stopPropagation();} if(Date.now()-lastAdminPointerOpen<650){ return false; } toggleAdminMenu(); return false; }; }
     oppdaterAdminVisning();
+    if (!document.querySelector('.ril-active-side')) {
+      document.documentElement.classList.add('ril-topmenu-only');
+      document.documentElement.classList.remove('ril-side-selected');
+      closeAdminMenu(true);
+    }
   }
 
   window.visLogin = visLogin;
