@@ -232,6 +232,7 @@
 <script charset="UTF-8" src="../js/handverker/hand-role-core.js?v=7076"></script>
 <script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=9001"></script>
 <script charset="UTF-8" src="../js/handverker/hand-auth.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="../js/handverker/hand-sysadm-authority.js?v=20260701-structured"></script>
 <script charset="UTF-8" src="../js/handverker/hand-kunder.js?v=7089"></script>
 <script charset="UTF-8" src="../js/handverker/hand-prosjekter.js?v=5003"></script>
 <script charset="UTF-8" src="../js/handverker/hand-ansatte.js?v=20260620-adminfix"></script>
@@ -253,7 +254,7 @@
 <script charset="UTF-8" src="../js/handverker/hand-tilbud.js?v=1"></script>
 <script charset="UTF-8" src="../js/handverker/hand-tester.js?v=5003"></script>
 <script charset="UTF-8" src="../js/handverker/hand-app.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-systemadmin.js?v=20260620-splitt"></script>
+<script charset="UTF-8" src="../js/handverker/hand-systemadmin.js?v=20260701-structured"></script>
 <script charset="UTF-8" src="../js/handverker/hand-moduler-sysadmin.js?v=20260625-v13-redigerfirma"></script>
 <script charset="UTF-8" src="../js/handverker/hand-varer.js?v=7076"></script>
 <script charset="UTF-8" src="../js/handverker/hand-biler.js?v=7086"></script>
@@ -276,7 +277,7 @@
    - Admin viser navn/varetekst, Bekreft-knapp og historikk.
    - Bekreftede ordre skjules fra aktive og kan ikke bekreftes igjen.
    - Admin bekrefter godkjent/rest og sender liste til ansatt på Fyll bil.
-   - Ansatt trykker Godkjenn og legg på bil; først da oppdateres hand_bil_lager og hand_lagerlogg.
+   - Ansatt trykker Bekreft og legg på bil; først da oppdateres hand_bil_lager og hand_lagerlogg.
 */
 (function(){
   'use strict';
@@ -308,8 +309,18 @@
     try{ if(typeof window.hentAktivFirmaId === 'function') return await window.hentAktivFirmaId(); }catch(e){}
     return window.aktivFirmaId || localStorage.getItem('aktivFirmaId') || localStorage.getItem('firmaId') || localStorage.getItem('firma_id') || null;
   }
-  function innloggetEpost(){ return window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem('innloggetEpost') || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('epost') || null; }
-  function innloggetNavn(){ return window.innloggetNavn || window.handInnloggetNavn || localStorage.getItem('handInnloggetNavn') || localStorage.getItem('innloggetNavn') || ''; }
+  function innloggetEpost(){ return window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost') || localStorage.getItem('epost') || null; }
+  function innloggetNavn(){ return window.innloggetAnsattNavn || window.innloggetNavn || window.handInnloggetNavn || localStorage.getItem('innloggetAnsattNavn') || localStorage.getItem('handInnloggetNavn') || localStorage.getItem('innloggetNavn') || ''; }
+  async function hentetAvForBil(){
+    var c=client(), aktivBil=bilId()||'';
+    var uid=window.innloggetUserId||localStorage.getItem('innloggetUserId')||localStorage.getItem('authUserId')||'';
+    var ep=innloggetEpost()||'';
+    function navn(r){return r&&(r.navn||r.fullt_navn||r.epost||r.email)||'';}
+    try{ if(c&&uid){ var a=await c.from('hand_ansatt').select('id,navn,fullt_navn,epost,email').eq('user_id',uid).limit(1).maybeSingle(); if(!a.error&&a.data&&navn(a.data)) return navn(a.data); } }catch(e){}
+    try{ if(c&&ep){ var b=await c.from('hand_ansatt').select('id,navn,fullt_navn,epost,email').ilike('epost',ep).limit(1).maybeSingle(); if(!b.error&&b.data&&navn(b.data)) return navn(b.data); } }catch(e){}
+    try{ if(c&&aktivBil){ var r=await c.from('hand_ansatt').select('id,navn,fullt_navn,epost,email,bil_id,standard_bil_id').eq('standard_bil_id',aktivBil).limit(1).maybeSingle(); if((!r||r.error||!r.data)&&aktivBil) r=await c.from('hand_ansatt').select('id,navn,fullt_navn,epost,email,bil_id,standard_bil_id').eq('bil_id',aktivBil).limit(1).maybeSingle(); if(!r.error&&r.data&&navn(r.data)) return navn(r.data); } }catch(e){}
+    return innloggetNavn()||innloggetEpost()||'';
+  }
   function bilId(){
     try{ if(typeof window.hentValgtBilIdForBilLager === 'function') return window.hentValgtBilIdForBilLager() || ''; }catch(e){}
     var el = $('bilLagerBilValg') || document.querySelector('select[id*="bil" i],select[name*="bil" i]');
@@ -466,7 +477,7 @@
   }
   function restAmount(r){ var b=bestilt(r), g=confirmedAmount(r); return Math.max(b-g,0); }
   function lineName(r){ return (r.varenr ? r.varenr+' - ' : '') + (r.varenavn || r.vare_navn || r.vare_navn || r.vare_id || 'Vare'); }
-  function groupKey(r){ return s(r.bestilling_id||r.batch_id||r.ordre_id||r.id)+'|'+s(r.bil_id||r.bil_navn)+'|'+s(r.bruker_epost||r.opprettet_av)+'|'+s(r.opprettet||r.created_at).slice(0,19); }
+  function groupKey(r){ return s(r.bestilling_id||r.batch_id||r.ordre_id||'')+'|'+s(r.bil_id||r.bil_navn)+'|'+s(r.bruker_epost||r.bruker_navn||r.opprettet_av)+'|'+s(r.opprettet||r.created_at).slice(0,16); }
   function groupsFrom(rows){ var m=new Map(); (rows||[]).forEach(function(r){ var k=groupKey(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); }); return Array.from(m.values()); }
   function meldingFor(lines){
     var f=lines[0]||{};
@@ -505,7 +516,7 @@
     content.innerHTML=groupsFrom(filtered).map(function(lines,gi){
       var f=lines[0]||{}, done=lines.every(isConfirmed);
       var lineHtml=lines.map(function(r){ var b=bestilt(r), g=done?confirmedAmount(r):b, rest=done?restAmount(r):0; return '<div class="ril-order-line" data-row-id="'+esc(r.id)+'" style="display:grid;grid-template-columns:minmax(260px,1fr) 90px 130px 90px;gap:10px;align-items:center;border-bottom:1px solid #273244;padding:8px 0"><strong>'+esc(lineName(r))+'</strong><span>Bestilt: '+b+'</span>'+(done?'<span>Bekreftet: '+g+'</span><span>Rest: '+rest+'</span>':'<input class="ril-godkjent-input" data-bestilt="'+b+'" type="number" min="0" max="'+b+'" value="'+b+'" style="width:100%;padding:7px;border-radius:7px;border:1px solid #475569;background:#0b1220;color:#fff"><span class="ril-rest-vis">Rest: 0</span>')+'</div>'; }).join('');
-      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>'+esc(f.bruker_navn||f.bruker_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft bestilling</button>')+'</div></details>';
+      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>'+esc(f.bruker_navn||f.bruker_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Godkjenn alle for bruker</button>')+'</div></details>';
     }).join('');
     content.querySelectorAll('.ril-godkjent-input').forEach(function(inp){ function upd(){ var b=intNum(inp.dataset.bestilt), g=Math.max(0,Math.min(intNum(inp.value),b)); inp.value=g; var rv=inp.parentElement.querySelector('.ril-rest-vis'); if(rv) rv.textContent='Rest: '+Math.max(b-g,0); } inp.addEventListener('input',upd); upd(); });
     content.querySelectorAll('.ril-bekreft-bestilling').forEach(function(btn){ btn.addEventListener('click',confirmGroup); });
@@ -539,7 +550,7 @@
     try{
       var card=ev.target.closest('details'), lines=Array.from(card.querySelectorAll('.ril-order-line'));
       if(!lines.length) return false;
-      if(!confirm('Bekrefte denne bestillingen og sende liste/rest til ansatt? Billager og lagerlogg oppdateres først når ansatt trykker Godkjenn og legg på bil.')) return false;
+      if(!confirm('Godkjenne alle linjene for denne brukeren og sende liste/rest til ansatt? Billager og lagerlogg oppdateres først når ansatt trykker Bekreft og legg på bil.')) return false;
       var allRows=await loadOrders();
       var ids=lines.map(function(l){return l.getAttribute('data-row-id');}).filter(Boolean);
       var selected=allRows.filter(function(r){return ids.indexOf(s(r.id))>=0;});
@@ -555,7 +566,7 @@
         var res=await updateTrygt('hand_bil_bestilling', u.id, changes);
         if(res.error){ alert('Kunne ikke bekrefte: '+(res.error.message||res.error)); return false; }
       }
-      alert('Bestillingen er bekreftet og sendt til ansatt med liste/rest. Billager oppdateres når ansatt trykker Godkjenn og legg på bil.');
+      alert('Bestillingen er bekreftet og sendt til ansatt med liste/rest. Billager oppdateres når ansatt trykker Bekreft og legg på bil.');
       showHistory=false; await showOrders();
       return false;
     } finally { busyConfirm=false; }
@@ -571,31 +582,31 @@
     var btn=ev.currentTarget || ev.target;
     var ids=s(btn.getAttribute('data-ids')).split(',').filter(Boolean);
     if(!ids.length) return false;
-    if(!confirm('Godkjenn mottatt bestilling og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg.')) return false;
+    if(!confirm('Bekreft mottatt bestilling og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg.')) return false;
     btn.disabled=true; btn.textContent='Legger på bil...';
     try{
       var rows=await hentAnsattBestillingRows(ids);
       rows=rows.filter(function(r){ return isConfirmed(r) && !ansattHarLagtPaBil(r) && confirmedAmount(r) > 0; });
       if(!rows.length){ alert('Denne bestillingen mangler godkjent antall fra admin, er allerede lagt på bil eller er ikke klar.'); await visAnsattBekreftelser(); return false; }
-      var bruker=innloggetEpost(), now=nowIso();
+      var bruker=await hentetAvForBil(), now=nowIso();
       for(var i=0;i<rows.length;i++){
         var row=rows[i], ant=confirmedAmount(row);
-        if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ alert('Kunne ikke legge på bil-lager: '+lag.error); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; } }
+        if(ant>0){ var lag=await leggPaBilLager(row, ant, bruker); if(!lag.ok){ alert('Kunne ikke legge på bil-lager: '+lag.error); btn.disabled=false; btn.textContent='Bekreft og legg på bil'; return false; } }
         var changes={status:'lagt_pa_bil',ansatt_godkjent:true,lagt_pa_bil:true,lagt_pa_bil_at:now,lagt_pa_bil_av:bruker,mottatt:ant,levert:ant};
         var res=await updateTrygt('hand_bil_bestilling', row.id, changes);
-        if(res.error){ alert('Kunne ikke oppdatere bestilling: '+(res.error.message||res.error)); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; }
+        if(res.error){ alert('Kunne ikke oppdatere bestilling: '+(res.error.message||res.error)); btn.disabled=false; btn.textContent='Bekreft og legg på bil'; return false; }
         rilMerkLagtIds([row.id]);
       }
       alert('Bestillingen er godkjent av ansatt. Godkjent antall er lagt på bil, og lagerlogg er oppdatert.');
       try{ if(typeof window.lastBilLager==='function') await window.lastBilLager(); }catch(e){}
       await visAnsattBekreftelser();
       return false;
-    }catch(e){ console.error(e); alert('Feil ved godkjenning: '+(e.message||e)); btn.disabled=false; btn.textContent='Godkjenn og legg på bil'; return false; }
+    }catch(e){ console.error(e); alert('Feil ved godkjenning: '+(e.message||e)); btn.disabled=false; btn.textContent='Bekreft og legg på bil'; return false; }
   }
 
   async function ansattGodkjennAlleOgLeggPaBil(ev){
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
-    if(!confirm('Godkjenn ALLE synlige bekreftede bestillinger og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg for hver vare.')) return false;
+    if(!confirm('Bekreft ALLE synlige bekreftede bestillinger og legg godkjent antall på bil? Dette oppdaterer billager og lagerlogg for hver vare.')) return false;
     var btn=ev && (ev.currentTarget || ev.target);
     if(btn){ btn.disabled=true; btn.textContent='Legger alle på bil...'; }
     try{
@@ -604,7 +615,7 @@
       var rows=(all||[]).filter(isConfirmed).filter(function(r){ return !ansattHarLagtPaBil(r) && confirmedAmount(r) > 0; }).filter(function(r){ return ansattMatch(r, epost, navn, aktivBil); });
       rows=await hydrateRows(rows);
       if(!rows.length){ alert('Ingen nye bekreftede bestillinger å legge på bil.'); await visAnsattBekreftelser(); return false; }
-      var bruker=innloggetEpost(), now=nowIso(), ok=0, fail=[];
+      var bruker=await hentetAvForBil(), now=nowIso(), ok=0, fail=[];
       for(var i=0;i<rows.length;i++){
         var row=rows[i], ant=confirmedAmount(row);
         try{
@@ -621,7 +632,7 @@
       if(fail.length){ alert('Lagt på bil: '+ok+'. Noen feilet:\n'+fail.slice(0,8).join('\n')); }
       else alert('Alle bekreftede bestillinger er godkjent av ansatt, lagt på bil, og lagerlogg er oppdatert.');
       return false;
-    }catch(e){ console.error(e); alert('Feil ved godkjenning av alle: '+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='Godkjenn alle og legg på bil'; } return false; }
+    }catch(e){ console.error(e); alert('Feil ved godkjenning av alle: '+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='Bekreft alle og legg på bil'; } return false; }
   }
 
   function ansattMatch(row, epost, navn, aktivBil){
@@ -672,7 +683,7 @@
       function groupHtml(lines, withButton){
         var f=lines[0]||{}, ids=lines.map(function(r){return s(r.id);}).join(',');
         var msg=f.ansatt_melding||f.melding_til_ansatt||f.svar_til_ansatt||meldingFor(lines);
-        return '<details open style="margin:8px 0;padding:10px;border:1px solid #166534;border-radius:10px;background:#064e3b"><summary style="cursor:pointer;font-weight:700">'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.bekreftet_at||f.bekreftet_dato||f.created_at||f.opprettet).slice(0,19))+'</summary><div style="margin:8px 0;color:#bbf7d0;font-weight:700">'+esc(msg)+'</div><div style="margin-top:8px;display:grid;gap:6px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - bestilt '+bestilt(r)+', godkjent '+confirmedAmount(r)+', rest '+restAmount(r)+'</div>';}).join('')+'</div>'+(withButton?'<button type="button" class="ril-ansatt-legg-pa-bil" onclick="return window.rilAnsattLeggPaBilKnapp(event)" data-ids="'+esc(ids)+'" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Godkjenn og legg på bil</button>':'')+'</details>';
+        return '<details open style="margin:8px 0;padding:10px;border:1px solid #166534;border-radius:10px;background:#064e3b"><summary style="cursor:pointer;font-weight:700">'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.bekreftet_at||f.bekreftet_dato||f.created_at||f.opprettet).slice(0,19))+'</summary><div style="margin:8px 0;color:#bbf7d0;font-weight:700">'+esc(msg)+'</div><div style="margin-top:8px;display:grid;gap:6px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - bestilt '+bestilt(r)+', godkjent '+confirmedAmount(r)+', rest '+restAmount(r)+'</div>';}).join('')+'</div>'+(withButton?'<button type="button" class="ril-ansatt-legg-pa-bil" onclick="return window.rilAnsattLeggPaBilKnapp(event)" data-ids="'+esc(ids)+'" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft og legg på bil</button>':'')+'</details>';
       }
       function restHtml(lines){
         var f=lines[0]||{};
@@ -686,7 +697,7 @@
         if(!groups.length) return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:8px;color:#cbd5e1">Ingen varer lagt på bil ennå.</div></div>';
         return '<div id="rilVarerPaBilStabil" style="margin-top:12px;padding:10px;border:1px solid #166534;border-radius:10px;background:#052e16"><div style="font-weight:800">Varer på bil</div><div style="margin-top:10px;display:grid;gap:8px">'+groups.map(function(lines){ var f=lines[0]||{}; return '<div style="padding:8px;border:1px solid #14532d;border-radius:8px;background:#042f1a"><strong>'+esc(f.bil_navn||f.bil_id||'Bil')+' - '+esc(s(f.lagt_pa_bil_at||f.ansatt_godkjent_at||f.bekreftet_at||f.created_at).slice(0,19))+'</strong><div style="margin-top:6px;display:grid;gap:4px">'+lines.map(function(r){return '<div>'+esc(lineName(r))+' - på bil '+confirmedAmount(r)+'</div>';}).join('')+'</div></div>'; }).join('')+'</div></div>';
       }
-      box.innerHTML='<h3 style="margin:0 0 10px 0;color:#bbf7d0">Bekreftet bestilling fra admin</h3>'+(pending.length?'<button type="button" id="rilGodkjennAllePaBil" onclick="return window.rilAnsattLeggAllePaBilKnapp(event)" style="margin:0 0 12px 0;background:#22c55e;color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:800">Godkjenn alle og legg på bil</button>'+pending.map(function(g){return groupHtml(g,true);}).join(''):'<div style="color:#cbd5e1">Ingen nye bekreftede bestillinger å legge på bil.</div>')+(restGroups.length?'<h4 style="margin:14px 0 6px 0;color:#fde68a">Rest</h4>'+restGroups.map(restHtml).join(''):'')+varerPaBilHtml(done);
+      box.innerHTML='<h3 style="margin:0 0 10px 0;color:#bbf7d0">Bekreftet bestilling fra admin</h3>'+(pending.length?'<button type="button" id="rilGodkjennAllePaBil" onclick="return window.rilAnsattLeggAllePaBilKnapp(event)" style="margin:0 0 12px 0;background:#22c55e;color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:800">Bekreft alle og legg på bil</button>'+pending.map(function(g){return groupHtml(g,true);}).join(''):'<div style="color:#cbd5e1">Ingen nye bekreftede bestillinger å legge på bil.</div>')+(restGroups.length?'<h4 style="margin:14px 0 6px 0;color:#fde68a">Rest</h4>'+restGroups.map(restHtml).join(''):'')+varerPaBilHtml(done);
       if(host.id==='appSide' || host===document.body) host.prepend(box); else host.parentNode ? host.parentNode.insertBefore(box, host) : host.prepend(box);
       var alleBtn=box.querySelector('#rilGodkjennAllePaBil'); if(alleBtn) alleBtn.addEventListener('click', ansattGodkjennAlleOgLeggPaBil, true);
       box.querySelectorAll('.ril-ansatt-legg-pa-bil').forEach(function(b){ b.addEventListener('click', ansattGodkjennOgLeggPaBil, true); });
@@ -842,116 +853,13 @@
 <!-- Kundenr blink-fix fjernet i 7088. Kundenr styres kun av hand-kunder.js. -->
 
 
-<script charset="UTF-8" src="../js/handverker/hand-sysadm-stable-panel.js?v=20260624-existing-edit"></script>
-<script charset="UTF-8" src="../js/handverker/hand-sysadm-bedrifter-fix.js?v=20260624-force-v9"></script>
-<script charset="UTF-8" src="../js/handverker/hand-role-guard-strict.js?v=20260624-admin-not-sysadm-v31"></script>
 
 <!-- 7084: gammel inline Min bil/bestilling-blokk fjernet. Min bil styres av hand-minbil-prod-7084 og hand-navigation.js. -->
 
 
 <!-- LES_MEG_7084_MIN_BIL_ANSATT: Min bil bruker produksjonsnavigasjon handOpenMinBilHard. -->
 
-<script id="hand-sysadm-no-blink-v6">
-(function(){
-  'use strict';
-  if (window.__handSysadmNoBlinkV6) return;
-  window.__handSysadmNoBlinkV6 = true;
-  var GRE='greknuts@online.no';
-  function n(v){return String(v==null?'':v).trim().toLowerCase();}
-  function client(){return window.supabaseClient||(window.supabase&&window.supabase.from?window.supabase:null);}
-  function show(el){if(!el)return;el.classList.remove('hidden','skjult','modul-skjult');el.hidden=false;el.style.display='';el.style.visibility='visible';el.removeAttribute('aria-hidden');}
-  function hide(el){if(!el)return;el.classList.add('hidden','skjult');el.hidden=true;el.style.display='none';el.setAttribute('aria-hidden','true');}
-  function storedEmail(){return n(window.innloggetEpost||window.innloggetBrukerEpost||localStorage.getItem('handInnloggetEpost')||localStorage.getItem('innloggetEpost')||localStorage.getItem('rettilommaSistEpost')||localStorage.getItem('epost'));}
-  async function getEmail(){
-    var c=client();
-    try{if(c&&c.auth&&c.auth.getUser){var u=await c.auth.getUser();var e=n(u&&u.data&&u.data.user&&u.data.user.email);if(e)return e;}}catch(e){}
-    try{if(c&&c.auth&&c.auth.getSession){var r=await c.auth.getSession();var e2=n(r&&r.data&&r.data.session&&r.data.session.user&&r.data.session.user.email);if(e2)return e2;}}catch(e){}
-    return storedEmail();
-  }
-  async function checkSys(e){
-    e=n(e); if(!e) return false; if(e===GRE) return true;
-    var c=client(); if(!c) return false;
-    try{var r=await c.from('system_adminer').select('id').ilike('epost',e).eq('aktiv',true).limit(1); return !r.error && r.data && r.data.length>0;}catch(err){return false;}
-  }
-  function lockFlag(name, value){
-    try{Object.defineProperty(window,name,{configurable:true,get:function(){return value;},set:function(v){if(v===true)value=true;}});}catch(e){window[name]=value;}
-  }
-  function apply(e,isSys){
-    e=n(e)||storedEmail();
-    if(e){window.innloggetEpost=e;window.innloggetBrukerEpost=e;try{localStorage.setItem('handInnloggetEpost',e);localStorage.setItem('innloggetEpost',e);localStorage.setItem('rettilommaSistEpost',e);}catch(x){}}
-    if(isSys){
-      lockFlag('erSystemadmin', true); window.erAdmin=true; window.innloggetRolle='sysadm'; window.handInnloggetRolle='sysadm';
-      try{localStorage.setItem('handInnloggetRolle','sysadm');localStorage.setItem('innloggetRolle','sysadm');localStorage.setItem('rilSysadminModus','ja');localStorage.setItem('sysadminModus','ja');localStorage.setItem('handSysadminModus','ja');}catch(x){}
-      document.documentElement.classList.add('hand-is-sysadm','ril-sysadm-ready','ril-admin-ready');
-      document.querySelectorAll('.admin-only').forEach(show);
-      ['sysadminModeKnapp','sysadminNyKundeKnapp','sysadminKundelisteKnapp','sysadminModulerKnapp','adminMenyGruppe'].forEach(function(id){show(document.getElementById(id));});
-    } else {
-      window.erSystemadmin=false;
-      document.documentElement.classList.remove('hand-is-sysadm','ril-sysadm-ready');
-      document.querySelectorAll('.systemadmin-only,.sysadmin-entry').forEach(hide);
-      hide(document.getElementById('sysadminPanelSide'));
-    }
-    var rv=document.getElementById('innloggetRolleVisning');
-    if(rv) rv.textContent='';
-    var bv=document.getElementById('innloggetBrukerVisning'); if(bv&&e) bv.textContent=e;
-    document.documentElement.classList.add('ril-role-ready','hand-role-ready');
-    document.documentElement.classList.remove('hand-role-locking');
-  }
-  async function run(){var e=await getEmail(); var ok=await checkSys(e); apply(e,ok);}
-  // Start skjult, vis først når rollen er avgjort. Dette fjerner blink.
-  document.documentElement.classList.add('hand-role-locking');
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run,{once:true}); else run();
-  document.addEventListener('handPartialerLastet',function(){ if(!document.documentElement.classList.contains('hand-role-ready')) run(); },{once:true});
-  window.handFinalSysadmRefresh=run;
-})();
-</script>
 
-<script id="hand-sysadm-clean-noblink-v9">
-(function(){
-  'use strict';
-  if(window.__handSysadmCleanNoBlinkV9) return;
-  window.__handSysadmCleanNoBlinkV9 = true;
-  function $(id){ return document.getElementById(id); }
-  function n(v){ return String(v==null?'':v).trim().toLowerCase(); }
-  function show(el){ if(!el) return; el.classList.remove('hidden','skjult','modul-skjult'); el.hidden=false; el.style.display=''; el.style.visibility='visible'; el.removeAttribute('aria-hidden'); }
-  function hide(el){ if(!el) return; el.classList.add('hidden','skjult'); el.hidden=true; el.style.display='none'; el.style.visibility='hidden'; el.setAttribute('aria-hidden','true'); }
-  function isSys(){ var r=n(window.innloggetRolle||window.handInnloggetRolle||localStorage.getItem('handInnloggetRolle')||localStorage.getItem('innloggetRolle')); return window.erSystemadmin===true || r==='sysadm' || r==='sysadmin' || r==='systemadmin'; }
-  function cleanTopbar(){
-    var rv=$('innloggetRolleVisning'); if(rv && rv.textContent) rv.textContent='';
-    var e=n(window.innloggetEpost||window.innloggetBrukerEpost||localStorage.getItem('handInnloggetEpost')||localStorage.getItem('innloggetEpost')||localStorage.getItem('rettilommaSistEpost'));
-    var bv=$('innloggetBrukerVisning'); if(bv && e) bv.textContent=e;
-    if(isSys()){
-      document.documentElement.classList.add('hand-is-sysadm','ril-role-ready','hand-role-ready');
-      show($('sysadminModeKnapp')); show($('adminMenyGruppe'));
-      show($('sysadminNyKundeKnapp')); show($('sysadminKundelisteKnapp')); hide($('sysadminModulerKnapp'));
-      document.querySelectorAll('.admin-only').forEach(show);
-    }
-    hide($('visModulerKnapp')); hide($('velgModulKnapp'));
-  }
-  function openModuler(){
-    if(!isSys()) return false;
-    ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','sysadminPanelSide','adminSide'].forEach(function(id){hide($(id));});
-    var app=$('appSide'); if(app){ show(app); app.classList.remove('ril-starter','skjult','hidden'); }
-    show($('modulerSide'));
-    try{ if(typeof window.handFyllModulKundeVelger==='function') window.handFyllModulKundeVelger(); }catch(e){}
-    try{ if(typeof window.lastModulerFraDatabase==='function') window.lastModulerFraDatabase(); }catch(e){}
-    try{ if(typeof window.tegnModulGui==='function') window.tegnModulGui(); }catch(e){}
-    cleanTopbar();
-    return true;
-  }
-  document.addEventListener('click', function(ev){
-    var b=ev.target && ev.target.closest && ev.target.closest('#sysadminModulerKnapp,#visModulerKnapp,#velgModulKnapp');
-    if(!b) return;
-    ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-    if(b.id==='sysadminModulerKnapp') openModuler(); else hide(b);
-    return false;
-  }, true);
-  var mo=new MutationObserver(function(){ var rv=$('innloggetRolleVisning'); if(rv && rv.textContent) rv.textContent=''; });
-  function start(){ cleanTopbar(); var rv=$('innloggetRolleVisning'); if(rv) mo.observe(rv,{childList:true,subtree:true,characterData:true}); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
-  document.addEventListener('handPartialerLastet',start,{once:true});
-})();
-</script>
 
 
 

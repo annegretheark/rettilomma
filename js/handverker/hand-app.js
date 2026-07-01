@@ -114,9 +114,12 @@ if (typeof supabaseClient !== "undefined") {
 }
 
 async function startApp() {
+  const RIL_ADMIN_SIDE_IDS = ["adminKonsollSide","timerSide","jobberSide","tilbudSide","backupSide","fakturaSide","varerSide","bilerSide","kundeSide","kunderSide","ansattSide","ansatteSide","firmaSide","bilBestillingerSide","adminBilBestillinger","adminBilBestillingerPanel","testSide","testpanelSide","lonnPanel","lonnSide","fravaerSide","modulerSide","sysadminPanelSide","adminSide"];
+  const erRilArbeidsside = el => !!(el && el.id && RIL_ADMIN_SIDE_IDS.includes(el.id));
   console.log("Starter app");
   document.documentElement.classList.remove("ril-auth-ready", "ril-admin-ready");
-  localStorage.removeItem("rilSysadminModus");
+  // SysAdm 2.2: ikke nullstill sysadm-modus ved F5. Rollen styres fra public.hand_sysadm.
+  // localStorage.removeItem("rilSysadminModus");
   // HAND_FIX_PARTIAL_READY: Vent til HTML-delene i partials er lastet.
   // Dette hindrer blinking/flicker og at knapper kobles før de finnes.
   if (window.handPartialerKlare && !window.__handPartialerVentet) {
@@ -234,17 +237,31 @@ async function startApp() {
     }
 
     let rolle = String((firmaBrukerData && firmaBrukerData.rolle) || ansattData?.rolle || "").toLowerCase();
-    // Stabil 2.0: greknuts er ikke hardkodet sysadm. Fallback admin håndteres i hand-stabil-2.0.js.
+    // SysAdm 2.2: global sysadm styres av public.hand_sysadm. Firma-admin ligger fortsatt i hand_firma_bruker.
+    let handErGlobalSysadm = false;
+    try {
+      if (typeof window.handErGlobalSysadmFraTabell === "function") {
+        handErGlobalSysadm = await window.handErGlobalSysadmFraTabell(email);
+      }
+    } catch (e) {
+      console.warn("Kunne ikke sjekke hand_sysadm:", e);
+    }
+    if (handErGlobalSysadm) rolle = "sysadm";
     window.innloggetRolle = rolle;
+    window.handErGlobalSysadm = handErGlobalSysadm;
 
-    // Stabil 2.0: systemadmin gis kun av rolle/tabell, ikke hardkodet e-post.
-    const erSystembruker = ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
-    const harSystemadminRolle = erSystembruker;
-    const harAdminRolle = !!firmaBrukerData || email === "greknuts@online.no" || ["admin", "eier", "owner", "administrator", "systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    const harSystemadminRolle = handErGlobalSysadm || ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    const harAdminRolle = harSystemadminRolle || ["admin", "eier", "owner", "administrator"].includes(rolle);
 
     window.erSystemadmin = harSystemadminRolle;
-
     window.erAdmin = harAdminRolle;
+    if (harSystemadminRolle) {
+      try {
+        localStorage.setItem("rilSysadminModus", "ja");
+        localStorage.setItem("handInnloggetRolle", "sysadm");
+      } catch (e) {}
+      document.documentElement.classList.add("ril-verified-sysadm");
+    }
     try { localStorage.setItem("rilAdminModus", harAdminRolle ? "ja" : "nei"); } catch (e) {}
     document.documentElement.classList.add("ril-auth-ready");
     document.documentElement.classList.toggle("ril-admin-ready", !!window.erAdmin);
@@ -274,6 +291,7 @@ async function startApp() {
 
     if (window.erAdmin) {
       document.querySelectorAll(".admin-only").forEach(el => {
+        if (erRilArbeidsside(el)) return;
         el.style.display = "";
         el.classList.remove("skjult", "hidden");
       });
@@ -281,6 +299,7 @@ async function startApp() {
       if (typeof window.skjulSystemadminHvisIkkeSystemadmin === "function") window.skjulSystemadminHvisIkkeSystemadmin();
     } else {
       document.querySelectorAll(".admin-only").forEach(el => {
+        if (erRilArbeidsside(el)) return;
         el.style.display = "none";
         el.classList.add("skjult");
       });
@@ -436,3 +455,4 @@ window.startModulerEtterInnlogging = startModulerEtterInnlogging;
   document.addEventListener("DOMContentLoaded", function(){ setTimeout(window.handKobleKnapperEtterPartials, 50); });
   window.addEventListener("load", function(){ setTimeout(window.handKobleKnapperEtterPartials, 250); });
 })();
+

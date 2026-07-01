@@ -33,6 +33,8 @@
     'testSide','testpanelSide','lonnPanel','lonnSide','fravaerSide','modulerSide','sysadminPanelSide','adminSide'
   ];
 
+  function erArbeidsside(el) { return !!(el && el.id && SIDE_IDS.indexOf(el.id) !== -1); }
+
   function $(id) { return document.getElementById(id); }
   function txt(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
 
@@ -42,12 +44,11 @@
 
   function erAdmin() {
     var rolle = txt(window.innloggetRolle || window.handInnloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
-    return window.erAdmin === true || rolle === 'admin' || rolle === 'sysadm' || rolle === 'sysadmin' || localStorage.getItem('rilAdminModus') === 'ja';
+    return window.erAdmin === true || rolle === 'admin' || rolle === 'administrator' || rolle === 'eier' || rolle === 'owner' || rolle === 'sysadm' || rolle === 'sysadmin' || rolle === 'systemadmin';
   }
   function erSysadmin() {
     var rolle = txt(window.innloggetRolle || window.handInnloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
-    var epost = txt(window.innloggetEpost || window.innloggetBrukerEpost || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost'));
-    return window.erSystemadmin === true || rolle === 'sysadm' || rolle === 'sysadmin' || rolle === 'systemadmin' || epost === 'greknuts@online.no';
+    return window.erSystemadmin === true || rolle === 'sysadm' || rolle === 'sysadmin' || rolle === 'systemadmin';
   }
 
   function show(el) {
@@ -178,8 +179,8 @@
   function oppdaterAdminVisning() {
     var admin = erAdmin();
     var sys = erSysadmin();
-    document.querySelectorAll('.admin-only').forEach(function(el){ admin ? show(el) : hide(el); });
-    document.querySelectorAll('.systemadmin-only').forEach(function(el){ sys ? show(el) : hide(el); });
+    document.querySelectorAll('.admin-only').forEach(function(el){ if (erArbeidsside(el)) return; admin ? show(el) : hide(el); });
+    document.querySelectorAll('.systemadmin-only').forEach(function(el){ if (erArbeidsside(el)) return; sys ? show(el) : hide(el); });
 
     var minBil = $('visBilerKnapp');
     if (minBil) {

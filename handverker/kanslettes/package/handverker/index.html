@@ -468,7 +468,7 @@
   }
   function restAmount(r){ var b=bestilt(r), g=confirmedAmount(r); return Math.max(b-g,0); }
   function lineName(r){ return (r.varenr ? r.varenr+' - ' : '') + (r.varenavn || r.vare_navn || r.vare_navn || r.vare_id || 'Vare'); }
-  function groupKey(r){ return s(r.bestilling_id||r.batch_id||r.ordre_id||r.id)+'|'+s(r.bil_id||r.bil_navn)+'|'+s(r.bruker_epost||r.opprettet_av)+'|'+s(r.opprettet||r.created_at).slice(0,19); }
+  function groupKey(r){ return s(r.bestilling_id||r.batch_id||r.ordre_id||'')+'|'+s(r.bil_id||r.bil_navn)+'|'+s(r.bruker_epost||r.bruker_navn||r.opprettet_av)+'|'+s(r.opprettet||r.created_at).slice(0,16); }
   function groupsFrom(rows){ var m=new Map(); (rows||[]).forEach(function(r){ var k=groupKey(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); }); return Array.from(m.values()); }
   function meldingFor(lines){
     var f=lines[0]||{};
@@ -507,7 +507,7 @@
     content.innerHTML=groupsFrom(filtered).map(function(lines,gi){
       var f=lines[0]||{}, done=lines.every(isConfirmed);
       var lineHtml=lines.map(function(r){ var b=bestilt(r), g=done?confirmedAmount(r):b, rest=done?restAmount(r):0; return '<div class="ril-order-line" data-row-id="'+esc(r.id)+'" style="display:grid;grid-template-columns:minmax(260px,1fr) 90px 130px 90px;gap:10px;align-items:center;border-bottom:1px solid #273244;padding:8px 0"><strong>'+esc(lineName(r))+'</strong><span>Bestilt: '+b+'</span>'+(done?'<span>Bekreftet: '+g+'</span><span>Rest: '+rest+'</span>':'<input class="ril-godkjent-input" data-bestilt="'+b+'" type="number" min="0" max="'+b+'" value="'+b+'" style="width:100%;padding:7px;border-radius:7px;border:1px solid #475569;background:#0b1220;color:#fff"><span class="ril-rest-vis">Rest: 0</span>')+'</div>'; }).join('');
-      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>'+esc(f.bruker_navn||f.bruker_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Bekreft bestilling</button>')+'</div></details>';
+      return '<details open style="border:1px solid #334155;border-radius:12px;margin:12px 0;background:#111827;overflow:hidden;color:#e5e7eb"><summary style="cursor:pointer;padding:12px;background:#172033;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>'+esc(f.bruker_navn||f.bruker_epost||f.opprettet_av||'Ansatt')+'</span><span>'+esc(f.bil_navn||f.bil_id||'Bil')+'</span><span>'+esc(s(f.opprettet||f.created_at).slice(0,19))+'</span></summary><div style="padding:12px;display:grid;gap:8px">'+lineHtml+(done?'<div style="margin-top:10px;color:#86efac;font-weight:700">Bekreftet. Kan ikke bekreftes på nytt.</div><div style="margin-top:6px;color:#cbd5e1">'+esc(f.ansatt_melding||f.melding_til_ansatt||meldingFor(lines))+'</div>':'<button type="button" class="ril-bekreft-bestilling" style="margin-top:10px;background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:700">Godkjenn alle for bruker</button>')+'</div></details>';
     }).join('');
     content.querySelectorAll('.ril-godkjent-input').forEach(function(inp){ function upd(){ var b=intNum(inp.dataset.bestilt), g=Math.max(0,Math.min(intNum(inp.value),b)); inp.value=g; var rv=inp.parentElement.querySelector('.ril-rest-vis'); if(rv) rv.textContent='Rest: '+Math.max(b-g,0); } inp.addEventListener('input',upd); upd(); });
     content.querySelectorAll('.ril-bekreft-bestilling').forEach(function(btn){ btn.addEventListener('click',confirmGroup); });
@@ -541,7 +541,7 @@
     try{
       var card=ev.target.closest('details'), lines=Array.from(card.querySelectorAll('.ril-order-line'));
       if(!lines.length) return false;
-      if(!confirm('Bekrefte denne bestillingen og sende liste/rest til ansatt? Billager og lagerlogg oppdateres først når ansatt trykker Godkjenn og legg på bil.')) return false;
+      if(!confirm('Godkjenne alle linjene for denne brukeren og sende liste/rest til ansatt? Billager og lagerlogg oppdateres først når ansatt trykker Godkjenn og legg på bil.')) return false;
       var allRows=await loadOrders();
       var ids=lines.map(function(l){return l.getAttribute('data-row-id');}).filter(Boolean);
       var selected=allRows.filter(function(r){return ids.indexOf(s(r.id))>=0;});

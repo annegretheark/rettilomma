@@ -253,8 +253,57 @@
     return s?.selectedOptions?.[0]?.textContent || window.aktivBilNavn || localStorage.getItem("aktivBilNavn") || "valgt bil";
   }
   function brukerTekst() {
-    return window.innloggetEpost || localStorage.getItem("innloggetEpost") || window.innloggetAnsattNavn || "";
+    return window.innloggetAnsattNavn ||
+      window.innloggetNavn ||
+      localStorage.getItem("innloggetAnsattNavn") ||
+      localStorage.getItem("handInnloggetNavn") ||
+      localStorage.getItem("innloggetNavn") ||
+      window.innloggetEpost ||
+      window.handInnloggetEpost ||
+      localStorage.getItem("handInnloggetEpost") ||
+      localStorage.getItem("innloggetEpost") ||
+      "";
   }
+
+  async function hentetAvForValgtBil() {
+    const cli = db();
+    const bilId = valgtBilId();
+    const authUserId = window.innloggetUserId || localStorage.getItem("innloggetUserId") || localStorage.getItem("authUserId") || "";
+    const epost = window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem("handInnloggetEpost") || localStorage.getItem("innloggetEpost") || "";
+
+    function navnFraRad(rad) {
+      if (!rad) return "";
+      return rad.navn || rad.fullt_navn || rad.epost || rad.email || "";
+    }
+
+    try {
+      if (cli && authUserId) {
+        const r = await cli.from("hand_ansatt").select("id,navn,fullt_navn,epost,email").eq("user_id", authUserId).limit(1).maybeSingle();
+        if (!r.error && r.data && navnFraRad(r.data)) return navnFraRad(r.data);
+      }
+    } catch (_) {}
+
+    try {
+      if (cli && epost) {
+        const r = await cli.from("hand_ansatt").select("id,navn,fullt_navn,epost,email").ilike("epost", epost).limit(1).maybeSingle();
+        if (!r.error && r.data && navnFraRad(r.data)) return navnFraRad(r.data);
+      }
+    } catch (_) {}
+
+    // Fallback: hvis innlogget navn/epost mangler, bruk brukeren som er satt opp på bilen.
+    try {
+      if (cli && bilId) {
+        let r = await cli.from("hand_ansatt").select("id,navn,fullt_navn,epost,email,bil_id,standard_bil_id").eq("standard_bil_id", bilId).limit(1).maybeSingle();
+        if ((!r || r.error || !r.data) && bilId) {
+          r = await cli.from("hand_ansatt").select("id,navn,fullt_navn,epost,email,bil_id,standard_bil_id").eq("bil_id", bilId).limit(1).maybeSingle();
+        }
+        if (!r.error && r.data && navnFraRad(r.data)) return navnFraRad(r.data);
+      }
+    } catch (_) {}
+
+    return brukerTekst() || valgtBilNavn();
+  }
+
   function firmaId() {
     try { if (typeof window.hentAktivFirmaId === "function") return window.hentAktivFirmaId() || null; } catch (_) {}
     return window.aktivFirmaId || localStorage.getItem("aktivFirmaId") || localStorage.getItem("firmaId") || null;
@@ -327,12 +376,19 @@
     // Ferdigbehandlede bestillinger skal aldri vises igjen eller kunne legges på bil en gang til.
     if (r.arkivert === true || r.lukket === true || r.lagt_pa_bil === true || r.ansatt_godkjent === true) return false;
     if (["ferdig", "mottatt", "avsluttet", "arkivert", "lukket", "lagt_pa_bil", "lagt på bil", "levert"].includes(st)) return false;
-    if (["godkjent", "delvis", "delvis_godkjent", "delvis_levert", "klar", "utlevert"].includes(st)) return true;
-    return num(r.levert) > num(r.mottatt || 0);
+    if (["godkjent", "admin_godkjent", "admin_bekreftet", "admin_besvart", "bekreftet", "delvis", "delvis_godkjent", "delvis_levert", "klar", "utlevert", "rest_hos_admin", "restordre_admin"].includes(st)) return true;
+    return Math.max(num(r.godkjent), num(r.levert), num(r.bekreftet_antall), num(r.admin_godkjent_antall)) > num(r.mottatt || 0);
   }
 
   function mottakAntall(r) {
-    return Math.max(0, num(r.levert) - num(r.mottatt || 0));
+    const godkjent = Math.max(
+      num(r.godkjent),
+      num(r.levert),
+      num(r.bekreftet_antall),
+      num(r.admin_godkjent_antall),
+      num(r.godkjent_antall)
+    );
+    return Math.max(0, godkjent - num(r.mottatt || 0));
   }
 
   async function hentGodkjente() {
@@ -415,7 +471,7 @@
       panel.innerHTML = '' +
         '<div class="kort" style="border:1px solid #334155;background:#111827;padding:12px;border-radius:10px">' +
           '<h4 style="margin-top:0">Godkjent bestilling fra admin</h4>' +
-          '<p class="info">Admin har godkjent varer til bilen. Trykk <strong>Fyll på bil</strong> når varene er mottatt.</p>' +
+          '<p class="info">Admin har godkjent varer til bilen. Trykk <strong>Bekreft og legg på bil</strong> når varene er mottatt.</p>' +
           '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse">' +
             '<thead><tr>' +
               '<th style="text-align:left;padding:6px;border-bottom:1px solid #374151">Vare</th>' +
@@ -431,7 +487,7 @@
               '</tr>';
             }).join("") +
             '</tbody></table></div>' +
-          '<button id="agkFyllPaaBilKnapp" type="button" style="margin-top:10px;padding:10px 14px;border-radius:8px;background:#16a34a;color:white;border:0;font-weight:bold">Fyll på bil (' + total + ')</button>' +
+          '<button id="agkFyllPaaBilKnapp" type="button" style="margin-top:10px;padding:10px 14px;border-radius:8px;background:#16a34a;color:white;border:0;font-weight:bold">Bekreft og legg på bil (' + total + ')</button>' +
         '</div>';
       const btn = $("agkFyllPaaBilKnapp");
       if (btn) btn.onclick = fyllPaaBilFraAdmin;
@@ -502,7 +558,7 @@
     }
     const btn = $("agkFyllPaaBilKnapp");
     if (btn && btn.dataset.busy === "1") return false;
-    if (btn) { btn.dataset.busy = "1"; btn.disabled = true; btn.textContent = "Fyller på bil..."; }
+    if (btn) { btn.dataset.busy = "1"; btn.disabled = true; btn.textContent = "Legger på bil..."; }
 
     const behandledeIds = [];
 
@@ -522,6 +578,7 @@
       lagreFerdigeBestillingIds(rows.map(r => r.id).filter(Boolean));
 
       const varer = await hentVarer(rows.map(r => r.vare_id));
+      const hentetAvTekst = await hentetAvForValgtBil();
       let lagtTil = 0;
 
       for (const r of rows) {
@@ -540,6 +597,8 @@
           varenr: v?.varenr || r.varenr || null,
           varenavn: v?.navn || v?.varenavn || r.varenavn || null,
           antall: antall,
+          hentet_av: hentetAvTekst || null,
+          bruker_navn: hentetAvTekst || null,
           bestilling_id: r.id || null
         });
 
@@ -556,7 +615,10 @@
           ansatt_godkjent: true,
           lagt_pa_bil: true,
           mottatt_dato: new Date().toISOString(),
-          mottatt_av: brukerTekst() || null,
+          mottatt_av: hentetAvTekst || brukerTekst() || null,
+          hentet_av: hentetAvTekst || brukerTekst() || null,
+          sist_hentet_av: hentetAvTekst || brukerTekst() || null,
+          lagt_pa_bil_av: hentetAvTekst || brukerTekst() || null,
           ferdig_dato: new Date().toISOString(),
           ansatt_godkjent_at: new Date().toISOString(),
           lagt_pa_bil_at: new Date().toISOString(),

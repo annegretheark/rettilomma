@@ -1,11 +1,26 @@
 <section id="sysadminPanelSide" class="kort skjult systemadmin-only">
   <h2>Systemadministrasjon</h2>
   <p class="info">Kun for Systembruker. Her administreres bedrifter, moduler og kundelinker.</p>
+  <div id="handSysadmBackupRestorePanel" class="kort" style="border:1px solid #334155; margin:14px 0; padding:14px;">
+    <h3>Sysadm backup / restore</h3>
+    <p class="info">Sysadm kan alltid ta backup og restore for firma. Annen administrasjon av firma krever godkjenning fra firma-admin.</p>
+    <div class="rad">
+      <div>
+        <label for="sysadmBackupFirmaValg">Firma</label>
+        <select id="sysadmBackupFirmaValg"><option value="__alle__">ALLE FIRMA</option></select>
+      </div>
+    </div>
+    <button id="sysadmKjorBackupKnapp" type="button">Ta backup</button>
+    <button id="sysadmOppdaterBackupListeKnapp" type="button" class="secondary">Oppdater backup-liste</button>
+    <div id="sysadmBackupMelding" class="melding"></div>
+    <div id="sysadmBackupListe" style="margin-top:10px"></div>
+  </div>
+
 
   <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
     <button id="sysadminNyKundeKnapp" type="button" style="background:#0f766e;">Ny bedrift</button>
     <button id="sysadminKundelisteKnapp" type="button" class="secondary">Oppdater bedriftsliste</button>
-    <button id="sysadminTilAdminKnapp" type="button" class="secondary">Tilbake til admin</button>
+    
   </div>
 
   <div id="handSystemadminBlokk" class="kort hand-systemadmin-form" style="border:2px solid #0f766e; margin-bottom:14px;">

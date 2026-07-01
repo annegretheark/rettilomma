@@ -158,7 +158,7 @@ html,body{overflow-x:hidden!important;background:#0f1115!important;}
     var ok = isSysRole(meta);
     if(!ok && email && window.supabaseClient){
       try{
-        var sr = await window.supabaseClient.from('system_adminer').select('id,aktiv,epost,email').or('epost.ilike.' + email + ',email.ilike.' + email).limit(1);
+        var sr = await window.supabaseClient.from('hand_sysadm').select('id,aktiv,epost').ilike('epost', email).limit(1);
         ok = !!(!sr.error && Array.isArray(sr.data) && sr.data.some(function(x){ return x && x.aktiv !== false; }));
       }catch(e){}
       if(!ok) ok = await hasSysRow('hand_firma_bruker', email, uid);

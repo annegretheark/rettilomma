@@ -165,13 +165,40 @@ function hentBilFraId(id) {
   return (biler || []).find(b => String(b.id) === String(id));
 }
 
+function ansattVisningsnavn(a) {
+  if (!a) return "Uten navn";
+  return a.navn || a.fullt_navn || a.name || a.epost || a.email || "Uten navn";
+}
+
+async function lastAnsatteForBiler(firmaId) {
+  if (!window.supabaseClient || !firmaId) return [];
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("hand_ansatt")
+      .select("id, navn, fullt_navn, name, epost, email, standard_bil_id, firma_id")
+      .eq("firma_id", firmaId);
+
+    if (error) {
+      console.warn("Kunne ikke hente ansatte til billiste:", error.message || error);
+      return Array.isArray(window.ansatte) ? window.ansatte : [];
+    }
+
+    window.ansatte = data || [];
+    return window.ansatte;
+  } catch (e) {
+    console.warn("Feil ved henting av ansatte til billiste:", e);
+    return Array.isArray(window.ansatte) ? window.ansatte : [];
+  }
+}
+
 
 function hentAnsattForBil(bilId) {
   try {
     const liste = Array.isArray(window.ansatte) ? window.ansatte : [];
     const treff = liste
       .filter(a => String(a.standard_bil_id || "") === String(bilId || ""))
-      .map(a => a.navn || a.epost || "Uten navn");
+      .map(ansattVisningsnavn);
 
     return treff.length ? treff.join(", ") : "Ikke tildelt";
   } catch (e) {
@@ -297,6 +324,8 @@ async function lastBiler() {
   biler = data || [];
   window.biler = biler;
 
+  await lastAnsatteForBiler(firmaId);
+
   fyllAlleBilvalg();
   tegnBiler();
 
@@ -317,7 +346,21 @@ async function hentInnloggetFirmaIdForBiler() {
 
   const user = userData.user;
   const userId = user.id || "";
-  const epost = String(user.email || window.innloggetEpost || localStorage.getItem("handInnloggetEpost") || "").trim().toLowerCase();
+  const epost = String(user.email || "").trim().toLowerCase();
+
+  function settAktivFirmaId(firmaId) {
+    firmaId = String(firmaId || "").trim();
+    if (!firmaId) return "";
+    window.aktivFirmaId = firmaId;
+    window.handFirmaId = firmaId;
+    try {
+      localStorage.setItem("aktivFirmaId", firmaId);
+      localStorage.setItem("handFirmaId", firmaId);
+      localStorage.setItem("firma_id", firmaId);
+      localStorage.setItem("firmaId", firmaId);
+    } catch (e) {}
+    return firmaId;
+  }
 
   async function finnIFirmaBruker(tabell) {
     try {
@@ -361,36 +404,26 @@ async function hentInnloggetFirmaIdForBiler() {
     return "";
   }
 
-  let firmaId =
+  const firmaId =
     await finnIFirmaBruker("hand_firma_bruker") ||
     await finnIFirmaBruker("firma_brukere") ||
     await finnIAnsatt("hand_ansatt") ||
-    await finnIAnsatt("ansatte") ||
     window.aktivFirmaId ||
+    window.handFirmaId ||
     localStorage.getItem("aktivFirmaId") ||
     localStorage.getItem("handFirmaId") ||
     localStorage.getItem("firma_id") ||
     localStorage.getItem("firmaId") ||
     "";
 
-  firmaId = String(firmaId || "").trim();
+  const aktivFirmaId = settAktivFirmaId(firmaId);
 
-  if (!firmaId) {
+  if (!aktivFirmaId) {
     throw new Error("Bruker er ikke koblet til firma. Sjekk hand_firma_bruker eller hand_ansatt.");
   }
 
-  window.aktivFirmaId = firmaId;
-  window.handFirmaId = firmaId;
-  try {
-    localStorage.setItem("aktivFirmaId", firmaId);
-    localStorage.setItem("handFirmaId", firmaId);
-    localStorage.setItem("firma_id", firmaId);
-    localStorage.setItem("firmaId", firmaId);
-  } catch (e) {}
-
-  return firmaId;
+  return aktivFirmaId;
 }
-
 
 async function lagreBil() {
   try {
@@ -573,30 +606,38 @@ function tegnBiler() {
   if (!e) return;
 
   if (!biler.length) {
-    e.innerHTML = "<p>Ingen biler registrert.</p>";
+    e.innerHTML = `
+      <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;">
+        <h3 style="margin-top:0;">Eksisterende biler og tilkoblede brukere</h3>
+        <p>Ingen biler registrert.</p>
+      </div>
+    `;
     return;
   }
 
   e.innerHTML = `
-    <table class="bil-tabell">
-      <thead>
-        <tr><th>Bil</th><th>Regnr</th><th>Ansatt / bruker</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody>
-        ${biler.map(bil => `
-          <tr class="klikkbar-bilrad" onclick="window.apneBilForFylling('${bil.id}')">
-            <td>${bil.navn || bil.name || bil.bilnavn || ""}</td>
-            <td>${bil.regnr || bil.registreringsnummer || ""}</td>
-            <td>${hentAnsattForBil(bil.id)}</td>
-            <td>${bil.aktiv === false ? "Inaktiv" : "Aktiv"}</td>
-            <td>
-              <button type="button" class="secondary" onclick="event.stopPropagation(); redigerBil('${bil.id}')">Endre</button>
-              <button type="button" class="secondary" onclick="event.stopPropagation(); slettBil('${bil.id}')">Slett</button>
-            </td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
+    <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px; overflow-x:auto;">
+      <h3 style="margin-top:0;">Eksisterende biler og tilkoblede brukere</h3>
+      <table class="bil-tabell" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr><th style="text-align:left; padding:6px;">Bil</th><th style="text-align:left; padding:6px;">Regnr</th><th style="text-align:left; padding:6px;">Tilkoblet bruker</th><th style="text-align:left; padding:6px;">Status</th><th style="padding:6px;"></th></tr>
+        </thead>
+        <tbody>
+          ${biler.map(bil => `
+            <tr class="klikkbar-bilrad" onclick="window.apneBilForFylling('${bil.id}')">
+              <td style="padding:6px; border-top:1px solid rgba(255,255,255,.12);">${bil.navn || bil.name || bil.bilnavn || ""}</td>
+              <td style="padding:6px; border-top:1px solid rgba(255,255,255,.12);">${bil.regnr || bil.registreringsnummer || ""}</td>
+              <td style="padding:6px; border-top:1px solid rgba(255,255,255,.12);">${hentAnsattForBil(bil.id)}</td>
+              <td style="padding:6px; border-top:1px solid rgba(255,255,255,.12);">${bil.aktiv === false ? "Inaktiv" : "Aktiv"}</td>
+              <td style="padding:6px; border-top:1px solid rgba(255,255,255,.12); white-space:nowrap;">
+                <button type="button" class="secondary" onclick="event.stopPropagation(); redigerBil('${bil.id}')">Endre</button>
+                <button type="button" class="secondary" onclick="event.stopPropagation(); slettBil('${bil.id}')">Slett</button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1208,26 +1249,9 @@ async function lastBilLager() {
   const liste = bilEl("bilLagerListe");
   if (!window.supabaseClient) return [];
 
-  const firmaId = await hentInnloggetFirmaIdForBiler();
-
-  const { data: firmaBiler } = await supabaseClient
-    .from("hand_bil")
-    .select("id")
-    .eq("firma_id", firmaId);
-
-  const bilIds = (firmaBiler || []).map(b => b.id);
-
-  if (!bilIds.length) {
-    bilLager = [];
-    window.bilLager = [];
-    tegnBilLager();
-    return [];
-  }
-
   const { data, error } = await supabaseClient
     .from("hand_bil_lager")
-    .select("id, bil_id, vare_id, antall, minimum_antall")
-    .in("bil_id", bilIds);
+    .select("id, bil_id, vare_id, antall, minimum_antall");
 
   if (error) {
     bilLager = [];
@@ -1570,56 +1594,23 @@ function sikreImportTilHovedlagerIBunn() {
   }
 }
 
-
-function parseCsvTextBilside(text) {
-  text = String(text || "").replace(/^\uFEFF/, "");
-  const firstLine = (text.split(/\r?\n/).find(l => l.trim()) || "");
-  const delimiter = firstLine.includes(";") ? ";" : ",";
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (inQuotes) {
-      if (ch === '"' && next === '"') { cell += '"'; i++; }
-      else if (ch === '"') inQuotes = false;
-      else cell += ch;
-    } else {
-      if (ch === '"') inQuotes = true;
-      else if (ch === delimiter) { row.push(cell); cell = ""; }
-      else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
-      else if (ch !== "\r") cell += ch;
-    }
-  }
-  row.push(cell);
-  rows.push(row);
-  const cleanRows = rows.filter(r => r.some(c => String(c || "").trim() !== ""));
-  if (!cleanRows.length) return [];
-  const headers = cleanRows.shift().map(h => bilRyddTekst(h));
-  return cleanRows.map(cols => {
-    const obj = {};
-    headers.forEach((h, idx) => { if (h) obj[h] = bilRyddTekst(cols[idx] || ""); });
-    return obj;
-  });
-}
-
 async function lesImportRaderFraBilside(fil) {
+  if (typeof XLSX === "undefined") {
+    throw new Error("XLSX-biblioteket er ikke lastet.");
+  }
+
   const buffer = await fil.arrayBuffer();
   const navn = String(fil.name || "").toLowerCase();
 
+  let workbook;
   if (navn.endsWith(".csv")) {
     let tekst = new TextDecoder("utf-8").decode(buffer);
     if (tekst.includes("�")) tekst = new TextDecoder("windows-1252").decode(buffer);
-    return parseCsvTextBilside(tekst);
+    workbook = XLSX.read(tekst, { type: "string", raw: false });
+  } else {
+    workbook = XLSX.read(buffer, { type: "array", raw: false });
   }
 
-  if (typeof XLSX === "undefined") {
-    throw new Error("XLSX-biblioteket er ikke lastet. CSV kan importeres uten XLSX, men Excel-filer krever XLSX.");
-  }
-
-  const workbook = XLSX.read(buffer, { type: "array", raw: false });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
 }
@@ -1698,23 +1689,17 @@ async function importerVarerTilHovedlagerFraBilside() {
       return;
     }
 
-    const firmaId = await hentInnloggetFirmaIdForBiler();
-    const raderMedFirma = rader.map(function (rad) {
-      return Object.assign({}, rad, { firma_id: firmaId });
-    });
-
-    bilImportMelding("Lagrer " + raderMedFirma.length + " varer til hovedlager...");
+    bilImportMelding("Lagrer " + rader.length + " varer til hovedlager...");
 
     let lagret = 0;
 
-    for (const rad of raderMedFirma) {
+    for (const rad of rader) {
       let eksisterende = null;
 
       if (rad.varenr) {
         const sjekk = await supabaseClient
           .from("hand_vare")
           .select("id")
-          .eq("firma_id", firmaId)
           .eq("varenr", rad.varenr)
           .limit(1);
 
@@ -1899,6 +1884,7 @@ window.sikreImportTilHovedlagerIBunn = sikreImportTilHovedlagerIBunn;
 window.importerVarerTilHovedlagerFraBilside = importerVarerTilHovedlagerFraBilside;
 
 window.hentAnsattForBil = hentAnsattForBil;
+window.lastAnsatteForBiler = lastAnsatteForBiler;
 
 window.nyBilSkjema = nyBilSkjema;
 window.visBilSkjema = visBilSkjema;
@@ -2838,4 +2824,428 @@ window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
     var el = e.target && e.target.closest && e.target.closest('#lagPdfFyllBilTilLagerKnapp');
     if (el) { e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation(); return false; }
   }, true);
+})();
+
+/* RIL ENDELIG BILLISTE FIX 20260701
+   Viser ren liste over biler uansett om hand_bil eller bare bil-lager er lastet.
+   Klikk på bil viser kun varer for valgt bil.
+*/
+(function () {
+  "use strict";
+
+  function el(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+  function bilIdValgt() {
+    return el("bilLagerBilValg")?.value || localStorage.getItem("aktivBilId") || window.aktivBilId || "";
+  }
+  function bilNavnRen(bil) {
+    if (!bil) return "Bil";
+    return bil.navn || bil.name || bil.bilnavn || bil.bil_navn || "Bil";
+  }
+  function bilRegRen(bil) {
+    if (!bil) return "";
+    return bil.regnr || bil.registreringsnummer || bil.reg || "";
+  }
+  function ansattNavnRen(a) {
+    return a?.navn || a?.fullt_navn || a?.name || a?.epost || a?.email || "Uten navn";
+  }
+  function ansattForBilRen(bilId) {
+    const ansatte = Array.isArray(window.ansatte) ? window.ansatte : [];
+    const navn = ansatte
+      .filter(a => String(a.standard_bil_id || "") === String(bilId || ""))
+      .map(ansattNavnRen)
+      .filter(Boolean);
+    return navn.length ? navn.join(", ") : "Ikke tildelt";
+  }
+  function bilTekstRen(bil) {
+    const navn = bilNavnRen(bil);
+    const reg = bilRegRen(bil);
+    return reg ? navn + " - " + reg : navn;
+  }
+
+  function sikreBilListeBoks() {
+    let boks = el("bilListe");
+    if (!boks) {
+      boks = document.createElement("div");
+      boks.id = "bilListe";
+    }
+
+    const side = el("bilerSide") || document.body;
+    const hr = side.querySelector("hr");
+    if (hr && boks.parentNode !== side) {
+      side.insertBefore(boks, hr);
+    } else if (hr && boks.nextElementSibling !== hr) {
+      side.insertBefore(boks, hr);
+    } else if (!boks.parentNode) {
+      const melding = el("bilMelding");
+      if (melding && melding.parentNode) melding.after(boks);
+      else side.prepend(boks);
+    }
+
+    boks.style.display = "block";
+    boks.style.visibility = "visible";
+    boks.hidden = false;
+    return boks;
+  }
+
+  function hentBilerFraAltSomFinnes() {
+    const map = new Map();
+
+    const leggTil = function (bil, idFallback) {
+      if (!bil && !idFallback) return;
+      const id = String(bil?.id || bil?.bil_id || idFallback || "");
+      if (!id) return;
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          navn: bilNavnRen(bil),
+          regnr: bilRegRen(bil),
+          original: bil || {}
+        });
+      } else {
+        const gammel = map.get(id);
+        if ((!gammel.navn || gammel.navn === "Bil") && bilNavnRen(bil)) gammel.navn = bilNavnRen(bil);
+        if (!gammel.regnr && bilRegRen(bil)) gammel.regnr = bilRegRen(bil);
+      }
+    };
+
+    (Array.isArray(window.biler) ? window.biler : []).forEach(b => leggTil(b));
+    try { if (Array.isArray(biler)) biler.forEach(b => leggTil(b)); } catch (_) {}
+
+    const lager = Array.isArray(window.bilLager) ? window.bilLager : (function () { try { return Array.isArray(bilLager) ? bilLager : []; } catch (_) { return []; } })();
+    lager.forEach(rad => {
+      if (rad?.biler) leggTil(rad.biler, rad.bil_id);
+      else if (rad?.bil_id) leggTil({ id: rad.bil_id, navn: rad.bil_navn || "Bil", regnr: rad.bil_regnr || "" }, rad.bil_id);
+    });
+
+    return Array.from(map.values()).sort((a, b) => String(a.navn).localeCompare(String(b.navn), "no"));
+  }
+
+  function tegnRenBillisteEndelig() {
+    const boks = sikreBilListeBoks();
+    const bilerListe = hentBilerFraAltSomFinnes();
+
+    if (!bilerListe.length) {
+      boks.innerHTML = `
+        <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;">
+          <h3 style="margin-top:0;">Eksisterende biler</h3>
+          <p>Ingen biler funnet ennå. Hvis dropdownen har biler, trykk Ctrl+F5.</p>
+        </div>`;
+      return;
+    }
+
+    boks.innerHTML = `
+      <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px; overflow-x:auto;">
+        <h3 style="margin-top:0;">Eksisterende biler</h3>
+        <p class="info">Klikk på en bil for å se varer på den bilen.</p>
+        <table class="bil-tabell" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:6px;">Bil</th>
+              <th style="text-align:left; padding:6px;">Regnr</th>
+              <th style="text-align:left; padding:6px;">Tildelt ansatt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bilerListe.map(bil => {
+              const aktiv = String(bil.id) === String(bilIdValgt());
+              return `<tr class="ril-bil-liste-rad" data-bil-id="${esc(bil.id)}" style="cursor:pointer; ${aktiv ? 'outline:2px solid #22c55e; background:rgba(34,197,94,.12);' : ''}">
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12); font-weight:bold;">${esc(bil.navn || "Bil")}</td>
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12);">${esc(bil.regnr || "")}</td>
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12);">${esc(ansattForBilRen(bil.id))}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function velgBilOgVisVarer(id) {
+    if (!id) return;
+    localStorage.setItem("aktivBilId", String(id));
+    window.aktivBilId = String(id);
+
+    const bil = hentBilerFraAltSomFinnes().find(b => String(b.id) === String(id));
+    if (bil) localStorage.setItem("aktivBilNavn", bilTekstRen(bil));
+
+    ["bilLagerBilValg", "bilValg", "lagerBilValg"].forEach(selectId => {
+      const s = el(selectId);
+      if (!s) return;
+      if (Array.from(s.options || []).some(o => String(o.value) === String(id))) s.value = String(id);
+    });
+
+    tegnRenBillisteEndelig();
+    if (typeof window.tegnBilLager === "function") window.tegnBilLager();
+    if (typeof window.tegnFyllBilListe === "function") window.tegnFyllBilListe();
+
+    const varer = el("bilLagerListe");
+    if (varer) varer.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const gammelTegnBilLager = window.tegnBilLager || (typeof tegnBilLager === "function" ? tegnBilLager : null);
+  function tegnKunValgtBilLager() {
+    const valgt = bilIdValgt();
+    const e = el("bilLagerListe");
+    if (!e) return;
+    if (!valgt) {
+      e.innerHTML = '<p class="info">Klikk på en bil i listen over for å se varer på bilen.</p>';
+      return;
+    }
+    if (typeof gammelTegnBilLager === "function") {
+      gammelTegnBilLager();
+      return;
+    }
+  }
+
+  window.tegnBiler = tegnRenBillisteEndelig;
+  window.rilTegnRenBillisteEndelig = tegnRenBillisteEndelig;
+  window.rilVelgBilOgVisVarer = velgBilOgVisVarer;
+  window.tegnBilLager = tegnKunValgtBilLager;
+  try { tegnBiler = tegnRenBillisteEndelig; } catch (_) {}
+  try { tegnBilLager = tegnKunValgtBilLager; } catch (_) {}
+
+  document.addEventListener("click", function (event) {
+    const rad = event.target && event.target.closest && event.target.closest(".ril-bil-liste-rad");
+    if (!rad) return;
+    event.preventDefault();
+    event.stopPropagation();
+    velgBilOgVisVarer(rad.dataset.bilId);
+  }, true);
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.id === "bilLagerBilValg") {
+      setTimeout(tegnRenBillisteEndelig, 50);
+      setTimeout(tegnKunValgtBilLager, 60);
+    }
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(tegnRenBillisteEndelig, 100);
+    setTimeout(tegnKunValgtBilLager, 150);
+    setTimeout(tegnRenBillisteEndelig, 800);
+    setTimeout(tegnKunValgtBilLager, 900);
+  });
+  window.addEventListener("load", function () {
+    setTimeout(tegnRenBillisteEndelig, 100);
+    setTimeout(tegnKunValgtBilLager, 150);
+    setTimeout(tegnRenBillisteEndelig, 1000);
+    setTimeout(tegnKunValgtBilLager, 1100);
+    setTimeout(tegnRenBillisteEndelig, 2500);
+    setTimeout(tegnKunValgtBilLager, 2600);
+  });
+})();
+
+
+/* RIL FINAL 20260701: Synlig billiste uavhengig av bil-lager/lagerlogg.
+   Viser én rad per bil: Bil, Regnr og Tildelt ansatt. Klikk velger bilen og viser varer for valgt bil.
+*/
+(function () {
+  "use strict";
+
+  function el(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+  function carName(b) { return b?.navn || b?.name || b?.bilnavn || b?.bil_navn || "Bil"; }
+  function carReg(b) { return b?.regnr || b?.registreringsnummer || b?.reg || ""; }
+  function empName(a) { return a?.navn || a?.fullt_navn || a?.name || a?.epost || a?.email || "Uten navn"; }
+
+  function ensureBox() {
+    let box = el("rilSynligBilRegisterListe");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "rilSynligBilRegisterListe";
+    }
+
+    const side = el("bilerSide") || document.body;
+    const bilMelding = el("bilMelding");
+    const gammelBilListe = el("bilListe");
+    const hr = side.querySelector("hr");
+
+    if (gammelBilListe && gammelBilListe.parentNode) {
+      gammelBilListe.replaceWith(box);
+    } else if (hr && hr.parentNode) {
+      hr.parentNode.insertBefore(box, hr);
+    } else if (bilMelding && bilMelding.parentNode) {
+      bilMelding.after(box);
+    } else if (!box.parentNode) {
+      side.prepend(box);
+    }
+
+    box.style.display = "block";
+    box.style.visibility = "visible";
+    box.hidden = false;
+    return box;
+  }
+
+  async function getFirmaIdSafe() {
+    try {
+      if (typeof window.hentInnloggetFirmaIdForBiler === "function") return await window.hentInnloggetFirmaIdForBiler();
+    } catch (_) {}
+    return window.aktivFirmaId || window.handFirmaId || localStorage.getItem("aktivFirmaId") || localStorage.getItem("handFirmaId") || localStorage.getItem("firma_id") || localStorage.getItem("firmaId") || "";
+  }
+
+  function fromSelectCars() {
+    const s = el("bilLagerBilValg") || el("bilValg") || el("lagerBilValg");
+    if (!s) return [];
+    return Array.from(s.options || [])
+      .filter(o => o.value)
+      .map(o => {
+        const txt = (o.textContent || "").trim();
+        const parts = txt.split(" - ");
+        return { id: o.value, navn: parts[0] || txt || "Bil", regnr: parts.slice(1).join(" - ") || "" };
+      });
+  }
+
+  async function loadCarsAndEmployees() {
+    let cars = Array.isArray(window.biler) ? window.biler.slice() : [];
+    let employees = Array.isArray(window.ansatte) ? window.ansatte.slice() : [];
+
+    if (window.supabaseClient) {
+      const firmaId = await getFirmaIdSafe();
+      try {
+        let q = supabaseClient.from("hand_bil").select("id,navn,name,bilnavn,regnr,registreringsnummer,aktiv,firma_id");
+        if (firmaId) q = q.eq("firma_id", firmaId);
+        const r = await q.order("navn", { ascending: true });
+        if (!r.error && Array.isArray(r.data) && r.data.length) cars = r.data;
+      } catch (e) { console.warn("Kunne ikke hente hand_bil til synlig billiste", e); }
+
+      try {
+        let q = supabaseClient.from("hand_ansatt").select("id,navn,fullt_navn,name,epost,email,standard_bil_id,firma_id");
+        if (firmaId) q = q.eq("firma_id", firmaId);
+        const r = await q;
+        if (!r.error && Array.isArray(r.data)) employees = r.data;
+      } catch (e) { console.warn("Kunne ikke hente hand_ansatt til synlig billiste", e); }
+    }
+
+    if (!cars.length) cars = fromSelectCars();
+
+    const map = new Map();
+    cars.forEach(c => {
+      const id = String(c?.id || c?.bil_id || "");
+      if (!id || map.has(id)) return;
+      map.set(id, { id, navn: carName(c), regnr: carReg(c), aktiv: c?.aktiv });
+    });
+    fromSelectCars().forEach(c => {
+      if (!map.has(String(c.id))) map.set(String(c.id), c);
+    });
+
+    return { cars: Array.from(map.values()), employees };
+  }
+
+  function employeeForCar(employees, carId) {
+    const names = (employees || [])
+      .filter(a => String(a.standard_bil_id || "") === String(carId || ""))
+      .map(empName)
+      .filter(Boolean);
+    return names.length ? names.join(", ") : "Ikke tildelt";
+  }
+
+  async function renderVisibleCarList() {
+    const box = ensureBox();
+    box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3><p>Laster biler...</p></div>';
+
+    const { cars, employees } = await loadCarsAndEmployees();
+    const activeId = el("bilLagerBilValg")?.value || localStorage.getItem("aktivBilId") || window.aktivBilId || "";
+
+    if (!cars.length) {
+      box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3><p>Ingen biler funnet. Dropdownen er også tom.</p></div>';
+      return;
+    }
+
+    box.innerHTML = `
+      <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px; overflow-x:auto;">
+        <h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3>
+        <p class="info">Klikk på en bil for å se varer på bilen.</p>
+        <table class="bil-tabell" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:6px;">Bil</th>
+              <th style="text-align:left; padding:6px;">Regnr</th>
+              <th style="text-align:left; padding:6px;">Tildelt ansatt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cars.map(car => {
+              const selected = String(car.id) === String(activeId);
+              return `<tr class="ril-synlig-bilrad" data-bil-id="${esc(car.id)}" style="cursor:pointer;${selected ? 'background:rgba(34,197,94,.14); outline:2px solid rgba(34,197,94,.6);' : ''}">
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12); font-weight:bold;">${esc(car.navn || "Bil")}</td>
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12);">${esc(car.regnr || "")}</td>
+                <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12);">${esc(employeeForCar(employees, car.id))}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function selectCar(carId) {
+    if (!carId) return;
+    localStorage.setItem("aktivBilId", String(carId));
+    window.aktivBilId = String(carId);
+
+    ["bilLagerBilValg", "bilValg", "lagerBilValg"].forEach(id => {
+      const s = el(id);
+      if (s && Array.from(s.options || []).some(o => String(o.value) === String(carId))) {
+        s.value = String(carId);
+        if (s.selectedOptions && s.selectedOptions[0]) localStorage.setItem("aktivBilNavn", s.selectedOptions[0].textContent || "");
+      }
+    });
+
+    if (typeof window.tegnBilLager === "function") { try { window.tegnBilLager(); } catch (e) { console.warn(e); } }
+    if (typeof window.tegnFyllBilListe === "function") { try { window.tegnFyllBilListe(); } catch (e) { console.warn(e); } }
+    renderVisibleCarList();
+  }
+
+  document.addEventListener("click", function (event) {
+    const row = event.target && event.target.closest && event.target.closest(".ril-synlig-bilrad");
+    if (!row) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selectCar(row.dataset.bilId);
+  }, true);
+
+  document.addEventListener("change", function (event) {
+    if (event.target && ["bilLagerBilValg", "bilValg", "lagerBilValg"].includes(event.target.id)) {
+      setTimeout(renderVisibleCarList, 50);
+    }
+  }, true);
+
+  const oldLast = window.lastBilerOgBilLager;
+  if (typeof oldLast === "function" && !oldLast.rilVisibleCarListWrapped) {
+    window.lastBilerOgBilLager = async function () {
+      const result = await oldLast.apply(this, arguments);
+      setTimeout(renderVisibleCarList, 50);
+      setTimeout(renderVisibleCarList, 500);
+      return result;
+    };
+    window.lastBilerOgBilLager.rilVisibleCarListWrapped = true;
+  }
+
+  window.rilRenderVisibleCarList = renderVisibleCarList;
+  window.rilSelectCarFromVisibleList = selectCar;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(renderVisibleCarList, 200);
+    setTimeout(renderVisibleCarList, 1000);
+    setTimeout(renderVisibleCarList, 2500);
+  });
+  window.addEventListener("load", function () {
+    setTimeout(renderVisibleCarList, 200);
+    setTimeout(renderVisibleCarList, 1000);
+    setTimeout(renderVisibleCarList, 2500);
+    setTimeout(renderVisibleCarList, 5000);
+  });
 })();

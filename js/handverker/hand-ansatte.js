@@ -11,9 +11,41 @@ let ansatte = [];
 let trekk = [];
 let trekkTyper = [];
 
+function fyllAnsattStandardBilValg(valgtBilId = "") {
+  const select = document.getElementById("ansattStandardBil");
+  if (!select) return;
+
+  const valgt = String(valgtBilId || select.value || "");
+  const bilListe = Array.isArray(window.biler) ? window.biler : [];
+
+  select.innerHTML = '<option value="">Ingen fast bil</option>';
+
+  bilListe.forEach(bil => {
+    if (!bil || bil.id === undefined || bil.id === null) return;
+    const opt = document.createElement("option");
+    opt.value = String(bil.id);
+    opt.textContent = finnBilNavnForAnsatt(bil.id);
+    select.appendChild(opt);
+  });
+
+  // Hvis ansatt allerede har en bil-id som ikke finnes i listen, vis den likevel
+  // slik at admin ser hva som er lagret og kan bytte til en ny bil.
+  if (valgt && !Array.from(select.options).some(o => String(o.value) === valgt)) {
+    const opt = document.createElement("option");
+    opt.value = valgt;
+    opt.textContent = "Lagret bil-ID " + valgt + " (ikke funnet i billisten)";
+    select.appendChild(opt);
+  }
+
+  select.value = valgt;
+}
+
 async function lastBilerForAnsattVisning() {
   try {
-    if (!window.supabaseClient) return;
+    if (!window.supabaseClient) {
+      fyllAnsattStandardBilValg();
+      return;
+    }
     const firmaId = await hentFirmaIdForAnsattTilgang();
     let q = supabaseClient
       .from("hand_bil")
@@ -25,12 +57,15 @@ async function lastBilerForAnsattVisning() {
     const { data, error } = await q;
     if (error) {
       console.warn("Kunne ikke hente biler for ansattvisning:", error.message || error);
+      fyllAnsattStandardBilValg();
       return;
     }
 
     window.biler = Array.isArray(data) ? data : [];
+    fyllAnsattStandardBilValg();
   } catch (e) {
     console.warn("Kunne ikke hente biler for ansattvisning:", e);
+    fyllAnsattStandardBilValg();
   }
 }
 
@@ -452,7 +487,7 @@ async function endreAnsatt(id) {
   settVerdi("ansattNavn", ansatt.navn);
   settVerdi("ansattEpost", ansatt.epost);
   settVerdi("ansattMobil", ansatt.mobil || ansatt.mobile);
-  settVerdi("ansattStandardBil", ansatt.standard_bil_id || "");
+  fyllAnsattStandardBilValg(ansatt.standard_bil_id || ansatt.bil_id || "");
   settVerdi("ansattPersonnr", ansatt.personnr || ansatt.fodselsnr);
   settVerdi("ansattKontonr", ansatt.kontonr);
   settVerdi("ansattRolle", ansatt.rolle);
@@ -480,6 +515,48 @@ async function endreAnsatt(id) {
 
   settAnsattMelding("Redigerer ansatt. Trykk Lagre bruker / ansatt når du er ferdig.");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+
+// RIL FIX 20260701: Sperre mot dobbel bil-tildeling skal ligge på ansatt-lagring,
+// ikke på hand_bil. Dette lar admin opprette nye biler, men hindrer at samme bil
+// settes som standard/tildelt bil på to forskjellige ansatte.
+async function sjekkAtBilIkkeErTildeltAnnenAnsatt(valgtBilId, gjeldendeAnsattId) {
+  valgtBilId = String(valgtBilId || "").trim();
+  gjeldendeAnsattId = String(gjeldendeAnsattId || "").trim();
+  if (!valgtBilId || !window.supabaseClient) return null;
+
+  const aktivFirmaId = await hentFirmaIdForAnsattTilgang().catch(() => "");
+
+  async function sok(kolonne) {
+    let q = supabaseClient
+      .from("hand_ansatt")
+      .select("id, navn, epost, email, standard_bil_id, bil_id")
+      .eq(kolonne, valgtBilId)
+      .limit(5);
+
+    if (aktivFirmaId) q = q.eq("firma_id", aktivFirmaId);
+
+    const res = await q;
+    if (res.error) {
+      // Eldre databaser kan mangle bil_id eller standard_bil_id. Da prøver vi bare neste felt.
+      console.warn("Kunne ikke sjekke tildelt bil via " + kolonne + ":", res.error.message || res.error);
+      return [];
+    }
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  const treff = [];
+  for (const kolonne of ["standard_bil_id", "bil_id"]) {
+    const rader = await sok(kolonne);
+    rader.forEach(r => {
+      if (String(r.id || "") !== gjeldendeAnsattId && !treff.some(t => String(t.id) === String(r.id))) {
+        treff.push(r);
+      }
+    });
+  }
+
+  return treff.length ? treff[0] : null;
 }
 
 let lagrerAnsatt = false;
@@ -527,6 +604,16 @@ async function lagreAnsatt() {
 
     if (!ansatt.navn || !ansatt.epost) {
       settAnsattMelding("Navn og e-post må fylles ut.");
+      return;
+    }
+
+    const valgtStandardBilIdForSjekk = (document.getElementById("ansattStandardBil")?.value || "").trim();
+    const bilTildeltAnnen = await sjekkAtBilIkkeErTildeltAnnenAnsatt(valgtStandardBilIdForSjekk, id);
+    if (bilTildeltAnnen) {
+      const navn = bilTildeltAnnen.navn || bilTildeltAnnen.epost || bilTildeltAnnen.email || "en annen ansatt";
+      const melding = "Denne bilen er allerede tildelt " + navn + ". Velg en annen bil eller fjern bilen fra den ansatte først.";
+      settAnsattMelding(melding);
+      alert(melding);
       return;
     }
 
@@ -1051,6 +1138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (beregnKnapp) beregnKnapp.onclick = beregnProvisjonsgrunnlagForAnsatt;
 
   await lastTrekkTyper();
+  await lastBilerForAnsattVisning();
 });
 
 window.ansatte = ansatte;
@@ -1060,6 +1148,8 @@ window.trekkTyper = trekkTyper;
 window.lastAnsatte = lastAnsatte;
 window.visAnsatte = visAnsatte;
 window.tegnAnsatte = visAnsatte;
+window.lastBilerForAnsattVisning = lastBilerForAnsattVisning;
+window.fyllAnsattStandardBilValg = fyllAnsattStandardBilValg;
 
 window.endreAnsatt = endreAnsatt;
 window.redigerAnsatt = endreAnsatt;

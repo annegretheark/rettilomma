@@ -104,7 +104,7 @@
     var c = client();
     if(!c || !email) return false;
     try{
-      var r = await c.from('system_adminer').select('id,epost,aktiv').ilike('epost', email).eq('aktiv', true).limit(1);
+      var r = await c.from('hand_sysadm').select('id,epost,aktiv').ilike('epost', email).eq('aktiv', true).limit(1);
       return !r.error && Array.isArray(r.data) && r.data.length > 0;
     }catch(e){ return false; }
   }

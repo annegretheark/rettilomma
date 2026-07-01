@@ -287,6 +287,76 @@ console.log("hand-lager-bestilling.js PROD 20260621 lastet");
       return;
     }
 
+    const grupper = new Map();
+    aktive.forEach(r => {
+      const nokkel = [
+        r.bestilt_av_epost || r.bestilt_av_navn || "",
+        r.bil_id || r.bil_navn || ""
+      ].join("|");
+
+      if (!grupper.has(nokkel)) {
+        grupper.set(nokkel, {
+          id: "g" + grupper.size,
+          navn: r.bestilt_av_navn || r.bestilt_av_epost || "Bruker",
+          bil: r.bil_navn || "",
+          rader: []
+        });
+      }
+      grupper.get(nokkel).rader.push(r);
+    });
+
+    let body = "";
+
+    Array.from(grupper.values()).forEach(gruppe => {
+      const totalBestilt = gruppe.rader.reduce((sum, r) => sum + Number(r.antall_bestilt || 0), 0);
+      const totalLevert = gruppe.rader.reduce((sum, r) => sum + Number(r.antall_levert || 0), 0);
+      const totalRest = Math.max(0, totalBestilt - totalLevert);
+
+      body += `
+        <tr class="lagerbestilling-brukergruppe" data-group="${esc(gruppe.id)}">
+          <td colspan="9" style="background:#172033;padding:12px;border-top:2px solid #334155;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div>
+                <strong>${esc(gruppe.navn)}</strong>
+                ${gruppe.bil ? `<span style="margin-left:12px;">${esc(gruppe.bil)}</span>` : ""}
+                <span style="margin-left:12px;">Rest totalt: ${esc(totalRest)}</span>
+              </div>
+              <button
+                type="button"
+                class="lagerbestilling-godkjenn-bruker"
+                data-group="${esc(gruppe.id)}"
+                style="background:#16a34a;color:white;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;">
+                Godkjenn hele brukeren
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+
+      body += gruppe.rader.map(r => {
+        const bestilt = Number(r.antall_bestilt || 0);
+        const levert = Number(r.antall_levert || 0);
+        const rest = Math.max(0, bestilt - levert);
+        const forslag = rest;
+
+        return `
+          <tr data-bestilling-id="${esc(r.id)}" data-rest="${esc(rest)}" data-group="${esc(gruppe.id)}">
+            <td><input class="lagerbestilling-lever-check" type="checkbox" data-id="${esc(r.id)}" data-group="${esc(gruppe.id)}"></td>
+            <td>${esc(r.bestilt_av_navn || r.bestilt_av_epost || "")}</td>
+            <td>${esc(r.bil_navn || "")}</td>
+            <td>${esc((r.varenr ? r.varenr + " - " : "") + (r.varenavn || ""))}</td>
+            <td>${esc(bestilt)}</td>
+            <td>${esc(levert)}</td>
+            <td>
+              <input class="lagerbestilling-lever-antall" data-id="${esc(r.id)}" data-group="${esc(gruppe.id)}" type="number" min="0" step="1" value="${esc(forslag)}" style="width:80px;">
+            </td>
+            <td class="lagerbestilling-mangler-etter">${esc(Math.max(0, rest - forslag))}</td>
+            <td>${esc(statusTekst(r.status))}</td>
+          </tr>
+        `;
+      }).join("");
+    });
+
     c.innerHTML = `
       <table class="bil-tabell">
         <thead>
@@ -302,29 +372,7 @@ console.log("hand-lager-bestilling.js PROD 20260621 lastet");
             <th>Status</th>
           </tr>
         </thead>
-        <tbody>
-          ${aktive.map(r => {
-            const bestilt = Number(r.antall_bestilt || 0);
-            const levert = Number(r.antall_levert || 0);
-            const rest = Math.max(0, bestilt - levert);
-            const forslag = rest;
-            return `
-              <tr data-bestilling-id="${esc(r.id)}" data-rest="${esc(rest)}">
-                <td><input class="lagerbestilling-lever-check" type="checkbox" data-id="${esc(r.id)}"></td>
-                <td>${esc(r.bestilt_av_navn || r.bestilt_av_epost || "")}</td>
-                <td>${esc(r.bil_navn || "")}</td>
-                <td>${esc((r.varenr ? r.varenr + " - " : "") + (r.varenavn || ""))}</td>
-                <td>${esc(bestilt)}</td>
-                <td>${esc(levert)}</td>
-                <td>
-                  <input class="lagerbestilling-lever-antall" data-id="${esc(r.id)}" type="number" min="0" step="1" value="${esc(forslag)}" style="width:80px;">
-                </td>
-                <td class="lagerbestilling-mangler-etter">${esc(Math.max(0, rest - forslag))}</td>
-                <td>${esc(statusTekst(r.status))}</td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
+        <tbody>${body}</tbody>
       </table>
     `;
 
@@ -335,6 +383,30 @@ console.log("hand-lager-bestilling.js PROD 20260621 lastet");
         const levert = Math.max(0, Math.min(rest, tall(this.value)));
         const cell = tr?.querySelector(".lagerbestilling-mangler-etter");
         if (cell) cell.textContent = String(Math.max(0, rest - levert));
+      });
+    });
+
+    c.querySelectorAll(".lagerbestilling-godkjenn-bruker").forEach(knapp => {
+      knapp.addEventListener("click", async function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const gruppeId = this.dataset.group;
+        if (!gruppeId) return;
+
+        c.querySelectorAll('.lagerbestilling-lever-check[data-group="' + CSS.escape(gruppeId) + '"]').forEach(chk => {
+          chk.checked = true;
+        });
+
+        c.querySelectorAll('tr[data-group="' + CSS.escape(gruppeId) + '"]').forEach(tr => {
+          const rest = Number(tr.dataset.rest || 0);
+          const input = tr.querySelector(".lagerbestilling-lever-antall");
+          const mangler = tr.querySelector(".lagerbestilling-mangler-etter");
+          if (input) input.value = String(rest);
+          if (mangler) mangler.textContent = "0";
+        });
+
+        await utførAdminLevering();
       });
     });
 

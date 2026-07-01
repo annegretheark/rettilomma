@@ -178,13 +178,39 @@ function visAltForAdmin() {
 }
 
 
-function gaaTilModulvalg() {
-  localStorage.removeItem("rettilommaValgtModul");
-  window.location.href = "../index.html";
+function gaaTilModulvalg(event) {
+  if (event && typeof event.preventDefault === "function") event.preventDefault();
+  if (typeof window.handAapneSysadmPanel === "function") return window.handAapneSysadmPanel(event);
+  localStorage.setItem("rilSysadminModus", "ja");
+  const panel = document.getElementById("sysadminPanelSide");
+  if (panel) {
+    if (typeof window.skjulAlleSider === "function") window.skjulAlleSider();
+    panel.classList.remove("skjult", "hidden", "modul-skjult");
+    panel.style.display = "";
+    return false;
+  }
+  return false;
+}
+
+function erInnloggetSystemadmin() {
+  const rolle = String(
+    window.innloggetRolle ||
+    localStorage.getItem("handInnloggetRolle") ||
+    ""
+  ).toLowerCase();
+
+  return (
+    window.erSystemadmin === true ||
+    localStorage.getItem("rilSysadminModus") === "ja" ||
+    window.handErGlobalSysadm === true ||
+    rolle === "sysadm" ||
+    rolle === "sysadmin" ||
+    rolle === "systemadmin"
+  );
 }
 
 function visModulvalgKnappHvisSystemadmin(email) {
-  const erSystemadmin = false;
+  const erSystemadmin = erInnloggetSystemadmin();
   let knapp = document.getElementById("velgModulKnapp");
 
   if (!knapp) {
@@ -192,16 +218,36 @@ function visModulvalgKnappHvisSystemadmin(email) {
     knapp = document.createElement("button");
     knapp.id = "velgModulKnapp";
     knapp.type = "button";
-    knapp.className = "secondary";
-    knapp.textContent = "Velg modul";
-    knapp.onclick = gaaTilModulvalg;
+    knapp.className = "secondary systemadmin-only";
+    knapp.textContent = "SysAdm";
+    knapp.onclick = function(event){ return gaaTilModulvalg(event); };
 
     if (loggUtKnapp && loggUtKnapp.parentNode) {
       loggUtKnapp.parentNode.insertBefore(knapp, loggUtKnapp);
+    } else if (document.body) {
+      document.body.appendChild(knapp);
     }
   }
 
-  knapp.style.display = erSystemadmin ? "" : "none";
+  if (erSystemadmin) {
+    knapp.hidden = false;
+    knapp.disabled = false;
+    knapp.classList.remove("hidden", "skjult", "modul-skjult");
+    knapp.style.display = "";
+    knapp.style.visibility = "";
+    knapp.removeAttribute("aria-hidden");
+  } else {
+    knapp.hidden = true;
+    knapp.disabled = true;
+    knapp.classList.add("hidden", "skjult");
+    knapp.style.display = "none";
+    knapp.setAttribute("aria-hidden", "true");
+  }
+}
+
+function oppdaterSysadmKnapp(email) {
+  visModulvalgKnappHvisSystemadmin(email);
+  if (typeof window.oppdaterAdminVisning === "function") window.oppdaterAdminVisning();
 }
 
 async function loggInn() {
@@ -234,15 +280,18 @@ async function loggInn() {
   window.erSystemadmin = false;
   var handErSystemadminFraTabell = false;
   try {
-    const sr = await supabaseClient.from("system_adminer").select("id").ilike("epost", email).eq("aktiv", true).limit(1);
+    const sr = await supabaseClient.from("hand_sysadm").select("id").ilike("epost", email).eq("aktiv", true).limit(1);
     if (!sr.error && sr.data && sr.data.length) handErSystemadminFraTabell = true;
   } catch (_) {}
-  if (!handErSystemadminFraTabell) localStorage.removeItem("rilSysadminModus");
+  if (!handErSystemadminFraTabell && email === "greknuts@online.no") handErSystemadminFraTabell = true;
+  if (!handErSystemadminFraTabell) {
+    window.erSystemadmin = false;
+    localStorage.removeItem("rilSysadminModus");
+  }
     localStorage.setItem("handInnloggetEpost", email);
     if (typeof window.settInnloggetBrukerVisning === "function") window.settInnloggetBrukerVisning();
   localStorage.setItem("rettilommaSistEpost", email);
   localStorage.setItem("rettilommaValgtModul", "handverker");
-  visModulvalgKnappHvisSystemadmin(email);
 
   innloggetAnsattId = "";
   window.innloggetAnsattId = "";
@@ -376,12 +425,13 @@ async function loggInn() {
   window.innloggetRolle = rolle;
   const harAdminRolle =
     rolle === "admin" ||
+    rolle === "administrator" ||
+    rolle === "eier" ||
+    rolle === "owner" ||
     rolle === "sysadm" ||
     rolle === "systemadmin" ||
     rolle === "sysadmin" ||
     erFirmaEierAdmin ||
-    !!firmaBrukerData ||
-    email === "greknuts@online.no" ||
     false;
 
   erAdmin = harAdminRolle;
@@ -425,8 +475,9 @@ async function loggInn() {
     localStorage.setItem("rilAdminModus", "ja");
     localStorage.setItem("rilSysadminModus", "ja");
     localStorage.setItem("handInnloggetRolle", "sysadm");
-    localStorage.setItem("handInnloggetRolle", "sysadmin");
   }
+
+  oppdaterSysadmKnapp(email);
 
   const maaByttePassord =
     ansattData &&
@@ -448,6 +499,9 @@ async function loggInn() {
   }
 
   await visApp();
+
+  // RIL FIX: SysAdm-knappen legges direkte på body etter at appen er vist.
+  oppdaterSysadmKnapp(email);
 
   // RIL FIX: sett tildelt/standard bil ETTER at appen/timersiden er bygget.
   // Beholder riktig innlogget hand_ansatt for jobber, men lar auth styre bilen.
@@ -475,6 +529,8 @@ async function loggInn() {
       visTimerSide();
     }
   }
+
+  oppdaterSysadmKnapp(email);
 }
 
 function handAppBaseUrl() {
@@ -711,6 +767,9 @@ window.sendMagicLink = sendMagicLink;
 window.magicLink = sendMagicLink;
 window.lagreNyttPassord = lagreNyttPassord;
 window.gaaTilModulvalg = gaaTilModulvalg;
+window.erInnloggetSystemadmin = erInnloggetSystemadmin;
+window.visModulvalgKnappHvisSystemadmin = visModulvalgKnappHvisSystemadmin;
+window.oppdaterSysadmKnapp = oppdaterSysadmKnapp;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -741,3 +800,55 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 window.settAktivBil = settAktivBil;
 window.velgAktivBilVedInnlogging = velgAktivBilVedInnlogging;
+
+
+/* HAND SYSADM 2.2 AUTH OVERRIDE
+   SysAdm kommer kun fra public.hand_sysadm. Firma-admin er hand_firma_bruker for eget firma.
+*/
+(function(){
+  "use strict";
+  function norm(v){ return String(v || "").trim().toLowerCase(); }
+  async function erHandSysadm(email){
+    email = norm(email || window.innloggetEpost || localStorage.getItem("handInnloggetEpost") || localStorage.getItem("innloggetEpost") || "");
+    if (!email) return false;
+    try {
+      if (typeof window.handErGlobalSysadmFraTabell === "function") return await window.handErGlobalSysadmFraTabell(email);
+      if (window.supabaseClient) {
+        const r = await window.supabaseClient.from("hand_sysadm").select("id").ilike("epost", email).eq("aktiv", true).limit(1);
+        if (!r.error && r.data && r.data.length) return true;
+      }
+    } catch(e) { console.warn("hand_sysadm auth-sjekk feilet:", e); }
+    return email === "greknuts@online.no";
+  }
+  window.handAktiverSysadmForEpost = async function(email){
+    const ok = await erHandSysadm(email);
+    if (!ok) return false;
+    window.erSystemadmin = true;
+    window.erAdmin = true;
+    window.handErGlobalSysadm = true;
+    window.innloggetRolle = "sysadm";
+    try {
+      localStorage.setItem("rilSysadminModus", "ja");
+      localStorage.setItem("rilAdminModus", "ja");
+      localStorage.setItem("handInnloggetRolle", "sysadm");
+    } catch(e) {}
+    document.documentElement.classList.add("ril-auth-ready","ril-admin-ready","ril-verified-sysadm");
+    if (typeof window.handSikreSysadmKnapp === "function") window.handSikreSysadmKnapp();
+    if (typeof window.oppdaterSysadmKnapp === "function") window.oppdaterSysadmKnapp(email);
+    return true;
+  };
+  const gammelOppdater = window.oppdaterSysadmKnapp;
+  window.oppdaterSysadmKnapp = function(email){
+    if (window.erSystemadmin === true || localStorage.getItem("rilSysadminModus") === "ja") {
+      if (typeof window.handSikreSysadmKnapp === "function") window.handSikreSysadmKnapp();
+      return;
+    }
+    if (typeof gammelOppdater === "function") return gammelOppdater(email);
+  };
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(function(){ window.handAktiverSysadmForEpost(localStorage.getItem("handInnloggetEpost") || window.innloggetEpost || ""); }, 100);
+  });
+  window.addEventListener("load", function(){
+    setTimeout(function(){ window.handAktiverSysadmForEpost(localStorage.getItem("handInnloggetEpost") || window.innloggetEpost || ""); }, 300);
+  });
+})();

@@ -122,7 +122,7 @@
     var active = groups((rows||[]).filter(activeForAdmin));
     // Lukkede/godkjente bestillinger skal ikke vises i adminlisten.
     var done = [];
-    if (msg) msg.textContent = 'Admin mottar bestillinger fra ansatte her. Godkjenn én gang og send bekreftelse/rest tilbake til ansatt. Ingen PDF lages.';
+    if (msg) msg.textContent = 'Admin mottar bestillinger fra ansatte her. Godkjenn samlet per bruker og send bekreftelse/rest tilbake til ansatt. Ingen PDF lages.';
     var html = '';
     if (!active.length) html += '<div class="info" style="padding:12px;border:1px solid #334155;border-radius:10px;margin-bottom:12px">Ingen bestillinger</div>';
     active.forEach(function(lines){
@@ -135,7 +135,11 @@
         html += '<div class="ril-line" data-id="'+esc(r.id)+'" data-old-levert="'+n(r.levert)+'" data-bil="'+esc(r.bil_id||'')+'" data-vare="'+esc(r.vare_id||'')+'" data-max="'+best+'" style="display:grid;grid-template-columns:minmax(220px,1fr) 80px 120px 90px;gap:10px;align-items:center;border-bottom:1px solid #273244;padding:8px 0">'+
           '<div style="font-weight:700;overflow-wrap:anywhere">'+esc(vare(r))+'</div><div style="text-align:right">'+best+'</div><input class="ril-approved" type="number" min="0" max="'+best+'" value="'+best+'" style="padding:8px;border-radius:8px"><div class="ril-rest" style="text-align:right;font-weight:700"></div></div>';
       });
-      html += '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px;align-items:center"><span class="ril-sum"></span><button class="ril-approve" type="button" style="background:#2563eb;color:white;border:0;border-radius:10px;padding:10px 14px">Godkjenn og send rest/bekreftelse</button></div></div></details>';
+      html += '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">'+
+        '<span class="ril-sum"></span>'+
+        '<button class="ril-approve-user" type="button" style="background:#16a34a;color:white;border:0;border-radius:10px;padding:10px 14px">Godkjenn hele brukeren</button>'+
+        '<button class="ril-approve" type="button" style="background:#2563eb;color:white;border:0;border-radius:10px;padding:10px 14px">Godkjenn med rest</button>'+
+        '</div></div></details>';
     });
     // Ikke vis lukkede/godkjente lister her. De skal være borte etter godkjenning/fylling.
     html += '';
@@ -156,24 +160,79 @@
     var res = await c.from('hand_bil_bestilling').update(payload).eq('id', id);
     if (res.error) throw res.error;
   }
+  function linjePayloadFraInput(line){
+    var max=n(line.dataset.max);
+    var oldLevert=n(line.dataset.oldLevert);
+    var inp=line.querySelector('.ril-approved');
+    var god=Math.max(0,Math.min(max,n(inp&&inp.value)));
+    var rest=Math.max(0,max-god);
+    var nyLevert=oldLevert+god;
+    return {
+      id: line.dataset.id,
+      payload: {
+        levert: nyLevert,
+        rest: rest,
+        status: rest > 0 ? 'rest_hos_admin' : 'admin_besvart',
+        admin_svar_sendt: true,
+        admin_svar_tid: new Date().toISOString(),
+        godkjent_dato: new Date().toISOString(),
+        admin_godkjent: true
+      }
+    };
+  }
+
+  async function godkjennOrder(order, knapp, tekst){
+    if(knapp.dataset.busy==='1') return;
+    knapp.dataset.busy='1';
+    knapp.disabled=true;
+    var msg=$('rilAdminOrdersMsg');
+    if(msg) msg.textContent=tekst || 'Sender bekreftelse/rest til ansatt...';
+    try{
+      var lines=Array.from(order.querySelectorAll('.ril-line'));
+      for(var i=0;i<lines.length;i++){
+        var oppdatering=linjePayloadFraInput(lines[i]);
+        await updateLine(oppdatering.id, oppdatering.payload);
+      }
+      if(msg) msg.textContent='Bestillingen er godkjent for brukeren. Eventuell rest er sendt samlet tilbake til ansatt.';
+      await refreshOrders();
+    }catch(err){
+      knapp.dataset.busy='0';
+      knapp.disabled=false;
+      if(msg) msg.textContent='Kunne ikke godkjenne: '+(err.message||err);
+    }
+  }
+
   function bindOrderActions(root){
-    root.querySelectorAll('.ril-order').forEach(function(o){ o.querySelectorAll('.ril-approved').forEach(function(i){ i.addEventListener('input', function(){ recalc(o); }); }); recalc(o); });
-    root.querySelectorAll('.ril-approve').forEach(function(btn){ btn.addEventListener('click', async function(e){
-      e.preventDefault(); e.stopPropagation();
-      if(btn.dataset.busy==='1') return;
-      btn.dataset.busy='1'; btn.disabled=true;
-      var msg=$('rilAdminOrdersMsg'); if(msg) msg.textContent='Sender bekreftelse/rest til ansatt...';
-      try{
+    root.querySelectorAll('.ril-order').forEach(function(o){
+      o.querySelectorAll('.ril-approved').forEach(function(i){
+        i.addEventListener('input', function(){ recalc(o); });
+      });
+      recalc(o);
+    });
+
+    root.querySelectorAll('.ril-approve-user').forEach(function(btn){
+      btn.addEventListener('click', async function(e){
+        e.preventDefault(); e.stopPropagation();
         var order=btn.closest('.ril-order');
-        var lines=Array.from(order.querySelectorAll('.ril-line'));
-        for(var i=0;i<lines.length;i++){
-          var line=lines[i]; var max=n(line.dataset.max); var oldLevert=n(line.dataset.oldLevert); var inp=line.querySelector('.ril-approved'); var god=Math.max(0,Math.min(max,n(inp&&inp.value))); var rest=Math.max(0,max-god); var nyLevert=oldLevert+god;
-          await updateLine(line.dataset.id, { levert: nyLevert, rest: rest, status: rest > 0 ? 'rest_hos_admin' : 'admin_besvart', admin_svar_sendt: true, admin_svar_tid: new Date().toISOString(), godkjent_dato: new Date().toISOString(), admin_godkjent: true });
-        }
-        if(msg) msg.textContent='Bekreftelse/rest sendt til ansatt. Listen er låst og flyttet til Godkjente/besvarte lister.';
-        await refreshOrders();
-      }catch(err){ btn.dataset.busy='0'; btn.disabled=false; if(msg) msg.textContent='Kunne ikke godkjenne: '+(err.message||err); }
-    }); });
+        if(!order) return;
+        // Godkjenn hele brukeren i ett trykk: alle linjer settes til maks, rest blir 0.
+        order.querySelectorAll('.ril-line').forEach(function(line){
+          var inp=line.querySelector('.ril-approved');
+          if(inp) inp.value = n(line.dataset.max);
+        });
+        recalc(order);
+        await godkjennOrder(order, btn, 'Godkjenner hele bestillingen for brukeren...');
+      });
+    });
+
+    root.querySelectorAll('.ril-approve').forEach(function(btn){
+      btn.addEventListener('click', async function(e){
+        e.preventDefault(); e.stopPropagation();
+        var order=btn.closest('.ril-order');
+        if(!order) return;
+        await godkjennOrder(order, btn, 'Sender bekreftelse/rest til ansatt...');
+      });
+    });
   }
   async function refreshOrders(){
     showOrdersShell();

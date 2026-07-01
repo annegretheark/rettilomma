@@ -185,12 +185,19 @@
     $('adminReloadBtn')?.addEventListener('click', loadAdminData);
     $('adminSwitchFirmaBtn')?.addEventListener('click', adminSwitchFirma);
     $('adminCreateFirmaBtn')?.addEventListener('click', adminCreateFirma);
+    $('adminClearFirmaBtn')?.addEventListener('click', clearAdminFirmaForm);
+    $('adminFirmaLogoFile')?.addEventListener('change', previewAdminFirmaLogo);
     $('adminSaveProfileBtn')?.addEventListener('click', adminSaveProfile);
     $('adminBackupFirmaBtn')?.addEventListener('click', adminRunFirmaBackup);
     $('adminBackupSystemBtn')?.addEventListener('click', adminRunSystemBackup);
     $('adminBackupReloadBtn')?.addEventListener('click', loadBackupLogg);
     $('adminRestoreReloadBtn')?.addEventListener('click', loadBackupLogg);
     $('adminRestoreBackupBtn')?.addEventListener('click', adminRestoreBackup);
+    $('appLagFakturaBtn')?.addEventListener('click', lagAppFaktura);
+    $('appOppdaterFakturaBtn')?.addEventListener('click', renderAppFakturaer);
+    $('appLagreFakturaDesignBtn')?.addEventListener('click', saveAppFakturaSettings);
+    $('appFjernFakturaLogoBtn')?.addEventListener('click', clearAppFakturaLogo);
+    $('appFakturaLogoFile')?.addEventListener('change', readAppFakturaLogo);
     $('firmaBackupBtn')?.addEventListener('click', runFirmaBackup);
     $('firmaBackupReloadBtn')?.addEventListener('click', loadFirmaBackupLogg);
     $('firmaRestoreReloadBtn')?.addEventListener('click', loadFirmaBackupLogg);
@@ -252,6 +259,13 @@
     app.profile = profile;
     app.role = profile?.rolle || 'hovslager';
     app.isSysadm = app.role === 'sysadm';
+    if(app.role === 'deaktivert'){
+      showLogin(false);
+      const card=$('appCard');
+      if(card) card.innerHTML = '<section class="card"><h2>Tilgang deaktivert</h2><p>Abonnementet er ikke betalt. Ta kontakt for å aktivere kontoen igjen.</p><button id="logoutBtnBlocked" class="danger">Logg ut</button></section>';
+      $('logoutBtnBlocked')?.addEventListener('click', logout);
+      throw new Error('Konto deaktivert');
+    }
 
     let firma = null;
     if(profile?.firma_id){
@@ -270,7 +284,7 @@
       firma = r.data || null;
     }
     if(!firma){
-      const payload = { navn:'Hovslager', epost:email, auth_user_id:app.user.id };
+      const payload = { navn:standardFirmaNavnForEpost(email), epost:email, auth_user_id:app.user.id };
       const r = await app.sb.from('hov_firma').insert(payload).select('*').single();
       if(r.error){ msg('dashMsg','Kunne ikke opprette firma: '+r.error.message,'err'); return; }
       firma = r.data;
@@ -313,7 +327,7 @@
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
     if(id==='priser') renderPriser();
-    if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','Adminpanel er bare for sysadm.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); }
+    if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
 
   async function loadAll(){
@@ -344,9 +358,31 @@
   }
 
 
+
+  function standardFirmaNavnForEpost(email){
+    const e=String(email||'').trim().toLowerCase();
+    if(e==='salg@rettilomma.com') return 'Hovslager123';
+    if(e==='greknuts@online.no') return 'Hovslager';
+    return 'Hovslager';
+  }
+
+  async function rettStandardFirmaNavn(){
+    if(!app.sb) return;
+    const regler = [
+      { epost:'salg@rettilomma.com', navn:'Hovslager123' },
+      { epost:'greknuts@online.no', navn:'Hovslager' }
+    ];
+    for(const r of regler){
+      try{
+        await app.sb.from('hov_firma').update({navn:r.navn}).ilike('epost', r.epost);
+      }catch(e){ console.warn('Kunne ikke oppdatere firmanavn for '+r.epost, e); }
+    }
+  }
+
   async function loadAdminData(){
     if(!app.isSysadm){ msg('adminMsg','Du er ikke sysadm.','err'); return; }
     msg('adminMsg','Laster adminliste...');
+    await rettStandardFirmaNavn();
     const [firmaRes, profRes] = await Promise.all([
       app.sb.from('hov_firma').select('*').order('navn',{ascending:true}),
       app.sb.from('hov_profiles').select('*').order('created_at',{ascending:false})
@@ -363,9 +399,176 @@
     const firmaer = app.data.adminFirmaer || [];
     const profiler = app.data.adminProfiler || [];
     const opts = '<option value="">Velg firma</option>' + firmaer.map(f=>`<option value="${esc(f.id)}">${esc(f.navn || f.epost || f.id)}</option>`).join('');
-    ['adminActiveFirma','adminProfileFirma','adminBackupFirma'].forEach(id=>{ const el=$(id); if(el){ const old=el.value; el.innerHTML=opts; el.value = old || ((id==='adminActiveFirma' || id==='adminBackupFirma') ? app.firmaId : ''); }});
-    $('adminFirmaList').innerHTML = table(['Firma','E-post','Telefon','ID'], firmaer.map(f=>`<tr><td>${esc(f.navn||'')}</td><td>${esc(f.epost||'')}</td><td>${esc(f.telefon||'')}</td><td><code>${esc(f.id)}</code></td></tr>`));
+    ['adminActiveFirma','adminProfileFirma','adminUserFirma','adminBackupFirma','appFakturaFirma'].forEach(id=>{ const el=$(id); if(el){ const old=el.value; el.innerHTML=opts; el.value = old || ((id==='adminActiveFirma' || id==='adminBackupFirma') ? app.firmaId : ''); }});
+
+    const firmaRows = firmaer.map(f=>`<tr>
+      <td><strong>${esc(f.navn||'Uten navn')}</strong>${String(f.id)===String(app.firmaId)?'<br><span class="pill">Aktivt firma</span>':''}</td>
+      <td>${esc(f.epost||'')}</td>
+      <td>${esc(f.telefon||'')}</td>
+      <td>${esc(f.orgnr || f.org_nr || f.bedriftsnr || '')}</td>
+      <td><code>${esc(f.id)}</code></td>
+      <td class="admin-firma-actions"><button type="button" class="small-btn secondary" data-admin-use-firma="${esc(f.id)}">Åpne</button><button type="button" class="small-btn" data-admin-edit-firma="${esc(f.id)}">Rediger</button><button type="button" class="small-btn secondary" data-admin-user-firma="${esc(f.id)}">Lag bruker</button><button type="button" class="small-btn danger" data-admin-delete-firma="${esc(f.id)}">Slett</button></td>
+    </tr>`);
+    const firmaList=$('adminFirmaList');
+    if(firmaList){
+      firmaList.innerHTML = `<div class="msg">Antall lagrede firmaer vist: ${firmaer.length}. Hvis du forventer flere, må de finnes i Supabase-tabellen <code>hov_firma</code> og SysAdm-brukeren må ha tilgang via RLS.</div>` + table(['Firma','E-post','Telefon','Org.nr','ID','Handling'], firmaRows);
+      firmaList.querySelectorAll('[data-admin-use-firma]').forEach(btn=>btn.addEventListener('click', async ()=>{
+        setVal('adminActiveFirma', btn.dataset.adminUseFirma);
+        await adminSwitchFirma();
+      }));
+      firmaList.querySelectorAll('[data-admin-edit-firma]').forEach(btn=>btn.addEventListener('click', ()=>{
+        const f=(app.data.adminFirmaer||[]).find(x=>String(x.id)===String(btn.dataset.adminEditFirma));
+        if(!f){ msg('adminMsg','Fant ikke firmaet som skal redigeres.','err'); return; }
+        openAdminFirmaEditDialog(f);
+      }));
+      firmaList.querySelectorAll('[data-admin-user-firma]').forEach(btn=>btn.addEventListener('click', ()=>{
+        const f=(app.data.adminFirmaer||[]).find(x=>String(x.id)===String(btn.dataset.adminUserFirma));
+        if(!f){ msg('adminMsg','Fant ikke firmaet.','err'); return; }
+        clearAdminUserForm(false);
+        setVal('adminUserFirma', f.id);
+        setVal('adminUserEpost', f.epost || '');
+        document.getElementById('adminUserEpost')?.scrollIntoView({behavior:'smooth', block:'center'});
+        msg('adminUserMsg','Fyll inn e-post/navn og midlertidig passord for bruker til '+(f.navn||f.epost||'firma')+'.','ok');
+      }));
+      firmaList.querySelectorAll('[data-admin-delete-firma]').forEach(btn=>btn.addEventListener('click', async ()=>{
+        const f=(app.data.adminFirmaer||[]).find(x=>String(x.id)===String(btn.dataset.adminDeleteFirma));
+        if(!f){ msg('adminMsg','Fant ikke firmaet som skal slettes.','err'); return; }
+        if(!confirm('Slette firma '+(f.navn||f.epost||f.id)+'? Dette kan ikke angres.')) return;
+        const {error}=await app.sb.from('hov_firma').delete().eq('id', f.id);
+        if(error){ msg('adminMsg','Kunne ikke slette firma: '+error.message,'err'); return; }
+        await loadAdminData();
+        msg('adminMsg','Firma slettet.','ok');
+      }));
+    }
+
     $('adminProfileList').innerHTML = table(['E-post','Navn','Rolle','Firma','Auth User ID'], profiler.map(pr=>`<tr><td>${esc(pr.epost||'')}</td><td>${esc(pr.navn||'')}</td><td>${esc(pr.rolle||'')}</td><td>${esc(firmaer.find(f=>String(f.id)===String(pr.firma_id))?.navn || pr.firma_id || '')}</td><td><code>${esc(pr.auth_user_id||'')}</code></td></tr>`));
+    renderAppFakturaer();
+  }
+
+  function adminFirmaLogoUrl(f){
+    return f?.logo_url || f?.bilde_url || f?.image_url || f?.foto_url || f?.photo_url || '';
+  }
+
+  function ensureAdminFirmaEditDialog(){
+    let wrap=$('adminFirmaEditDialog');
+    if(wrap) return wrap;
+    wrap=document.createElement('div');
+    wrap.id='adminFirmaEditDialog';
+    wrap.className='hidden';
+    wrap.innerHTML=`<div class="admin-modal-backdrop" data-admin-firma-close="1"></div>
+      <div class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="adminFirmaEditTitle">
+        <div class="admin-modal-head">
+          <h2 id="adminFirmaEditTitle">Rediger hovslagerfirma</h2>
+          <button type="button" class="small-btn secondary" data-admin-firma-close="1">Lukk</button>
+        </div>
+        <div id="adminFirmaEditMsg"></div>
+        <div class="admin-modal-grid">
+          <div>
+            <div class="muted">Nåværende bilde/logo</div>
+            <div id="adminFirmaEditLogoPreview" class="admin-logo-large"><span class="muted">Ingen logo lagret.</span></div>
+            <label class="admin-file-label">Velg nytt bilde/logo
+              <input id="adminFirmaEditLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+            </label>
+          </div>
+          <div class="admin-modal-fields">
+            <label>Firmanavn<input id="adminFirmaEditNavn"></label>
+            <label>E-post<input id="adminFirmaEditEpost" type="email"></label>
+            <label>Telefon<input id="adminFirmaEditTelefon"></label>
+            <label>Org.nr<input id="adminFirmaEditOrgnr"></label>
+            <label>Adresse<input id="adminFirmaEditAdresse"></label>
+          </div>
+        </div>
+        <div class="admin-modal-actions">
+          <button type="button" class="small-btn ok" id="adminFirmaEditSaveBtn">Lagre endringer</button>
+          <button type="button" class="small-btn secondary" data-admin-firma-close="1">Avbryt</button>
+        </div>
+      </div>`;
+    const style=document.createElement('style');
+    style.textContent=`
+      #adminFirmaEditDialog.hidden{display:none}
+      #adminFirmaEditDialog{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
+      #adminFirmaEditDialog .admin-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.72)}
+      #adminFirmaEditDialog .admin-modal-card{position:relative;width:min(760px,96vw);max-height:92vh;overflow:auto;background:#0f172a;border:1px solid #475569;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55);padding:18px;color:#e5e7eb}
+      #adminFirmaEditDialog .admin-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+      #adminFirmaEditDialog .admin-modal-head h2{margin:0}
+      #adminFirmaEditDialog .admin-modal-grid{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:start}
+      #adminFirmaEditDialog .admin-modal-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      #adminFirmaEditDialog label{display:flex;flex-direction:column;gap:6px;font-weight:700}
+      #adminFirmaEditDialog input{padding:10px;border-radius:10px;border:1px solid #475569;background:#020617;color:#e5e7eb}
+      #adminFirmaEditDialog .admin-logo-large{min-height:170px;border:1px dashed #64748b;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:8px 0 12px;padding:10px;background:#020617}
+      #adminFirmaEditDialog .admin-logo-large img{max-width:210px;max-height:170px;border-radius:12px;object-fit:contain}
+      #adminFirmaEditDialog .admin-file-label{font-weight:700}
+      #adminFirmaEditDialog .admin-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+      @media(max-width:700px){#adminFirmaEditDialog .admin-modal-grid{grid-template-columns:1fr}#adminFirmaEditDialog .admin-modal-fields{grid-template-columns:1fr}}
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(wrap);
+    wrap.querySelectorAll('[data-admin-firma-close]').forEach(x=>x.addEventListener('click', closeAdminFirmaEditDialog));
+    $('adminFirmaEditLogoFile')?.addEventListener('change', previewAdminFirmaEditLogo);
+    $('adminFirmaEditSaveBtn')?.addEventListener('click', saveAdminFirmaEditDialog);
+    return wrap;
+  }
+
+  function openAdminFirmaEditDialog(f){
+    if(!app.isSysadm) return;
+    const wrap=ensureAdminFirmaEditDialog();
+    app.adminEditFirmaId=f.id;
+    setVal('adminFirmaEditNavn', f.navn||'');
+    setVal('adminFirmaEditEpost', f.epost||'');
+    setVal('adminFirmaEditTelefon', f.telefon||'');
+    setVal('adminFirmaEditOrgnr', f.orgnr || f.org_nr || f.bedriftsnr || '');
+    setVal('adminFirmaEditAdresse', f.adresse||'');
+    const file=$('adminFirmaEditLogoFile'); if(file) file.value='';
+    renderAdminFirmaEditLogoPreview(adminFirmaLogoUrl(f));
+    const title=$('adminFirmaEditTitle'); if(title) title.textContent='Rediger hovslagerfirma: '+(f.navn||f.epost||'');
+    msg('adminFirmaEditMsg','Endre firma og bilde/logo her. Trykk Lagre endringer når du er ferdig.','ok');
+    wrap.classList.remove('hidden');
+  }
+
+  function closeAdminFirmaEditDialog(){
+    const wrap=$('adminFirmaEditDialog');
+    if(wrap) wrap.classList.add('hidden');
+  }
+
+  function renderAdminFirmaEditLogoPreview(url){
+    const el=$('adminFirmaEditLogoPreview');
+    if(!el) return;
+    el.innerHTML = url ? `<img src="${esc(url)}" alt="Firmalogo">` : '<span class="muted">Ingen logo lagret.</span>';
+  }
+
+  function previewAdminFirmaEditLogo(){
+    const file=$('adminFirmaEditLogoFile')?.files?.[0];
+    if(file) renderAdminFirmaEditLogoPreview(URL.createObjectURL(file));
+  }
+
+  async function saveAdminFirmaEditDialog(){
+    if(!app.isSysadm || !app.adminEditFirmaId) return;
+    const navn=val('adminFirmaEditNavn');
+    if(!navn){ msg('adminFirmaEditMsg','Skriv firmanavn før du lagrer.','err'); return; }
+    const payload={
+      navn,
+      epost:val('adminFirmaEditEpost')||null,
+      telefon:val('adminFirmaEditTelefon')||null,
+      orgnr:val('adminFirmaEditOrgnr')||null,
+      adresse:val('adminFirmaEditAdresse')||null
+    };
+    msg('adminFirmaEditMsg','Lagrer endringer...');
+    const {data,error}=await app.sb.from('hov_firma').update(payload).eq('id', app.adminEditFirmaId).select('*').single();
+    if(error){ msg('adminFirmaEditMsg','Kunne ikke lagre firma: '+error.message,'err'); return; }
+    let saved=data;
+    const file=$('adminFirmaEditLogoFile')?.files?.[0] || null;
+    if(file){
+      try{
+        const logo=await uploadFirmaLogoForFirma(file, saved.id);
+        const up=await app.sb.from('hov_firma').update(logo).eq('id', saved.id).select('*').single();
+        if(up.error){ msg('adminFirmaEditMsg','Firma lagret, men logo kunne ikke lagres: '+up.error.message,'err'); return; }
+        saved=up.data;
+      }catch(e){ msg('adminFirmaEditMsg','Firma lagret, men logo kunne ikke lastes opp: '+(e.message||String(e)),'err'); return; }
+    }
+    if(String(app.firmaId)===String(saved.id)){ app.firma=saved; updateHeader(); renderFirma(); }
+    closeAdminFirmaEditDialog();
+    await loadAdminData();
+    msg('adminMsg','Firma er oppdatert: '+(saved.navn||saved.epost||saved.id)+'.','ok');
   }
 
   async function adminSwitchFirma(){
@@ -383,15 +586,135 @@
     showTab('dashboard');
   }
 
+  function clearAdminFirmaForm(){
+    app.adminEditFirmaId = null;
+    ['adminFirmaNavn','adminFirmaEpost','adminFirmaTelefon','adminFirmaOrgnr','adminFirmaAdresse'].forEach(id=>setVal(id,''));
+    const file=$('adminFirmaLogoFile');
+    if(file) file.value='';
+    const title=$('adminFirmaTitle'); if(title) title.textContent='Nytt firma';
+    const help=$('adminFirmaHelp'); if(help) help.textContent='Start med blankt skjema. Logo/bilde er tomt til du velger en fil.';
+    const btn=$('adminCreateFirmaBtn'); if(btn) btn.textContent='Lagre firma';
+    renderAdminFirmaLogoPreview('');
+    msg('adminMsg','Klart for nytt firma. Logo/bilde er blankt.','ok');
+  }
+
+  function renderAdminFirmaLogoPreview(url){
+    const el=$('adminFirmaLogoPreview');
+    if(!el) return;
+    el.innerHTML = url ? `<img class="thumb" src="${esc(url)}" alt="Firmalogo">` : '<span class="muted">Ingen logo valgt.</span>';
+  }
+
+  function previewAdminFirmaLogo(){
+    const file=$('adminFirmaLogoFile')?.files?.[0];
+    renderAdminFirmaLogoPreview(file ? URL.createObjectURL(file) : '');
+  }
+
+  async function uploadFirmaLogoForFirma(file, firmaId){
+    if(!file || !firmaId) return null;
+    const ext=(file.name.split('.').pop()||'png').toLowerCase();
+    const path=`${firmaId}/${Date.now()}-${safeName(file.name||('logo.'+ext))}`;
+    const up=await app.sb.storage.from('hovslager-logo').upload(path, file, { upsert:true, contentType:file.type || 'image/png' });
+    if(up.error) throw new Error('Logo ble ikke lastet opp: '+up.error.message+' (Sjekk bucket hovslager-logo og policy.)');
+    const pub=app.sb.storage.from('hovslager-logo').getPublicUrl(path);
+    return { logo_url: pub.data.publicUrl, logo_path: path };
+  }
+
   async function adminCreateFirma(){
     if(!app.isSysadm) return;
-    const payload={navn:val('adminFirmaNavn')||'Nytt hovslagerfirma', epost:val('adminFirmaEpost')||null, telefon:val('adminFirmaTelefon')||null, adresse:val('adminFirmaAdresse')||null, betalingsfrist_dager:14, faktura_prefix:'F', neste_fakturanr:1, standard_mva_sats:25};
-    const {data,error}=await app.sb.from('hov_firma').insert(payload).select('*').single();
-    if(error){ msg('adminMsg','Kunne ikke opprette firma: '+error.message,'err'); return; }
-    ['adminFirmaNavn','adminFirmaEpost','adminFirmaTelefon','adminFirmaAdresse'].forEach(id=>setVal(id,''));
+    const navn=val('adminFirmaNavn');
+    if(!navn){ msg('adminMsg','Skriv firmanavn før du lagrer firma.','err'); return; }
+    const file=$('adminFirmaLogoFile')?.files?.[0] || null;
+    const payload={navn, epost:val('adminFirmaEpost')||null, telefon:val('adminFirmaTelefon')||null, orgnr:val('adminFirmaOrgnr')||null, adresse:val('adminFirmaAdresse')||null, betalingsfrist_dager:14, faktura_prefix:'F', neste_fakturanr:1, standard_mva_sats:25};
+    msg('adminMsg', app.adminEditFirmaId ? 'Lagrer endringer...' : 'Lagrer firma...');
+    let saved=null;
+    if(app.adminEditFirmaId){
+      try{
+        const {data,error}=await app.sb.functions.invoke('oppdater-hov-kunde', { body:{ firma_id:app.adminEditFirmaId, ...payload } });
+        if(error) throw error;
+        if(!data || data.ok === false) throw new Error(data?.error || data?.message || 'Ukjent feil fra oppdater-hov-kunde.');
+        saved=data.firma || null;
+      }catch(err){
+        // Fallback dersom Edge Function ikke er deployet ennå: oppdater bare hov_firma direkte.
+        const {data,error}=await app.sb.from('hov_firma').update(payload).eq('id', app.adminEditFirmaId).select('*').single();
+        if(error){ msg('adminMsg','Kunne ikke oppdatere firma: '+(err.message||String(err))+' / '+error.message,'err'); return; }
+        saved=data;
+      }
+      if(file && saved?.id){
+        try{
+          const logo=await uploadFirmaLogoForFirma(file, saved.id);
+          const up=await app.sb.from('hov_firma').update(logo).eq('id', saved.id).select('*').single();
+          if(!up.error) saved=up.data;
+        }catch(e){ msg('adminMsg','Firma oppdatert, men logo kunne ikke lastes opp: '+(e.message||String(e)),'err'); }
+      }
+      clearAdminFirmaForm();
+      await loadAdminData();
+      if(saved?.id) setVal('adminActiveFirma', saved.id);
+      msg('adminMsg','Firma er oppdatert.','ok');
+      return;
+    }
+
+    // Nytt firma: bruk Edge Function hvis e-post og passord er fylt i brukerskjema, ellers opprett bare firma som før.
+    const createPayload={...payload, passord:val('adminUserPassword')||undefined};
+    try{
+      if(payload.epost && createPayload.passord){
+        const {data,error}=await app.sb.functions.invoke('opprett-hov-kunde', { body:createPayload });
+        if(error) throw error;
+        if(!data || data.ok === false) throw new Error(data?.error || data?.message || 'Ukjent feil fra opprett-hov-kunde.');
+        saved=data.firma || {id:data.firma_id};
+      }else{
+        const {data,error}=await app.sb.from('hov_firma').insert([{...payload, logo_url:null, logo_path:null}]).select('*').single();
+        if(error) throw error;
+        saved=data;
+      }
+    }catch(err){ msg('adminMsg','Kunne ikke lagre firma: '+(err.message||String(err)),'err'); return; }
+    if(file && saved?.id){
+      try{
+        const logo=await uploadFirmaLogoForFirma(file, saved.id);
+        const up=await app.sb.from('hov_firma').update(logo).eq('id', saved.id).select('*').single();
+        if(up.error){ msg('adminMsg','Firma lagret, men logo kunne ikke lagres: '+up.error.message,'err'); }
+        else saved=up.data;
+      }catch(e){
+        msg('adminMsg','Firma lagret, men logo kunne ikke lastes opp: '+(e.message||String(e)),'err');
+      }
+    }
+    clearAdminFirmaForm();
     await loadAdminData();
-    setVal('adminActiveFirma', data.id);
-    msg('adminMsg','Firma opprettet. Husk å koble en brukerprofil til firmaet.','ok');
+    if(saved?.id) setVal('adminActiveFirma', saved.id);
+    msg('adminMsg','Firma lagret. Husk å koble en brukerprofil til firmaet.','ok');
+  }
+
+  function clearAdminUserForm(showMsg){
+    ['adminUserEpost','adminUserNavn','adminUserPassword'].forEach(id=>setVal(id,''));
+    setVal('adminUserRole','hovslager');
+    if(showMsg !== false) msg('adminUserMsg','Brukerskjema tømt.','ok');
+  }
+
+  function randomTempPassword(){
+    return 'Hov' + Math.random().toString(36).slice(2,8) + '!' + String(Math.floor(100+Math.random()*900));
+  }
+
+  async function adminCreateLoginUser(){
+    if(!app.isSysadm) return;
+    const firmaId=val('adminUserFirma');
+    const email=val('adminUserEpost');
+    const navn=val('adminUserNavn');
+    const rolle=val('adminUserRole') || 'hovslager';
+    let password=val('adminUserPassword');
+    if(!firmaId){ msg('adminUserMsg','Velg firma brukeren skal høre til.','err'); return; }
+    if(!email){ msg('adminUserMsg','Skriv e-post til brukeren.','err'); return; }
+    if(!password){ password=randomTempPassword(); setVal('adminUserPassword', password); }
+    if(password.length < 6){ msg('adminUserMsg','Passord må være minst 6 tegn.','err'); return; }
+    msg('adminUserMsg','Oppretter innloggingsbruker ...');
+    try{
+      const {data,error}=await app.sb.functions.invoke('oppdater-hov-kunde', { body:{ firma_id:firmaId, epost:email, passord:password, navn_bruker:navn, rolle, email_confirm:true } });
+      if(error) throw error;
+      if(!data || data.ok === false) throw new Error(data?.error || data?.message || 'Ukjent feil fra oppdater-hov-kunde.');
+      await loadAdminData();
+      msg('adminUserMsg','Bruker er opprettet/oppdatert og koblet til firma. Send e-post og passord til brukeren: '+email+' / '+password,'ok');
+    }catch(err){
+      const tekst=(err && (err.message || err.error_description || err.name)) ? (err.message || err.error_description || err.name) : String(err||'Ukjent feil');
+      msg('adminUserMsg','Kunne ikke opprette innloggingsbruker. Sjekk at Supabase Edge Function oppdater-hov-kunde er deployet. Feil: '+tekst,'err');
+    }
   }
 
   async function adminSaveProfile(){
@@ -645,6 +968,203 @@
     const firmaId = val('adminBackupFirma') || app.firmaId;
     if(!firmaId){ msg('adminBackupMsg','Velg firma først.','err'); return; }
     await runBackup({ mode:'manual', scope:'firma', firma_id:firmaId });
+  }
+
+  function appFakturaSettingsKey(){ return 'hov_app_faktura_settings_v1'; }
+  function defaultAppFakturaSettings(){
+    const f=app.firma||{};
+    return {
+      logo:'',
+      brevhode:f.navn || 'Rettilomma',
+      orgnr:f.orgnr || f.org_nr || '',
+      adresse:f.adresse || '',
+      epost:f.epost || 'salg@rettilomma.com',
+      telefon:f.telefon || '',
+      kontonr:f.kontonr || '',
+      standardTekst:'Abonnement HovslagerSystem',
+      bunntekst:'Takk for handelen.'
+    };
+  }
+  function loadAppFakturaSettings(){
+    try{ return {...defaultAppFakturaSettings(), ...(JSON.parse(localStorage.getItem(appFakturaSettingsKey()) || '{}') || {})}; }
+    catch(_){ return defaultAppFakturaSettings(); }
+  }
+  function saveAppFakturaSettingsObject(settings){ localStorage.setItem(appFakturaSettingsKey(), JSON.stringify(settings || {})); }
+  function loadAppFakturaSettingsForm(){
+    if(!app.isSysadm) return;
+    const s=loadAppFakturaSettings();
+    setVal('appFakturaBrevhode', s.brevhode);
+    setVal('appFakturaOrgNr', s.orgnr);
+    setVal('appFakturaKonto', s.kontonr);
+    setVal('appFakturaAvsenderEpost', s.epost);
+    setVal('appFakturaAvsenderTelefon', s.telefon);
+    setVal('appFakturaAvsenderAdresse', s.adresse);
+    setVal('appFakturaStandardTekst', s.standardTekst);
+    setVal('appFakturaBunntekst', s.bunntekst);
+    const p=$('appFakturaLogoPreview');
+    if(p) p.innerHTML = s.logo ? `<img class="thumb" src="${esc(s.logo)}" alt="Logo">` : '<span class="muted">Ingen logo valgt.</span>';
+  }
+  function saveAppFakturaSettings(){
+    if(!app.isSysadm){ msg('appFakturaDesignMsg','Bare sysadm kan endre disse innstillingene.','err'); return; }
+    const old=loadAppFakturaSettings();
+    const settings={
+      ...old,
+      brevhode:val('appFakturaBrevhode') || old.brevhode || 'Rettilomma',
+      orgnr:val('appFakturaOrgNr'),
+      kontonr:val('appFakturaKonto'),
+      epost:val('appFakturaAvsenderEpost'),
+      telefon:val('appFakturaAvsenderTelefon'),
+      adresse:val('appFakturaAvsenderAdresse'),
+      standardTekst:val('appFakturaStandardTekst') || 'Abonnement HovslagerSystem',
+      bunntekst:val('appFakturaBunntekst')
+    };
+    saveAppFakturaSettingsObject(settings);
+    loadAppFakturaSettingsForm();
+    msg('appFakturaDesignMsg','Fakturainnstillinger er lagret.','ok');
+  }
+  function readAppFakturaLogo(){
+    if(!app.isSysadm) return;
+    const file=$('appFakturaLogoFile')?.files?.[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const s=loadAppFakturaSettings();
+      s.logo=String(reader.result||'');
+      saveAppFakturaSettingsObject(s);
+      loadAppFakturaSettingsForm();
+      msg('appFakturaDesignMsg','Logo er lagret.','ok');
+    };
+    reader.readAsDataURL(file);
+  }
+  function clearAppFakturaLogo(){
+    if(!app.isSysadm){ msg('appFakturaDesignMsg','Bare sysadm kan fjerne logo.','err'); return; }
+    const s=loadAppFakturaSettings();
+    s.logo='';
+    saveAppFakturaSettingsObject(s);
+    const f=$('appFakturaLogoFile'); if(f) f.value='';
+    loadAppFakturaSettingsForm();
+    msg('appFakturaDesignMsg','Logo er fjernet.','ok');
+  }
+
+  function appFakturaStorageKey(){ return 'hov_app_fakturaer_v1'; }
+  function loadAppFakturaerLocal(){
+    try{ return JSON.parse(localStorage.getItem(appFakturaStorageKey()) || '[]') || []; }
+    catch(_){ return []; }
+  }
+  function saveAppFakturaerLocal(rows){ localStorage.setItem(appFakturaStorageKey(), JSON.stringify(rows || [])); }
+  function appFakturaNr(){
+    const rows=loadAppFakturaerLocal();
+    const max=rows.reduce((m,r)=>Math.max(m, Number(String(r.nr||'').replace(/\D/g,''))||0), 0);
+    return 'APP-' + String(max + 1).padStart(4,'0');
+  }
+  function appFirmaById(id){ return (app.data.adminFirmaer||[]).find(f=>String(f.id)===String(id)) || {}; }
+  function datePlusDays(days){ const d=new Date(); d.setDate(d.getDate()+Number(days||14)); return d.toISOString().slice(0,10); }
+  function appFakturaHtml(f, opts){
+    const settings=loadAppFakturaSettings();
+    const kunde=f.kunde||appFirmaById(f.firma_id)||{};
+    const title='Faktura '+(f.nr||'');
+    const logo=settings.logo ? `<img class="logo" src="${esc(settings.logo)}" alt="Logo">` : '';
+    const printScript = opts?.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\/script>';
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}.top{display:flex;justify-content:space-between;gap:40px;align-items:flex-start}.logo{max-height:85px;max-width:220px;margin-bottom:12px}h1{margin:0 0 10px}.sender{text-align:right;line-height:1.45}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#666}.status{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:6px 10px}.footer{margin-top:35px;border-top:1px solid #ddd;padding-top:12px;color:#555;white-space:pre-line}</style>
+      </head><body>
+      <div class="top"><div>${logo}<h1>${esc(title)}</h1><div class="status">${esc(f.status||'sendt')}</div></div><div class="sender"><strong>${esc(settings.brevhode||'Rettilomma')}</strong><br>${settings.orgnr ? 'Org.nr: '+esc(settings.orgnr)+'<br>' : ''}${esc(settings.adresse||'')}<br>${esc(settings.epost||'')}<br>${esc(settings.telefon||'')}</div></div>
+      <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
+      <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfall||'')}</p>
+      <table><thead><tr><th>Beskrivelse</th><th class="right">Beløp inkl. mva</th></tr></thead><tbody>
+      <tr><td>${esc(f.tekst||settings.standardTekst||'Abonnement HovslagerSystem')}</td><td class="right">${kr(f.belop||0)}</td></tr>
+      </tbody></table>
+      <p class="right total">Å betale: ${kr(f.belop||0)}</p>
+      <div class="box"><strong>Betaling</strong><br>Kontonr: ${esc(settings.kontonr||'')}</div>
+      ${settings.bunntekst ? `<div class="footer">${esc(settings.bunntekst)}</div>` : ''}
+      ${printScript}</body></html>`;
+  }
+  function visAppFaktura(id){
+    if(!app.isSysadm){ msg('dashMsg','Bare sysadm kan vise appfaktura.','err'); return; }
+    const f=loadAppFakturaerLocal().find(x=>String(x.id)===String(id));
+    if(!f){ msg('appFakturaMsg','Fant ikke faktura.','err'); return; }
+    const w=window.open('', '_blank');
+    if(!w){ msg('appFakturaMsg','Nettleseren blokkerte popup. Tillat popup for å vise faktura.','err'); return; }
+    w.document.open(); w.document.write(appFakturaHtml(f)); w.document.close();
+  }
+  function sendAppFakturaEpost(id){
+    if(!app.isSysadm){ msg('dashMsg','Bare sysadm kan sende appfaktura.','err'); return; }
+    const f=loadAppFakturaerLocal().find(x=>String(x.id)===String(id));
+    if(!f){ msg('appFakturaMsg','Fant ikke faktura.','err'); return; }
+    const kunde=f.kunde||appFirmaById(f.firma_id)||{};
+    if(!kunde.epost){ msg('appFakturaMsg','Kunden mangler e-postadresse.','err'); return; }
+    const settings=loadAppFakturaSettings();
+    const subject='Faktura '+(f.nr||'')+' fra '+(settings.brevhode||app.firma?.navn||'Rettilomma');
+    const body=[
+      'Hei '+(kunde.navn||'')+',',
+      '',
+      'Vedlagt/gjeldende faktura '+(f.nr||'')+' for '+(f.tekst||'abonnement')+'.',
+      'Beløp: '+kr(f.belop||0)+' kr',
+      'Forfall: '+(f.forfall||''),
+      '',
+      'Kontonr: '+(settings.kontonr||''),
+      '',
+      'Hilsen',
+      settings.brevhode||app.firma?.navn||'Rettilomma'
+    ].filter(x=>x!==null).join('\n');
+    window.location.href='mailto:'+encodeURIComponent(kunde.epost)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    const rows=loadAppFakturaerLocal();
+    const row=rows.find(x=>String(x.id)===String(id));
+    if(row && row.status==='opprettet'){ row.status='sendt'; row.sendt_dato=today(); saveAppFakturaerLocal(rows); renderAppFakturaer(); }
+  }
+  async function setAppFirmaRolle(firmaId, rolle){
+    const profiler=(app.data.adminProfiler||[]).filter(p=>String(p.firma_id)===String(firmaId));
+    let feil=[];
+    for(const p of profiler){
+      const {error}=await app.sb.from('hov_profiles').update({rolle}).eq('auth_user_id', p.auth_user_id);
+      if(error) feil.push(error.message);
+    }
+    if(feil.length) throw new Error(feil[0]);
+    await loadAdminData();
+  }
+  async function appFakturaBetalt(id){
+    if(!app.isSysadm){ msg('appFakturaMsg','Bare sysadm kan sette appfaktura betalt.','err'); return; }
+    const rows=loadAppFakturaerLocal();
+    const f=rows.find(x=>String(x.id)===String(id));
+    if(!f) return;
+    f.status='betalt'; f.betalt_dato=today(); saveAppFakturaerLocal(rows);
+    try{ await setAppFirmaRolle(f.firma_id,'hovslager'); msg('appFakturaMsg','Faktura er satt betalt og brukeren er aktivert.','ok'); }
+    catch(e){ msg('appFakturaMsg','Faktura satt betalt, men kunne ikke aktivere bruker: '+(e.message||e),'err'); }
+    renderAppFakturaer();
+  }
+  async function appFakturaDeaktiver(id){
+    if(!app.isSysadm){ msg('appFakturaMsg','Bare sysadm kan deaktivere hovslagere.','err'); return; }
+    const rows=loadAppFakturaerLocal();
+    const f=rows.find(x=>String(x.id)===String(id));
+    if(!f) return;
+    if(!confirm('Deaktivere tilgang for '+((f.kunde&&f.kunde.navn)||'kunden')+'?')) return;
+    f.status='deaktivert'; f.deaktivert_dato=today(); saveAppFakturaerLocal(rows);
+    try{ await setAppFirmaRolle(f.firma_id,'deaktivert'); msg('appFakturaMsg','Kunden er deaktivert.','ok'); }
+    catch(e){ msg('appFakturaMsg','Faktura markert deaktivert, men kunne ikke deaktivere bruker: '+(e.message||e),'err'); }
+    renderAppFakturaer();
+  }
+  async function lagAppFaktura(){
+    if(!app.isSysadm){ msg('appFakturaMsg','Bare sysadm kan lage appfaktura til hovslagere.','err'); return; }
+    const firmaId=val('appFakturaFirma');
+    const kunde=appFirmaById(firmaId);
+    if(!firmaId || !kunde.id){ msg('appFakturaMsg','Velg hovslager/firma først.','err'); return; }
+    const belop=num('appFakturaBelop');
+    if(!belop){ msg('appFakturaMsg','Skriv beløp først.','err'); return; }
+    const rows=loadAppFakturaerLocal();
+    const settings=loadAppFakturaSettings();
+    const f={id:String(Date.now())+'-'+Math.random().toString(36).slice(2), nr:appFakturaNr(), firma_id:firmaId, kunde:{navn:kunde.navn||'', epost:kunde.epost||'', adresse:kunde.adresse||''}, dato:today(), forfall:datePlusDays(val('appFakturaForfallDager')||14), tekst:val('appFakturaTekst')||settings.standardTekst||'Abonnement HovslagerSystem', belop, status:'opprettet'};
+    rows.unshift(f); saveAppFakturaerLocal(rows); renderAppFakturaer(); msg('appFakturaMsg','Faktura '+f.nr+' er laget. Bruk Vis og Send e-post.','ok'); visAppFaktura(f.id);
+  }
+  function renderAppFakturaer(){
+    const el=$('appFakturaList'); if(!el) return;
+    if(!app.isSysadm){ el.innerHTML=''; return; }
+    const rows=loadAppFakturaerLocal();
+    const html=rows.map(f=>`<tr><td>${esc(f.dato||'')}</td><td>${esc(f.nr||'')}</td><td>${esc((f.kunde&&f.kunde.navn)||appFirmaById(f.firma_id).navn||'')}</td><td>${esc((f.kunde&&f.kunde.epost)||'')}</td><td>${kr(f.belop||0)}</td><td>${esc(f.forfall||'')}</td><td>${esc(f.status||'')}</td><td class="actions"><button type="button" class="small-btn secondary" data-app-vis="${esc(f.id)}">Vis</button><button type="button" class="small-btn" data-app-send="${esc(f.id)}">Send e-post</button>${f.status==='betalt'?'':`<button type="button" class="small-btn ok" data-app-betalt="${esc(f.id)}">Sett betalt</button>`}<button type="button" class="small-btn danger" data-app-deaktiver="${esc(f.id)}">Deaktiver</button></td></tr>`);
+    el.innerHTML=table(['Dato','Nr','Hovslager','E-post','Beløp','Forfall','Status','Handling'], html);
+    el.querySelectorAll('[data-app-vis]').forEach(b=>b.addEventListener('click',()=>visAppFaktura(b.dataset.appVis)));
+    el.querySelectorAll('[data-app-send]').forEach(b=>b.addEventListener('click',()=>sendAppFakturaEpost(b.dataset.appSend)));
+    el.querySelectorAll('[data-app-betalt]').forEach(b=>b.addEventListener('click',()=>appFakturaBetalt(b.dataset.appBetalt)));
+    el.querySelectorAll('[data-app-deaktiver]').forEach(b=>b.addEventListener('click',()=>appFakturaDeaktiver(b.dataset.appDeaktiver)));
   }
 
   async function adminRunSystemBackup(){

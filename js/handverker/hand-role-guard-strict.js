@@ -1,13 +1,11 @@
-/* Handverker - streng rolle-vakt v37
+/* Handverker - streng rolle-vakt v38
    Database-rollen styrer vanlige brukere.
-   Systembruker greknuts@online.no skal alltid ha sysadm-tilgang i appen. */
+   Sysadm gis bare av aktiv rad i hand_sysadm eller eksplisitt sysadm-rolle. */
 (function(){
   'use strict';
-  window.__handRoleGuardStrict = 'v37-greknuts-sysadm-no-black-screen';
+  window.__handRoleGuardStrict = 'v38-clean-roles';
 
   var state = { loaded:false, verified:false, email:'', role:'', isSys:false, isAdmin:false };
-  var SYSADMIN_EMAILS = ['greknuts@online.no']; // Systembruker: greknuts skal alltid ha sysadm-tilgang i appen
-  function isSysEmail(email){ return SYSADMIN_EMAILS.indexOf(norm(email)) >= 0; }
   function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
   function byId(id){ return document.getElementById(id); }
   function hide(el){ if(!el) return; el.classList.add('hidden','skjult'); el.hidden = true; el.style.display = 'none'; el.setAttribute('aria-hidden','true'); }
@@ -43,8 +41,11 @@
 
   async function fetchDbRole(email){
     var c = client();
-    if(isSysEmail(email)) return 'sysadm';
     if(!c || !email) return '';
+    try{
+      var sr = await c.from('hand_sysadm').select('id').ilike('epost', email).eq('aktiv', true).limit(1);
+      if(sr && !sr.error && sr.data && sr.data.length) return 'sysadm';
+    }catch(e){}
     var res = await c.from('hand_ansatt').select('rolle,epost,firma_id,navn').eq('epost', email);
     if(res && res.error){ throw res.error; }
     var rows = (res && Array.isArray(res.data)) ? res.data : [];
@@ -127,16 +128,11 @@
   async function refresh(){
     state.email = await getEmail();
     var dbRole = '';
-    if(isSysEmail(state.email)){
-      dbRole = 'sysadm';
-      state.verified = true;
-    }
-    if(!dbRole){ try{ dbRole = await fetchDbRole(state.email); state.verified = !!dbRole; }catch(e){ state.verified = false; } }
+    try{ dbRole = await fetchDbRole(state.email); state.verified = !!dbRole; }catch(e){ state.verified = false; }
     // Viktig: ikke bruk gammel localStorage sysadm som fallback. Uverifisert = ikke sysadm.
     state.role = dbRole || norm(window.innloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
     if(!dbRole && isSysRole(state.role)) state.role = '';
-    if(isSysEmail(state.email)) state.role = 'sysadm';
-    state.isSys = isSysRole(state.role) || isSysEmail(state.email);
+    state.isSys = isSysRole(state.role);
     state.isAdmin = isAdminRole(state.role);
     state.loaded = true;
     applyVisibility();

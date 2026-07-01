@@ -80,9 +80,9 @@ window.addEventListener("load", function () {
 
     // Systembruker skal alltid ha rettighet til både vanlig bruker, admin og systemadmin.
     // Aktiv visning styres fortsatt av vilAdmin/rilSysadminModus.
-    const erSystembruker = String(window.innloggetEpost || localStorage.getItem("handInnloggetEpost") || "").toLowerCase() === "greknuts@online.no";
-    const harSystemadminRolle = erSystembruker || ["systemadmin", "sysadmin"].includes(rolle);
-    const harAdminRolle = erSystembruker || erFirmaEierAdmin || ["admin", "systemadmin", "sysadmin"].includes(rolle);
+    const erSystembruker = ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    const harSystemadminRolle = ["systemadmin", "sysadmin", "sysadm"].includes(rolle);
+    const harAdminRolle = erFirmaEierAdmin || ["admin", "administrator", "eier", "owner", "systemadmin", "sysadmin", "sysadm"].includes(rolle);
 
     window.erSystemadmin = harSystemadminRolle;
     window.erAdmin = harAdminRolle && vilAdmin;
@@ -554,7 +554,7 @@ window.addEventListener("load", function () {
 
   function erRolleSystemadmin() {
     const r = norm(window.innloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
-    return window.erSystemadmin === true || r === 'sysadmin' || r === 'systemadmin';
+    return window.erSystemadmin === true || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin';
   }
 
   function forceSystembruker(email) {

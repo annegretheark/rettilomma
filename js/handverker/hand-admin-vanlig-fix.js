@@ -10,13 +10,10 @@
   }
   function erAdmin(){
     var r = norm(window.innloggetRolle || localStorage.getItem('handInnloggetRolle'));
-    return r === 'admin' || erSysadmin();
+    return window.erAdmin === true || localStorage.getItem('rilAdminModus') === 'ja' || r === 'admin' || erSysadmin();
   }
-  var SIDE_IDS = ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','firmaSide','testSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide','adminKonsollSide'];
-  function erArbeidsside(el){ return !!(el && el.id && SIDE_IDS.indexOf(el.id) !== -1); }
   function settSynlig(el, synlig){
     if(!el) return;
-    if(erArbeidsside(el)) return;
     if(synlig){ el.classList.remove('hidden','skjult','modul-skjult'); el.style.display = ''; el.removeAttribute('aria-hidden'); }
     else { el.classList.add('hidden','skjult'); el.style.display = 'none'; el.setAttribute('aria-hidden','true'); }
   }
@@ -25,7 +22,7 @@
     var sys = erSysadmin();
 
     // Vanlig admin: egne brukere/kunder/firma/backup osv.
-    document.querySelectorAll('.admin-only').forEach(function(el){ settSynlig(el, admin); });
+    document.querySelectorAll('.admin-only').forEach(function(el){ if(!erRilArbeidsside(el)) settSynlig(el, admin); });
 
     // Sysadmin-funksjoner skal aldri vises for vanlig firma-admin.
     document.querySelectorAll('.systemadmin-only, .sysadmin-entry, .systemadmin-only').forEach(function(el){ settSynlig(el, sys); });
@@ -38,9 +35,6 @@
     if(admin){
       window.erAdmin = true;
       localStorage.setItem('rilAdminModus','ja');
-    } else {
-      window.erAdmin = false;
-      localStorage.setItem('rilAdminModus','nei');
     }
     if(!sys){
       window.erSystemadmin = false;

@@ -1,5 +1,5 @@
 /* Handverker kunder 7078 - stabil kundeside
-   Prod-fil: bruker faktiske tabeller firma_brukere og ansatte.
+   Prod-fil: bruker hand_firma_bruker, firma_brukere og hand_ansatt.
    Fjerner svart skjerm ved å alltid vise kundeSide først, og håndterer feil som melding.
 */
 (function () {
@@ -20,8 +20,8 @@
   function numOnly(v) { var m = s(v).match(/\d+/g); return m ? m.join('') : ''; }
   function moneyNum(v) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? n : null; }
   function timeprisVerdi(o) { var n = moneyNum(o && (o.timepris || o.time_pris || o.kunde_timepris || o.prosjekt_timepris || o.faktura_timepris)); return n == null ? '' : String(n); }
-  function fastprisVerdi(o) { var n = moneyNum(o && (o.fastpris || o.fast_pris || o.prosjekt_fastpris)); return n == null ? '' : String(n); }
-  function fakturatypeVerdi(o) { var v = low(o && (o.fakturatype || o.faktura_type || o.pristype)); return v === 'fastpris' ? 'fastpris' : 'time'; }
+  function fastprisVerdi(o) { var n = moneyNum(o && (o.fastpris || o.fast_pris || o.kunde_fastpris || o.prosjekt_fastpris || o.faktura_fastpris)); return n == null ? '' : String(n); }
+  function fakturatypeVerdi(o) { var v = low(o && (o.fakturatype || o.faktura_type || o.pristype || o.type_fakturering)); return v === 'fastpris' ? 'fastpris' : 'time'; }
   function isAdminRolle(r) { r = low(r); return r === 'eier' || r === 'owner' || r === 'admin' || r === 'administrator' || r === 'bedrift_admin' || r === 'sysadmin' || r === 'systemadmin'; }
   function isSysRolle(r) { r = low(r); return r === 'sysadmin' || r === 'systemadmin' || r === 'sysadm'; }
 
@@ -76,10 +76,6 @@
         if (r1.data.length) rows = rows.concat(r1.data);
         var r2 = await selectRows(tabell, '*', function (q) { return q.eq('user_id', user.id); });
         if (r2.data.length) rows = rows.concat(r2.data);
-        var rAuth = await selectRows(tabell, '*', function (q) { return q.eq('auth_id', user.id); });
-        if (rAuth.data.length) rows = rows.concat(rAuth.data);
-        var rAuthUser = await selectRows(tabell, '*', function (q) { return q.eq('auth_user_id', user.id); });
-        if (rAuthUser.data.length) rows = rows.concat(rAuthUser.data);
       }
       if (email) {
         var r3 = await selectRows(tabell, '*', function (q) { return q.ilike('epost', email); });
@@ -99,10 +95,6 @@
         if (r1.data.length) rows = rows.concat(r1.data);
         var r2 = await selectRows(tabell, '*', function (q) { return q.eq('bruker_id', user.id); });
         if (r2.data.length) rows = rows.concat(r2.data);
-        var rAuth = await selectRows(tabell, '*', function (q) { return q.eq('auth_id', user.id); });
-        if (rAuth.data.length) rows = rows.concat(rAuth.data);
-        var rAuthUser = await selectRows(tabell, '*', function (q) { return q.eq('auth_user_id', user.id); });
-        if (rAuthUser.data.length) rows = rows.concat(rAuthUser.data);
       }
       if (email) {
         var r3 = await selectRows(tabell, '*', function (q) { return q.ilike('epost', email); });
@@ -115,13 +107,9 @@
       });
     }
 
-    // 2026-06-26: Bruk de faktiske Handverker-tabellene først.
-    // Tidligere ble legacy-tabellene firma_brukere/ansatte sjekket først.
-    // Hvis de inneholdt gammel/feil firma_id, ble kundevalg tomt for vanlig ansatt.
     await hentFraFirmaBrukere('hand_firma_bruker');
     await hentFraAnsatte('hand_ansatt');
     await hentFraFirmaBrukere('firma_brukere');
-    await hentFraAnsatte('hand_ansatt');
 
     var seen = {};
     kandidater = kandidater.filter(function (r) {
@@ -171,7 +159,7 @@
       isAdmin: admin,
       isSysadmin: sys,
       email: email,
-      melding: firmaIder.length ? '' : ('Fant ikke firma for ' + email + '. Sjekk firma_brukere eller ansatte.')
+      melding: firmaIder.length ? '' : ('Fant ikke firma for ' + email + '. Sjekk hand_firma_bruker eller hand_ansatt.')
     };
   }
 
@@ -186,7 +174,7 @@
     liste.innerHTML = rows.map(function (k) {
       var kp = (window.prosjekter || []).filter(function (p) { return s(p.kunde_id) === s(k.id); });
       var prosjektHtml = kp.length ? '<div style="margin-top:8px"><strong>Prosjekter:</strong><ul>' + kp.map(function (p) {
-        return '<li>' + esc(p.prosjektnr || p.prosjekt_nr || '') + ' ' + esc(p.navn || '') + ' - ' + esc(fakturatypeVerdi(p) === 'fastpris' ? 'Fastpris' : 'Time') + (timeprisVerdi(p) ? ' - timepris: ' + esc(timeprisVerdi(p)) : '') + (fastprisVerdi(p) ? ' - fastpris: ' + esc(fastprisVerdi(p)) : '') + '</li>';
+        return '<li>' + esc(p.prosjektnr || p.prosjekt_nr || '') + ' ' + esc(p.navn || '') + (fakturatypeVerdi(p) === 'fastpris' ? ' - fastpris: ' + esc(fastprisVerdi(p) || '0') : (timeprisVerdi(p) ? ' - timepris: ' + esc(timeprisVerdi(p)) : '')) + '</li>';
       }).join('') + '</ul></div>' : '';
       return '<div class="card kunde-card" style="padding:14px;margin-bottom:14px;border-bottom:1px solid #444;">' +
         '<strong>' + esc(k.navn || '') + '</strong><br>' +
@@ -195,6 +183,7 @@
         (k.epost || k.email ? 'E-post: ' + esc(k.epost || k.email) + '<br>' : '') +
         (k.telefon || k.telefonnr || k.mobil ? 'Telefon: ' + esc(k.telefon || k.telefonnr || k.mobil) + '<br>' : '') +
         (timeprisVerdi(k) ? 'Timepris: ' + esc(timeprisVerdi(k)) + '<br>' : '') +
+        (fastprisVerdi(k) ? 'Fastpris: ' + esc(fastprisVerdi(k)) + '<br>' : '') +
         (k.kontaktperson ? 'Kontaktperson: ' + esc(k.kontaktperson) + '<br>' : '') +
         (k.kontonr ? 'Kontonr: ' + esc(k.kontonr) + '<br>' : '') + prosjektHtml +
         '<div style="margin-top:10px"><button type="button" class="secondary" data-rediger-kunde="' + esc(k.id) + '">Rediger</button></div>' +
@@ -310,6 +299,7 @@
       kontaktperson: s($('kundeKontaktperson') && $('kundeKontaktperson').value),
       kontonr: s($('kundeKontonr') && $('kundeKontonr').value),
       timepris: moneyNum($('kundeTimepris') && $('kundeTimepris').value),
+      fastpris: moneyNum($('kundeFastpris') && $('kundeFastpris').value),
       kundenr: nr,
       firma_id: cx.firmaId || null
     };
@@ -321,7 +311,7 @@
       r = id ? await c.from('hand_kunde').update(data).eq('id', id).select() : await c.from('hand_kunde').insert([data]).select();
     }
     if (r.error) { msg('Feil ved lagring av kunde: ' + r.error.message); return; }
-    ['kundeId','kundeNavn','kundeAdresse','kundeEpost','kundeTelefon','kundeKontaktperson','kundeKontonr','kundeTimepris','kundeNr','kundeNrVis'].forEach(function (id2) { var el = $(id2); if (el) el.value = ''; });
+    ['kundeId','kundeNavn','kundeAdresse','kundeEpost','kundeTelefon','kundeKontaktperson','kundeKontonr','kundeTimepris','kundeFastpris','kundeNr','kundeNrVis'].forEach(function (id2) { var el = $(id2); if (el) el.value = ''; });
     var btn = $('leggTilKundeKnapp'); if (btn) btn.textContent = 'Lagre kunde';
     await lastKunder();
     msg(id ? 'Kunde endret.' : 'Kunde lagret med kundenr ' + nr + '.');
@@ -330,7 +320,7 @@
   function redigerKunde(id) {
     var k = (window.kunder || []).find(function (x) { return s(x.id) === s(id); });
     if (!k) { msg('Fant ikke kunde.'); return; }
-    [['kundeId', k.id], ['kundeNavn', k.navn], ['kundeAdresse', k.adresse], ['kundeEpost', k.epost || k.email], ['kundeTelefon', k.telefon || k.telefonnr || k.mobil], ['kundeKontaktperson', k.kontaktperson], ['kundeKontonr', k.kontonr], ['kundeTimepris', timeprisVerdi(k)], ['kundeNr', kundenr(k)], ['kundeNrVis', kundenr(k)]].forEach(function (p) { var el = $(p[0]); if (el) el.value = s(p[1]); });
+    [['kundeId', k.id], ['kundeNavn', k.navn], ['kundeAdresse', k.adresse], ['kundeEpost', k.epost || k.email], ['kundeTelefon', k.telefon || k.telefonnr || k.mobil], ['kundeKontaktperson', k.kontaktperson], ['kundeKontonr', k.kontonr], ['kundeTimepris', timeprisVerdi(k)], ['kundeFastpris', fastprisVerdi(k)], ['kundeNr', kundenr(k)], ['kundeNrVis', kundenr(k)]].forEach(function (p) { var el = $(p[0]); if (el) el.value = s(p[1]); });
     var btn = $('leggTilKundeKnapp'); if (btn) btn.textContent = 'Lagre endringer';
     msg('Redigerer kunde: ' + s(k.navn));
   }
@@ -433,25 +423,6 @@
     return base + '-' + (max + 1);
   }
 
-
-
-  function oppdaterProsjektPrisfelt() {
-    var ft = $('prosjektFakturatype');
-    var timeFelt = $('prosjektTimeprisFelt') || ($('prosjektTimepris') && $('prosjektTimepris').closest('.felt'));
-    var fastFelt = $('prosjektFastprisFelt') || ($('prosjektFastpris') && $('prosjektFastpris').closest('.felt'));
-    var erFastpris = low(ft && ft.value) === 'fastpris';
-    if (timeFelt) timeFelt.style.display = erFastpris ? 'none' : '';
-    if (fastFelt) fastFelt.style.display = erFastpris ? '' : 'none';
-  }
-
-  function kobleProsjektFakturatypeVisning() {
-    var ft = $('prosjektFakturatype');
-    if (!ft || ft.__prisfeltKoblet) return;
-    ft.__prisfeltKoblet = true;
-    ft.addEventListener('change', oppdaterProsjektPrisfelt);
-    oppdaterProsjektPrisfelt();
-  }
-
   function visProsjektVindu() {
     var kundeId = s($('kundeId') && $('kundeId').value);
     if (!kundeId) { msg('Velg kunde med Rediger først.'); return; }
@@ -465,10 +436,8 @@
     var ft = $('prosjektFakturatype');
     var k = (window.kunder || []).find(function (x) { return s(x.id) === s(kundeId); });
     if (pt) pt.value = timeprisVerdi(k);
-    if (pf) pf.value = '';
+    if (pf) pf.value = fastprisVerdi(k);
     if (ft) ft.value = 'time';
-    kobleProsjektFakturatypeVisning();
-    oppdaterProsjektPrisfelt();
   }
   function skjulProsjektVindu() { var o = $('prosjektOverlay'), v = $('prosjektVindu'); if (o) o.style.display = 'none'; if (v) v.style.display = 'none'; }
 
@@ -483,7 +452,7 @@
     var tpris = moneyNum($('prosjektTimepris') && $('prosjektTimepris').value);
     var fpris = moneyNum($('prosjektFastpris') && $('prosjektFastpris').value);
     var ftype = s($('prosjektFakturatype') && $('prosjektFakturatype').value) || 'time';
-    ftype = low(ftype) === 'fastpris' ? 'fastpris' : 'time';
+    if (ftype === 'fastpris' && (fpris == null || fpris <= 0)) fpris = moneyNum(fastprisVerdi(k));
     if (!navn) { msg('Prosjektnavn må fylles ut.'); return; }
     var pn = s($('prosjektNr') && $('prosjektNr').value) || nesteProsjektNrForKunde(kundeId);
     var data = { kunde_id: kundeId, prosjekt_nr: pn, navn: navn, beskrivelse: bes, timepris: tpris, fastpris: fpris, fakturatype: ftype, aktiv: true, firma_id: (k && k.firma_id) || cx.firmaId || null };
@@ -493,7 +462,7 @@
       r = await c.from('hand_prosjekt').insert([data2]).select();
     }
     if (r.error) { msg('Feil ved lagring av prosjekt: ' + r.error.message); return; }
-    ['prosjektNr','prosjektNavn','prosjektTimepris','prosjektFastpris','prosjektFakturatype','prosjektBeskrivelse'].forEach(function (id) { var el = $(id); if (el) el.value = id === 'prosjektFakturatype' ? 'time' : ''; });
+    ['prosjektNr','prosjektNavn','prosjektTimepris','prosjektFastpris','prosjektFakturatype','prosjektBeskrivelse'].forEach(function (id) { var el = $(id); if (el) el.value = ''; });
     skjulProsjektVindu();
     await lastKunder();
     msg('Prosjekt lagret.');
@@ -502,7 +471,7 @@
   function visKundeSideStabil() {
     try {
       var app = $('appSide'); if (app) { app.classList.remove('skjult','hidden','ril-starter'); app.hidden = false; app.style.display = ''; }
-      ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','ansattSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide'].forEach(function (id) {
+      ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide'].forEach(function (id) {
         var el = $(id); if (el) { el.classList.add('skjult','hidden'); el.hidden = true; el.style.display = 'none'; }
       });
       var side = $('kundeSide') || $('kunderSide');
@@ -516,7 +485,7 @@
   }
 
   function nullstillKundeSkjema() {
-    ['kundeId','kundeNavn','kundeAdresse','kundeEpost','kundeTelefon','kundeKontaktperson','kundeKontonr','kundeTimepris','kundeNr','kundeNrVis'].forEach(function (id) {
+    ['kundeId','kundeNavn','kundeAdresse','kundeEpost','kundeTelefon','kundeKontaktperson','kundeKontonr','kundeTimepris','kundeFastpris','kundeNr','kundeNrVis'].forEach(function (id) {
       var el = $(id);
       if (el) el.value = '';
     });
@@ -559,22 +528,16 @@
   window.lagreProsjektForValgtKunde = lagreProsjektForValgtKunde;
   window.nesteProsjektNrForKunde = nesteProsjektNrForKunde;
   window.handOppdaterTimeprisFraKundeProsjekt = handOppdaterTimeprisFraKundeProsjekt;
-  window.oppdaterProsjektPrisfelt = oppdaterProsjektPrisfelt;
   window.handHentKundeTimepris = function (kunde) { return timeprisVerdi(kunde); };
   window.handHentProsjektTimepris = function (prosjektId) { return timeprisVerdi(handFinnProsjektObjekt(prosjektId)); };
+  window.handHentKundeFastpris = function (kunde) { return fastprisVerdi(kunde); };
   window.handHentProsjektFastpris = function (prosjektId) { return fastprisVerdi(handFinnProsjektObjekt(prosjektId)); };
   window.handHentProsjektFakturatype = function (prosjektId) { return fakturatypeVerdi(handFinnProsjektObjekt(prosjektId)); };
   window.visKundeSide = visKundeSideStabil;
 
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'kundeValg') { visKundeNavn(); setTimeout(handOppdaterTimeprisFraKundeProsjekt, 0); } if (e.target && e.target.id === 'prosjektValg') handOppdaterTimeprisFraKundeProsjekt(); }, true);
-  function startKundevalg() {
-    bind();
-    // Fyll kundevalg også på Timer-siden for vanlige ansatte.
-    setTimeout(lastKunder, 100);
-    setTimeout(lastKunder, 800);
-  }
-  document.addEventListener('handPartialerLastet', startKundevalg, false);
-  document.addEventListener('DOMContentLoaded', function () { kobleProsjektFakturatypeVisning(); startKundevalg(); }, false);
-  window.addEventListener('load', startKundevalg, false);
+  document.addEventListener('handPartialerLastet', function () { bind(); }, false);
+  document.addEventListener('DOMContentLoaded', function () { bind(); }, false);
+  window.addEventListener('load', function () { bind(); }, false);
   setTimeout(bind, 500);
 })();

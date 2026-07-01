@@ -179,6 +179,71 @@
     }
   }
 
+
+  async function hentetAvForValgtBil(){
+    const cli = db();
+    const bilId = valgtBil();
+    function navnFraRad(rad){
+      if (!rad) return '';
+      return rad.navn || rad.fullt_navn || rad.bruker_navn || rad.epost || rad.email || '';
+    }
+
+    // Viktig: loggen skal vise brukeren som er tilknyttet bilen.
+    try {
+      if (cli && bilId) {
+        let r = await cli.from('hand_ansatt').select('id,navn,fullt_navn,epost,email,bil_id,standard_bil_id').eq('standard_bil_id', bilId).limit(1).maybeSingle();
+        if ((!r || r.error || !r.data) && bilId) {
+          r = await cli.from('hand_ansatt').select('id,navn,fullt_navn,epost,email,bil_id,standard_bil_id').eq('bil_id', bilId).limit(1).maybeSingle();
+        }
+        if (!r.error && r.data && navnFraRad(r.data)) {
+          return { navn: navnFraRad(r.data), ansatt_id: r.data.id || null, epost: r.data.epost || r.data.email || null };
+        }
+      }
+    } catch(e) {}
+
+    const authUserId = window.innloggetUserId || localStorage.getItem('innloggetUserId') || localStorage.getItem('authUserId') || '';
+    const epost = window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost') || '';
+    try {
+      if (cli && authUserId) {
+        const r = await cli.from('hand_ansatt').select('id,navn,fullt_navn,epost,email').eq('user_id', authUserId).limit(1).maybeSingle();
+        if (!r.error && r.data && navnFraRad(r.data)) return { navn: navnFraRad(r.data), ansatt_id: r.data.id || null, epost: r.data.epost || r.data.email || epost || null };
+      }
+    } catch(e) {}
+    try {
+      if (cli && epost) {
+        const r = await cli.from('hand_ansatt').select('id,navn,fullt_navn,epost,email').ilike('epost', epost).limit(1).maybeSingle();
+        if (!r.error && r.data && navnFraRad(r.data)) return { navn: navnFraRad(r.data), ansatt_id: r.data.id || null, epost: r.data.epost || r.data.email || epost || null };
+      }
+    } catch(e) {}
+
+    const fallbackNavn = window.innloggetAnsattNavn || window.innloggetNavn || localStorage.getItem('innloggetAnsattNavn') || localStorage.getItem('handInnloggetNavn') || localStorage.getItem('innloggetNavn') || epost || valgtBilTekst() || '';
+    return { navn: fallbackNavn, ansatt_id: window.innloggetAnsattId || localStorage.getItem('innloggetAnsattId') || localStorage.getItem('ansattId') || null, epost: epost || null };
+  }
+
+  async function skrivLagerBevegelseForMottak(rad){
+    const cli = db();
+    if (!cli) return;
+    const hentet = await hentetAvForValgtBil();
+    const payload = {
+      firma_id: firmaId(),
+      bil_id: rad.bil_id || null,
+      vare_id: rad.vare_id || null,
+      antall: rad.antall || 0,
+      type: 'mottatt_admin_godkjent_pa_bil',
+      handling: 'mottatt_admin_godkjent_pa_bil',
+      kommentar: hentet.navn ? ('Hentet av: ' + hentet.navn) : 'Bruker la admin-godkjent vare på bil',
+      ansatt_id: hentet.ansatt_id || null,
+      bruker_epost: hentet.epost || window.innloggetEpost || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost') || null,
+      bruker_navn: hentet.navn || null,
+      hentet_av: hentet.navn || null,
+      bestilling_id: rad.bestilling_id || null,
+      created_at: new Date().toISOString(),
+      opprettet: new Date().toISOString()
+    };
+    const res = await safeInsert('hand_lager_bevegelse', [payload]);
+    if (res.error) console.warn('Lagerbevegelse ble ikke skrevet:', res.error.message || res.error);
+  }
+
   async function addApprovedToCar(){
     const cli = db();
     const bilId = valgtBil();
@@ -199,10 +264,21 @@
         const ins = await safeInsert('hand_bil_lager', [{ bil_id: bilId, vare_id: vareId, antall: antall, minimum_antall: num(r.minimum_antall) }]);
         if (ins.error) throw ins.error;
       }
-      await safeInsert('hand_lagerlogg', [{ bil_id: bilId, vare_id: vareId, antall: antall, handling: 'mottatt_admin_godkjent_pa_bil', kommentar: 'Bruker la admin-godkjent vare på bil', opprettet: new Date().toISOString() }]);
-      await safeUpdate('hand_bil_bestilling', r.id, { mottatt: num(r.levert), status: num(r.rest) > 0 ? 'delvis_mottatt' : 'ferdig', mottatt_dato: new Date().toISOString() });
+      await skrivLagerBevegelseForMottak({ bil_id: bilId, vare_id: vareId, antall: antall, bestilling_id: r.id || null });
+      const hentet = await hentetAvForValgtBil();
+      await safeUpdate('hand_bil_bestilling', r.id, {
+        mottatt: num(r.levert),
+        status: num(r.rest) > 0 ? 'delvis_mottatt' : 'ferdig',
+        mottatt_dato: new Date().toISOString(),
+        mottatt_av: hentet.navn || null,
+        hentet_av: hentet.navn || null,
+        sist_hentet_av: hentet.navn || null,
+        lagt_pa_bil_av: hentet.navn || null,
+        lagt_pa_bil: true,
+        lagt_pa_bil_at: new Date().toISOString()
+      });
     }
-    msg('Godkjente varer er lagt på bil. Rest står igjen.');
+    msg('Godkjent av admin og lagt på bil. Lagerloggen viser hvem som hentet varene. Rest står igjen.');
     if (typeof window.lastBilerOgBilLager === 'function') { try { await window.lastBilerOgBilLager(); } catch(e){} }
     if (typeof window.fyllVarevalgFraAktivBil === 'function') { try { await window.fyllVarevalgFraAktivBil(); } catch(e){} }
     await renderApprovedRestList();

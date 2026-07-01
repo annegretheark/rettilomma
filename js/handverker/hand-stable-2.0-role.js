@@ -1,6 +1,6 @@
 /* Håndverker stabil 2.0 - rolle og meny
    Single source of truth for rollevisning. Ingen hardkodede e-poster.
-   Sysadm gis kun av Auth metadata, system_adminer eller database-rolle.
+   Sysadm gis kun av Auth metadata, hand_sysadm eller database-rolle.
 */
 (function(){
   'use strict';
@@ -29,7 +29,7 @@
     var roles=[];
     var c=client();
     if(!c) return '';
-    try{ var sr=await c.from('system_adminer').select('id').ilike('epost',email).eq('aktiv',true).limit(1); if(!sr.error&&sr.data&&sr.data.length) roles.push('sysadm'); }catch(e){}
+    try{ var sr=await c.from('hand_sysadm').select('id').ilike('epost',email).eq('aktiv',true).limit(1); if(!sr.error&&sr.data&&sr.data.length) roles.push('sysadm'); }catch(e){}
     var look=[]; if(email) look.push(['epost',email],['email',email],['bruker_epost',email],['user_email',email]);
     for(var t of ['hand_ansatt','firma_brukere','hand_firma_bruker']){
       if(uid){ try{ var ur=await c.from(t).select('*').eq('user_id',uid).limit(20); if(!ur.error&&ur.data) ur.data.forEach(function(r){roles.push(rowRole(r));}); }catch(e){} }
