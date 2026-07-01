@@ -382,7 +382,28 @@ table{
   table-layout:auto;
 }
 
+
+
+/* BILDE-FIX: klikkbare bilder og fullskjermvisning */
+.thumb.clickable-img{cursor:zoom-in}
+.image-lightbox{position:fixed;inset:0;background:rgba(2,6,23,.92);z-index:9999;display:none;align-items:center;justify-content:center;padding:18px}
+.image-lightbox.open{display:flex}
+.image-lightbox img{max-width:96vw;max-height:88vh;border-radius:14px;object-fit:contain;background:#fff}
+.image-lightbox button{position:absolute;top:14px;right:14px;min-width:48px;min-height:48px;border-radius:999px;background:#ef4444!important;color:#fff!important;font-size:22px}
+.pending-photo-badge{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:999px;background:#d6a84f;color:#111827;font-size:11px;font-weight:800}
+.timeline-photo{position:relative}
+.delete-photo-btn{position:absolute;top:6px;right:6px;min-height:34px!important;min-width:34px!important;padding:4px 8px!important;border-radius:999px!important;background:#ef4444!important;color:#fff!important;box-shadow:0 4px 12px rgba(0,0,0,.35);font-size:16px!important;line-height:1!important}
+.delete-photo-btn:hover{filter:brightness(1.08)}
+
   </style>
+<style>
+/* Beskrivelse-tale */
+.description-voice-actions{grid-column:span 8;margin-top:-4px}
+#voiceBeskrivelseStopBtn{display:none}
+#voiceBeskrivelseStopBtn.voice-on{display:inline-flex}
+@media(max-width:800px){.description-voice-actions{grid-column:span 12!important;display:grid;grid-template-columns:1fr;gap:8px}}
+
+</style>
 
 <style>
 .help-link-login{display:inline-block;margin-top:14px;padding:10px 14px;border-radius:10px;background:#334155;color:#f8fafc;text-decoration:none;font-weight:700}
@@ -557,6 +578,57 @@ table{
 }
 </style>
 
+
+<style>
+/* MOBILMENY V2 2026-07-01: kun Jobber + Les inn jobb + Mer på første linje */
+@media(max-width:800px){
+  .main-tabs{
+    display:grid!important;
+    grid-template-columns:1fr 1.15fr .68fr!important;
+    gap:8px!important;
+    padding:8px!important;
+    overflow:visible!important;
+    align-items:stretch!important;
+  }
+  .main-tabs > button,
+  .main-tabs > .nav-more > summary{
+    min-width:0!important;
+    width:100%!important;
+    min-height:48px!important;
+    padding:10px 8px!important;
+    font-size:14px!important;
+    line-height:1.1!important;
+    white-space:normal!important;
+    text-align:center!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+  .nav-more{
+    grid-column:auto!important;
+    width:100%!important;
+    order:3!important;
+  }
+  .main-tabs [data-tab="jobber"]{order:1!important;}
+  #navReadLastJobbBtn{order:2!important;}
+  .nav-more-menu{
+    right:0!important;
+    left:auto!important;
+    min-width:210px!important;
+    max-width:calc(100vw - 24px)!important;
+  }
+  .nav-more-menu button{
+    min-height:44px!important;
+    font-size:14px!important;
+    justify-content:flex-start!important;
+    text-align:left!important;
+  }
+}
+@media(max-width:390px){
+  .main-tabs{grid-template-columns:.9fr 1.15fr .58fr!important;gap:6px!important;padding:6px!important;}
+  .main-tabs > button,.main-tabs > .nav-more > summary{font-size:13px!important;padding:9px 6px!important;}
+}
+</style>
 </head>
 <body>
   <main class="wrap">
@@ -584,12 +656,12 @@ table{
       <nav class="tabs card main-tabs">
         <button data-tab="jobber" class="primary-tab">Jobber</button>
         <button id="navReadLastJobbBtn" type="button" class="secondary quick-read-tab">Les inn jobb</button>
-        <button data-tab="kunder">Kunder</button>
-        <button data-tab="hester">Hester</button>
-        <button id="adminTabBtn" data-tab="admin" class="hidden">Admin</button>
         <details class="nav-more">
           <summary>Mer</summary>
           <div class="nav-more-menu">
+            <button data-tab="kunder">Kunder</button>
+            <button data-tab="hester">Hester</button>
+            <button id="adminTabBtn" data-tab="admin" class="hidden">Admin</button>
             <button data-tab="dashboard">Oversikt</button>
             <button data-tab="fakturaer">Faktura</button>
             <button data-tab="firma">Firma</button>
@@ -651,7 +723,7 @@ table{
           <label>Hest<select id="jobbHest"></select></label><label>Jobbtype<select id="jobbType"></select></label>
           <label>Km<input id="jobbKm" type="number" step="0.1" placeholder="Blankt hvis ingen km"></label><label>Km-pris<input id="jobbKmPris" type="text" inputmode="decimal" value="5,30"></label>
           <label>Arbeid beløp<input id="jobbArbeid" type="number" step="0.01" value="0"></label><label>Utlegg/varer beløp<input id="jobbVarer" type="number" step="0.01" placeholder="Blankt hvis ingen utlegg"></label>
-          <label class="wide">Beskrivelse<textarea id="jobbBeskrivelse"></textarea></label><label>Dato for nye bilder<input id="jobbBildeDato" type="date"></label><label class="wide">Bilder fra jobben<input id="jobbBildeFiles" type="file" accept="image/*" multiple><span class="muted">Du kan laste opp flere bilder. De lagres med datoen over.</span></label><div id="jobbBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
+          <label class="wide">Beskrivelse<textarea id="jobbBeskrivelse"></textarea><span class="muted">Bruk knappen under for å lese inn mer beskrivelse. Ny tekst legges til nederst.</span></label><div class="wide actions description-voice-actions"><button id="voiceBeskrivelseBtn" type="button" class="secondary">🎤 Les inn beskrivelse</button><button id="voiceBeskrivelseStopBtn" type="button" class="secondary">Stopp beskrivelse</button></div><div id="voiceBeskrivelseMsg" class="wide"></div><label>Dato for nye bilder<input id="jobbBildeDato" type="date"></label><label class="wide">Bilder fra jobben<input id="jobbBildeFiles" type="file" accept="image/*" multiple><span class="muted">Du kan laste opp flere bilder. De lagres med datoen over.</span></label><div id="jobbBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
         </div>
         <div class="actions"><button id="saveJobbBtn">Lagre jobb</button><button id="newJobbBtn" type="button" class="secondary">Ny jobb</button><button id="deleteJobbBtn" type="button" class="danger hidden">Slett jobb</button></div><div id="jobbMsg"></div><div id="jobbList"></div>
       </section>
@@ -885,7 +957,7 @@ table{
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
+  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]}, pendingJobbFiles:[], currentJobbPreview:[] };
   const LOCAL_LOCK_KEY = 'hov_local_lock_v1';
   const REMEMBER_LOGIN_KEY = 'hov_remember_login_v1';
   window.hovApp = app;
@@ -1002,18 +1074,104 @@ table{
       return { url:x?.url || x?.bilde_url || x?.image_url || x?.src || '', path:x?.path || x?.bilde_path || storagePathFromPublicUrl(x?.url || x?.bilde_url || x?.image_url || x?.src) || null, dato: jobBildeDato(x, row?.dato), tekst:x?.tekst || x?.note || '' };
     }).filter(x=>x.url || x.path).sort((a,b)=>String(a.dato||'').localeCompare(String(b.dato||'')));
   }
-  function renderImagePreview(id, url){ const el=$(id); if(!el) return; if(url){ el.innerHTML=`<img class="thumb" src="${esc(url)}" alt="Bilde">`; } else el.innerHTML='<span class="muted">Ingen bilde valgt.</span>'; }
+  function renderImagePreview(id, url){
+    const el=$(id); if(!el) return;
+    if(url){ el.innerHTML=`<img class="thumb clickable-img" src="${esc(url)}" data-full-src="${esc(url)}" alt="Bilde" title="Klikk for større bilde">`; }
+    else el.innerHTML='<span class="muted">Ingen bilde valgt.</span>';
+  }
+  function normalizePreviewItem(x){
+    if(typeof x === 'string') return {url:x,dato:val('jobbBildeDato')||val('jobbDato')||today(), pending:false};
+    return x || null;
+  }
   function renderJobbBildePreview(items){
     const el=$('jobbBildePreview'); if(!el) return;
-    const bilder=(items||[]).map(x=>typeof x === 'string' ? {url:x,dato:val('jobbBildeDato')||val('jobbDato')||today()} : x).filter(x=>x && x.url);
-    el.innerHTML = bilder.length ? bilder.map(x=>`<figure class="timeline-photo"><img class="thumb" src="${esc(x.url)}" alt="Jobb-bilde"><figcaption>${esc(jobBildeDato(x, val('jobbDato')||today()) || 'Uten dato')}</figcaption></figure>`).join('') : '<span class="muted">Ingen bilder valgt.</span>';
+    const bilder=(items||[]).map(normalizePreviewItem).filter(x=>x && x.url);
+    el.innerHTML = bilder.length ? bilder.map((x,idx)=>{
+      const dato=esc(jobBildeDato(x, val('jobbDato')||today()) || 'Uten dato');
+      const pending=x.pending?'<br><span class="pending-photo-badge">nytt bilde</span>':'';
+      const key=x.key || '';
+      const id=x.id || x.bilde_id || '';
+      const path=x.path || x.bilde_path || storagePathFromPublicUrl(x.url) || '';
+      const delAttrs = x.pending
+        ? `data-delete-jobb-bilde="pending" data-pending-key="${esc(key)}"`
+        : `data-delete-jobb-bilde="stored" data-bilde-id="${esc(id)}" data-bilde-path="${esc(path)}" data-preview-index="${idx}"`;
+      return `<figure class="timeline-photo"><button type="button" class="delete-photo-btn" ${delAttrs} title="Slett bilde">🗑</button><img class="thumb clickable-img" src="${esc(x.url)}" data-full-src="${esc(x.url)}" alt="Jobb-bilde" title="Klikk for større bilde"><figcaption>${dato}${pending}</figcaption></figure>`;
+    }).join('') : '<span class="muted">Ingen bilder valgt.</span>';
+  }
+  function renderCombinedJobbBildePreview(){
+    const pending=(app.pendingJobbFiles||[]).map(x=>({url:x.url, dato:x.dato, pending:true}));
+    renderJobbBildePreview([...(app.currentJobbPreview||[]), ...pending]);
   }
   function previewSelectedHestBilde(){ const file=$('hestBildeFile')?.files?.[0]; renderImagePreview('hestBildePreview', file ? URL.createObjectURL(file) : ''); }
   function previewSelectedJobbBilder(){
-    const files=Array.from($('jobbBildeFiles')?.files || []);
+    const input=$('jobbBildeFiles');
+    const files=Array.from(input?.files || []);
     const dato=val('jobbBildeDato') || val('jobbDato') || today();
-    renderJobbBildePreview(files.map(f=>({url:URL.createObjectURL(f), dato})));
+    app.pendingJobbFiles = app.pendingJobbFiles || [];
+    const seen=new Set(app.pendingJobbFiles.map(x=>x.key));
+    for(const f of files){
+      const key=[f.name,f.size,f.lastModified].join(':');
+      if(seen.has(key)) continue;
+      seen.add(key);
+      app.pendingJobbFiles.push({file:f, url:URL.createObjectURL(f), dato, key});
+    }
+    if(input) input.value='';
+    renderCombinedJobbBildePreview();
   }
+  async function deleteJobbBildeFromPreview(btn){
+    const mode=btn?.dataset?.deleteJobbBilde;
+    if(!mode) return;
+    if(mode==='pending'){
+      const key=btn.dataset.pendingKey || '';
+      app.pendingJobbFiles=(app.pendingJobbFiles||[]).filter(x=>String(x.key)!==String(key));
+      renderCombinedJobbBildePreview();
+      msg('jobbMsg','Bilde fjernet fra opplasting.','ok');
+      return;
+    }
+    const bildeId=btn.dataset.bildeId || '';
+    const path=btn.dataset.bildePath || '';
+    if(!confirm('Slette dette bildet?')) return;
+    try{
+      if(!bildeId){
+        msg('jobbMsg','Fant ikke bilde-ID. Bildet kan ikke slettes automatisk.','err');
+        return;
+      }
+      const {error}=await app.sb.from('hov_jobb_bilder').delete().eq('id', bildeId).eq('firma_id', app.firmaId);
+      if(error){ msg('jobbMsg','Kunne ikke slette bilde fra databasen: '+error.message,'err'); return; }
+      if(path){
+        try{ await app.sb.storage.from(PRIVATE_IMAGE_BUCKET).remove([path]); }
+        catch(e){ console.warn('Kunne ikke slette bildefil fra storage', e); }
+      }
+      app.currentJobbPreview=(app.currentJobbPreview||[]).filter(x=>String(x.id||x.bilde_id||'')!==String(bildeId));
+      renderCombinedJobbBildePreview();
+      await loadJobbBilder();
+      msg('jobbMsg','Bildet er slettet.','ok');
+    }catch(err){
+      msg('jobbMsg','Kunne ikke slette bilde: '+(err.message||String(err)),'err');
+    }
+  }
+
+  function openImageLightbox(src){
+    if(!src) return;
+    let box=document.getElementById('imageLightbox');
+    if(!box){
+      box=document.createElement('div');
+      box.id='imageLightbox';
+      box.className='image-lightbox';
+      box.innerHTML='<button type="button" aria-label="Lukk bilde">×</button><img alt="Stort bilde">';
+      document.body.appendChild(box);
+      box.addEventListener('click',ev=>{ if(ev.target===box || ev.target.tagName==='BUTTON') box.classList.remove('open'); });
+      document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') box.classList.remove('open'); });
+    }
+    box.querySelector('img').src=src;
+    box.classList.add('open');
+  }
+  document.addEventListener('click',ev=>{
+    const del=ev.target.closest && ev.target.closest('[data-delete-jobb-bilde]');
+    if(del){ ev.preventDefault(); ev.stopPropagation(); deleteJobbBildeFromPreview(del); return; }
+    const img=ev.target.closest && ev.target.closest('[data-full-src]');
+    if(img){ ev.preventDefault(); openImageLightbox(img.dataset.fullSrc || img.src); }
+  });
   async function uploadAppFile(file, folder){
     if(!file) return null;
     const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
@@ -1057,8 +1215,11 @@ table{
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
+    $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
+    $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
     document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+    document.querySelectorAll('.nav-more [data-tab]').forEach(b=>b.addEventListener('click',()=>{ const d=b.closest('details'); if(d) d.open=false; }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
     $('deleteLogoBtn')?.addEventListener('click', deleteLogo);
@@ -1107,7 +1268,7 @@ table{
     $('jobbType')?.addEventListener('change', applySelectedJobbTypePris);
     $('hestBildeFile')?.addEventListener('change', previewSelectedHestBilde);
     $('jobbBildeFiles')?.addEventListener('change', previewSelectedJobbBilder);
-    $('jobbBildeDato')?.addEventListener('change', previewSelectedJobbBilder);
+    $('jobbBildeDato')?.addEventListener('change', ()=>{ const dato=val('jobbBildeDato') || val('jobbDato') || today(); (app.pendingJobbFiles||[]).forEach(x=>x.dato=dato); renderCombinedJobbBildePreview(); });
     bindReadLastJobbButton();
   }
 
@@ -2498,6 +2659,73 @@ table{
       setTimeout(()=>{ try{ rec.abort(); }catch(_){} }, 500);
     }
   }
+  function cleanDictationText(text){
+    let out=String(text||'').trim();
+    if(!out) return '';
+    out=out.replace(/\s+/g,' ');
+    out=out.replace(/\bpunktum\b/gi,'.').replace(/\bkomma\b/gi,',').replace(/\bny linje\b/gi,'\n').replace(/\bnytt avsnitt\b/gi,'\n\n');
+    out=out.replace(/\s+([.,!?])/g,'$1');
+    out=out.replace(/([.!?])\s+([a-zæøå])/g,(m,a,b)=>a+' '+b.toUpperCase());
+    out=out.charAt(0).toUpperCase()+out.slice(1);
+    if(!/[.!?]$/.test(out)) out+='.';
+    return out;
+  }
+  function appendJobbBeskrivelse(text){
+    const cleaned=cleanDictationText(text);
+    if(!cleaned) return;
+    const old=val('jobbBeskrivelse');
+    setVal('jobbBeskrivelse', old ? (old.replace(/\s+$/,'')+'\n\n'+cleaned) : cleaned);
+  }
+  function setDescriptionVoiceButtons(listening){
+    const start=$('voiceBeskrivelseBtn'), stop=$('voiceBeskrivelseStopBtn');
+    if(start){ start.textContent=listening?'🎤 Lytter til beskrivelse ...':'🎤 Les inn beskrivelse'; start.disabled=!!listening; }
+    if(stop){ stop.classList.toggle('voice-on', !!listening); stop.style.display=listening?'inline-flex':'none'; stop.disabled=!listening; }
+  }
+  function startVoiceBeskrivelse(){
+    const Speech=speechApi();
+    if(!Speech){ msg('voiceBeskrivelseMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android.','err'); return; }
+    try{
+      stopVoiceJobb(true);
+      const rec=new Speech();
+      app.voiceRecognition=rec;
+      app.voiceActive=true;
+      app.voiceStopping=false;
+      app.voiceMode='beskrivelse';
+      rec.lang='nb-NO';
+      rec.interimResults=true;
+      rec.continuous=true;
+      let finalText='';
+      rec.onstart=()=>{ setDescriptionVoiceButtons(true); msg('voiceBeskrivelseMsg','Lytter ... si beskrivelsen. Trykk Stopp beskrivelse når du er ferdig.','ok'); };
+      rec.onerror=(ev)=>{ app.voiceActive=false; app.voiceMode=null; setDescriptionVoiceButtons(false); msg('voiceBeskrivelseMsg','Mikrofon/tale feilet: '+(ev.error||'ukjent feil'),'err'); };
+      rec.onend=()=>{
+        const wasActive=app.voiceActive;
+        app.voiceActive=false;
+        if(app.voiceRecognition===rec) app.voiceRecognition=null;
+        const shouldAppend = finalText.trim() && (!app.voiceStopping || app.voiceMode==='beskrivelse');
+        app.voiceMode=null;
+        setDescriptionVoiceButtons(false);
+        if(shouldAppend){ appendJobbBeskrivelse(finalText); msg('voiceBeskrivelseMsg','Beskrivelsen er lagt til.','ok'); }
+        else if(wasActive && !app.voiceStopping) msg('voiceBeskrivelseMsg','Mikrofon stoppet uten tekst.','err');
+      };
+      rec.onresult=(ev)=>{
+        let interim='';
+        for(let i=ev.resultIndex;i<ev.results.length;i++){
+          const txt=ev.results[i][0]?.transcript || '';
+          if(ev.results[i].isFinal) finalText=(finalText+' '+txt).trim();
+          else interim+=txt;
+        }
+        msg('voiceBeskrivelseMsg','Hører: '+esc((finalText+' '+interim).trim()),'ok');
+      };
+      rec.start();
+    }catch(err){ app.voiceActive=false; app.voiceMode=null; setDescriptionVoiceButtons(false); msg('voiceBeskrivelseMsg','Kunne ikke starte mikrofon: '+(err.message||err),'err'); }
+  }
+  function stopVoiceBeskrivelse(){
+    const rec=app.voiceRecognition;
+    app.voiceStopping=true;
+    setDescriptionVoiceButtons(false);
+    if(rec){ try{ rec.stop(); }catch(_){ try{ rec.abort(); }catch(__){} } }
+  }
+
   function normText(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
   function findNamed(rows, text, keys){
     const ntext = normText(text);
@@ -2650,7 +2878,7 @@ table{
     setVal('jobbBeskrivelse', j.beskrivelse || '');
     setVal('jobbBildeDato', today());
     if($('jobbBildeFiles')) $('jobbBildeFiles').value='';
-    renderJobbBildePreview([]);
+    app.pendingJobbFiles=[]; app.currentJobbPreview=[]; renderCombinedJobbBildePreview();
     renderJobber();
     msg('jobbMsg','Leste inn jobb: '+(hestNavn(j.hest_id)||'')+' - '+(j.jobbtype||'')+'. Kontroller dato og lagre som ny jobb.','ok');
     document.getElementById('jobber')?.scrollIntoView({behavior:'smooth', block:'start'});
@@ -2688,10 +2916,10 @@ table{
   function editJobb(id){
     const j = app.data.jobber.find(x=>String(x.id)===String(id)); if(!j) return;
     app.edit.jobb = j.id;
-    setVal('jobbDato',j.dato); setJobbKundeLocked(false); setVal('jobbKunde',j.kunde_id); fillJobbHester(); setVal('jobbHest',j.hest_id); syncJobbKundeHestLock(); fillJobbTypeSelect(); setVal('jobbType',j.jobbtype); setVal('jobbKm',j.km); setVal('jobbKmPris',j.km_pris ?? '5,30'); setVal('jobbArbeid',j.arbeid_belop); setVal('jobbVarer',j.varer_belop ?? ''); setVal('jobbBeskrivelse',j.beskrivelse); setVal('jobbBildeDato',j.dato || today()); renderJobbBildePreview(jobBilder(j)); if($('jobbBildeFiles')) $('jobbBildeFiles').value='';
+    setVal('jobbDato',j.dato); setJobbKundeLocked(false); setVal('jobbKunde',j.kunde_id); fillJobbHester(); setVal('jobbHest',j.hest_id); syncJobbKundeHestLock(); fillJobbTypeSelect(); setVal('jobbType',j.jobbtype); setVal('jobbKm',j.km); setVal('jobbKmPris',j.km_pris ?? '5,30'); setVal('jobbArbeid',j.arbeid_belop); setVal('jobbVarer',j.varer_belop ?? ''); setVal('jobbBeskrivelse',j.beskrivelse); setVal('jobbBildeDato',j.dato || today()); app.pendingJobbFiles=[]; app.currentJobbPreview=jobBilder(j); renderCombinedJobbBildePreview(); if($('jobbBildeFiles')) $('jobbBildeFiles').value='';
     setText('jobbFormTitle','Rediger jobb'); setText('saveJobbBtn','Oppdater jobb'); $('deleteJobbBtn')?.classList.remove('hidden'); renderJobber(); msg('jobbMsg','Redigerer jobb fra '+(j.dato||''),'ok');
   }
-  function clearJobbForm(){ app.edit.jobb=null; ['jobbBeskrivelse'].forEach(id=>setVal(id,'')); setVal('jobbType',''); setVal('jobbDato',today()); setVal('jobbBildeDato',today()); setJobbKundeLocked(false); setVal('jobbKunde',''); fillJobbHester(); setVal('jobbHest',''); setVal('jobbKm',''); setVal('jobbKmPris','5,30'); setVal('jobbArbeid',0); setVal('jobbVarer',''); if($('jobbBildeFiles')) $('jobbBildeFiles').value=''; renderJobbBildePreview([]); setText('jobbFormTitle','Ny jobb'); setText('saveJobbBtn','Lagre jobb'); $('deleteJobbBtn')?.classList.add('hidden'); renderJobber(); msg('jobbMsg',''); }
+  function clearJobbForm(){ app.edit.jobb=null; ['jobbBeskrivelse'].forEach(id=>setVal(id,'')); setVal('jobbType',''); setVal('jobbDato',today()); setVal('jobbBildeDato',today()); setJobbKundeLocked(false); setVal('jobbKunde',''); fillJobbHester(); setVal('jobbHest',''); setVal('jobbKm',''); setVal('jobbKmPris','5,30'); setVal('jobbArbeid',0); setVal('jobbVarer',''); app.pendingJobbFiles=[]; app.currentJobbPreview=[]; if($('jobbBildeFiles')) $('jobbBildeFiles').value=''; renderCombinedJobbBildePreview(); setText('jobbFormTitle','Ny jobb'); setText('saveJobbBtn','Lagre jobb'); $('deleteJobbBtn')?.classList.add('hidden'); renderJobber(); msg('jobbMsg',''); }
   async function deleteJobb(){
     if(!app.edit.jobb){ msg('jobbMsg','Velg en jobb først.','err'); return; }
     if(!confirm('Slette valgt jobb?')) return;
@@ -2773,13 +3001,14 @@ table{
         if(error){ msg('jobbMsg',error.message,'err'); return false; }
         saved=data;
       }
-      const files=Array.from($('jobbBildeFiles')?.files || []);
+      const files=(app.pendingJobbFiles||[]).map(x=>x.file).filter(Boolean);
       if(files.length && saved?.id){
         const bildeDato=val('jobbBildeDato') || payload.dato || today();
         const rows=[];
         for(const file of files){
           const up=await uploadAppFile(file,'jobber');
-          rows.push({firma_id:app.firmaId, jobb_id:saved.id, hest_id:payload.hest_id, path:up.path, bilde_url:up.url, dato:bildeDato, filnavn:file.name||null, mime_type:file.type||null});
+          const meta=(app.pendingJobbFiles||[]).find(x=>x.file===file);
+          rows.push({firma_id:app.firmaId, jobb_id:saved.id, hest_id:payload.hest_id, path:up.path, bilde_url:up.url, dato:(meta?.dato || bildeDato), filnavn:file.name||null, mime_type:file.type||null});
         }
         const br=await app.sb.from('hov_jobb_bilder').insert(rows);
         if(br.error){ msg('jobbMsg','Jobb lagret, men bilde ble ikke registrert: '+br.error.message,'err'); await loadJobber(); return false; }
