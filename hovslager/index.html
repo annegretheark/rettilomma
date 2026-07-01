@@ -395,6 +395,15 @@ table{
 .delete-photo-btn{position:absolute;top:6px;right:6px;min-height:34px!important;min-width:34px!important;padding:4px 8px!important;border-radius:999px!important;background:#ef4444!important;color:#fff!important;box-shadow:0 4px 12px rgba(0,0,0,.35);font-size:16px!important;line-height:1!important}
 .delete-photo-btn:hover{filter:brightness(1.08)}
 
+
+/* ABONNEMENT 2026-07-02: prøveperiode og appbetaling */
+.sub-pill{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800;background:#334155;color:#f8fafc;margin-top:4px}
+.sub-pill.trial{background:#d6a84f;color:#111827}.sub-pill.active{background:#22c55e;color:#052e16}.sub-pill.expired,.sub-pill.deaktivert{background:#ef4444;color:#fff}
+.subscription-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.subscription-summary .mini{background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:10px}
+.subscription-summary .mini strong{display:block;font-size:18px}
+@media(max-width:800px){.subscription-summary{grid-template-columns:1fr 1fr}}
+
   </style>
 <style>
 /* Beskrivelse-tale */
@@ -793,6 +802,23 @@ table{
             <button id="adminSwitchFirmaBtn" type="button">Bytt aktivt firma</button>
             <button id="adminReloadBtn" type="button" class="secondary">Oppdater adminliste</button>
           </div>
+        </div>
+
+        <div class="card soft-card" id="adminSubscriptionCard">
+          <h3>Prøveperiode / abonnement</h3>
+          <p class="muted">30 dager gratis test. Etterpå kan kunden faktureres direkte fra deg med 500 kr/mnd eks. mva.</p>
+          <div class="grid formgrid">
+            <label class="wide">Firma<select id="adminSubFirma"></select></label>
+            <label>Månedspris eks. mva<input id="adminSubPrice" type="number" step="1" value="500"></label>
+            <label>Gratis testdager<input id="adminTrialDays" type="number" step="1" value="30"></label>
+          </div>
+          <div class="actions">
+            <button id="adminStartTrialBtn" type="button">Start 30 dager gratis</button>
+            <button id="adminActivatePaidBtn" type="button" class="secondary">Sett aktiv / betalt</button>
+            <button id="adminCreateSubInvoiceBtn" type="button" class="secondary">Lag faktura 500 kr</button>
+            <button id="adminDeactivateSubBtn" type="button" class="danger">Deaktiver</button>
+          </div>
+          <div id="adminSubInfo"></div>
         </div>
 
         <div id="adminFirmaCard" class="card soft-card">
@@ -1239,6 +1265,11 @@ table{
     $('deletePrisBtn')?.addEventListener('click', deletePris);
     $('reloadPriserBtn')?.addEventListener('click', async ()=>{ await loadPriser(); renderPriser(); msg('prisImportMsg','Prisliste oppdatert.','ok'); });
     $('adminReloadBtn')?.addEventListener('click', loadAdminData);
+    $('adminSubFirma')?.addEventListener('change', renderAdminSubscriptionBox);
+    $('adminStartTrialBtn')?.addEventListener('click', adminStartTrial);
+    $('adminActivatePaidBtn')?.addEventListener('click', adminActivatePaid);
+    $('adminCreateSubInvoiceBtn')?.addEventListener('click', adminCreateSubscriptionInvoice);
+    $('adminDeactivateSubBtn')?.addEventListener('click', adminDeactivateSubscription);
     $('adminFirmaReloadBtn')?.addEventListener('click', loadAdminData);
     $('adminSwitchFirmaBtn')?.addEventListener('click', adminSwitchFirma);
     $('adminCreateFirmaBtn')?.addEventListener('click', adminCreateFirma);
@@ -1471,7 +1502,18 @@ table{
       }catch(e){ console.warn('Kunne ikke opprette profil automatisk', e); }
     }
 
-    app.firma=firma; app.firmaId=firma.id; renderFirma(); updateHeader(); updateAdminVisibility();
+    app.firma=firma; app.firmaId=firma.id;
+    if(!app.isSysadm){
+      const st=subscriptionState(firma);
+      if(st.key==='deaktivert' || st.key==='expired'){
+        showLogin(false);
+        const card=$('appCard');
+        if(card) card.innerHTML = '<section class="card"><h2>Prøveperiode / abonnement</h2><p>Prøveperioden er utløpt eller abonnementet er deaktivert. Ta kontakt med RettiLomma for å aktivere kontoen.</p><button id="logoutBtnBlocked" class="danger">Logg ut</button></section>';
+        $('logoutBtnBlocked')?.addEventListener('click', logout);
+        throw new Error('Abonnement ikke aktivt');
+      }
+    }
+    renderFirma(); updateHeader(); updateAdminVisibility();
   }
 
   function updateAdminVisibility(){
@@ -1532,6 +1574,75 @@ table{
     return 'Hovslager';
   }
 
+  function abonnementPris(f){ return Number(f?.app_mnd_pris ?? f?.abonnement_pris ?? f?.monthly_price ?? 500) || 500; }
+  function abonnementStatus(f){ return String(f?.abonnement_status || f?.subscription_status || '').toLowerCase(); }
+  function abonnementTrialEnd(f){ return String(f?.trial_end || f?.proveperiode_slutt || f?.trial_slutt || '').slice(0,10); }
+  function abonnementBetaltTil(f){ return String(f?.abonnement_betalt_til || f?.betalt_til || '').slice(0,10); }
+  function daysBetweenDates(a,b){ const da=new Date(String(a||today()).slice(0,10)+'T00:00:00'); const db=new Date(String(b||today()).slice(0,10)+'T00:00:00'); return Math.ceil((db-da)/86400000); }
+  function subscriptionState(f){
+    const raw=abonnementStatus(f);
+    const trialEnd=abonnementTrialEnd(f);
+    const paidUntil=abonnementBetaltTil(f);
+    if(raw==='deaktivert' || raw==='stengt') return {key:'deaktivert', label:'Deaktivert', days:null};
+    if(raw==='aktiv' || raw==='active') return {key:'active', label: paidUntil ? 'Aktiv til '+paidUntil : 'Aktiv', days: paidUntil ? daysBetweenDates(today(), paidUntil) : null};
+    if(raw==='trial' || raw==='prove' || trialEnd){
+      const d=trialEnd ? daysBetweenDates(today(), trialEnd) : null;
+      if(d !== null && d < 0) return {key:'expired', label:'Prøve utløpt', days:d};
+      return {key:'trial', label: d === null ? 'Gratis test' : 'Gratis test '+d+' dager igjen', days:d};
+    }
+    return {key:'', label:'Ikke satt', days:null};
+  }
+  function subscriptionBadge(f){ const s=subscriptionState(f); return `<span class="sub-pill ${esc(s.key)}">${esc(s.label)}</span>`; }
+  function renderAdminSubscriptionBox(){
+    const id=val('adminSubFirma') || val('adminActiveFirma') || app.firmaId;
+    const f=(app.data.adminFirmaer||[]).find(x=>String(x.id)===String(id));
+    const el=$('adminSubInfo'); if(!el) return;
+    if(!f){ el.innerHTML='<div class="msg">Velg firma for å se abonnement.</div>'; return; }
+    const st=subscriptionState(f);
+    setVal('adminSubPrice', abonnementPris(f));
+    el.innerHTML=`<div class="msg"><strong>${esc(f.navn||f.epost||f.id)}</strong><br>${subscriptionBadge(f)}<div class="subscription-summary"><div class="mini"><span class="muted">Pris</span><strong>${kr(abonnementPris(f))}</strong><span class="muted">kr/mnd eks. mva</span></div><div class="mini"><span class="muted">Trial slutt</span><strong>${esc(abonnementTrialEnd(f)||'-')}</strong></div><div class="mini"><span class="muted">Betalt til</span><strong>${esc(abonnementBetaltTil(f)||'-')}</strong></div><div class="mini"><span class="muted">Status</span><strong>${esc(st.label)}</strong></div></div></div>`;
+  }
+  async function updateFirmaSubscription(payload, okText){
+    if(!app.isSysadm) return;
+    const firmaId=val('adminSubFirma') || val('adminActiveFirma');
+    if(!firmaId){ msg('adminSubInfo','Velg firma først.','err'); return; }
+    msg('adminSubInfo','Lagrer abonnement ...');
+    const {error}=await app.sb.from('hov_firma').update(payload).eq('id', firmaId);
+    if(error){ msg('adminSubInfo','Kunne ikke lagre abonnement: '+error.message+' Kjør SQL-filen i ZIP-en først hvis kolonnene mangler.','err'); return; }
+    await loadAdminData();
+    setVal('adminSubFirma', firmaId);
+    renderAdminSubscriptionBox();
+    msg('adminSubInfo', okText || 'Abonnement oppdatert.','ok');
+  }
+  async function adminStartTrial(){
+    const days=Number(val('adminTrialDays')||30) || 30;
+    const price=Number(val('adminSubPrice')||500) || 500;
+    await updateFirmaSubscription({abonnement_status:'trial', trial_start:today(), trial_end:datePlusDays(days), app_mnd_pris:price}, days+' dager gratis prøveperiode er startet.');
+  }
+  async function adminActivatePaid(){
+    const price=Number(val('adminSubPrice')||500) || 500;
+    await updateFirmaSubscription({abonnement_status:'aktiv', abonnement_betalt_til:datePlusDays(30), app_mnd_pris:price}, 'Kunden er satt aktiv/betalt for 30 dager.');
+  }
+  async function adminDeactivateSubscription(){
+    const firmaId=val('adminSubFirma') || val('adminActiveFirma');
+    if(!firmaId){ msg('adminSubInfo','Velg firma først.','err'); return; }
+    if(!confirm('Deaktivere abonnement og tilgang for valgt firma?')) return;
+    await updateFirmaSubscription({abonnement_status:'deaktivert'}, 'Abonnement er deaktivert.');
+    try{ await setAppFirmaRolle(firmaId,'deaktivert'); }catch(e){ console.warn('Kunne ikke deaktivere profiler', e); }
+  }
+  async function adminCreateSubscriptionInvoice(){
+    const firmaId=val('adminSubFirma') || val('adminActiveFirma');
+    const f=(app.data.adminFirmaer||[]).find(x=>String(x.id)===String(firmaId));
+    if(!f){ msg('adminSubInfo','Velg firma først.','err'); return; }
+    setVal('appFakturaFirma', firmaId);
+    setVal('appFakturaBelop', abonnementPris(f));
+    setVal('appFakturaForfallDager','14');
+    setVal('appFakturaTekst','Abonnement HovslagerSystem - '+kr(abonnementPris(f))+' kr/mnd eks. mva');
+    await lagAppFaktura();
+    msg('adminSubInfo','Faktura for abonnement er laget. Se SysAdm: fakturer hovslagere.','ok');
+  }
+
+
   async function rettStandardFirmaNavn(){
     if(!app.sb) return;
     const regler = [
@@ -1565,10 +1676,10 @@ table{
     const firmaer = app.data.adminFirmaer || [];
     const profiler = app.data.adminProfiler || [];
     const opts = '<option value="">Velg firma</option>' + firmaer.map(f=>`<option value="${esc(f.id)}">${esc(f.navn || f.epost || f.id)}</option>`).join('');
-    ['adminActiveFirma','adminProfileFirma','adminUserFirma','adminBackupFirma','appFakturaFirma'].forEach(id=>{ const el=$(id); if(el){ const old=el.value; el.innerHTML=opts; el.value = old || ((id==='adminActiveFirma' || id==='adminBackupFirma') ? app.firmaId : ''); }});
+    ['adminActiveFirma','adminSubFirma','adminProfileFirma','adminUserFirma','adminBackupFirma','appFakturaFirma'].forEach(id=>{ const el=$(id); if(el){ const old=el.value; el.innerHTML=opts; el.value = old || ((id==='adminActiveFirma' || id==='adminBackupFirma') ? app.firmaId : ''); }});
 
     const firmaRows = firmaer.map(f=>`<tr>
-      <td><strong>${esc(f.navn||'Uten navn')}</strong>${String(f.id)===String(app.firmaId)?'<br><span class="pill">Aktivt firma</span>':''}</td>
+      <td><strong>${esc(f.navn||'Uten navn')}</strong>${String(f.id)===String(app.firmaId)?'<br><span class="pill">Aktivt firma</span>':''}<br>${subscriptionBadge(f)}</td>
       <td>${esc(f.epost||'')}</td>
       <td>${esc(f.telefon||'')}</td>
       <td>${esc(f.orgnr || f.org_nr || f.bedriftsnr || '')}</td>
@@ -1577,7 +1688,7 @@ table{
     </tr>`);
     const firmaList=$('adminFirmaList');
     if(firmaList){
-      firmaList.innerHTML = `<div class="msg">Antall lagrede firmaer vist: ${firmaer.length}. Hvis du forventer flere, må de finnes i Supabase-tabellen <code>hov_firma</code> og SysAdm-brukeren må ha tilgang via RLS.</div>` + table(['Firma','E-post','Telefon','Org.nr','ID','Handling'], firmaRows);
+      firmaList.innerHTML = `<div class="msg">Antall lagrede firmaer vist: ${firmaer.length}. Hvis du forventer flere, må de finnes i Supabase-tabellen <code>hov_firma</code> og SysAdm-brukeren må ha tilgang via RLS.</div>` + table(['Firma / abonnement','E-post','Telefon','Org.nr','ID','Handling'], firmaRows);
       firmaList.querySelectorAll('[data-admin-use-firma]').forEach(btn=>btn.addEventListener('click', async ()=>{
         setVal('adminActiveFirma', btn.dataset.adminUseFirma);
         await adminSwitchFirma();
@@ -1631,6 +1742,7 @@ table{
 
     $('adminProfileList').innerHTML = table(['E-post','Navn','Rolle','Firma','Auth User ID'], profiler.map(pr=>`<tr><td>${esc(pr.epost||'')}</td><td>${esc(pr.navn||'')}</td><td>${esc(pr.rolle||'')}</td><td>${esc(firmaer.find(f=>String(f.id)===String(pr.firma_id))?.navn || pr.firma_id || '')}</td><td><code>${esc(pr.auth_user_id||'')}</code></td></tr>`));
     renderAppFakturaer();
+    renderAdminSubscriptionBox();
   }
 
   async function adminSwitchFirma(){
@@ -1641,6 +1753,7 @@ table{
     if(!firma){ msg('adminMsg','Fant ikke valgt firma.','err'); return; }
     app.firma = firma;
     app.firmaId = firma.id;
+    setVal('adminSubFirma', firma.id);
     updateHeader();
     renderFirma();
     await loadAll();
