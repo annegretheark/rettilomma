@@ -388,6 +388,7 @@ table{
 .help-link-login{display:inline-block;margin-top:14px;padding:10px 14px;border-radius:10px;background:#334155;color:#f8fafc;text-decoration:none;font-weight:700}
 .help-link-top{display:inline-block;padding:10px 14px;border-radius:10px;background:#334155;color:#f8fafc;text-decoration:none;font-weight:700}
 .help-link-login:hover,.help-link-top:hover{filter:brightness(1.08)}
+.remember-row{display:flex;align-items:center;gap:10px}.remember-row input{width:auto;min-width:22px}#enableBioBtn.bio-on{background:#22c55e!important;color:#052e16!important}
 </style>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -401,6 +402,7 @@ table{
       <p><a class="help-link-login" href="brukerveiledning.html" target="_blank" rel="noopener">📖 Brukerveiledning</a></p>
       <label>E-post<input id="loginEmail" type="email" autocomplete="username"></label>
       <label>Passord<input id="loginPassword" type="password" autocomplete="current-password"></label>
+      <label class="remember-row"><input id="rememberLogin" type="checkbox" checked> Husk meg på denne enheten</label>
       <div class="actions"><button id="loginBtn">Logg inn</button><button id="resetBtn" class="secondary">Glemt passord</button></div>
       <div id="loginMsg"></div>
     </section>
@@ -412,7 +414,7 @@ table{
           <div id="headerLogoFallback" class="logo-fallback">HS</div>
           <div><h1 id="headerTitle">HovslagerSystem</h1><p id="headerSub" class="muted"></p></div>
         </div>
-        <div class="userline"><span id="userPill" class="pill"></span><a class="help-link-top" href="brukerveiledning.html" target="_blank" rel="noopener">❓ Hjelp</a><button id="refreshBtn" class="secondary">Oppdater</button><button id="logoutBtn" class="danger">Logg ut</button></div>
+        <div class="userline"><span id="userPill" class="pill"></span><a class="help-link-top" href="brukerveiledning.html" target="_blank" rel="noopener">❓ Hjelp</a><button id="enableBioBtn" class="secondary" type="button">🔐 Biometri/PIN</button><button id="refreshBtn" class="secondary">Oppdater</button><button id="logoutBtn" class="danger">Logg ut</button></div>
       </header>
 
       <nav class="tabs card">
@@ -714,6 +716,8 @@ table{
   'use strict';
   const $ = (id) => document.getElementById(id);
   const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
+  const LOCAL_LOCK_KEY = 'hov_local_lock_v1';
+  const REMEMBER_LOGIN_KEY = 'hov_remember_login_v1';
   window.hovApp = app;
   window.hovAppReadLastJobb = function(){ readLastJobbAsNew(); };
   window.hovAppStartVoiceJobb = function(){ startVoiceJobb(); };
@@ -859,16 +863,24 @@ table{
     setVal('jobbVarer','');
     setVal('jobbKm','');
     setVal('jobbBildeDato', today());
+    const remember = localStorage.getItem(REMEMBER_LOGIN_KEY);
+    if($('rememberLogin')) $('rememberLogin').checked = remember !== '0';
     const { data } = await app.sb.auth.getSession();
     app.session = data.session;
     app.user = data.session?.user || null;
-    if(app.user) await startApp(); else showLogin(true);
+    if(app.user){
+      const ok = await requireLocalUnlockIfEnabled();
+      if(ok) await startApp();
+      else { await app.sb.auth.signOut(); app.session=null; app.user=null; showLogin(true); msg('loginMsg','Appen er låst. Logg inn med passord for å fortsette.','err'); }
+    } else showLogin(true);
   }
 
   function bind(){
     $('loginBtn')?.addEventListener('click', login);
     $('resetBtn')?.addEventListener('click', resetPassword);
     $('logoutBtn')?.addEventListener('click', logout);
+    $('enableBioBtn')?.addEventListener('click', enableLocalLock);
+    $('rememberLogin')?.addEventListener('change', ()=>localStorage.setItem(REMEMBER_LOGIN_KEY, $('rememberLogin')?.checked ? '1' : '0'));
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceJobb);
@@ -940,10 +952,114 @@ table{
 
   async function login(){
     msg('loginMsg','Logger inn...');
+    localStorage.setItem(REMEMBER_LOGIN_KEY, $('rememberLogin')?.checked ? '1' : '0');
     const { data, error } = await app.sb.auth.signInWithPassword({ email: val('loginEmail'), password: val('loginPassword') });
     if(error){ msg('loginMsg', error.message, 'err'); return; }
-    app.session=data.session; app.user=data.user; await startApp();
+    app.session=data.session; app.user=data.user;
+    if($('rememberLogin') && !$('rememberLogin').checked){
+      // Brukeren valgte å ikke huske innloggingen. Økten fungerer nå, men lagres ikke neste gang.
+      try{ localStorage.removeItem('sb-'+new URL(window.supabaseClient.supabaseUrl).host.split('.')[0]+'-auth-token'); }catch(_){ }
+    }
+    await startApp();
   }
+
+  function base64urlFromBytes(bytes){
+    let bin=''; new Uint8Array(bytes).forEach(b=>bin+=String.fromCharCode(b));
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function bytesFromBase64url(text){
+    const b64=String(text||'').replace(/-/g,'+').replace(/_/g,'/');
+    const bin=atob(b64 + '==='.slice((b64.length+3)%4));
+    const out=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+    return out;
+  }
+  function randomBytes(len){ const a=new Uint8Array(len); crypto.getRandomValues(a); return a; }
+  function localLockLoad(){ try{ return JSON.parse(localStorage.getItem(LOCAL_LOCK_KEY)||'null'); }catch(_){ return null; } }
+  function localLockSave(row){ localStorage.setItem(LOCAL_LOCK_KEY, JSON.stringify(row||{})); updateLocalLockButton(); }
+  function localLockClear(){ localStorage.removeItem(LOCAL_LOCK_KEY); updateLocalLockButton(); }
+  function localLockIsEnabled(){ const r=localLockLoad(); return !!(r && (r.credentialId || r.pinHash)); }
+  function updateLocalLockButton(){
+    const b=$('enableBioBtn'); if(!b) return;
+    const on=localLockIsEnabled();
+    b.textContent = on ? '🔐 Biometri/PIN på' : '🔐 Biometri/PIN';
+    b.classList.toggle('bio-on', on);
+    b.title = on ? 'Biometri/PIN er aktiv på denne enheten' : 'Aktiver lokal lås med Face ID, fingeravtrykk eller PIN';
+  }
+  async function sha256Text(text){
+    const data=new TextEncoder().encode(text);
+    const hash=await crypto.subtle.digest('SHA-256', data);
+    return base64urlFromBytes(hash);
+  }
+  async function askAndStorePin(existing){
+    const pin=prompt(existing ? 'Skriv ny lokal PIN-kode for denne enheten (minst 4 tegn):' : 'Velg en lokal PIN-kode for denne enheten (minst 4 tegn):');
+    if(!pin || pin.length<4) throw new Error('PIN må være minst 4 tegn.');
+    const salt=base64urlFromBytes(randomBytes(16));
+    return { salt, pinHash: await sha256Text(salt + ':' + pin) };
+  }
+  async function checkPin(lock){
+    const pin=prompt('Biometri var ikke tilgjengelig. Skriv lokal PIN-kode:');
+    if(!pin) return false;
+    return (await sha256Text(lock.salt + ':' + pin)) === lock.pinHash;
+  }
+  function webAuthnAvailable(){ return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext); }
+  async function createBiometricCredential(){
+    if(!webAuthnAvailable()) return null;
+    const userId=randomBytes(16);
+    const cred=await navigator.credentials.create({ publicKey:{
+      challenge: randomBytes(32),
+      rp:{ name:'HovslagerSystem' },
+      user:{ id:userId, name:app.user?.email || 'hovslager', displayName:app.user?.email || 'Hovslager' },
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{ userVerification:'required', residentKey:'discouraged' },
+      timeout:60000,
+      attestation:'none'
+    }});
+    if(!cred) return null;
+    return { credentialId: base64urlFromBytes(cred.rawId) };
+  }
+  async function verifyBiometric(lock){
+    if(!webAuthnAvailable() || !lock?.credentialId) return false;
+    try{
+      const assertion=await navigator.credentials.get({ publicKey:{
+        challenge: randomBytes(32),
+        allowCredentials:[{ type:'public-key', id:bytesFromBase64url(lock.credentialId) }],
+        userVerification:'required',
+        timeout:60000
+      }});
+      return !!assertion;
+    }catch(e){ console.warn('Biometri/PIN ble ikke godkjent', e); return false; }
+  }
+  async function requireLocalUnlockIfEnabled(){
+    const lock=localLockLoad();
+    if(!lock || (!lock.credentialId && !lock.pinHash)) return true;
+    msg('loginMsg','Låser opp med biometri/PIN ...');
+    if(await verifyBiometric(lock)) return true;
+    if(lock.pinHash && await checkPin(lock)) return true;
+    return false;
+  }
+  async function enableLocalLock(){
+    if(!app.user){ msg('loginMsg','Logg inn først.','err'); return; }
+    const existing=localLockLoad();
+    if(existing && confirm('Biometri/PIN er allerede aktiv. Vil du slå den av på denne enheten?')){
+      localLockClear();
+      msg('dashMsg','Biometri/PIN er slått av på denne enheten.','ok');
+      return;
+    }
+    try{
+      msg('dashMsg','Aktiverer biometri/PIN på denne enheten ...');
+      let lock={ enabledAt:new Date().toISOString(), email:app.user.email || '' };
+      const bio=await createBiometricCredential();
+      if(bio) lock={...lock,...bio};
+      const pin=await askAndStorePin(false);
+      lock={...lock,...pin};
+      localLockSave(lock);
+      msg('dashMsg', bio ? 'Biometri/PIN er aktivert. Neste gang appen åpnes, låses den opp med Face ID/fingeravtrykk eller PIN.' : 'Lokal PIN er aktivert. Biometri krever HTTPS og støtte i nettleseren.', 'ok');
+    }catch(err){
+      msg('dashMsg','Kunne ikke aktivere biometri/PIN: '+(err.message||String(err)),'err');
+    }
+  }
+
   async function resetPassword(){
     const email=val('loginEmail'); if(!email){ msg('loginMsg','Skriv e-post først.','err'); return; }
     const { error } = await app.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/rettilomma/behandler/reset.html' });
@@ -1038,6 +1154,7 @@ table{
     const img=$('headerLogo'), fb=$('headerLogoFallback');
     if(url){ img.src=url; img.classList.remove('hidden'); fb.classList.add('hidden'); }
     else { img.removeAttribute('src'); img.classList.add('hidden'); fb.classList.remove('hidden'); }
+    updateLocalLockButton();
   }
 
   function showTab(id){
