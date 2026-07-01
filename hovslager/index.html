@@ -493,14 +493,15 @@ table{
       </header>
 
       <nav class="tabs card">
-        <button data-tab="dashboard">Oversikt</button>
+        <button data-tab="jobber" class="mobile-primary-tab">Jobber</button>
+        <button id="mobileReadLastJobbBtn" type="button" class="mobile-only mobile-read-jobb">Les inn jobb</button>
         <button data-tab="kunder">Kunder</button>
         <button data-tab="hester">Hester</button>
-        <button data-tab="jobber">Jobber</button>
-        <button data-tab="fakturaer">Faktura</button>
-        <button data-tab="firma">Firma</button>
-        <button data-tab="priser">Priser</button>
-        <button id="adminTabBtn" data-tab="admin" class="hidden">SysAdm</button>
+        <button id="adminTabBtn" data-tab="admin" class="hidden">Admin</button>
+        <button data-tab="dashboard" class="desktop-extra-tab">Oversikt</button>
+        <button data-tab="fakturaer" class="desktop-extra-tab">Faktura</button>
+        <button data-tab="firma" class="desktop-extra-tab">Firma</button>
+        <button data-tab="priser" class="desktop-extra-tab">Priser</button>
       </nav>
 
       <section id="dashboard" class="tab card">
@@ -958,6 +959,7 @@ table{
     $('rememberLogin')?.addEventListener('change', ()=>localStorage.setItem(REMEMBER_LOGIN_KEY, $('rememberLogin')?.checked ? '1' : '0'));
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
+    $('mobileReadLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
@@ -1147,7 +1149,7 @@ table{
     $('userPill').textContent = app.user?.email || '';
     await ensureFirma();
     await loadAll();
-    showTab('dashboard');
+    showTab(window.matchMedia && window.matchMedia('(max-width:800px)').matches ? 'jobber' : 'dashboard');
     bindReadLastJobbButton();
   }
 
@@ -2080,7 +2082,64 @@ table{
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
     const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}
+
+/* MOBILMENY 2026-07-01: færre knapper, Jobber først */
+.mobile-only{display:none!important;}
+@media(max-width:800px){
+  .desktop-extra-tab{display:none!important;}
+  .mobile-only{display:inline-flex!important;}
+  .tabs{
+    grid-auto-flow:column!important;
+    grid-auto-columns:minmax(112px,1fr)!important;
+    overflow-x:auto!important;
+    padding:8px!important;
+    gap:8px!important;
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  .tabs button{
+    min-width:112px!important;
+    min-height:46px!important;
+    padding:10px 12px!important;
+    border-radius:12px!important;
+    font-size:15px!important;
+  }
+  .tabs .mobile-primary-tab,
+  .tabs .mobile-read-jobb{
+    background:var(--accent)!important;
+    color:#111827!important;
+  }
+  .topbar .userline{
+    grid-template-columns:1fr 1fr!important;
+  }
+  #refreshBtn,
+  #enableBioBtn.bio-on{
+    display:none!important;
+  }
+  #logoutBtn{
+    grid-column:auto!important;
+  }
+  .help-link-top,
+  #logoutBtn{
+    min-height:44px!important;
+    font-size:14px!important;
+  }
+  #dashboard .quick-job,
+  #dashboard #dashCounts,
+  #dashboard #readLastJobbBtn,
+  #dashboard > p.muted{
+    display:none!important;
+  }
+  #jobber{
+    scroll-margin-top:8px;
+  }
+}
+@media(max-width:420px){
+  .tabs{grid-auto-columns:minmax(104px,1fr)!important;}
+  .tabs button{min-width:104px!important;font-size:14px!important;}
+}
+</style>
       </head><body>
       <div class="top"><div><h1>${title}</h1><div class="preview">${esc(label)}</div></div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
