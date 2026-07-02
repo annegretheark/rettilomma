@@ -664,7 +664,7 @@ table{
 
       <nav class="tabs card main-tabs">
         <button data-tab="jobber" class="primary-tab">Jobber</button>
-        <button id="navReadLastJobbBtn" type="button" class="secondary quick-read-tab">Les inn jobb</button>
+        <button id="navReadLastJobbBtn" type="button" class="secondary quick-read-tab">🎙 Snakk inn eller skriv inn ny jobb</button>
         <details class="nav-more">
           <summary>Mer</summary>
           <div class="nav-more-menu">
@@ -683,18 +683,18 @@ table{
         <h2>Oversikt</h2>
         <div id="dashMsg"></div>
         <div class="quick-job card soft-card">
-          <h3>Snakk inn ny jobb</h3>
-          <p class="muted">Trykk på mikrofonen og si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du stopper mikrofonen, fylles jobben ut, lagres automatisk og mikrofonen starter på nytt for neste jobb.</p>
+          <h3>Snakk inn eller skriv inn ny jobb</h3>
+          <p class="muted">Trykk på mikrofonen eller skriv i feltet under. Si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du stopper mikrofonen, fylles jobben ut, lagres automatisk og mikrofonen starter på nytt for neste jobb.</p>
           <div class="actions">
-            <button id="voiceNewJobbBtn" type="button" onclick="window.hovAppStartVoiceJobb && window.hovAppStartVoiceJobb()">🎙 Snakk inn ny jobb</button>
-            <button id="voiceStopJobbBtn" type="button" onclick="window.hovAppStopVoiceJobb && window.hovAppStopVoiceJobb()" class="secondary">Stopp</button>
-            <button id="voiceUseTextJobbBtn" type="button" onclick="window.hovAppUseVoiceTextJobb && window.hovAppUseVoiceTextJobb()" class="secondary">Bruk skrevet tekst</button>
+            <button id="voiceNewJobbBtn" type="button">🎙 Snakk inn eller skriv inn ny jobb</button>
+            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp</button>
+            <button id="voiceUseTextJobbBtn" type="button" class="secondary">Bruk skrevet tekst</button>
             <button id="newJobbFromDashBtn" type="button" class="secondary">Åpne tom ny jobb</button>
           </div>
-          <label class="wide">Tale/tekst fra mikrofon<textarea id="voiceJobbText" placeholder="Talen kommer her. Du kan også skrive og trykke Bruk tekst i ny jobb."></textarea></label>
+          <label class="wide">Snakk inn eller skriv inn ny jobb<textarea id="voiceJobbText" placeholder="Snakk inn eller skriv teksten her, og trykk Bruk skrevet tekst."></textarea></label>
           <div id="voiceJobbMsg"></div>
         </div>
-        <div class="actions"><button id="readLastJobbBtn" type="button" class="secondary" onclick="window.hovAppReadLastJobb && window.hovAppReadLastJobb()">Les inn siste jobb som mal</button></div>
+        <div class="actions"><button id="readLastJobbBtn" type="button" class="secondary">Les inn siste jobb som mal</button></div>
         <p class="muted">«Les inn siste jobb som mal» lager en ny jobb basert på siste registrerte jobb.</p>
         <div id="dashCounts" class="grid"></div>
       </section>
@@ -725,8 +725,9 @@ table{
 
       <section id="jobber" class="tab card hidden">
         <h2>Jobber</h2>
-        <h3 id="jobbFormTitle">Ny jobb</h3>
         <p class="muted">Klikk på en rad i listen for å redigere.</p>
+        <div id="jobbList"></div>
+        <h3 id="jobbFormTitle">Ny jobb</h3>
         <div class="grid formgrid">
           <label>Dato<input id="jobbDato" type="date"></label><label>Kunde<select id="jobbKunde"></select></label>
           <label>Hest<select id="jobbHest"></select></label><label>Jobbtype<select id="jobbType"></select></label>
@@ -734,7 +735,7 @@ table{
           <label>Arbeid beløp<input id="jobbArbeid" type="number" step="0.01" value="0"></label><label>Utlegg/varer beløp<input id="jobbVarer" type="number" step="0.01" placeholder="Blankt hvis ingen utlegg"></label>
           <label class="wide">Beskrivelse<textarea id="jobbBeskrivelse"></textarea><span class="muted">Bruk knappen under for å lese inn mer beskrivelse. Ny tekst legges til nederst.</span></label><div class="wide actions description-voice-actions"><button id="voiceBeskrivelseBtn" type="button" class="secondary">🎤 Les inn beskrivelse</button><button id="voiceBeskrivelseStopBtn" type="button" class="secondary">Stopp beskrivelse</button></div><div id="voiceBeskrivelseMsg" class="wide"></div><label>Dato for nye bilder<input id="jobbBildeDato" type="date"></label><label class="wide">Bilder fra jobben<input id="jobbBildeFiles" type="file" accept="image/*" multiple><span class="muted">Du kan laste opp flere bilder. De lagres med datoen over.</span></label><div id="jobbBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
         </div>
-        <div class="actions"><button id="saveJobbBtn">Lagre jobb</button><button id="newJobbBtn" type="button" class="secondary">Ny jobb</button><button id="deleteJobbBtn" type="button" class="danger hidden">Slett jobb</button></div><div id="jobbMsg"></div><div id="jobbList"></div>
+        <div class="actions"><button id="saveJobbBtn">Lagre jobb</button><button id="newJobbBtn" type="button" class="secondary">Ny jobb</button><button id="deleteJobbBtn" type="button" class="danger hidden">Slett jobb</button></div><div id="jobbMsg"></div>
       </section>
 
       <section id="fakturaer" class="tab card hidden">
@@ -988,7 +989,7 @@ table{
   const REMEMBER_LOGIN_KEY = 'hov_remember_login_v1';
   window.hovApp = app;
   window.hovAppReadLastJobb = function(){ readLastJobbAsNew(); };
-  window.hovAppStartVoiceJobb = function(){ startVoiceJobb(); };
+  window.hovAppStartVoiceJobb = function(){ startVoiceNyJobb(); };
   window.hovAppStopVoiceJobb = function(){ stopVoiceJobb(false); };
   window.hovAppUseVoiceTextJobb = function(){ applyVoiceTextAsJobb({autoSave:false}); };
 
@@ -1237,14 +1238,14 @@ table{
     $('rememberLogin')?.addEventListener('change', ()=>localStorage.setItem(REMEMBER_LOGIN_KEY, $('rememberLogin')?.checked ? '1' : '0'));
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
-    $('navReadLastJobbBtn')?.addEventListener('click', ()=>{ showTab('jobber'); readLastJobbAsNew(); });
-    $('voiceNewJobbBtn')?.addEventListener('click', startVoiceJobb);
+    $('navReadLastJobbBtn')?.addEventListener('click', openNewJobbWindowFromNav);
+    $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
     $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
-    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='jobber') setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); }));
     document.querySelectorAll('.nav-more [data-tab]').forEach(b=>b.addEventListener('click',()=>{ const d=b.closest('details'); if(d) d.open=false; }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
@@ -2696,11 +2697,49 @@ table{
 
 
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+
+  function openNewJobbWindowFromNav(){
+    // Toppknappen skal åpne ny jobb-vinduet, ikke starte/skjule mikrofon direkte.
+    stopVoiceJobb(true);
+    clearJobbForm();
+    showTab('jobber');
+    setText('jobbFormTitle','Ny jobb');
+    setText('saveJobbBtn','Lagre jobb');
+    $('deleteJobbBtn')?.classList.add('hidden');
+    msg('jobbMsg','Ny jobb er åpnet. Skriv inn jobben, eller bruk Les inn beskrivelse på skjemaet.','ok');
+    setTimeout(()=>{
+      const formTitle = $('jobbFormTitle');
+      if(formTitle) formTitle.scrollIntoView({behavior:'smooth', block:'start'});
+      const desc = $('jobbBeskrivelse');
+      if(desc) desc.focus();
+    }, 50);
+  }
+
+  function startVoiceNyJobb(){
+    // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
+    if(app.voiceActive || app.voiceRecognition){
+      msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+      return;
+    }
+    app.edit.jobb = null;
+    app.voiceStopping = false;
+    app.voiceProcessing = false;
+    clearJobbForm();
+    showTab('dashboard');
+    setText('jobbFormTitle','Ny jobb');
+    setText('saveJobbBtn','Lagre jobb');
+    $('deleteJobbBtn')?.classList.add('hidden');
+    if(!val('voiceJobbText')) setVal('voiceJobbText','');
+    startVoiceJobb();
+  }
   function startVoiceJobb(){
     const Speech = speechApi();
     if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android, eller skriv teksten i feltet og trykk Bruk tekst i ny jobb.','err'); return; }
     try{
-      stopVoiceJobb(true);
+      if(app.voiceActive || app.voiceRecognition){
+        msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+        return;
+      }
       const rec = new Speech();
       app.voiceRecognition = rec;
       app.voiceActive = true;
@@ -2711,7 +2750,7 @@ table{
       let finalText = val('voiceJobbText');
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','Lytter ... snakk inn jobben. Trykk Stopp når du er ferdig.','ok');
+        msg('voiceJobbMsg','Lytter ... snakk inn jobben. Trykk Stopp når du er ferdig, eller skriv i feltet og trykk Bruk skrevet tekst.','ok');
       };
       rec.onerror = (ev) => {
         app.voiceActive = false;
@@ -2742,9 +2781,10 @@ table{
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), stop=$('voiceStopJobbBtn');
-    if(start) start.textContent = listening ? '🎙 Lytter ...' : '🎙 Snakk inn ny jobb';
-    if(start) start.disabled = !!listening;
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn');
+    const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
+    if(start){ start.textContent = label; start.disabled = !!listening; }
+    if(top){ top.textContent = label; top.disabled = !!listening; }
     if(stop) stop.disabled = !listening && !val('voiceJobbText');
   }
   function stopVoiceJobb(silent){
@@ -2902,7 +2942,9 @@ table{
     if(opts.autoSave) app.voiceProcessing = true;
     const text = val('voiceJobbText');
     if(!text){ msg('voiceJobbMsg','Snakk inn eller skriv tekst først.','err'); return; }
+    app.edit.jobb = null;
     openBlankJobbFromDashboard(true);
+    app.edit.jobb = null;
     const hest = findNamed(app.data.hester, text, ['navn']);
     const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
     let pris = findNamed(app.data.priser, text, ['navn','jobbtype','vare','type']);
@@ -2922,7 +2964,8 @@ table{
     if(opts.autoSave){
       msg('jobbMsg','Lagrer jobb fra tale ...','ok');
       msg('voiceJobbMsg','Lagrer jobb fra tale ...','ok');
-      const ok = await saveJobb({fromVoice:true});
+      app.edit.jobb = null;
+      const ok = await saveJobb({fromVoice:true, forceNew:true});
       if(ok){
         setVal('voiceJobbText','');
         showTab('dashboard');
@@ -2943,7 +2986,7 @@ table{
     showTab('jobber');
     setText('jobbFormTitle','Ny jobb');
     if(!skipMsg) msg('jobbMsg','Ny tom jobb åpnet. Du kan fylle ut eller bruke mikrofon fra forsiden.','ok');
-    document.getElementById('jobber')?.scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(()=>{ const formTitle=$('jobbFormTitle'); if(formTitle) formTitle.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
 
   function bindLesInnJobbButtons(){
@@ -2973,7 +3016,7 @@ table{
     if(!j){ msg('dashMsg','Fant ikke jobben som skulle leses inn.','err'); return; }
     app.edit.jobb = null;
     showTab('jobber');
-    setText('jobbFormTitle','Ny jobb basert på innlest jobb');
+    setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
     setVal('jobbDato', today());
@@ -3105,7 +3148,7 @@ table{
     if(!hest || String(hest.kunde_id)!==String(payload.kunde_id)){ msg('jobbMsg','Hest og kunde/eier matcher ikke. Velg hest på nytt.','err'); return false; }
     try{
       let saved=null;
-      if(app.edit.jobb){
+      if(app.edit.jobb && !opts.forceNew){
         const {data,error}=await app.sb.from('hov_jobber').update(payload).eq('id',app.edit.jobb).eq('firma_id',app.firmaId).select('*').single();
         if(error){ msg('jobbMsg',error.message,'err'); return false; }
         saved=data;

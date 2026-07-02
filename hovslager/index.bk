@@ -55,8 +55,8 @@
           <h3>Snakk inn ny jobb</h3>
           <p class="muted">Trykk på mikrofonen og si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du stopper mikrofonen, fylles jobben ut, lagres automatisk og mikrofonen starter på nytt for neste jobb.</p>
           <div class="actions">
-            <button id="voiceNewJobbBtn" type="button" onclick="window.hovAppStartVoiceJobb && window.hovAppStartVoiceJobb()">🎙 Snakk inn ny jobb</button>
-            <button id="voiceStopJobbBtn" type="button" onclick="window.hovAppStopVoiceJobb && window.hovAppStopVoiceJobb()" class="secondary">Stopp</button>
+            <button id="voiceNewJobbBtn" type="button">🎙 Snakk inn ny jobb</button>
+            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp</button>
             <button id="voiceUseTextJobbBtn" type="button" onclick="window.hovAppUseVoiceTextJobb && window.hovAppUseVoiceTextJobb()" class="secondary">Bruk skrevet tekst</button>
             <button id="newJobbFromDashBtn" type="button" class="secondary">Åpne tom ny jobb</button>
           </div>
