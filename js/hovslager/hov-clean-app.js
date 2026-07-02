@@ -163,7 +163,7 @@
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
-    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
     $('deleteLogoBtn')?.addEventListener('click', deleteLogo);
@@ -1421,6 +1421,22 @@
   function hestNavn(id){ return app.data.hester.find(h=>String(h.id)===String(id))?.navn || id || ''; }
   function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
   function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
+  function setJobbLayout(mode){
+    const section=$('jobber'), list=$('jobbList'), title=$('jobbFormTitle');
+    if(!section || !list || !title) return;
+    const grid = title.nextElementSibling;
+    const actions = grid ? grid.nextElementSibling : null;
+    const msgEl = $('jobbMsg');
+    if(mode === 'formFirst'){
+      section.insertBefore(title, list);
+      if(grid) section.insertBefore(grid, list);
+      if(actions) section.insertBefore(actions, list);
+      if(msgEl) section.insertBefore(msgEl, list);
+    } else {
+      section.insertBefore(list, title);
+    }
+  }
+
   function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert',''], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td><td><button type="button" class="small-btn secondary" data-id="${esc(j.id)}">Les inn</button></td></tr>`)); bindClickableRows('jobbList','jobb', editJobb); bindLesInnJobbButtons(); }
 
   function renderPriser(){
@@ -1701,9 +1717,10 @@
   function openBlankJobbFromDashboard(skipMsg){
     clearJobbForm();
     showTab('jobber');
+    setJobbLayout('formFirst');
     setText('jobbFormTitle','Ny jobb');
     if(!skipMsg) msg('jobbMsg','Ny tom jobb åpnet. Du kan fylle ut eller bruke mikrofon fra forsiden.','ok');
-    document.getElementById('jobber')?.scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(()=>{ const formTitle=$('jobbFormTitle'); if(formTitle) formTitle.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
 
   function bindLesInnJobbButtons(){
@@ -1790,7 +1807,8 @@
     const j = app.data.jobber.find(x=>String(x.id)===String(id)); if(!j) return;
     app.edit.jobb = j.id;
     setVal('jobbDato',j.dato); setJobbKundeLocked(false); setVal('jobbKunde',j.kunde_id); fillJobbHester(); setVal('jobbHest',j.hest_id); syncJobbKundeHestLock(); fillJobbTypeSelect(); setVal('jobbType',j.jobbtype); setVal('jobbKm',j.km); setVal('jobbKmPris',j.km_pris ?? '5,30'); setVal('jobbArbeid',j.arbeid_belop); setVal('jobbVarer',j.varer_belop ?? ''); setVal('jobbBeskrivelse',j.beskrivelse); setVal('jobbBildeDato',j.dato || today()); renderJobbBildePreview(jobBilder(j)); if($('jobbBildeFiles')) $('jobbBildeFiles').value='';
-    setText('jobbFormTitle','Rediger jobb'); setText('saveJobbBtn','Oppdater jobb'); $('deleteJobbBtn')?.classList.remove('hidden'); renderJobber(); msg('jobbMsg','Redigerer jobb fra '+(j.dato||''),'ok');
+    setText('jobbFormTitle','Rediger jobb'); setText('saveJobbBtn','Oppdater jobb'); $('deleteJobbBtn')?.classList.remove('hidden'); renderJobber(); setJobbLayout('formFirst'); msg('jobbMsg','Redigerer jobb fra '+(j.dato||''),'ok');
+    setTimeout(()=>{ const formTitle=$('jobbFormTitle'); if(formTitle) formTitle.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
   function clearJobbForm(){ app.edit.jobb=null; ['jobbBeskrivelse'].forEach(id=>setVal(id,'')); setVal('jobbType',''); setVal('jobbDato',today()); setVal('jobbBildeDato',today()); setJobbKundeLocked(false); setVal('jobbKunde',''); fillJobbHester(); setVal('jobbHest',''); setVal('jobbKm',''); setVal('jobbKmPris','5,30'); setVal('jobbArbeid',0); setVal('jobbVarer',''); if($('jobbBildeFiles')) $('jobbBildeFiles').value=''; renderJobbBildePreview([]); setText('jobbFormTitle','Ny jobb'); setText('saveJobbBtn','Lagre jobb'); $('deleteJobbBtn')?.classList.add('hidden'); renderJobber(); msg('jobbMsg',''); }
   async function deleteJobb(){
