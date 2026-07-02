@@ -410,6 +410,35 @@ table{
 /* FIX: Dato for nye bilder skal ligge til venstre i jobbskjemaet */
 .jobb-bilde-dato-label{grid-column:1 / span 4 !important;}
 @media(max-width:800px){.jobb-bilde-dato-label{grid-column:span 12!important;}}
+
+
+/* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
+@media(max-width:700px){
+  body{background:#0f172a;}
+  .wrap{padding:8px;max-width:100%;}
+  .card{border-radius:18px;padding:12px;margin:10px 0;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  .topbar{position:sticky;top:0;z-index:80;background:rgba(15,23,42,.96);border-bottom:1px solid var(--border);padding:10px 8px;margin:0 -8px 8px;backdrop-filter:blur(12px)}
+  .tabs{position:sticky;top:72px;z-index:70;background:rgba(15,23,42,.96);margin:0 -8px 10px;padding:8px;overflow-x:auto;flex-wrap:nowrap;scroll-snap-type:x proximity;border-bottom:1px solid var(--border)}
+  .tabs button{flex:0 0 auto;min-width:112px;scroll-snap-align:start;min-height:46px}
+  .grid{grid-template-columns:1fr!important;gap:10px}
+  .formgrid>label,.formgrid>.wide,.image-preview,.col-3{grid-column:1 / -1!important}
+  input,select,textarea,button,.small-btn{font-size:16px;min-height:48px}
+  .actions{display:grid!important;grid-template-columns:1fr;gap:8px;margin:10px 0}
+  .actions button,.actions .small-btn{width:100%;justify-content:center}
+  #kundeList table,#hestList table,#jobbList table,#prisList table,#fakturaList table,#appFakturaList table{min-width:0!important;width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:8px}
+  #kundeList thead,#hestList thead,#jobbList thead,#prisList thead,#fakturaList thead,#appFakturaList thead{display:none}
+  #kundeList tbody,#hestList tbody,#jobbList tbody,#prisList tbody,#fakturaList tbody,#appFakturaList tbody{display:block}
+  #kundeList tr,#hestList tr,#jobbList tr,#prisList tr,#fakturaList tr,#appFakturaList tr{display:block;background:#0b1220;border:1px solid var(--border);border-radius:16px;padding:10px;margin:0 0 10px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  #kundeList tr.click-row,#hestList tr.click-row,#jobbList tr.click-row,#prisList tr.click-row{cursor:pointer}
+  #kundeList td,#hestList td,#jobbList td,#prisList td,#fakturaList td,#appFakturaList td{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border:0;border-bottom:1px solid rgba(51,65,85,.65);padding:8px 2px;text-align:right;word-break:break-word}
+  #kundeList td:last-child,#hestList td:last-child,#jobbList td:last-child,#prisList td:last-child,#fakturaList td:last-child,#appFakturaList td:last-child{border-bottom:0}
+  #kundeList td::before,#hestList td::before,#jobbList td::before,#prisList td::before,#fakturaList td::before,#appFakturaList td::before{content:attr(data-label);font-weight:800;color:var(--muted);text-align:left;min-width:96px;max-width:44%}
+  #fakturaList td.actions,#appFakturaList td.actions{display:grid!important;grid-template-columns:1fr;min-width:0;white-space:normal;gap:8px;text-align:left;padding-top:10px}
+  #fakturaList td.actions::before,#appFakturaList td.actions::before{display:none}
+  #fakturaList .small-btn,#appFakturaList .small-btn{width:100%;min-height:44px}
+  .thumb.small{width:76px;height:58px}.thumb{max-width:160px;height:auto}
+}
+
 </style>
 <style>
 /* Beskrivelse-tale */
@@ -720,14 +749,15 @@ table{
 
       <section id="hester" class="tab card hidden">
         <h2>Hester</h2>
-        <h3 id="hestFormTitle">Ny hest</h3>
         <p class="muted">Klikk på en rad i listen for å vise jobben. Trykk Rediger jobb for å endre.</p>
+        <div id="hestList"></div>
+        <h3 id="hestFormTitle">Ny hest</h3>
         <div class="grid formgrid">
           <label>Kunde<select id="hestKunde"></select></label><label>Navn<input id="hestNavn"></label>
           <label>Rase/type<input id="hestRase"></label><label>Sist skodd<input id="hestSist" type="date"></label>
           <label>Neste besøk<input id="hestNeste" type="date"></label><label>Bilde av hest<input id="hestBildeFile" type="file" accept="image/*"></label><label class="wide">Notater<textarea id="hestNotater"></textarea></label><div id="hestBildePreview" class="image-preview wide"><span class="muted">Ingen bilde valgt.</span></div>
         </div>
-        <div class="actions"><button id="saveHestBtn">Lagre hest</button><button id="newHestBtn" type="button" class="secondary">Ny hest</button><button id="deleteHestBtn" type="button" class="danger hidden">Slett hest</button></div><div id="hestMsg"></div><div id="hestList"></div>
+        <div class="actions"><button id="saveHestBtn">Lagre hest</button><button id="newHestBtn" type="button" class="secondary">Ny hest</button><button id="deleteHestBtn" type="button" class="danger hidden">Slett hest</button></div><div id="hestMsg"></div>
       </section>
 
       <section id="jobber" class="tab card hidden">
@@ -957,6 +987,7 @@ table{
       <section id="priser" class="tab card hidden">
         <h2>Prisliste</h2>
         <p class="muted">Importer prislisten fra CSV-filen, eller se eksisterende priser fra databasen.</p>
+        <div id="prisList"></div>
         <div class="card soft-card">
           <h3 id="prisFormTitle">Ny pris</h3>
           <p class="muted">Klikk på en prislinje i listen for å redigere.</p>
@@ -980,7 +1011,6 @@ table{
           </div>
           <div id="prisImportMsg"></div>
         </div>
-        <div id="prisList"></div>
       </section>
     </section>
   </main>
@@ -1009,6 +1039,7 @@ table{
     const d = new Date(v);
     if(Number.isNaN(d.getTime())) return String(v || '').replace('T',' ').slice(0,19);
     return d.toLocaleString('nb-NO', {
+      timeZone:'Europe/Oslo',
       year:'numeric',
       month:'2-digit',
       day:'2-digit',
@@ -1252,7 +1283,10 @@ table{
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
     $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
-    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='priser'){ setPrisLayout('listFirst'); }
+        if(b.dataset.tab==='hester'){ setHestLayout('listFirst'); }
+        if(b.dataset.tab==='kunder'){ setKundeLayout('listFirst'); }
+        if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
     document.querySelectorAll('.nav-more [data-tab]').forEach(b=>b.addEventListener('click',()=>{ const d=b.closest('details'); if(d) d.open=false; }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
@@ -1543,7 +1577,8 @@ table{
   function showTab(id){
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
-    if(id==='priser') renderPriser();
+    if(id==='priser'){ setPrisLayout('listFirst'); renderPriser(); }
+    if(id==='hester'){ setHestLayout('listFirst'); renderHester(); }
     if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
 
@@ -1944,7 +1979,7 @@ table{
     if(!app.firmaId){ msg('firmaBackupMsg','Mangler firma-ID. Logg inn på nytt.','err'); return; }
     msg('firmaBackupMsg','Starter backup av eget firma...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'backup', mode:'manual', scope:'firma' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'backup', mode:'manual', scope:'firma' } });
       if(error){ msg('firmaBackupMsg','Backup feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         const size = data.file_size ? ` (${Math.round(Number(data.file_size)/1024)} KB)` : '';
@@ -1972,9 +2007,9 @@ table{
     const el=$('firmaBackupList');
     if(el) el.innerHTML='<div class="msg">Laster backup-logg...</div>';
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'list' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list', firma_id:app.firmaId } });
       if(error){ if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message)+'</div>'; return; }
-      const backups=(data && data.ok) ? (data.backups||[]) : [];
+      const backups=((data && data.ok) ? (data.backups||[]) : []).slice().sort((a,b)=>String(b.created_at||b.file_path||'').localeCompare(String(a.created_at||a.file_path||'')));
       renderBackupOptions(backups);
       const rows=backups.map(b=>{
         const dl=b.signed_url ? `<a href="${esc(b.signed_url)}" target="_blank" rel="noopener">Last ned</a>` : '';
@@ -1987,12 +2022,12 @@ table{
   async function restoreFirmaBackup(){
     const filePath=val('firmaRestoreSelect');
     if(!filePath){ msg('firmaBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
-    if(!confirm('Gjenopprette valgt backup? Dette oppdaterer data med innholdet i backupen.')) return;
+    if(!confirm('Gjenopprette valgt backup? Dette overskriver data for eget firma.')) return;
     msg('firmaBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', file_path:filePath } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', backup_path:filePath, firma_id:app.firmaId, confirm:true } });
       if(error){ msg('firmaBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
-      if(data && data.ok){ msg('firmaBackupMsg','Backup er gjenopprettet. Laster data på nytt...','ok'); await loadAll(); await loadFirmaBackupLogg(); }
+      if(data && data.ok){ msg('firmaBackupMsg','Backup er gjenopprettet ('+(data.format||'backup')+'). Laster data på nytt...','ok'); await loadAll(); await loadFirmaBackupLogg(); }
       else msg('firmaBackupMsg','Restore svarte uventet: '+esc(JSON.stringify(data||{})),'err');
     }catch(err){ msg('firmaBackupMsg','Restore feilet: '+(err.message||String(err)),'err'); }
   }
@@ -2455,13 +2490,13 @@ table{
     const jobb=(app.data.jobber||[]).find(j=>String(j.id)===String(f.jobb_id)) || f._jobb || {};
     const hest=(app.data.hester||[]).find(h=>String(h.id)===String(jobb.hest_id)) || {};
     const firma=app.firma||{};
-    const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : 'Kopi');
+    const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : '');
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
     const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
       </head><body>
-      <div class="top"><div><h1>${title}</h1><div class="preview">${esc(label)}</div></div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
+      <div class="top"><div><h1>${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
       <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfallsdato||'')}</p>
       <table><thead><tr><th>Beskrivelse</th><th>Hest</th><th class="right">Beløp eks. mva</th></tr></thead><tbody>
@@ -2610,7 +2645,7 @@ table{
     el.querySelectorAll('[data-vis-faktura]').forEach(b=>b.addEventListener('click',()=>visFakturaForJobb(b.dataset.visFaktura)));
     el.querySelectorAll('[data-vis-faktura-id]').forEach(b=>b.addEventListener('click',()=>{
       const f=(app.data.fakturaer||[]).find(x=>String(x.id)===String(b.dataset.visFakturaId));
-      visFaktura(f);
+      visFaktura(f, {label:'Kopi'});
     }));
     el.querySelectorAll('[data-sett-betalt]').forEach(b=>b.addEventListener('click',()=>settFakturaBetalt(b.dataset.settBetalt)));
     el.querySelectorAll('[data-purr]').forEach(b=>b.addEventListener('click',()=>sendPurring(b.dataset.purr)));
@@ -2623,11 +2658,74 @@ table{
     const rows=[['Kunder',app.data.kunder.length],['Hester',app.data.hester.length],['Jobber',app.data.jobber.length],['Fakturaer',app.data.fakturaer.length],['Kreditnotaer',app.data.kreditnotaer.length]];
     $('dashCounts').innerHTML = rows.map(r=>`<div class="col-3"><div class="card"><h3>${r[1]}</h3><div class="muted">${r[0]}</div></div></div>`).join('');
   }
-  function table(headers, rows){ if(!rows.length) return '<div class="msg">Ingen data å vise.</div>'; return `<div style="overflow:auto"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`; }
+  function table(headers, rows){
+    if(!rows.length) return '<div class="msg">Ingen data å vise.</div>';
+    const labelledRows = rows.map(row=>{
+      let idx = 0;
+      return String(row).replace(/<td(\s[^>]*)?>/g, (m, attrs)=>{
+        const label = esc(headers[idx++] || '');
+        return `<td${attrs || ''} data-label="${label}">`;
+      });
+    }).join('');
+    return `<div style="overflow:auto"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${labelledRows}</tbody></table></div>`;
+  }
   function kundeNavn(id){ return app.data.kunder.find(k=>String(k.id)===String(id))?.navn || id || ''; }
   function hestNavn(id){ return app.data.hester.find(h=>String(h.id)===String(id))?.navn || id || ''; }
-  function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
-  function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
+  function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
+  function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
+  function setPrisLayout(mode){
+    const section=$('priser'), list=$('prisList'), title=$('prisFormTitle');
+    if(!section || !list || !title) return;
+    const formCard = title.closest('.soft-card') || title.parentElement;
+    if(!formCard) return;
+    if(mode === 'formFirst'){
+      section.insertBefore(formCard, list);
+      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+    } else {
+      section.insertBefore(list, formCard);
+    }
+  }
+
+
+  function setKundeLayout(mode){
+    const section=$('kunder'), list=$('kundeList'), title=$('kundeFormTitle');
+    if(!section || !list || !title) return;
+    const hint = title.nextElementSibling;
+    const grid = hint ? hint.nextElementSibling : null;
+    const actions = grid ? grid.nextElementSibling : null;
+    const msgEl = $('kundeMsg');
+    if(mode === 'formFirst'){
+      section.insertBefore(title, list);
+      if(hint) section.insertBefore(hint, list);
+      if(grid) section.insertBefore(grid, list);
+      if(actions) section.insertBefore(actions, list);
+      if(msgEl) section.insertBefore(msgEl, list);
+      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+    } else {
+      section.insertBefore(list, title);
+    }
+  }
+
+
+  function setHestLayout(mode){
+    const section=$('hester'), list=$('hestList'), title=$('hestFormTitle');
+    if(!section || !list || !title) return;
+    const hint = title.previousElementSibling && title.previousElementSibling.id === 'hestList' ? null : title.nextElementSibling;
+    const grid = hint ? hint.nextElementSibling : title.nextElementSibling;
+    const actions = grid ? grid.nextElementSibling : null;
+    const msgEl = $('hestMsg');
+    if(mode === 'formFirst'){
+      section.insertBefore(title, list);
+      if(hint) section.insertBefore(hint, list);
+      if(grid) section.insertBefore(grid, list);
+      if(actions) section.insertBefore(actions, list);
+      if(msgEl) section.insertBefore(msgEl, list);
+      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+    } else {
+      section.insertBefore(list, title);
+    }
+  }
+
   function setJobbLayout(mode){
     const section=$('jobber'), list=$('jobbList'), title=$('jobbFormTitle');
     if(!section || !list || !title) return;
@@ -2644,10 +2742,10 @@ table{
     }
   }
 
-  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert',''], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td><td><button type="button" class="small-btn secondary" data-id="${esc(j.id)}">Les inn</button></td></tr>`)); bindClickableRows('jobbList','jobb', viewJobb); bindLesInnJobbButtons(); }
+  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`)); bindClickableRows('jobbList','jobb', viewJobb); }
 
   function renderPriser(){
-    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td><td class="muted">Klikk for å redigere</td></tr>`);
+    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td></tr>`);
     $('prisList').innerHTML = table(['Kategori','Varenr','Navn','Enhet','Eks. mva','Inkl. mva','Aktiv','Beskrivelse',''], rows);
     bindClickableRows('prisList','pris', editPris);
   }
@@ -3146,12 +3244,14 @@ table{
   }
 
   function editPris(id){
+    setPrisLayout('formFirst');
     const p = app.data.priser.find(x=>String(x.id)===String(id)); if(!p) return;
     app.edit.pris = p.id;
     setVal('prisKategori',p.kategori); setVal('prisVarenr',p.varenr); setVal('prisNavn',p.navn||p.jobbtype||p.vare||p.type); setVal('prisEnhet',p.enhet||'stk'); setVal('prisEksMva',p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva ?? 0); setVal('prisMvaSats',p.mva_sats ?? app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',p.pris_inkl_mva ?? 0); setChecked('prisAktiv',p.aktiv !== false); setVal('prisBeskrivelse',p.beskrivelse);
     setText('prisFormTitle','Rediger pris'); setText('savePrisBtn','Oppdater pris'); $('deletePrisBtn')?.classList.remove('hidden'); renderPriser(); msg('prisImportMsg','Redigerer pris: '+(p.navn||p.jobbtype||p.vare||''),'ok');
   }
-  function clearPrisForm(){ app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg',''); }
+  function clearPrisForm(){
+    setPrisLayout('formFirst'); app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg',''); }
   async function savePris(){
     const eks=num('prisEksMva'); const sats=num('prisMvaSats'); const inkl = num('prisInklMva') || +(eks * (1 + sats/100)).toFixed(2);
     const payload={firma_id:app.firmaId, kategori:val('prisKategori')||null, varenr:val('prisVarenr')||null, navn:val('prisNavn'), enhet:val('prisEnhet')||'stk', pris_eks_mva:eks, mva_sats:sats, pris_inkl_mva:inkl, aktiv:$('prisAktiv')?.checked !== false, beskrivelse:val('prisBeskrivelse')||null};

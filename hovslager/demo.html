@@ -6,6 +6,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px}.kort{background:#171a1b;max-width:1100px;margin:0 auto 18px auto;padding:18px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18)}h1,h2,h3{margin-top:0}label{display:block;margin-top:10px;font-weight:bold}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #ccc;border-radius:8px;background:#f8fafc;color:#111827}button,.knapp{padding:11px 14px;margin:6px 4px 6px 0;border:0;border-radius:8px;background:#1f6feb;color:#fff;cursor:pointer;font-size:15px;text-decoration:none;display:inline-block}.secondary{background:#555}.danger{background:#b42318}.voice{width:100%;font-size:20px;padding:18px;background:#0f766e}.rad{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.skjult{display:none!important}.melding{margin-top:10px;color:#86efac;font-weight:bold}.info{margin-top:8px;font-size:15px;color:#cbd5e1}.listekort{border:1px solid #374151;padding:14px;border-radius:8px;margin-top:8px;background:#22272a;color:#f3f4f6}.system-header{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}.system-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#e0f2fe,#fff);color:#0f172a;display:grid;place-items:center;font-size:34px}.system-title{margin:0;font-size:30px;color:#f8fafc}.system-subtitle{margin-top:5px;color:#cbd5e1;font-size:14px}.system-badge{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:#0f766e;color:white;font-size:12px;font-weight:bold}table{color:#f3f4f6}.mini{font-size:12px;color:#cbd5e1}.preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.preview img{width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #475569}.galleri{display:flex;gap:10px;flex-wrap:wrap}.galleri img{width:150px;height:115px;object-fit:cover;border-radius:10px;border:1px solid #374151;display:block}.statusok{color:#86efac}.statusfeil{color:#fca5a5}
+
+
+/* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
+@media(max-width:700px){
+  body{background:#0f172a;}
+  .wrap{padding:8px;max-width:100%;}
+  .card{border-radius:18px;padding:12px;margin:10px 0;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  .topbar{position:sticky;top:0;z-index:80;background:rgba(15,23,42,.96);border-bottom:1px solid var(--border);padding:10px 8px;margin:0 -8px 8px;backdrop-filter:blur(12px)}
+  .tabs{position:sticky;top:72px;z-index:70;background:rgba(15,23,42,.96);margin:0 -8px 10px;padding:8px;overflow-x:auto;flex-wrap:nowrap;scroll-snap-type:x proximity;border-bottom:1px solid var(--border)}
+  .tabs button{flex:0 0 auto;min-width:112px;scroll-snap-align:start;min-height:46px}
+  .grid{grid-template-columns:1fr!important;gap:10px}
+  .formgrid>label,.formgrid>.wide,.image-preview,.col-3{grid-column:1 / -1!important}
+  input,select,textarea,button,.small-btn{font-size:16px;min-height:48px}
+  .actions{display:grid!important;grid-template-columns:1fr;gap:8px;margin:10px 0}
+  .actions button,.actions .small-btn{width:100%;justify-content:center}
+  #kundeList table,#hestList table,#jobbList table,#prisList table,#fakturaList table,#appFakturaList table{min-width:0!important;width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:8px}
+  #kundeList thead,#hestList thead,#jobbList thead,#prisList thead,#fakturaList thead,#appFakturaList thead{display:none}
+  #kundeList tbody,#hestList tbody,#jobbList tbody,#prisList tbody,#fakturaList tbody,#appFakturaList tbody{display:block}
+  #kundeList tr,#hestList tr,#jobbList tr,#prisList tr,#fakturaList tr,#appFakturaList tr{display:block;background:#0b1220;border:1px solid var(--border);border-radius:16px;padding:10px;margin:0 0 10px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  #kundeList tr.click-row,#hestList tr.click-row,#jobbList tr.click-row,#prisList tr.click-row{cursor:pointer}
+  #kundeList td,#hestList td,#jobbList td,#prisList td,#fakturaList td,#appFakturaList td{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border:0;border-bottom:1px solid rgba(51,65,85,.65);padding:8px 2px;text-align:right;word-break:break-word}
+  #kundeList td:last-child,#hestList td:last-child,#jobbList td:last-child,#prisList td:last-child,#fakturaList td:last-child,#appFakturaList td:last-child{border-bottom:0}
+  #kundeList td::before,#hestList td::before,#jobbList td::before,#prisList td::before,#fakturaList td::before,#appFakturaList td::before{content:attr(data-label);font-weight:800;color:var(--muted);text-align:left;min-width:96px;max-width:44%}
+  #fakturaList td.actions,#appFakturaList td.actions{display:grid!important;grid-template-columns:1fr;min-width:0;white-space:normal;gap:8px;text-align:left;padding-top:10px}
+  #fakturaList td.actions::before,#appFakturaList td.actions::before{display:none}
+  #fakturaList .small-btn,#appFakturaList .small-btn{width:100%;min-height:44px}
+  .thumb.small{width:76px;height:58px}.thumb{max-width:160px;height:auto}
+}
+
 </style>
 </head>
 <body>

@@ -1,17 +1,12 @@
 // Supabase Edge Function: backup-hovslager-firma
-// Lager individuell backup per hovslager-firma.
-// Tar med faktiske hovslager-tabeller + bildereferanser i hov_jobb_bilder.
-// Forsøker også å kopiere selve bildefilene fra Storage til backups-bucket.
+// Automatisk nattbackup for ALLE hovslager-firma + liste + restore.
+// Backup lagres i Storage-bucket: hov_backups/firma/<firma_id>/...
+// Bilder kopieres til: hov_backups/storage/<firma_id>/...
 //
-// Krever secrets:
-//   SUPABASE_URL eller APP_SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY eller APP_SERVICE_ROLE_KEY
-// Bucket:
-//   backups
-//
-// Kall med:
-//   { "all": true }                 -> backup av alle firma
-//   { "firma_id": "uuid..." }       -> backup av ett firma
+// Kall:
+//   { "action": "backup" } eller tom body  -> backup av alle firma
+//   { "action": "list", "firma_id": "uuid" } -> liste for ett firma
+//   { "action": "restore", "backup_path": "firma/<firma_id>/<fil>.json" } -> restore fra backup
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -22,33 +17,72 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Kun tabellene som faktisk finnes i hovslager-prosjektet ditt.
+const BACKUP_BUCKET = "hov_backups";
+const APP_NAME = "hovslager";
+
 const HOV_TABLES = [
   "hov_firma",
-  "kunder",
-  "hester",
+  "hov_kunder",
+  "hov_hester",
+  "hov_hest_bilder",
   "hov_jobber",
   "hov_jobb_bilder",
   "hov_priser",
   "hov_fakturaer",
+  "hov_fakturalinjer",
   "hov_kreditnotaer",
+  "hov_kreditnotalinjer",
+  "hov_betalinger",
+  "hov_abonnement",
+  "hov_innstillinger",
 ];
 
-// Kandidater for hvor hovslagerbildene kan ligge i Storage.
-// Funksjonen prøver disse, men stopper ikke hvis filen ikke finnes.
+// Delete children before parents. Restore parents before children.
+const RESTORE_ORDER = [
+  "hov_firma",
+  "hov_kunder",
+  "hov_hester",
+  "hov_jobber",
+  "hov_jobb_bilder",
+  "hov_hest_bilder",
+  "hov_priser",
+  "hov_fakturaer",
+  "hov_fakturalinjer",
+  "hov_kreditnotaer",
+  "hov_kreditnotalinjer",
+  "hov_betalinger",
+  "hov_abonnement",
+  "hov_innstillinger",
+];
+
+const DELETE_ORDER = [...RESTORE_ORDER].reverse();
+const IMAGE_TABLES = ["hov_jobb_bilder", "hov_hest_bilder"];
+
 const IMAGE_BUCKET_CANDIDATES = [
+  "hovslager-bilder",
+  "hov-bilder",
   "bilder",
   "timer-bilder",
-  "hov-bilder",
-  "hovslager-bilder",
 ];
-
-function todayStamp() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function osloStamp() {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || "00";
+  return `${get("year")}-${get("month")}-${get("day")}_${get("hour")}-${get("minute")}-${get("second")}`;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -76,29 +110,30 @@ function isMissingFirmaIdError(error: any): boolean {
   return msg.includes("firma_id") && (msg.includes("column") || msg.includes("could not find"));
 }
 
+function safeSlug(input: string | null | undefined) {
+  return String(input || "firma")
+    .toLowerCase()
+    .replace(/[^a-z0-9æøå_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "firma";
+}
+
 function cleanStoragePath(input: string | null | undefined): string | null {
   if (!input) return null;
   let value = String(input).trim();
   if (!value) return null;
-
-  // Fjern querystring fra URL/path.
   value = value.split("?")[0];
 
-  // Hvis full Supabase public URL, hent path etter /object/public/<bucket>/ eller /object/sign/<bucket>/
   const publicMatch = value.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
-  if (publicMatch) {
-    return publicMatch[2];
-  }
+  if (publicMatch) return publicMatch[2];
 
-  // Hvis den allerede er relativ path.
   value = value.replace(/^\/+/, "");
-
-  // Hvis path starter med bucket-navn, fjern bucket-delen senere ved forsøk.
   return value || null;
 }
 
 function filenameFromImageRow(row: any, fallbackIndex: number): string {
-  const raw = row?.filnavn || row?.filsti || row?.bilde_url || `bilde-${fallbackIndex}`;
+  const raw = row?.filnavn || row?.filsti || row?.bilde_url || row?.path || row?.bilde_path || `bilde-${fallbackIndex}`;
   const noQuery = String(raw).split("?")[0];
   const base = noQuery.split("/").filter(Boolean).pop() || `bilde-${fallbackIndex}`;
   return base.replace(/[^a-zA-Z0-9æøåÆØÅ._-]+/g, "-").slice(0, 120);
@@ -112,12 +147,8 @@ async function fetchRowsForFirma(supabase: any, tableName: string, firmaId: stri
   const { data, error } = await query;
 
   if (error) {
-    if (isMissingTableError(error)) {
-      return { skipped: true, reason: "tabell finnes ikke", rows: [] };
-    }
-    if (isMissingFirmaIdError(error)) {
-      return { skipped: true, reason: "mangler firma_id", rows: [] };
-    }
+    if (isMissingTableError(error)) return { skipped: true, reason: "tabell finnes ikke", rows: [] };
+    if (isMissingFirmaIdError(error)) return { skipped: true, reason: "mangler firma_id", rows: [] };
     throw new Error(`${tableName}: ${error.message}`);
   }
 
@@ -125,19 +156,21 @@ async function fetchRowsForFirma(supabase: any, tableName: string, firmaId: stri
 }
 
 async function tryDownloadImage(supabase: any, row: any): Promise<{ ok: boolean; bucket?: string; path?: string; blob?: Blob; error?: string }> {
-  const possiblePaths = [cleanStoragePath(row?.filsti), cleanStoragePath(row?.bilde_url), cleanStoragePath(row?.filnavn)]
-    .filter(Boolean) as string[];
+  const possiblePaths = [
+    cleanStoragePath(row?.filsti),
+    cleanStoragePath(row?.bilde_url),
+    cleanStoragePath(row?.filnavn),
+    cleanStoragePath(row?.path),
+    cleanStoragePath(row?.bilde_path),
+    cleanStoragePath(row?.logo_path),
+    cleanStoragePath(row?.logo_url),
+  ].filter(Boolean) as string[];
 
   const attempts: Array<{ bucket: string; path: string }> = [];
-
   for (const rawPath of possiblePaths) {
     for (const bucket of IMAGE_BUCKET_CANDIDATES) {
-      // Prøv raw path.
       attempts.push({ bucket, path: rawPath });
-      // Hvis raw path starter med bucket/, prøv uten bucket-prefix.
-      if (rawPath.startsWith(`${bucket}/`)) {
-        attempts.push({ bucket, path: rawPath.slice(bucket.length + 1) });
-      }
+      if (rawPath.startsWith(`${bucket}/`)) attempts.push({ bucket, path: rawPath.slice(bucket.length + 1) });
     }
   }
 
@@ -148,15 +181,13 @@ async function tryDownloadImage(supabase: any, row: any): Promise<{ ok: boolean;
     seen.add(key);
 
     const { data, error } = await supabase.storage.from(attempt.bucket).download(attempt.path);
-    if (!error && data) {
-      return { ok: true, bucket: attempt.bucket, path: attempt.path, blob: data };
-    }
+    if (!error && data) return { ok: true, bucket: attempt.bucket, path: attempt.path, blob: data };
   }
 
   return { ok: false, error: "fant ikke bildefil i kjente buckets" };
 }
 
-async function backupImagesForFirma(supabase: any, firmaId: string, imageRows: any[], backupBasePath: string) {
+async function backupImagesForFirma(supabase: any, firmaId: string, backupStamp: string, tableName: string, imageRows: any[]) {
   const copied: any[] = [];
   const missing: any[] = [];
 
@@ -166,35 +197,32 @@ async function backupImagesForFirma(supabase: any, firmaId: string, imageRows: a
 
     if (!found.ok || !found.blob) {
       missing.push({
+        table: tableName,
         id: row?.id || null,
         filnavn: row?.filnavn || null,
         filsti: row?.filsti || null,
         bilde_url: row?.bilde_url || null,
+        path: row?.path || null,
         reason: found.error || "ukjent feil",
       });
       continue;
     }
 
     const fileName = filenameFromImageRow(row, i + 1);
-    const backupImagePath = `${backupBasePath}/bilder/${row?.id || i + 1}-${fileName}`;
+    const backupImagePath = `storage/${firmaId}/${backupStamp}/${tableName}/${row?.id || i + 1}-${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("backups")
-      .upload(backupImagePath, found.blob, {
-        contentType: found.blob.type || "application/octet-stream",
-        upsert: true,
-      });
+    const { error: uploadError } = await supabase.storage.from(BACKUP_BUCKET).upload(backupImagePath, found.blob, {
+      contentType: found.blob.type || "application/octet-stream",
+      upsert: true,
+    });
 
     if (uploadError) {
-      missing.push({
-        id: row?.id || null,
-        filnavn: row?.filnavn || null,
-        reason: `kunne ikke lagre bilde i backups: ${uploadError.message}`,
-      });
+      missing.push({ table: tableName, id: row?.id || null, filnavn: row?.filnavn || null, reason: uploadError.message });
       continue;
     }
 
     copied.push({
+      table: tableName,
       id: row?.id || null,
       source_bucket: found.bucket,
       source_path: found.path,
@@ -205,15 +233,16 @@ async function backupImagesForFirma(supabase: any, firmaId: string, imageRows: a
   return { copied, missing };
 }
 
-async function backupOneFirma(supabase: any, firma: any) {
+async function backupOneFirma(supabase: any, firma: any, stamp: string) {
   const firmaId = firma.id;
-  const dato = todayStamp();
+  const firmaNavn = firma.navn || firma.firmanavn || "firma";
   const backup: Record<string, unknown> = {
-    app: "hovslager",
+    app: APP_NAME,
     backup_type: "firma",
     firma_id: firmaId,
-    firma_navn: firma.navn || null,
+    firma_navn: firmaNavn,
     created_at: nowIso(),
+    created_at_oslo: stamp,
     tables: {},
     storage_images: {},
   };
@@ -228,47 +257,250 @@ async function backupOneFirma(supabase: any, firma: any) {
       : { rows: Array.isArray(result.rows) ? result.rows.length : 0 };
   }
 
-  const safeName = String(firma.navn || "firma")
-    .toLowerCase()
-    .replace(/[^a-z0-9æøå_-]+/gi, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
+  const allCopied: any[] = [];
+  const allMissing: any[] = [];
 
-  const backupBasePath = `hovslager/${firmaId}`;
-  const jsonPath = `${backupBasePath}/hovslager-${safeName}-${dato}.json`;
+  for (const tableName of IMAGE_TABLES) {
+    const rows = ((backup.tables as any)[tableName] || []) as any[];
+    const result = await backupImagesForFirma(supabase, firmaId, stamp, tableName, rows);
+    allCopied.push(...result.copied);
+    allMissing.push(...result.missing);
+    summary[`storage_${tableName}`] = {
+      rows_i_tabell: rows.length,
+      kopiert: result.copied.length,
+      mangler: result.missing.length,
+    };
+  }
 
-  const imageRows = ((backup.tables as any).hov_jobb_bilder || []) as any[];
-  const imageBackup = await backupImagesForFirma(supabase, firmaId, imageRows, backupBasePath);
-  backup.storage_images = imageBackup;
-  summary["storage_bilder"] = {
-    rows_i_hov_jobb_bilder: imageRows.length,
-    kopiert: imageBackup.copied.length,
-    mangler: imageBackup.missing.length,
-  };
+  backup.storage_images = { copied: allCopied, missing: allMissing };
+  (backup as any).summary = summary;
 
   const json = JSON.stringify(backup, null, 2);
+  const fileName = `hovslager-${safeSlug(firmaNavn)}-${stamp}.json`;
+  const jsonPath = `firma/${firmaId}/${fileName}`;
+  const bytes = new TextEncoder().encode(json).length;
 
-  const { error: uploadError } = await supabase.storage
-    .from("backups")
-    .upload(jsonPath, new Blob([json], { type: "application/json" }), {
-      contentType: "application/json; charset=utf-8",
-      upsert: true,
-    });
+  const { error: uploadError } = await supabase.storage.from(BACKUP_BUCKET).upload(jsonPath, new Blob([json], { type: "application/json" }), {
+    contentType: "application/json; charset=utf-8",
+    upsert: false,
+  });
 
   if (uploadError) throw new Error(`Storage upload feilet for ${firmaId}: ${uploadError.message}`);
 
   return {
     firma_id: firmaId,
-    firma_navn: firma.navn || null,
+    firma_navn: firmaNavn,
     path: jsonPath,
+    file_path: jsonPath,
+    name: fileName,
+    file_size: bytes,
+    storrelse_bytes: bytes,
+    storrelse_kb: Math.ceil(bytes / 1024),
+    created_at: (backup as any).created_at,
+    created_at_oslo: stamp,
     summary,
+  };
+}
+
+async function runNightBackupAllFirms(supabase: any) {
+  const { data, error } = await supabase.from("hov_firma").select("id, navn, epost, linknavn").order("navn");
+  if (error) throw new Error(`Kunne ikke hente hov_firma: ${error.message}`);
+
+  const firmaer = data || [];
+  const stamp = osloStamp();
+  const results = [];
+  const errors = [];
+
+  for (const firma of firmaer) {
+    try {
+      results.push(await backupOneFirma(supabase, firma, stamp));
+    } catch (err) {
+      errors.push({
+        firma_id: firma?.id || null,
+        firma_navn: firma?.navn || null,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    app: APP_NAME,
+    backup_type: "nightly_all_firms",
+    created_at: nowIso(),
+    created_at_oslo: stamp,
+    bucket: BACKUP_BUCKET,
+    antall_firma: firmaer.length,
+    antall_ok: results.length,
+    antall_feil: errors.length,
+    results,
+    errors,
+  };
+}
+
+function parseFirmaIdFromPath(path: string): string | null {
+  const m = String(path || "").match(/^firma\/([^/]+)\//);
+  return m ? m[1] : null;
+}
+
+async function firmaIdFromRequest(supabase: any, req: Request): Promise<string | null> {
+  const auth = req.headers.get("Authorization") || req.headers.get("authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  const userId = userData?.user?.id || null;
+  if (userError || !userId) return null;
+
+  const pr = await supabase.from("hov_profiles").select("firma_id, rolle").eq("auth_user_id", userId).maybeSingle();
+  if (pr.data?.firma_id) return pr.data.firma_id;
+
+  const fr = await supabase.from("hov_firma").select("id").eq("auth_user_id", userId).maybeSingle();
+  return fr.data?.id || null;
+}
+
+async function listBackups(supabase: any, body: any, req: Request) {
+  const firmaId = body?.firma_id || body?.firmaId || body?.firmaID || await firmaIdFromRequest(supabase, req);
+  if (!firmaId) {
+    return { ok: false, error: "Mangler firma_id for liste" };
+  }
+
+  const prefix = `firma/${firmaId}`;
+  const { data, error } = await supabase.storage.from(BACKUP_BUCKET).list(prefix, {
+    limit: 1000,
+    offset: 0,
+    sortBy: { column: "name", order: "desc" },
+  });
+
+  if (error) throw new Error(`Kunne ikke hente backup-liste: ${error.message}`);
+
+  const backups = [];
+  for (const file of (data || [])) {
+    if (!file || file.name?.startsWith(".") || !file.name?.toLowerCase().endsWith(".json")) continue;
+    const filePath = `${prefix}/${file.name}`;
+    const size = file.metadata?.size || file.size || null;
+    const signed = await supabase.storage.from(BACKUP_BUCKET).createSignedUrl(filePath, 60 * 60);
+    backups.push({
+      name: file.name,
+      path: filePath,
+      file_path: filePath,
+      backup_path: filePath,
+      created_at: file.created_at || file.updated_at || file.last_accessed_at || null,
+      updated_at: file.updated_at || null,
+      file_size: size,
+      size,
+      storrelse_bytes: size,
+      storrelse_kb: size ? Math.ceil(size / 1024) : null,
+      signed_url: signed.data?.signedUrl || null,
+      status: "ok",
+      backup_scope: "firma",
+      firma_id: firmaId,
+    });
+  }
+
+  return { ok: true, bucket: BACKUP_BUCKET, firma_id: firmaId, backups };
+}
+
+async function downloadBackupJson(supabase: any, backupPath: string) {
+  const cleanPath = String(backupPath || "").replace(/^\/+/, "");
+  if (!cleanPath || !cleanPath.startsWith("firma/") || !cleanPath.endsWith(".json")) {
+    throw new Error("Ugyldig backup_path. Må være firma/<firma_id>/<fil>.json");
+  }
+
+  const { data, error } = await supabase.storage.from(BACKUP_BUCKET).download(cleanPath);
+  if (error || !data) throw new Error(`Kunne ikke laste backupfil: ${error?.message || "ukjent feil"}`);
+
+  const text = await data.text();
+  let backup: any;
+  try {
+    backup = JSON.parse(text);
+  } catch (_err) {
+    throw new Error("Backupfilen er ikke gyldig JSON");
+  }
+
+  if (!backup || backup.app !== APP_NAME || backup.backup_type !== "firma" || !backup.firma_id || !backup.tables) {
+    throw new Error("Backupfilen har ikke forventet hovslager-format");
+  }
+
+  return { backup, cleanPath };
+}
+
+function tableRows(backup: any, tableName: string): any[] {
+  const rows = backup?.tables?.[tableName];
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function tableExists(supabase: any, tableName: string): Promise<boolean> {
+  const { error } = await supabase.from(tableName).select("*").limit(1);
+  return !error || !isMissingTableError(error);
+}
+
+async function deleteFirmaRows(supabase: any, tableName: string, firmaId: string) {
+  if (!(await tableExists(supabase, tableName))) return { skipped: true, reason: "tabell finnes ikke", deleted: null };
+
+  const query = tableName === "hov_firma"
+    ? supabase.from(tableName).delete().eq("id", firmaId)
+    : supabase.from(tableName).delete().eq("firma_id", firmaId);
+
+  const { error } = await query;
+  if (error) {
+    if (isMissingFirmaIdError(error)) return { skipped: true, reason: "mangler firma_id", deleted: null };
+    throw new Error(`Sletting feilet for ${tableName}: ${error.message}`);
+  }
+  return { skipped: false, deleted: true };
+}
+
+async function restoreRows(supabase: any, tableName: string, rows: any[]) {
+  if (!rows.length) return { rows: 0 };
+  if (!(await tableExists(supabase, tableName))) return { skipped: true, reason: "tabell finnes ikke", rows: 0 };
+
+  // Upsert first. If the table has no matching primary/unique key metadata available to PostgREST, fall back to insert.
+  const { error } = await supabase.from(tableName).upsert(rows, { onConflict: "id" });
+  if (!error) return { rows: rows.length, method: "upsert" };
+
+  const { error: insertError } = await supabase.from(tableName).insert(rows);
+  if (insertError) throw new Error(`Restore feilet for ${tableName}: ${insertError.message || error.message}`);
+  return { rows: rows.length, method: "insert" };
+}
+
+async function restoreBackup(supabase: any, body: any) {
+  const backupPath = body?.backup_path || body?.backupPath || body?.path || body?.file_path || body?.filePath || body?.filsti || body?.file;
+  if (!backupPath) throw new Error("Mangler backup_path");
+
+  const { backup, cleanPath } = await downloadBackupJson(supabase, backupPath);
+  const firmaId = String(backup.firma_id);
+  const pathFirmaId = parseFirmaIdFromPath(cleanPath);
+  if (pathFirmaId && pathFirmaId !== firmaId) {
+    throw new Error("backup_path og backupfil har ulik firma_id");
+  }
+
+  const deleted: Record<string, unknown> = {};
+  for (const tableName of DELETE_ORDER) {
+    deleted[tableName] = await deleteFirmaRows(supabase, tableName, firmaId);
+  }
+
+  const restored: Record<string, unknown> = {};
+  for (const tableName of RESTORE_ORDER) {
+    restored[tableName] = await restoreRows(supabase, tableName, tableRows(backup, tableName));
+  }
+
+  return {
+    ok: true,
+    action: "restore",
+    bucket: BACKUP_BUCKET,
+    backup_path: cleanPath,
+    firma_id: firmaId,
+    firma_navn: backup.firma_navn || null,
+    restored_at: nowIso(),
+    restored_at_oslo: osloStamp(),
+    deleted,
+    restored,
   };
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "Bruk POST" }, 405);
+  if (req.method !== "POST") return jsonResponse({ ok: false, error: "Bruk POST" }, 405);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("APP_SUPABASE_URL");
@@ -276,44 +508,27 @@ serve(async (req) => {
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return jsonResponse({
+        ok: false,
         error: "Mangler secrets",
         trenger: ["SUPABASE_URL eller APP_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY eller APP_SERVICE_ROLE_KEY"],
       }, 500);
     }
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { persistSession: false },
-    });
-
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     const body = await req.json().catch(() => ({}));
-    const firmaId = body.firma_id || body.firmaId || null;
-    const all = body.all === true || !firmaId;
+    const action = String(body?.action || "backup").toLowerCase();
 
-    let firmaer: any[] = [];
-
-    if (all) {
-      const { data, error } = await supabase.from("hov_firma").select("id, navn, epost, linknavn").order("navn");
-      if (error) throw new Error(`Kunne ikke hente hov_firma: ${error.message}`);
-      firmaer = data || [];
-    } else {
-      const { data, error } = await supabase.from("hov_firma").select("id, navn, epost, linknavn").eq("id", firmaId).single();
-      if (error) throw new Error(`Fant ikke firma ${firmaId}: ${error.message}`);
-      firmaer = [data];
+    if (action === "list") {
+      return jsonResponse(await listBackups(supabase, body, req));
     }
 
-    const results = [];
-    for (const firma of firmaer) {
-      results.push(await backupOneFirma(supabase, firma));
+    if (action === "restore") {
+      return jsonResponse(await restoreBackup(supabase, body));
     }
 
-    return jsonResponse({
-      ok: true,
-      app: "hovslager",
-      backup_type: "firma",
-      antall_firma: results.length,
-      created_at: nowIso(),
-      results,
-    });
+    // Nattbackup skal som standard ta alle firmaer. Body ignoreres for backup.
+    const result = await runNightBackupAllFirms(supabase);
+    return jsonResponse(result, result.ok ? 200 : 207);
   } catch (err) {
     return jsonResponse({ ok: false, error: err instanceof Error ? err.message : String(err) }, 500);
   }

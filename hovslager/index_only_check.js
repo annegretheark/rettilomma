@@ -954,7 +954,7 @@
     if(!app.firmaId){ msg('firmaBackupMsg','Mangler firma-ID. Logg inn på nytt.','err'); return; }
     msg('firmaBackupMsg','Starter backup av eget firma...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'backup', mode:'manual', scope:'firma' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'backup', mode:'manual', scope:'firma' } });
       if(error){ msg('firmaBackupMsg','Backup feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         const size = data.file_size ? ` (${Math.round(Number(data.file_size)/1024)} KB)` : '';
@@ -982,7 +982,7 @@
     const el=$('firmaBackupList');
     if(el) el.innerHTML='<div class="msg">Laster backup-logg...</div>';
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'list' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list' } });
       if(error){ if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message)+'</div>'; return; }
       const backups=(data && data.ok) ? (data.backups||[]) : [];
       renderBackupOptions(backups);
@@ -1000,7 +1000,7 @@
     if(!confirm('Gjenopprette valgt backup? Dette oppdaterer data med innholdet i backupen.')) return;
     msg('firmaBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', file_path:filePath } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', filsti:filePath, file_path:filePath, backup_path:filePath, confirm:true } });
       if(error){ msg('firmaBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){ msg('firmaBackupMsg','Backup er gjenopprettet. Laster data på nytt...','ok'); await loadAll(); await loadFirmaBackupLogg(); }
       else msg('firmaBackupMsg','Restore svarte uventet: '+esc(JSON.stringify(data||{})),'err');
@@ -1015,7 +1015,7 @@
     try{
       // Bruk Edge Function i stedet for direkte tabell-lesing.
       // Da får sysadm også signed_url, og samme logikk fungerer for slettede firma.
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'list' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list' } });
       if(error){
         if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message||JSON.stringify(error))+'</div>';
         return;
@@ -1066,7 +1066,7 @@
       const size=b.file_size ? ` - ${Math.round(Number(b.file_size)/1024)} KB` : '';
       const label=`${t} - ${firma}${eier ? ' - '+eier : ''}${org ? ' - org '+org : ''}${size}`;
       // Bruk backup-logg ID i GUI. Edge Function finner file_path selv.
-      return `<option value="${esc(b.id||'')}" data-file-path="${esc(b.file_path||'')}">${esc(label)}</option>`;
+      return `<option value="${esc(b.id||b.file_path||'')}" data-file-path="${esc(b.file_path||'')}">${esc(label)}</option>`;
     }).join('');
     if(old) sel.value=old;
   }
@@ -1125,7 +1125,7 @@
       const deleted=isDeleted ? '<br><span class="pill">Slettet firma</span>' : (b.backup_scope==='firma' ? '<br><span class="pill">Aktivt firma</span>' : '');
       const dl=b.signed_url ? `<a href="${esc(b.signed_url)}" target="_blank" rel="noopener">Last ned</a>` : '';
       const restoreBtn=(b.status==='ok' && b.file_path && String(b.backup_type||'') !== 'restore')
-        ? `<button type="button" class="small-btn ok" data-admin-restore-id="${esc(b.id||'')}">Gjenopprett</button>` : '<span class="muted">Logg</span>';
+        ? `<button type="button" class="small-btn ok" data-admin-restore-id="${esc(b.id||b.file_path||'')}">Gjenopprett</button>` : '<span class="muted">Logg</span>';
       const actions=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${restoreBtn}${dl}</div>`;
       return `<tr><td>${esc(fmtDateTime(b.created_at))}</td><td>${esc(b.status||'')}</td><td>${esc(b.backup_scope||'system')}</td><td><strong>${esc(firmaNavn)}</strong>${deleted}${org ? '<br><span class="muted">Org: '+esc(org)+'</span>' : ''}</td><td>${esc(eier)}</td><td>${esc(b.backup_type||'')}</td><td>${esc(file)}</td><td>${b.file_size ? esc(Math.round(Number(b.file_size)/1024)+' KB') : ''}</td><td>${actions}</td><td>${esc(b.error_message||'')}</td></tr>`;
     });
@@ -1144,12 +1144,12 @@
     if(!app.isSysadm){ msg('adminBackupMsg','Bare sysadm kan gjenopprette backup fra adminpanelet.','err'); return; }
     const backupId=backupIdArg || val('adminRestoreSelect');
     if(!backupId){ msg('adminBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
-    const backup=(app.data.backupLogg||[]).find(b=>String(b.id)===String(backupId));
+    const backup=(app.data.backupLogg||[]).find(b=>String(b.id)===String(backupId) || String(b.file_path)===String(backupId));
     const firma=backup ? (adminBackupFirmaNavn(backup) || 'slettet/ukjent firma') : 'valgt backup';
     if(!confirm('Gjenopprette backup for '+firma+'? Dette vil skrive tilbake data fra backupfilen. Fortsette?')) return;
     msg('adminBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', backup_id:backupId } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', backup_id:backup?.id||'', filsti:backup?.file_path||backupId, file_path:backup?.file_path||backupId, backup_path:backup?.file_path||backupId, confirm:true } });
       if(error){ msg('adminBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         msg('adminBackupMsg','Backup er gjenopprettet. Laster adminliste og backup-logg på nytt...','ok');
@@ -1168,7 +1168,7 @@
     if(!app.isSysadm){ msg('adminBackupMsg','Bare sysadm kan ta backup fra adminpanelet.','err'); return; }
     msg('adminBackupMsg','Starter backup. Dette kan ta litt tid...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body });
       if(error){ msg('adminBackupMsg','Backup feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         msg('adminBackupMsg','Backup ferdig: '+(data.file_path||data.prefix||'')+' ('+(data.backup_scope||body.scope||'')+')','ok');
@@ -1465,13 +1465,13 @@
     const jobb=(app.data.jobber||[]).find(j=>String(j.id)===String(f.jobb_id)) || f._jobb || {};
     const hest=(app.data.hester||[]).find(h=>String(h.id)===String(jobb.hest_id)) || {};
     const firma=app.firma||{};
-    const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : 'Kopi');
+    const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : '');
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
     const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
       </head><body>
-      <div class="top"><div><h1>${title}</h1><div class="preview">${esc(label)}</div></div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
+      <div class="top"><div><h1>${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
       <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfallsdato||'')}</p>
       <table><thead><tr><th>Beskrivelse</th><th>Hest</th><th class="right">Beløp eks. mva</th></tr></thead><tbody>
@@ -1620,7 +1620,7 @@
     el.querySelectorAll('[data-vis-faktura]').forEach(b=>b.addEventListener('click',()=>visFakturaForJobb(b.dataset.visFaktura)));
     el.querySelectorAll('[data-vis-faktura-id]').forEach(b=>b.addEventListener('click',()=>{
       const f=(app.data.fakturaer||[]).find(x=>String(x.id)===String(b.dataset.visFakturaId));
-      visFaktura(f);
+      visFaktura(f, {label:'Kopi'});
     }));
     el.querySelectorAll('[data-sett-betalt]').forEach(b=>b.addEventListener('click',()=>settFakturaBetalt(b.dataset.settBetalt)));
     el.querySelectorAll('[data-purr]').forEach(b=>b.addEventListener('click',()=>sendPurring(b.dataset.purr)));
@@ -1633,11 +1633,21 @@
     const rows=[['Kunder',app.data.kunder.length],['Hester',app.data.hester.length],['Jobber',app.data.jobber.length],['Fakturaer',app.data.fakturaer.length],['Kreditnotaer',app.data.kreditnotaer.length]];
     $('dashCounts').innerHTML = rows.map(r=>`<div class="col-3"><div class="card"><h3>${r[1]}</h3><div class="muted">${r[0]}</div></div></div>`).join('');
   }
-  function table(headers, rows){ if(!rows.length) return '<div class="msg">Ingen data å vise.</div>'; return `<div style="overflow:auto"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`; }
+  function table(headers, rows){
+    if(!rows.length) return '<div class="msg">Ingen data å vise.</div>';
+    const labelledRows = rows.map(row=>{
+      let idx = 0;
+      return String(row).replace(/<td(\s[^>]*)?>/g, (m, attrs)=>{
+        const label = esc(headers[idx++] || '');
+        return `<td${attrs || ''} data-label="${label}">`;
+      });
+    }).join('');
+    return `<div style="overflow:auto"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${labelledRows}</tbody></table></div>`;
+  }
   function kundeNavn(id){ return app.data.kunder.find(k=>String(k.id)===String(id))?.navn || id || ''; }
   function hestNavn(id){ return app.data.hester.find(h=>String(h.id)===String(id))?.navn || id || ''; }
-  function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
-  function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td><td class="muted">Klikk for å redigere</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
+  function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
+  function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
   function setJobbLayout(mode){
     const section=$('jobber'), list=$('jobbList'), title=$('jobbFormTitle');
     if(!section || !list || !title) return;
@@ -1654,10 +1664,10 @@
     }
   }
 
-  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert',''], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td><td><button type="button" class="small-btn secondary" data-id="${esc(j.id)}">Les inn</button></td></tr>`)); bindClickableRows('jobbList','jobb', editJobb); bindLesInnJobbButtons(); }
+  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`)); bindClickableRows('jobbList','jobb', editJobb); }
 
   function renderPriser(){
-    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td><td class="muted">Klikk for å redigere</td></tr>`);
+    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td></tr>`);
     $('prisList').innerHTML = table(['Kategori','Varenr','Navn','Enhet','Eks. mva','Inkl. mva','Aktiv','Beskrivelse',''], rows);
     bindClickableRows('prisList','pris', editPris);
   }
