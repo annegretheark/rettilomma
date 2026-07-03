@@ -1665,16 +1665,26 @@
         msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig.','ok');
       };
       rec.onerror = (ev) => {
+        // Android/Chrome kan sende "aborted" når brukeren trykker Stopp.
+        // Da skal vi ikke vise feil eller bli stående i Lytter-modus.
+        if(app.voiceStopping || ev.error === 'aborted' || ev.error === 'no-speech'){
+          app.voiceActive = false;
+          setVoiceButtons(false);
+          return;
+        }
         app.voiceActive = false;
+        app.voiceStopping = false;
         setVoiceButtons(false);
+        if(app.voiceRecognition === rec) app.voiceRecognition = null;
         msg('voiceJobbMsg','Mikrofon/tale feilet: '+(ev.error || 'ukjent feil')+'. Sjekk at siden har tilgang til mikrofon.','err');
       };
       rec.onend = () => {
         const wasActive = app.voiceActive;
         app.voiceActive = false;
+        app.voiceStopping = false;
         setVoiceButtons(false);
         if(app.voiceRecognition === rec) app.voiceRecognition = null;
-        if(wasActive && !app.voiceStopping) msg('voiceJobbMsg','Mikrofon stoppet av nettleseren. Trykk  ny jobb for å starte igjen.','ok');
+        if(wasActive) msg('voiceJobbMsg','Mikrofon stoppet. Trykk Snakk inn ny jobb for å starte igjen.','ok');
       };
       rec.onresult = (ev) => {
         let interim = '';
@@ -1719,9 +1729,25 @@
     }
 
     if(rec){
-      try{ rec.onresult = null; rec.onerror = null; rec.onend = null; rec.stop(); }
-      catch(_){ try{ rec.abort(); }catch(__){} }
-      setTimeout(()=>{ try{ rec.abort(); }catch(_){} }, 500);
+      try{
+        // Ikke nullstill onend/onerror her. På mobil trengs onend for å rydde opp,
+        // ellers kan appen bli hengende som "Lytter" selv om knappen er trykket.
+        rec.stop();
+      }catch(_){
+        try{ rec.abort(); }catch(__){}
+      }
+      // Sikkerhetsnett for mobil: hvis nettleseren ikke avslutter pent, aborter etter litt.
+      setTimeout(()=>{
+        if(app.voiceRecognition === rec || app.voiceStopping){
+          try{ rec.abort(); }catch(_){}
+          app.voiceActive = false;
+          app.voiceStopping = false;
+          if(app.voiceRecognition === rec) app.voiceRecognition = null;
+          setVoiceButtons(false);
+        }
+      }, 1200);
+    }else{
+      app.voiceStopping = false;
     }
   }
   function normText(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
