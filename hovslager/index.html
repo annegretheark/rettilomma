@@ -456,6 +456,17 @@ table{
 .quick-job .muted{font-size:15px;line-height:1.35}
 @media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
 
+
+/* Mobilkort for jobbliste - listen øverst, skjema under */
+.jobb-mobile-list{display:none}
+.jobb-mobile-card{width:100%;text-align:left;margin:8px 0;padding:10px 12px;border:1px solid var(--border)!important;background:#0b1220!important;color:var(--text)!important;border-radius:14px!important;display:block!important}
+.jobb-mobile-card strong{font-size:16px;color:var(--text)}
+.jobb-card-top,.jobb-card-bottom{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.jobb-mobile-card span{display:block;color:var(--muted);font-weight:600}
+.jobb-status{padding:3px 8px;border-radius:999px;font-size:12px;background:#334155;color:#f8fafc!important;white-space:nowrap}
+.jobb-status.ok{background:rgba(34,197,94,.18);color:#bbf7d0!important}
+.jobb-status.warn{background:rgba(245,158,11,.18);color:#fde68a!important}
+@media(max-width:800px){#jobber h2{margin-bottom:4px}.jobb-desktop-list{display:none}.jobb-mobile-list{display:block}.quick-job{margin-top:14px}.jobb-mobile-card{font-size:14px}.jobb-card-top strong{font-size:17px}}
 </style>
 <style>
 /* Beskrivelse-tale */
@@ -801,6 +812,7 @@ table{
       <section id="jobber" class="tab card hidden">
         <h2>Jobber</h2>
         <p class="muted">Klikk på en rad i listen for å vise jobben. Trykk Rediger jobb for å endre.</p>
+        <div id="jobbList"></div>
         <div class="quick-job card soft-card">
           <h3>Les inn jobb</h3>
           <p class="muted">Trykk knappen og si for eksempel: «Skodde Jack, kjørte 18 km». Trykk samme knapp igjen for å stoppe og lagre. Hvis hesten ikke finnes, spør appen om den skal opprettes eller om navnet er feil.</p>
@@ -814,7 +826,6 @@ table{
           <div id="voiceJobbMsg"></div>
           <div id="voiceSavedActions" class="actions hidden voice-saved-actions"><button id="voiceNewAgainBtn" type="button" class="secondary">🎙 Les inn ny jobb</button><button id="voiceOpenLastJobbBtn" type="button" class="secondary hidden">Vis lagret jobb</button><button id="voiceDeleteLastJobbBtn" type="button" class="danger hidden">Slett innlest jobb</button></div>
         </div>
-        <div id="jobbList"></div>
         <h3 id="jobbFormTitle">Ny jobb</h3>
         <div class="grid formgrid">
           <label>Dato<input id="jobbDato" type="date"></label><label>Kunde<select id="jobbKunde"></select></label>
@@ -1629,7 +1640,7 @@ table{
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
     if(id==='hester'){ setHestLayout('listFirst'); }
-    if(id==='jobber'){ setJobbLayout('formFirst'); }
+    if(id==='jobber'){ setJobbLayout('listFirst'); }
     if(id==='priser') renderPriser();
     if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
@@ -2775,7 +2786,22 @@ table{
     }
   }
 
-  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`)); bindClickableRows('jobbList','jobb', viewJobb); }
+  function renderJobber(){
+    const rows=(app.data.jobber||[]).map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato||'')}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype||'')}</td><td>${kr(j.total||0)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`);
+    const cards=(app.data.jobber||[]).map(j=>{
+      const faktura = (typeof fakturaForJobb === 'function') ? fakturaForJobb(j.id) : null;
+      const mangler = !j.hest_id || !j.kunde_id;
+      const forelopig = mangler || /foreløpig|forelopig|ukjent/i.test(String(j.status||j.beskrivelse||j.jobbtype||''));
+      const status = j.fakturert || faktura ? 'Fakturert' : forelopig ? 'Mangler hest/eier' : 'Ikke fakturert';
+      const statusClass = j.fakturert || faktura ? 'ok' : forelopig ? 'warn' : 'plain';
+      const hest = hestNavn(j.hest_id) || (mangler ? 'Mangler hest' : 'Ukjent hest');
+      const kunde = kundeNavn(j.kunde_id) || (mangler ? 'Mangler eier' : 'Ukjent kunde');
+      return `<button type="button" class="jobb-mobile-card ${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><span class="jobb-card-top"><strong>🐴 ${esc(hest)}</strong><span>${kr(j.total||0)}</span></span><span>👤 ${esc(kunde)}</span><span class="jobb-card-bottom"><span>📅 ${esc(j.dato||'')}</span><span class="jobb-status ${statusClass}">${esc(status)}</span></span></button>`;
+    }).join('');
+    $('jobbList').innerHTML = `<div class="jobb-desktop-list">${table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], rows)}</div><div class="jobb-mobile-list">${cards || '<div class="msg">Ingen jobber registrert ennå.</div>'}</div>`;
+    bindClickableRows('jobbList','jobb', editJobb);
+    document.querySelectorAll('#jobbList .jobb-mobile-card').forEach(el=>el.addEventListener('click',()=>editJobb(el.dataset.id)));
+  }
 
   function renderPriser(){
     const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td></tr>`);

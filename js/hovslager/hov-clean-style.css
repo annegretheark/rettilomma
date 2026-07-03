@@ -433,3 +433,15 @@ table{
   .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important}
   .voice-saved-actions button{width:100%;padding:14px;font-size:17px}
 }
+
+
+/* Mobilkort for jobbliste - listen øverst, skjema under */
+.jobb-mobile-list{display:none}
+.jobb-mobile-card{width:100%;text-align:left;margin:8px 0;padding:10px 12px;border:1px solid var(--border)!important;background:#0b1220!important;color:var(--text)!important;border-radius:14px!important;display:block!important}
+.jobb-mobile-card strong{font-size:16px;color:var(--text)}
+.jobb-card-top,.jobb-card-bottom{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.jobb-mobile-card span{display:block;color:var(--muted);font-weight:600}
+.jobb-status{padding:3px 8px;border-radius:999px;font-size:12px;background:#334155;color:#f8fafc!important;white-space:nowrap}
+.jobb-status.ok{background:rgba(34,197,94,.18);color:#bbf7d0!important}
+.jobb-status.warn{background:rgba(245,158,11,.18);color:#fde68a!important}
+@media(max-width:800px){#jobber h2{margin-bottom:4px}.jobb-desktop-list{display:none}.jobb-mobile-list{display:block}.quick-job{margin-top:14px}.jobb-mobile-card{font-size:14px}.jobb-card-top strong{font-size:17px}}

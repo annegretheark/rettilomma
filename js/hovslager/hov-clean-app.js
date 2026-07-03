@@ -331,7 +331,7 @@
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
     if(id==='hester'){ setHestLayout('listFirst'); }
-    if(id==='jobber'){ setJobbLayout('formFirst'); }
+    if(id==='jobber'){ setJobbLayout('listFirst'); }
     if(id==='priser'){ setPrisLayout('listFirst'); renderPriser(); }
     if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
@@ -1557,7 +1557,22 @@
     }
   }
 
-  function renderJobber(){ $('jobbList').innerHTML = table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], app.data.jobber.map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato)}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype)}</td><td>${kr(j.total)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`)); bindClickableRows('jobbList','jobb', editJobb); }
+  function renderJobber(){
+    const rows=(app.data.jobber||[]).map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato||'')}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype||'')}</td><td>${kr(j.total||0)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`);
+    const cards=(app.data.jobber||[]).map(j=>{
+      const faktura = (typeof fakturaForJobb === 'function') ? fakturaForJobb(j.id) : null;
+      const mangler = !j.hest_id || !j.kunde_id;
+      const forelopig = mangler || /foreløpig|forelopig|ukjent/i.test(String(j.status||j.beskrivelse||j.jobbtype||''));
+      const status = j.fakturert || faktura ? 'Fakturert' : forelopig ? 'Mangler hest/eier' : 'Ikke fakturert';
+      const statusClass = j.fakturert || faktura ? 'ok' : forelopig ? 'warn' : 'plain';
+      const hest = hestNavn(j.hest_id) || (mangler ? 'Mangler hest' : 'Ukjent hest');
+      const kunde = kundeNavn(j.kunde_id) || (mangler ? 'Mangler eier' : 'Ukjent kunde');
+      return `<button type="button" class="jobb-mobile-card ${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><span class="jobb-card-top"><strong>🐴 ${esc(hest)}</strong><span>${kr(j.total||0)}</span></span><span>👤 ${esc(kunde)}</span><span class="jobb-card-bottom"><span>📅 ${esc(j.dato||'')}</span><span class="jobb-status ${statusClass}">${esc(status)}</span></span></button>`;
+    }).join('');
+    $('jobbList').innerHTML = `<div class="jobb-desktop-list">${table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], rows)}</div><div class="jobb-mobile-list">${cards || '<div class="msg">Ingen jobber registrert ennå.</div>'}</div>`;
+    bindClickableRows('jobbList','jobb', editJobb);
+    document.querySelectorAll('#jobbList .jobb-mobile-card').forEach(el=>el.addEventListener('click',()=>editJobb(el.dataset.id)));
+  }
 
   function renderPriser(){
     const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td></tr>`);
