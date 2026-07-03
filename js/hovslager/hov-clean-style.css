@@ -352,6 +352,28 @@ table{
   margin-top:6px;
   font-size:13px;
 }
+@media(max-width:700px){
+  #jobbList tr{
+    padding:8px 10px;
+    margin-bottom:6px;
+    border-radius:12px;
+  }
+
+  #jobbList td{
+    padding:4px 2px;
+    font-size:15px;
+  }
+
+  #jobbList td::before{
+    min-width:78px;
+    font-size:14px;
+  }
+
+  #jobbList td[data-label="Bilder"],
+  #jobbList td[data-label="Fakturert"]{
+    display:none;
+  }
+}
 
 
 /* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
