@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, lastVoiceJobbId:null, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
+  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, lastVoiceJobbId:null, voiceAutoStopTimer:null, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
   window.hovApp = app;
   window.hovAppReadLastJobb = function(){ readLastJobbAsNew(); };
   window.hovAppStartVoiceJobb = function(){ startVoiceNyJobb(); };
@@ -160,16 +160,14 @@
     $('logoutBtn')?.addEventListener('click', logout);
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
-    $('navReadLastJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
-    $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
-    $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
+    $('voiceStopJobbBtn')?.addEventListener('click', ()=>stopVoiceJobb(false));
+    $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:true, restart:false}));
     $('voiceNewAgainBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceOpenLastJobbBtn')?.addEventListener('click', openLastVoiceJobb);
     $('voiceDeleteLastJobbBtn')?.addEventListener('click', deleteLastVoiceJobb);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
-    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='priser'){ setPrisLayout('listFirst'); }
-        if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='priser'){ setPrisLayout('listFirst'); } }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
     $('deleteLogoBtn')?.addEventListener('click', deleteLogo);
@@ -332,6 +330,8 @@
   function showTab(id){
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
+    if(id==='hester'){ setHestLayout('listFirst'); }
+    if(id==='jobber'){ setJobbLayout('formFirst'); }
     if(id==='priser'){ setPrisLayout('listFirst'); renderPriser(); }
     if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
@@ -1507,6 +1507,22 @@
     }
   }
 
+  function setHestLayout(mode){
+    const section=$('hester'), list=$('hestList'), title=$('hestFormTitle');
+    if(!section || !list || !title) return;
+    const grid = title.nextElementSibling;
+    const actions = grid ? grid.nextElementSibling : null;
+    const msgEl = $('hestMsg');
+    if(mode === 'formFirst'){
+      section.insertBefore(title, list);
+      if(grid) section.insertBefore(grid, list);
+      if(actions) section.insertBefore(actions, list);
+      if(msgEl) section.insertBefore(msgEl, list);
+    } else {
+      section.insertBefore(list, title);
+    }
+  }
+
   function setJobbLayout(mode){
     const section=$('jobber'), list=$('jobbList'), title=$('jobbFormTitle');
     if(!section || !list || !title) return;
@@ -1601,19 +1617,26 @@
 
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
+  function clearVoiceAutoStop(){
+    if(app.voiceAutoStopTimer){ clearTimeout(app.voiceAutoStopTimer); app.voiceAutoStopTimer=null; }
+  }
+  function scheduleVoiceAutoStop(){
+    clearVoiceAutoStop();
+    app.voiceAutoStopTimer=setTimeout(()=>{
+      if(app.voiceRecognition && app.voiceActive && val('voiceJobbText')){
+        msg('voiceJobbMsg','Automatisk stopp: ingen ny tale. Lagrer jobben nå ...','ok');
+        stopVoiceJobb(false);
+      }
+    }, 3500);
+  }
 
 
   function showVoiceSavedActions(show){
-    const el=$('voiceSavedActions');
-    if(el) el.classList.toggle('hidden', !show);
+    $('voiceSavedActions')?.classList.toggle('hidden', !show);
   }
   function voiceSavedMessage(){
-    setVoiceButtons(false);
     showVoiceSavedActions(true);
-    const text = val('voiceJobbText');
-    const preview = text ? '<div class="voice-readback"><strong>Dette ble lest inn:</strong><br>'+esc(text)+'</div>' : '';
-    const el=$('voiceJobbMsg');
-    if(el) el.innerHTML = '<div class="msg ok">✅ Jobben er lest inn og lagret. Kontroller jobben. Hvis den ble feil kan du slette den.</div>' + preview;
+    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Kontroller den, eller velg Les inn på nytt / Slett innlest jobb hvis den ble feil.','ok');
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -1623,20 +1646,42 @@
   async function deleteLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å slette.','err'); return; }
     if(!confirm('Slette den innleste jobben? Dette kan ikke angres.')) return;
-    const id = app.lastVoiceJobbId;
+    const id=app.lastVoiceJobbId;
     const {error}=await app.sb.from('hov_jobber').delete().eq('id',id).eq('firma_id',app.firmaId);
     if(error){ msg('voiceJobbMsg','Kunne ikke slette jobben: '+error.message,'err'); return; }
-    app.lastVoiceJobbId = null;
+    app.lastVoiceJobbId=null;
     showVoiceSavedActions(false);
-    await loadJobber();
-    renderAll();
-    msg('voiceJobbMsg','🗑️ Den innleste jobben er slettet. Du kan lese inn en ny jobb.','ok');
+    await loadJobber(); renderAll();
+    msg('voiceJobbMsg','🗑️ Den innleste jobben er slettet. Du kan lese inn på nytt.','ok');
+  }
+  async function finishVoiceJobbFromText(reason){
+    if(app.voiceProcessing) return;
+    const textNow=val('voiceJobbText');
+    setVoiceButtons(false);
+    if(!textNow){ msg('voiceJobbMsg','Stoppet. Ingen tekst å lagre.','ok'); return; }
+    msg('voiceJobbMsg',(reason||'Stoppet')+'. Lagrer innlest jobb uten å hoppe til listen ...','ok');
+    await applyVoiceTextAsJobb({autoSave:true, restart:false});
+  }
+
+
+  function openNewJobbWindowFromNav(){
+    // Toppknappen skal åpne ny jobb-vinduet, ikke starte/skjule mikrofon direkte.
+    stopVoiceJobb(true);
+    clearJobbForm();
+    setJobbFormReadOnly(false);
+    showTab('jobber');
+    setText('jobbFormTitle','Ny jobb');
+    setText('saveJobbBtn','Lagre jobb');
+    $('deleteJobbBtn')?.classList.add('hidden');
+    msg('jobbMsg','Ny jobb er åpnet. Skriv inn jobben, eller bruk Les inn beskrivelse på skjemaet.','ok');
+    setJobbLayout('formFirst');
+    setTimeout(()=>{ const section=$('jobber'); if(section) section.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
 
   function startVoiceNyJobb(){
+    // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
       msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
-      setVoiceButtons(true);
       return;
     }
     app.edit.jobb = null;
@@ -1644,7 +1689,9 @@
     app.voiceProcessing = false;
     showVoiceSavedActions(false);
     clearJobbForm();
-    showTab('dashboard');
+    showTab('jobber');
+    setJobbLayout('formFirst');
+    setTimeout(()=>{ const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
     setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
@@ -1653,56 +1700,47 @@
   }
   function startVoiceJobb(){
     const Speech = speechApi();
-    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome på Android, eller skriv teksten i feltet og trykk Bruk skrevet tekst.','err'); return; }
+    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android, eller skriv teksten i feltet og trykk Bruk skrevet tekst.','err'); return; }
     try{
       if(app.voiceActive || app.voiceRecognition){
         msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
-        setVoiceButtons(true);
         return;
       }
+      clearVoiceAutoStop();
       const rec = new Speech();
       app.voiceRecognition = rec;
       app.voiceActive = true;
       app.voiceStopping = false;
-      setVoiceButtons(true); // Må skje med en gang på mobil, ikke vente på onstart.
-      msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       rec.lang = 'nb-NO';
       rec.interimResults = true;
       rec.continuous = true;
       let finalText = '';
-      let autoStopTimer = null;
-      const scheduleAutoStop = () => {
-        clearTimeout(autoStopTimer);
-        autoStopTimer = setTimeout(()=>{
-          if(app.voiceActive && val('voiceJobbText')) stopVoiceJobb(false);
-        }, 4500);
-      };
+      setVoiceButtons(true);
+      msg('voiceJobbMsg','🎙️ Lytter ... teksten vises under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
+        msg('voiceJobbMsg','🎙️ Lytter ... teksten vises under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       };
       rec.onerror = (ev) => {
+        clearVoiceAutoStop();
+        const current=val('voiceJobbText');
         if(app.voiceStopping || ev.error === 'aborted') return;
         app.voiceActive = false;
         app.voiceStopping = false;
-        clearTimeout(autoStopTimer);
-        setVoiceButtons(false);
         if(app.voiceRecognition === rec) app.voiceRecognition = null;
+        setVoiceButtons(false);
+        if((ev.error === 'no-speech' || ev.error === 'audio-capture') && current){ finishVoiceJobbFromText('Mikrofonen stoppet'); return; }
         msg('voiceJobbMsg','Mikrofon/tale feilet: '+(ev.error || 'ukjent feil')+'. Sjekk at siden har tilgang til mikrofon.','err');
       };
       rec.onend = () => {
-        const shouldSave = !app.voiceStopping && val('voiceJobbText');
+        clearVoiceAutoStop();
+        const shouldAutoSave = !app.voiceStopping && !!val('voiceJobbText');
         app.voiceActive = false;
-        clearTimeout(autoStopTimer);
-        setVoiceButtons(false);
-        if(app.voiceRecognition === rec) app.voiceRecognition = null;
-        if(shouldSave){
-          msg('voiceJobbMsg','Mikrofonen stoppet. Lager og lagrer jobben ...','ok');
-          applyVoiceTextAsJobb({autoSave:true, restart:false});
-        }else if(!app.voiceStopping){
-          msg('voiceJobbMsg','Mikrofon stoppet uten tekst. Trykk Snakk inn ny jobb for å prøve igjen.','ok');
-        }
         app.voiceStopping = false;
+        if(app.voiceRecognition === rec) app.voiceRecognition = null;
+        setVoiceButtons(false);
+        if(shouldAutoSave) finishVoiceJobbFromText('Talen stoppet automatisk');
+        else if(!val('voiceJobbText')) msg('voiceJobbMsg','Mikrofon stoppet uten tekst. Trykk Snakk inn ny jobb for å prøve igjen.','ok');
       };
       rec.onresult = (ev) => {
         let interim = '';
@@ -1711,74 +1749,137 @@
           if(ev.results[i].isFinal) finalText = (finalText + ' ' + txt).trim();
           else interim += txt;
         }
-        const combined = (finalText + (interim ? ' ' + interim : '')).trim();
-        setVal('voiceJobbText', combined);
-        const el=$('voiceJobbMsg');
-        if(el) el.innerHTML = '<div class="msg ok">🎙️ Lytter ...</div><div class="voice-readback"><strong>Dette hører jeg:</strong><br>'+esc(combined || '...')+'</div>';
-        if(combined) scheduleAutoStop();
+        const heard=(finalText + (interim ? ' ' + interim : '')).trim();
+        setVal('voiceJobbText', heard);
+        if(heard){
+          scheduleVoiceAutoStop();
+        }
       };
       rec.start();
     }catch(err){
       app.voiceActive = false;
       app.voiceStopping = false;
+      app.voiceRecognition = null;
       setVoiceButtons(false);
       msg('voiceJobbMsg','Kunne ikke starte mikrofon: '+(err.message || err),'err');
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), use=$('voiceUseTextJobbBtn');
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), txt=$('voiceJobbText');
     const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
-    if(start){ start.textContent = label; start.disabled = !!listening; start.classList.toggle('hidden', !!listening); start.style.display = listening ? 'none' : ''; }
+    if(start){ start.textContent = label; start.disabled = !!listening; }
     if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(use){ use.disabled = !!listening; }
     if(stop){
-      stop.textContent = '⏹ Stopp og lagre jobb';
+      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : '⏹ Stopp og lagre jobb';
       stop.classList.toggle('voice-on', !!listening);
-      stop.classList.toggle('hidden', !listening);
-      stop.hidden = !listening;
+      stop.classList.remove('hidden');
+      stop.hidden = false;
       stop.disabled = !listening;
-      stop.style.display = listening ? 'block' : 'none';
+      stop.style.display = 'inline-flex';
       stop.style.width = listening ? '100%' : '';
-      stop.style.margin = listening ? '12px 0 0 0' : '';
-      stop.style.fontSize = listening ? '18px' : '';
-      stop.style.padding = listening ? '16px' : '';
+      stop.style.justifyContent = listening ? 'center' : '';
+      stop.style.fontSize = listening ? '20px' : '';
+      stop.style.padding = listening ? '18px' : '';
+      stop.style.marginTop = listening ? '12px' : '';
       stop.style.position = listening ? 'sticky' : '';
       stop.style.bottom = listening ? '12px' : '';
       stop.style.zIndex = listening ? '9999' : '';
     }
+    if(txt) txt.classList.toggle('voice-listening', !!listening);
   }
   function stopVoiceJobb(silent){
+    clearVoiceAutoStop();
     const rec = app.voiceRecognition;
     app.voiceStopping = true;
     app.voiceActive = false;
     app.voiceRecognition = null;
     setVoiceButtons(false);
-    if(!silent){
-      const textNow = val('voiceJobbText');
-      if(textNow){
-        msg('voiceJobbMsg','Stoppet. Lager og lagrer jobben nå ...','ok');
-        applyVoiceTextAsJobb({autoSave:true, restart:false});
-      }else{
-        msg('voiceJobbMsg','Stoppet. Ingen tekst å lagre.','ok');
-      }
-    }
+
     if(rec){
       try{ rec.stop(); }
       catch(_){ try{ rec.abort(); }catch(__){} }
-      setTimeout(()=>{ try{ rec.abort(); }catch(_){} app.voiceStopping=false; setVoiceButtons(false); }, 1200);
-    }else{
-      app.voiceStopping = false;
     }
+
+    if(!silent) finishVoiceJobbFromText('Stoppet');
+    else app.voiceStopping=false;
+  }
+  function cleanDictationText(text){
+    let out=String(text||'').trim();
+    if(!out) return '';
+    out=out.replace(/\s+/g,' ');
+    out=out.replace(/\bpunktum\b/gi,'.').replace(/\bkomma\b/gi,',').replace(/\bny linje\b/gi,'\n').replace(/\bnytt avsnitt\b/gi,'\n\n');
+    out=out.replace(/\s+([.,!?])/g,'$1');
+    out=out.replace(/([.!?])\s+([a-zæøå])/g,(m,a,b)=>a+' '+b.toUpperCase());
+    out=out.charAt(0).toUpperCase()+out.slice(1);
+    if(!/[.!?]$/.test(out)) out+='.';
+    return out;
+  }
+  function appendJobbBeskrivelse(text){
+    const cleaned=cleanDictationText(text);
+    if(!cleaned) return;
+    const old=val('jobbBeskrivelse');
+    setVal('jobbBeskrivelse', old ? (old.replace(/\s+$/,'')+'\n\n'+cleaned) : cleaned);
+  }
+  function setDescriptionVoiceButtons(listening){
+    const start=$('voiceBeskrivelseBtn'), stop=$('voiceBeskrivelseStopBtn');
+    if(start){ start.textContent=listening?'🎤 Lytter til beskrivelse ...':'🎤 Les inn beskrivelse'; start.disabled=!!listening; }
+    if(stop){ stop.classList.toggle('voice-on', !!listening); stop.style.display=listening?'inline-flex':'none'; stop.disabled=!listening; }
+  }
+  function startVoiceBeskrivelse(){
+    const Speech=speechApi();
+    if(!Speech){ msg('voiceBeskrivelseMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android.','err'); return; }
+    try{
+      stopVoiceJobb(true);
+      const rec=new Speech();
+      app.voiceRecognition=rec;
+      app.voiceActive=true;
+      app.voiceStopping=false;
+      app.voiceMode='beskrivelse';
+      rec.lang='nb-NO';
+      rec.interimResults=true;
+      rec.continuous=true;
+      let finalText='';
+      rec.onstart=()=>{ setDescriptionVoiceButtons(true); msg('voiceBeskrivelseMsg','Lytter ... si beskrivelsen. Trykk Stopp beskrivelse når du er ferdig.','ok'); };
+      rec.onerror=(ev)=>{ app.voiceActive=false; app.voiceMode=null; setDescriptionVoiceButtons(false); msg('voiceBeskrivelseMsg','Mikrofon/tale feilet: '+(ev.error||'ukjent feil'),'err'); };
+      rec.onend=()=>{
+        const wasActive=app.voiceActive;
+        app.voiceActive=false;
+        if(app.voiceRecognition===rec) app.voiceRecognition=null;
+        const shouldAppend = finalText.trim() && (!app.voiceStopping || app.voiceMode==='beskrivelse');
+        app.voiceMode=null;
+        setDescriptionVoiceButtons(false);
+        if(shouldAppend){ appendJobbBeskrivelse(finalText); msg('voiceBeskrivelseMsg','Beskrivelsen er lagt til.','ok'); }
+        else if(wasActive && !app.voiceStopping) msg('voiceBeskrivelseMsg','Mikrofon stoppet uten tekst.','err');
+      };
+      rec.onresult=(ev)=>{
+        let interim='';
+        for(let i=ev.resultIndex;i<ev.results.length;i++){
+          const txt=ev.results[i][0]?.transcript || '';
+          if(ev.results[i].isFinal) finalText=(finalText+' '+txt).trim();
+          else interim+=txt;
+        }
+        msg('voiceBeskrivelseMsg','Hører: '+esc((finalText+' '+interim).trim()),'ok');
+      };
+      rec.start();
+    }catch(err){ app.voiceActive=false; app.voiceMode=null; setDescriptionVoiceButtons(false); msg('voiceBeskrivelseMsg','Kunne ikke starte mikrofon: '+(err.message||err),'err'); }
+  }
+  function stopVoiceBeskrivelse(){
+    const rec=app.voiceRecognition;
+    app.voiceStopping=true;
+    setDescriptionVoiceButtons(false);
+    if(rec){ try{ rec.stop(); }catch(_){ try{ rec.abort(); }catch(__){} } }
   }
 
   function normText(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
   function findNamed(rows, text, keys){
     const ntext = normText(text);
+    const compactText = ntext.replace(/[^a-z0-9æøå]+/g,'');
     const sorted = (rows||[]).slice().sort((a,b)=>String(b.navn||'').length-String(a.navn||'').length);
     for(const r of sorted){
       for(const key of keys){
         const name = normText(r?.[key] || '');
-        if(name && ntext.includes(name)) return r;
+        const compactName = name.replace(/[^a-z0-9æøå]+/g,'');
+        if(name && (ntext.includes(name) || (compactName && compactText.includes(compactName)))) return r;
       }
     }
     return null;
@@ -1828,49 +1929,126 @@
     }
     return '';
   }
+
+  function numText(v){ return Number(String(v||'0').replace(/\s/g,'').replace(',', '.')) || 0; }
+
+
+  function findBestPrisFromVoiceText(text){
+    const ntext = normText(text);
+    const priser = (app.data.priser || []).filter(p => p && p.aktiv !== false);
+    if(!priser.length) return null;
+    const containsAny = (words) => words.some(w => new RegExp('\\b'+w+'\\b','i').test(ntext));
+    const scorePris = (p) => {
+      const name = normText(prisNavn(p));
+      const desc = normText(p.beskrivelse || p.kategori || '');
+      let score = 0;
+      if(name && ntext.includes(name)) score += 100 + Math.min(name.length, 40);
+      const parts = name.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 3);
+      for(const w of parts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 8; }
+      if(desc){
+        const dparts = desc.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 4);
+        for(const w of dparts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 2; }
+      }
+      if(/full\s*beslag|fullbeslag/.test(name) && containsAny(['skodde','sko','skoing','fullbeslag','beslag'])) score += 80;
+      if(/halv\s*beslag|halvbeslag/.test(name) && containsAny(['halvbeslag'])) score += 80;
+      if(/barfot/.test(name) && containsAny(['barfot','beskjaering','beskjæring'])) score += 80;
+      if(/sko/.test(name) && containsAny(['skodde','sko','skoing'])) score += 20;
+      return score;
+    };
+    let best = null;
+    let bestScore = 0;
+    for(const p of priser){
+      const s = scorePris(p);
+      if(s > bestScore){ bestScore = s; best = p; }
+    }
+    if(best && bestScore > 0) return best;
+    if(isSkoingText(text)) return findFullbeslagPris();
+    return null;
+  }
+
   async function applyVoiceTextAsJobb(options){
     const opts = options && !options.target ? options : {};
-    if(opts.autoSave && app.voiceProcessing) return;
+    if(opts.autoSave && app.voiceProcessing) return false;
     if(opts.autoSave) app.voiceProcessing = true;
-    const text = val('voiceJobbText');
-    if(!text){ msg('voiceJobbMsg','Snakk inn eller skriv tekst først.','err'); return; }
-    app.edit.jobb = null;
-    openBlankJobbFromDashboard(true);
-    app.edit.jobb = null;
-    const hest = findNamed(app.data.hester, text, ['navn']);
-    const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
-    let pris = findNamed(app.data.priser, text, ['navn','jobbtype','vare','type']);
-    if(isSkoingText(text)) pris = findFullbeslagPris() || pris;
-    if(hest){ setVal('jobbHest', hest.id); if(hest.kunde_id) setVal('jobbKunde', hest.kunde_id); syncJobbKundeHestLock(); }
-    else if(kunde){ setJobbKundeLocked(false); setVal('jobbKunde', kunde.id); fillJobbHester(); }
-    if(pris){ fillJobbTypeSelect(); setVal('jobbType', prisNavn(pris)); applySelectedJobbTypePris(); }
-    else if(isSkoingText(text)){ setJobbTypeByName('Fullbeslag'); }
-    const km = numberNear(text, ['km','kilometer','kjoring','kjøring','kjorte','kjørte','kjort','kjørt','kjoriig','kjøriig']);
-    const arbeid = numberAfter(text, ['arbeid','jobb','belop','beløp','pris']);
-    const varer = numberAfter(text, ['varer','utlegg','materialer']);
-    if(km) setVal('jobbKm', km);
-    if(arbeid) setVal('jobbArbeid', arbeid);
-    if(varer) setVal('jobbVarer', varer);
-    const beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
-    setVal('jobbBeskrivelse', beskrivelse);
-    if(opts.autoSave){
-      msg('jobbMsg','Lagrer jobb fra tale ...','ok');
-      msg('voiceJobbMsg','Lagrer jobb fra tale ...','ok');
-      app.edit.jobb = null;
-      const ok = await saveJobb({fromVoice:true, forceNew:true});
-      if(ok){
-        app.lastVoiceJobbId = ok.id || app.lastVoiceJobbId;
-        showTab('dashboard');
-        voiceSavedMessage();
-      }else{
-        msg('voiceJobbMsg','Jobben ble ikke lagret. Sjekk feilmeldingen i jobbskjemaet, rett feltene og trykk Lagre jobb.','err');
-      }
-      app.voiceProcessing = false;
-      return;
+    const text = val('voiceJobbText').trim();
+    if(!text){
+      if(opts.autoSave) app.voiceProcessing = false;
+      msg('voiceJobbMsg','Snakk inn eller skriv tekst først.','err');
+      return false;
     }
-    app.voiceProcessing = false;
-    msg('jobbMsg','Ny jobb er fylt ut fra tale/tekst. Kontroller kunde, hest, pris og beløp før du lagrer.','ok');
-    msg('voiceJobbMsg','Teksten er lagt inn som ny jobb.','ok');
+
+    try{
+      // Ikke hopp til jobblisten / redigeringsliste når innlesingen stoppes.
+      // Vi lager payload direkte fra teksten og lar brukeren bli stående i Les inn-feltet.
+      app.edit.jobb = null;
+      const hest = findNamed(app.data.hester, text, ['navn']);
+      const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
+      const pris = findBestPrisFromVoiceText(text);
+      const km = numberNear(text, ['km','kilometer','kjoring','kjøring','kjorte','kjørte','kjort','kjørt','kjoriig','kjøriig']);
+      const arbeidTale = numberAfter(text, ['arbeid','jobb','belop','beløp','pris']);
+      const varer = numberAfter(text, ['varer','utlegg','materialer']);
+      const beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
+
+      let kundeId = kunde?.id || null;
+      let hestId = hest?.id || null;
+      if(hest && hest.kunde_id) kundeId = hest.kunde_id;
+
+      let jobbtype = pris ? prisNavn(pris) : '';
+      if(!jobbtype && isSkoingText(text)) jobbtype = 'Fullbeslag';
+      if(!jobbtype) jobbtype = 'Innlest jobb';
+
+      const prisArbeid = pris ? (prisEksMva(pris) || 0) : 0;
+      const arbeid = arbeidTale ? numText(arbeidTale) : prisArbeid;
+      const kmTall = km ? numText(km) : 0;
+      const varerTall = varer ? numText(varer) : 0;
+      const kmPris = 5.30;
+      const sats = Number(app.firma?.standard_mva_sats ?? app.firma?.mva_sats ?? 25);
+      const eks = arbeid + varerTall + (kmTall * kmPris);
+      const mva = eks * sats / 100;
+      const total = eks + mva;
+
+      const payload = { dato: today(), kunde_id: kundeId, hest_id: hestId, jobbtype, beskrivelse, km: kmTall, km_pris: kmPris, arbeid_belop: arbeid, varer_belop: varerTall, mva, total, fakturert: false, firma_id: app.firmaId };
+
+      // Fyll også ut skjemaet under, men uten å scrolle eller bytte visning.
+      setVal('jobbDato', payload.dato);
+      setJobbKundeLocked(false);
+      if(payload.kunde_id) setVal('jobbKunde', payload.kunde_id);
+      fillJobbHester();
+      if(payload.hest_id) setVal('jobbHest', payload.hest_id);
+      syncJobbKundeHestLock();
+      fillJobbTypeSelect();
+      if($('jobbType') && !Array.from($('jobbType').options||[]).some(o=>o.value===payload.jobbtype)) $('jobbType').innerHTML += `<option value="${esc(payload.jobbtype)}">${esc(payload.jobbtype)}</option>`;
+      setVal('jobbType', payload.jobbtype);
+      setVal('jobbKm', payload.km || '');
+      setVal('jobbKmPris', payload.km_pris);
+      setVal('jobbArbeid', payload.arbeid_belop || 0);
+      setVal('jobbVarer', payload.varer_belop || '');
+      setVal('jobbBeskrivelse', payload.beskrivelse);
+
+      if(opts.autoSave){
+        msg('voiceJobbMsg','Lagrer innlest jobb ...','ok');
+        // Bruk den samme lagringen som vanlig Lagre jobb, men uten å hoppe til listen.
+        // Dette unngår heng/feil fra ekstra direkte-lagring og holder brukeren på Les inn.
+        app.edit.jobb = null;
+        const saved = await saveJobb({fromVoice:true, forceNew:true, stayOnVoice:true});
+        if(!saved) throw new Error('Vanlig lagring returnerte ikke lagret jobb.');
+        app.lastVoiceJobbId = saved.id || null;
+        showVoiceSavedActions(!!app.lastVoiceJobbId);
+        setJobbLayout('formFirst');
+        const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'});
+        msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
+        app.voiceProcessing = false;
+        return true;
+      }
+
+      app.voiceProcessing = false;
+      msg('voiceJobbMsg','Teksten er lagt inn i ny jobb. Trykk Bruk og lagre skrevet tekst for å lagre.','ok');
+      return true;
+    }catch(err){
+      app.voiceProcessing = false;
+      msg('voiceJobbMsg','Jobben ble ikke lagret: '+(err.message || String(err))+'. Du står fortsatt på Les inn, og teksten ligger i feltet.','err');
+      return false;
+    }
   }
   function openBlankJobbFromDashboard(skipMsg){
     clearJobbForm();
@@ -1951,7 +2129,7 @@
     const h = app.data.hester.find(x=>String(x.id)===String(id)); if(!h) return;
     app.edit.hest = h.id;
     setVal('hestKunde',h.kunde_id); setVal('hestNavn',h.navn); setVal('hestRase',h.rase); setVal('hestSist',h.sist_skodd); setVal('hestNeste',h.neste_besok); setVal('hestNotater',h.notater); renderImagePreview('hestBildePreview', imgUrl(h)); if($('hestBildeFile')) $('hestBildeFile').value='';
-    setText('hestFormTitle','Rediger hest'); setText('saveHestBtn','Oppdater hest'); $('deleteHestBtn')?.classList.remove('hidden'); renderHester(); msg('hestMsg','Redigerer hest: '+(h.navn||''),'ok');
+    setText('hestFormTitle','Rediger hest'); setText('saveHestBtn','Oppdater hest'); $('deleteHestBtn')?.classList.remove('hidden'); renderHester(); setHestLayout('formFirst'); msg('hestMsg','Redigerer hest: '+(h.navn||''),'ok');
   }
   function clearHestForm(){ app.edit.hest=null; ['hestNavn','hestRase','hestSist','hestNeste','hestNotater'].forEach(id=>setVal(id,'')); setVal('hestKunde',''); if($('hestBildeFile')) $('hestBildeFile').value=''; renderImagePreview('hestBildePreview',''); setText('hestFormTitle','Ny hest'); setText('saveHestBtn','Lagre hest'); $('deleteHestBtn')?.classList.add('hidden'); renderHester(); msg('hestMsg',''); }
   async function deleteHest(){
@@ -2038,9 +2216,17 @@
     const eks=arbeid+varer+(km*kmPris); const sats=Number(app.firma?.standard_mva_sats ?? app.firma?.mva_sats ?? 25); const mva=eks*sats/100; const total=eks+mva;
     const payload={dato:val('jobbDato')||today(), kunde_id:val('jobbKunde')||null, hest_id:val('jobbHest')||null, jobbtype:val('jobbType')||null, beskrivelse:val('jobbBeskrivelse')||null, km, km_pris:kmPris, arbeid_belop:arbeid, varer_belop:varer, mva, total, fakturert:false, firma_id:app.firmaId};
     const hest = payload.hest_id ? app.data.hester.find(h=>String(h.id)===String(payload.hest_id)) : null;
+    if(opts.fromVoice && !payload.jobbtype){
+      payload.jobbtype = 'Innlest jobb';
+      if($('jobbType')){
+        const el=$('jobbType');
+        if(!Array.from(el.options||[]).some(o=>o.value==='Innlest jobb')) el.innerHTML += '<option value="Innlest jobb">Innlest jobb</option>';
+        el.value='Innlest jobb';
+      }
+    }
     if(hest && hest.kunde_id){ payload.kunde_id = hest.kunde_id; setVal('jobbKunde', hest.kunde_id); setJobbKundeLocked(true); }
-    if(!payload.kunde_id || !payload.hest_id || !payload.jobbtype){ msg('jobbMsg','Velg kunde, hest og jobbtype.','err'); return false; }
-    if(!hest || String(hest.kunde_id)!==String(payload.kunde_id)){ msg('jobbMsg','Hest og kunde/eier matcher ikke. Velg hest på nytt.','err'); return false; }
+    if(!opts.fromVoice && (!payload.kunde_id || !payload.hest_id || !payload.jobbtype)){ msg('jobbMsg','Velg kunde, hest og jobbtype.','err'); return false; }
+    if(payload.hest_id && (!hest || (payload.kunde_id && String(hest.kunde_id)!==String(payload.kunde_id)))){ msg('jobbMsg','Hest og kunde/eier matcher ikke. Velg hest på nytt.','err'); return false; }
     try{
       let saved=null;
       if(app.edit.jobb && !opts.forceNew){
@@ -2064,7 +2250,16 @@
         if(br.error){ msg('jobbMsg','Jobb lagret, men bilde ble ikke registrert: '+br.error.message,'err'); await loadJobber(); return false; }
       }
       msg('jobbMsg', app.edit.jobb?'Jobb oppdatert.':'Jobb lagret.', 'ok');
-      clearJobbForm(); await loadJobber(); return saved || true;
+      clearJobbForm();
+      if(opts.fromVoice && saved){
+        app.data.jobber = [saved, ...(app.data.jobber||[]).filter(j=>String(j.id)!==String(saved.id))];
+        try{ renderDashboard(); }catch(_){}
+        if(!opts.stayOnVoice){ try{ renderJobber(); }catch(_){} }
+        // Ikke vent på eller scroll til jobblisten etter innlesing.
+        setTimeout(()=>{ loadJobber().then(()=>{ try{ renderDashboard(); if(!opts.stayOnVoice) renderAll(); }catch(_){} }).catch(()=>{}); }, 0);
+        return saved;
+      }
+      await loadJobber(); return saved || true;
     }catch(err){ msg('jobbMsg', err.message || String(err), 'err'); return false; }
   }
 
