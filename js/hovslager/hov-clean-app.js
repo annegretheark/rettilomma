@@ -129,6 +129,54 @@
     const dato=val('jobbBildeDato') || val('jobbDato') || today();
     renderJobbBildePreview(files.map(f=>({url:URL.createObjectURL(f), dato})));
   }
+
+  function setJobbFormVisible(visible){
+    $('jobbFormGrid')?.classList.toggle('hidden', !visible);
+    $('jobbFormActions')?.classList.toggle('hidden', !visible);
+  }
+  function hidePostSavePrompt(){
+    $('jobbSavedPrompt')?.classList.add('hidden');
+    app.postSaveJobbId = null;
+    const input=$('jobbSavedBildeFiles'); if(input) input.value='';
+    const preview=$('jobbSavedBildePreview'); if(preview) preview.innerHTML='<span class="muted">Ingen bilder valgt.</span>';
+  }
+  function showPostSavePrompt(saved){
+    app.postSaveJobbId = saved?.id || app.lastVoiceJobbId || app.postSaveJobbId || null;
+    showTab('jobber');
+    setText('jobbFormTitle','Jobb lagret');
+    $('jobbSavedPrompt')?.classList.remove('hidden');
+    setJobbFormVisible(false);
+    msg('jobbMsg','Jobben er lagret. Legg gjerne til bilde(r), eller start ny jobb.','ok');
+    setTimeout(()=>{ $('jobbFormTitle')?.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+  }
+  function previewSavedJobbBilder(){
+    const files=Array.from($('jobbSavedBildeFiles')?.files || []);
+    const preview=$('jobbSavedBildePreview');
+    if(!preview) return;
+    preview.innerHTML = files.length ? files.map(f=>`<figure class="timeline-photo"><img class="thumb" src="${esc(URL.createObjectURL(f))}" alt="Valgt bilde"><figcaption>${esc(f.name||'Bilde')}</figcaption></figure>`).join('') : '<span class="muted">Ingen bilder valgt.</span>';
+  }
+  async function uploadSavedJobbBilder(){
+    const jobbId=app.postSaveJobbId || app.lastVoiceJobbId;
+    const files=Array.from($('jobbSavedBildeFiles')?.files || []);
+    if(!jobbId){ msg('jobbMsg','Fant ikke lagret jobb. Åpne jobben og legg til bilder derfra.','err'); return; }
+    if(!files.length){ msg('jobbMsg','Velg ett eller flere bilder først.','err'); return; }
+    const j=(app.data.jobber||[]).find(x=>String(x.id)===String(jobbId));
+    try{
+      msg('jobbMsg','Lagrer bilde(r) ...','ok');
+      const rows=[];
+      for(const file of files){
+        const up=await uploadAppFile(file,'jobber');
+        rows.push({firma_id:app.firmaId, jobb_id:jobbId, hest_id:j?.hest_id||null, path:up.path, bilde_url:up.url, dato:today(), filnavn:file.name||null, mime_type:file.type||null});
+      }
+      const br=await app.sb.from('hov_jobb_bilder').insert(rows);
+      if(br.error){ msg('jobbMsg','Bildet ble lastet opp, men ikke registrert: '+br.error.message,'err'); return; }
+      const input=$('jobbSavedBildeFiles'); if(input) input.value='';
+      previewSavedJobbBilder();
+      await loadJobber();
+      msg('jobbMsg', rows.length+' bilde(r) lagret på jobben.','ok');
+    }catch(err){ msg('jobbMsg','Kunne ikke lagre bilde(r): '+(err.message||String(err)),'err'); }
+  }
+
   async function uploadAppFile(file, folder){
     if(!file) return null;
     const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
@@ -211,6 +259,9 @@
     $('jobbType')?.addEventListener('change', applySelectedJobbTypePris);
     $('hestBildeFile')?.addEventListener('change', previewSelectedHestBilde);
     $('jobbBildeFiles')?.addEventListener('change', previewSelectedJobbBilder);
+    $('jobbSavedBildeFiles')?.addEventListener('change', previewSavedJobbBilder);
+    $('uploadSavedJobbBilderBtn')?.addEventListener('click', uploadSavedJobbBilder);
+    $('postSaveNewJobbBtn')?.addEventListener('click', openNewJobbForm);
     $('jobbBildeDato')?.addEventListener('change', previewSelectedJobbBilder);
     bindReadLastJobbButton();
   }
@@ -1670,7 +1721,8 @@
   }
   function voiceSavedMessage(){
     showVoiceSavedActions(true);
-    msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
+    msg('voiceJobbMsg','✅ Jobben er lagret. Legg til bilde(r), eller start ny jobb.','ok');
+    showPostSavePrompt({id:app.lastVoiceJobbId});
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -2229,10 +2281,11 @@
         if(!saved) throw new Error('Vanlig lagring returnerte ikke lagret jobb.');
         app.lastVoiceJobbId = saved.id || null;
         showVoiceSavedActions(!!app.lastVoiceJobbId);
-        setJobbLayout('formFirst');
+        showPostSavePrompt(saved);
         const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'});
         if(hest && hest._voiceForelopig) msg('voiceJobbMsg','⚠️ Jobben er lagret foreløpig uten hest/eier. Rediger jobben senere og koble riktig hest/eier.','err');
-        else msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
+        else msg('voiceJobbMsg','✅ Jobben er lagret. Legg til bilde(r), eller start ny jobb.','ok');
+    showPostSavePrompt({id:app.lastVoiceJobbId});
         app.voiceProcessing = false;
         return true;
       }
@@ -2247,6 +2300,7 @@
     }
   }
   function openBlankJobbFromDashboard(skipMsg){
+    hidePostSavePrompt(); setJobbFormVisible(true);
     clearJobbForm();
     showTab('jobber');
     setJobbLayout('formFirst');
@@ -2278,6 +2332,7 @@
   }
 
   function readJobbAsNew(id){
+    hidePostSavePrompt(); setJobbFormVisible(true);
     const j = app.data.jobber.find(x=>String(x.id)===String(id));
     if(!j){ msg('dashMsg','Fant ikke jobben som skulle leses inn.','err'); return; }
     app.edit.jobb = null;
@@ -2336,13 +2391,14 @@
   }
 
   function editJobb(id){
+    hidePostSavePrompt(); setJobbFormVisible(true);
     const j = app.data.jobber.find(x=>String(x.id)===String(id)); if(!j) return;
     app.edit.jobb = j.id;
     setVal('jobbDato',j.dato); setJobbKundeLocked(false); setVal('jobbKunde',j.kunde_id); fillJobbHester(); setVal('jobbHest',j.hest_id); syncJobbKundeHestLock(); fillJobbTypeSelect(); setVal('jobbType',j.jobbtype); setVal('jobbKm',j.km); setVal('jobbKmPris',j.km_pris ?? '5,30'); setVal('jobbArbeid',j.arbeid_belop); setVal('jobbVarer',j.varer_belop ?? ''); setVal('jobbBeskrivelse',j.beskrivelse); setVal('jobbBildeDato',j.dato || today()); renderJobbBildePreview(jobBilder(j)); if($('jobbBildeFiles')) $('jobbBildeFiles').value='';
     setText('jobbFormTitle','Rediger jobb'); setText('saveJobbBtn','Oppdater jobb'); $('deleteJobbBtn')?.classList.remove('hidden'); renderJobber(); setJobbLayout('formFirst'); msg('jobbMsg','Redigerer jobb fra '+(j.dato||''),'ok');
     setTimeout(()=>{ const formTitle=$('jobbFormTitle'); if(formTitle) formTitle.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
-  function clearJobbForm(){ app.edit.jobb=null; ['jobbBeskrivelse'].forEach(id=>setVal(id,'')); setVal('jobbType',''); setVal('jobbDato',today()); setVal('jobbBildeDato',today()); setJobbKundeLocked(false); setVal('jobbKunde',''); fillJobbHester(); setVal('jobbHest',''); setVal('jobbKm',''); setVal('jobbKmPris','5,30'); setVal('jobbArbeid',0); setVal('jobbVarer',''); if($('jobbBildeFiles')) $('jobbBildeFiles').value=''; renderJobbBildePreview([]); setText('jobbFormTitle','Ny jobb'); setText('saveJobbBtn','Lagre jobb'); $('deleteJobbBtn')?.classList.add('hidden'); renderJobber(); msg('jobbMsg',''); }
+  function clearJobbForm(){ hidePostSavePrompt(); setJobbFormVisible(true); app.edit.jobb=null; ['jobbBeskrivelse'].forEach(id=>setVal(id,'')); setVal('jobbType',''); setVal('jobbDato',today()); setVal('jobbBildeDato',today()); setJobbKundeLocked(false); setVal('jobbKunde',''); fillJobbHester(); setVal('jobbHest',''); setVal('jobbKm',''); setVal('jobbKmPris','5,30'); setVal('jobbArbeid',0); setVal('jobbVarer',''); if($('jobbBildeFiles')) $('jobbBildeFiles').value=''; renderJobbBildePreview([]); setText('jobbFormTitle','Ny jobb'); setText('saveJobbBtn','Lagre jobb'); $('deleteJobbBtn')?.classList.add('hidden'); renderJobber(); msg('jobbMsg',''); }
   async function deleteJobb(){
     if(!app.edit.jobb){ msg('jobbMsg','Velg en jobb først.','err'); return; }
     if(!confirm('Slette valgt jobb?')) return;
