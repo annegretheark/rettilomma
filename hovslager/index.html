@@ -569,6 +569,16 @@ table{
   #jobbList td:nth-child(6),
   #jobbList td:nth-child(7){display:none!important;}
 }
+
+/* Snakk inn: tydelige valg etter lagring */
+.voice-saved-actions.hidden{display:none!important}
+.voice-saved-actions{margin-top:10px!important;padding:10px!important;border:2px solid #22c55e!important;border-radius:14px!important;background:rgba(34,197,94,.08)!important}
+.voice-saved-actions .danger{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+@media(max-width:700px){
+  .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+  .voice-saved-actions button{width:100%!important;min-height:54px!important;font-size:17px!important}
+}
+
 </style>
 <style>
 /* Beskrivelse-tale */
@@ -826,6 +836,18 @@ table{
   .main-tabs > button,.main-tabs > .nav-more > summary{font-size:13px!important;padding:9px 6px!important;}
 }
 </style>
+<style>
+/* MOBILFIX: tydelig Snakk inn-status og synlig stoppknapp */
+#voiceStopJobbBtn{display:inline-flex!important;align-items:center;justify-content:center}
+#voiceStopJobbBtn.voice-on{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+#voiceJobbMsg.voice-saved-msg .msg{font-size:18px!important;font-weight:900!important;border:3px solid #22c55e!important;box-shadow:0 8px 24px rgba(34,197,94,.35)!important}
+@media(max-width:800px){
+  #voiceJobbMsg{position:sticky;top:8px;z-index:300;margin:10px 0}
+  #voiceJobbMsg .msg{font-size:17px!important;line-height:1.35!important;padding:14px 16px!important;border-radius:14px!important;text-align:center!important}
+  #voiceStopJobbBtn{display:flex!important;width:100%!important;min-height:56px!important;font-size:18px!important;margin-top:8px!important}
+  #voiceStopJobbBtn.voice-on{position:sticky!important;top:72px!important;z-index:299!important}
+}
+</style>
 </head>
 <body>
   <main class="wrap">
@@ -876,9 +898,14 @@ table{
           <p class="muted">Trykk på mikrofonen eller skriv i feltet under. Si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du stopper mikrofonen, fylles jobben ut, lagres automatisk og mikrofonen starter på nytt for neste jobb.</p>
           <div class="actions">
             <button id="voiceNewJobbBtn" type="button">🎙 Snakk inn eller skriv inn ny jobb</button>
-            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp</button>
+            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp og lagre jobb</button>
             <button id="voiceUseTextJobbBtn" type="button" class="secondary">Bruk skrevet tekst</button>
             <button id="newJobbFromDashBtn" type="button" class="secondary">Åpne tom ny jobb</button>
+          </div>
+          <div id="voiceSavedActions" class="actions voice-saved-actions hidden">
+            <button id="voiceNewAgainBtn" type="button" class="secondary">🎤 Les inn på nytt</button>
+            <button id="voiceOpenLastJobbBtn" type="button" class="secondary">Vis lagret jobb</button>
+            <button id="voiceDeleteLastJobbBtn" type="button" class="danger">🗑️ Slett innlest jobb</button>
           </div>
           <label class="wide">Snakk inn eller skriv inn ny jobb<textarea id="voiceJobbText" placeholder="Snakk inn eller skriv teksten her, og trykk Bruk skrevet tekst."></textarea></label>
           <div id="voiceJobbMsg"></div>
@@ -1193,7 +1220,7 @@ table{
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]}, pendingJobbFiles:[], currentJobbPreview:[] };
+  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, lastVoiceJobbId:null, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]}, pendingJobbFiles:[], currentJobbPreview:[] };
   const LOCAL_LOCK_KEY = 'hov_local_lock_v1';
   const REMEMBER_LOGIN_KEY = 'hov_remember_login_v1';
   window.hovApp = app;
@@ -1452,6 +1479,9 @@ table{
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', ()=>stopVoiceJobb(false));
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
+    $('voiceNewAgainBtn')?.addEventListener('click', startVoiceNyJobb);
+    $('voiceOpenLastJobbBtn')?.addEventListener('click', openLastVoiceJobb);
+    $('voiceDeleteLastJobbBtn')?.addEventListener('click', deleteLastVoiceJobb);
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
     $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
@@ -3174,6 +3204,34 @@ table{
     startVoiceNyJobb();
   }
 
+
+  function showVoiceSavedActions(show){
+    $('voiceSavedActions')?.classList.toggle('hidden', !show);
+  }
+  function voiceSavedMessage(){
+    showVoiceSavedActions(true);
+    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Velg Les inn på nytt, Vis lagret jobb eller Slett innlest jobb.','ok');
+    const voiceMsgEl = $('voiceJobbMsg');
+    if(voiceMsgEl){ voiceMsgEl.classList.add('voice-saved-msg'); setTimeout(()=>voiceMsgEl.classList.remove('voice-saved-msg'), 9000); }
+  }
+  function openLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
+    showTab('jobber');
+    editJobb(app.lastVoiceJobbId);
+  }
+  async function deleteLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å slette.','err'); return; }
+    if(!confirm('Slette den innleste jobben? Dette kan ikke angres.')) return;
+    const id = app.lastVoiceJobbId;
+    const {error}=await app.sb.from('hov_jobber').delete().eq('id',id).eq('firma_id',app.firmaId);
+    if(error){ msg('voiceJobbMsg','Kunne ikke slette jobben: '+error.message,'err'); return; }
+    app.lastVoiceJobbId = null;
+    showVoiceSavedActions(false);
+    await loadJobber();
+    renderAll();
+    msg('voiceJobbMsg','🗑️ Den innleste jobben er slettet. Du kan lese inn en ny jobb.','ok');
+  }
+
   function startVoiceNyJobb(){
     // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
@@ -3183,6 +3241,7 @@ table{
     app.edit.jobb = null;
     app.voiceStopping = false;
     app.voiceProcessing = false;
+    showVoiceSavedActions(false);
     clearJobbForm();
     showTab('dashboard');
     setText('jobbFormTitle','Ny jobb');
@@ -3209,7 +3268,7 @@ table{
       let finalText = val('voiceJobbText');
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','Lytter ... snakk inn jobben. Trykk Stopp når du er ferdig, eller skriv i feltet og trykk Bruk skrevet tekst.','ok');
+        msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig, eller skriv i feltet og trykk Bruk skrevet tekst.','ok');
       };
       rec.onerror = (ev) => {
         app.voiceActive = false;
@@ -3244,7 +3303,12 @@ table{
     const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
     if(start){ start.textContent = label; start.disabled = !!listening; }
     if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(stop) stop.disabled = !listening && !val('voiceJobbText');
+    if(stop){
+      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb';
+      stop.disabled = !listening && !val('voiceJobbText');
+      stop.hidden = false;
+      stop.classList.toggle('voice-on', !!listening);
+    }
   }
   function stopVoiceJobb(silent){
     const rec = app.voiceRecognition;
@@ -3426,9 +3490,11 @@ table{
       app.edit.jobb = null;
       const ok = await saveJobb({fromVoice:true, forceNew:true});
       if(ok){
+        app.lastVoiceJobbId = ok.id || app.lastVoiceJobbId;
         setVal('voiceJobbText','');
         showTab('dashboard');
-        msg('voiceJobbMsg','Jobben er lagret. Klar for neste jobb.','ok');
+        voiceSavedMessage();
+        if(navigator.vibrate) try{ navigator.vibrate([80,40,80]); }catch(_){}
         
       }else{
         msg('voiceJobbMsg','Jobben ble ikke lagret. Sjekk feilmeldingen i jobbskjemaet, rett feltene og trykk Lagre jobb.','err');
@@ -3672,7 +3738,7 @@ table{
         if(br.error){ msg('jobbMsg','Jobb lagret, men bilde ble ikke registrert: '+br.error.message,'err'); await loadJobber(); return false; }
       }
       msg('jobbMsg', app.edit.jobb?'Jobb oppdatert.':'Jobb lagret.', 'ok');
-      clearJobbForm(); await loadJobber(); return true;
+      clearJobbForm(); await loadJobber(); return saved || true;
     }catch(err){ msg('jobbMsg', err.message || String(err), 'err'); return false; }
   }
 

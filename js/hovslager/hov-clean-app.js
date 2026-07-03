@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
+  const app = { sb:null, session:null, user:null, profile:null, role:'hovslager', isSysadm:false, firma:null, firmaId:null, voiceRecognition:null, voiceActive:false, voiceStopping:false, voiceProcessing:false, lastVoiceJobbId:null, edit:{kunde:null,hest:null,jobb:null,pris:null}, data:{kunder:[],hester:[],jobber:[],fakturaer:[],kreditnotaer:[],priser:[],adminFirmaer:[],adminProfiler:[],backupLogg:[],hestBilder:[],jobbBilder:[]} };
   window.hovApp = app;
   window.hovAppReadLastJobb = function(){ readLastJobbAsNew(); };
   window.hovAppStartVoiceJobb = function(){ startVoiceNyJobb(); };
@@ -163,6 +163,9 @@
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
+    $('voiceNewAgainBtn')?.addEventListener('click', startVoiceNyJobb);
+    $('voiceOpenLastJobbBtn')?.addEventListener('click', openLastVoiceJobb);
+    $('voiceDeleteLastJobbBtn')?.addEventListener('click', deleteLastVoiceJobb);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
     document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='priser'){ setPrisLayout('listFirst'); }
         if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
@@ -1597,6 +1600,32 @@
 
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
+
+  function showVoiceSavedActions(show){
+    $('voiceSavedActions')?.classList.toggle('hidden', !show);
+  }
+  function voiceSavedMessage(){
+    showVoiceSavedActions(true);
+    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Velg Les inn på nytt, Vis lagret jobb eller Slett innlest jobb.','ok');
+  }
+  function openLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
+    showTab('jobber');
+    editJobb(app.lastVoiceJobbId);
+  }
+  async function deleteLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å slette.','err'); return; }
+    if(!confirm('Slette den innleste jobben? Dette kan ikke angres.')) return;
+    const id = app.lastVoiceJobbId;
+    const {error}=await app.sb.from('hov_jobber').delete().eq('id',id).eq('firma_id',app.firmaId);
+    if(error){ msg('voiceJobbMsg','Kunne ikke slette jobben: '+error.message,'err'); return; }
+    app.lastVoiceJobbId = null;
+    showVoiceSavedActions(false);
+    await loadJobber();
+    renderAll();
+    msg('voiceJobbMsg','🗑️ Den innleste jobben er slettet. Du kan lese inn en ny jobb.','ok');
+  }
+
   function startVoiceNyJobb(){
     // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
@@ -1606,6 +1635,7 @@
     app.edit.jobb = null;
     app.voiceStopping = false;
     app.voiceProcessing = false;
+    showVoiceSavedActions(false);
     clearJobbForm();
     showTab('dashboard');
     setText('jobbFormTitle','Ny jobb');
@@ -1632,7 +1662,7 @@
       let finalText = val('voiceJobbText');
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','Lytter ... snakk inn jobben. Trykk Stopp når du er ferdig.','ok');
+        msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig.','ok');
       };
       rec.onerror = (ev) => {
         app.voiceActive = false;
@@ -1667,7 +1697,7 @@
     const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn ny jobb';
     if(start){ start.textContent = label; start.disabled = !!listening; }
     if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(stop) stop.disabled = !listening && !val('voiceJobbText');
+    if(stop){ stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb'; stop.classList.toggle('voice-on', !!listening); stop.disabled = !listening && !val('voiceJobbText'); }
   }
   function stopVoiceJobb(silent){
     const rec = app.voiceRecognition;
@@ -1782,10 +1812,10 @@
       app.edit.jobb = null;
       const ok = await saveJobb({fromVoice:true, forceNew:true});
       if(ok){
+        app.lastVoiceJobbId = ok.id || app.lastVoiceJobbId;
         setVal('voiceJobbText','');
         showTab('dashboard');
-        msg('voiceJobbMsg','Jobben er lagret. Klar for neste jobb.','ok');
-        
+        voiceSavedMessage();
       }else{
         msg('voiceJobbMsg','Jobben ble ikke lagret. Sjekk feilmeldingen i jobbskjemaet, rett feltene og trykk Lagre jobb.','err');
       }
@@ -1988,7 +2018,7 @@
         if(br.error){ msg('jobbMsg','Jobb lagret, men bilde ble ikke registrert: '+br.error.message,'err'); await loadJobber(); return false; }
       }
       msg('jobbMsg', app.edit.jobb?'Jobb oppdatert.':'Jobb lagret.', 'ok');
-      clearJobbForm(); await loadJobber(); return true;
+      clearJobbForm(); await loadJobber(); return saved || true;
     }catch(err){ msg('jobbMsg', err.message || String(err), 'err'); return false; }
   }
 
