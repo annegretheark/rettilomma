@@ -2111,13 +2111,12 @@
       'Hesten "'+horseName+'" finnes ikke. Velg eier før hesten opprettes.\n\n' +
       (lines.length ? lines.join('\n')+'\n\n' : '') +
       'Skriv nummer på eier, eller skriv navn på ny eier.\n' +
-      'Skriv FORELØPIG hvis eier er ukjent.\n' +
-      'Trykk Avbryt for å lagre jobben uten hest/eier og redigere senere.'
+      'Jobben lagres ikke før hest/eier er valgt.\n' +
+      'Trykk Avbryt hvis navnet er feil og skal rettes.'
     );
     if(answer === null) return null;
     const value = String(answer || '').trim();
     if(!value) return null;
-    if(/^forel[oø]pig|ukjent$/i.test(normText(value))) return await ensureForelopigVoiceKunde();
     const nr = Number(value);
     if(Number.isInteger(nr) && nr >= 1 && nr <= top.length) return top[nr-1];
     const existing = (app.data.kunder || []).find(k => normText(k.navn) === normText(value) || normText(k.kontaktperson) === normText(value));
@@ -2135,8 +2134,8 @@
     const answer = prompt(
       'Hesten "'+suggested+'" finnes ikke.\n\n' +
       'Skriv 1 for å åpne hest/eier-bildet og velge eier. Jobben lagres IKKE nå.\n' +
-      'Skriv 2 hvis smeden vil lagre jobben foreløpig og redigere senere.\n' +
-      'Trykk Avbryt hvis navnet er feil og skal rettes.',
+      'Trykk Avbryt hvis navnet er feil og skal rettes.\n\n' +
+      'Jobben lagres ikke før hest er valgt.',
       '1'
     );
     if(answer === null){
@@ -2148,11 +2147,7 @@
       openCreateHorseFromVoice(suggested, text);
       throw new Error('Hesten må opprettes med eier før jobben lagres.');
     }
-    if(valg === '2'){
-      msg('voiceJobbMsg','Lagrer foreløpig jobb uten hest/eier. Rediger jobben senere og velg riktig hest.','ok');
-      return {id:null, navn:suggested, kunde_id:null, _voiceForelopig:true};
-    }
-    msg('voiceJobbMsg','Ugyldig valg. Jobben er IKKE lagret.','err');
+    msg('voiceJobbMsg','Ugyldig valg. Jobben er IKKE lagret. Velg/opprett hest først.','err');
     throw new Error('Ugyldig valg for ukjent hest.');
   }
 
@@ -2227,15 +2222,16 @@
       app.edit.jobb = null;
       const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
       const hest = await resolveVoiceHestFromText(text, kunde);
+      if(!hest || !hest.id){
+        app.voiceProcessing = false;
+        msg('voiceJobbMsg','Velg/opprett hest før jobben lagres. Jobben er IKKE lagret.','err');
+        return false;
+      }
       const pris = findBestPrisFromVoiceText(text);
       const km = numberNear(text, ['km','kilometer','kjoring','kjøring','kjorte','kjørte','kjort','kjørt','kjoriig','kjøriig']);
       const arbeidTale = numberAfter(text, ['arbeid','jobb','belop','beløp','pris']);
       const varer = numberAfter(text, ['varer','utlegg','materialer']);
       let beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
-      if(hest && hest._voiceForelopig){
-        beskrivelse = '[FORELØPIG LAGRET - ukjent hest/eier: ' + (hest.navn || '') + ']\n' + beskrivelse;
-      }
-
       let kundeId = kunde?.id || null;
       let hestId = hest?.id || null;
       if(hest && hest.kunde_id) kundeId = hest.kunde_id;
@@ -2283,8 +2279,7 @@
         showVoiceSavedActions(!!app.lastVoiceJobbId);
         showPostSavePrompt(saved);
         const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'});
-        if(hest && hest._voiceForelopig) msg('voiceJobbMsg','⚠️ Jobben er lagret foreløpig uten hest/eier. Rediger jobben senere og koble riktig hest/eier.','err');
-        else msg('voiceJobbMsg','✅ Jobben er lagret. Legg til bilde(r), eller start ny jobb.','ok');
+        msg('voiceJobbMsg','✅ Jobben er lagret. Legg til bilde(r), eller start ny jobb.','ok');
     showPostSavePrompt({id:app.lastVoiceJobbId});
         app.voiceProcessing = false;
         return true;
@@ -2518,8 +2513,18 @@
       }
     }
     if(hest && hest.kunde_id){ payload.kunde_id = hest.kunde_id; setVal('jobbKunde', hest.kunde_id); setJobbKundeLocked(true); }
-    if(!opts.fromVoice && (!payload.kunde_id || !payload.hest_id || !payload.jobbtype)){ msg('jobbMsg','Velg kunde, hest og jobbtype.','err'); return false; }
-    if(payload.hest_id && (!hest || (payload.kunde_id && String(hest.kunde_id)!==String(payload.kunde_id)))){ msg('jobbMsg','Hest og kunde/eier matcher ikke. Velg hest på nytt.','err'); return false; }
+    if(!payload.hest_id){
+      const targetMsg = opts.fromVoice ? 'voiceJobbMsg' : 'jobbMsg';
+      msg(targetMsg,'Velg hest før jobben lagres. Jobben er IKKE lagret.','err');
+      return false;
+    }
+    if(!hest){
+      const targetMsg = opts.fromVoice ? 'voiceJobbMsg' : 'jobbMsg';
+      msg(targetMsg,'Valgt hest finnes ikke. Velg hest på nytt før jobben lagres.','err');
+      return false;
+    }
+    if(!payload.kunde_id || !payload.jobbtype){ msg('jobbMsg','Velg kunde, hest og jobbtype.','err'); return false; }
+    if(payload.kunde_id && String(hest.kunde_id)!==String(payload.kunde_id)){ msg('jobbMsg','Hest og kunde/eier matcher ikke. Velg hest på nytt.','err'); return false; }
     try{
       let saved=null;
       if(app.edit.jobb && !opts.forceNew){
