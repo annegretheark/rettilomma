@@ -1656,6 +1656,9 @@
       app.voiceRecognition = rec;
       app.voiceActive = true;
       app.voiceStopping = false;
+      // Vis Stopp-knappen med en gang. På mobil kan onstart komme sent eller ikke trigge synlig UI.
+      setVoiceButtons(true);
+      msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig.','ok');
       rec.lang = 'nb-NO';
       rec.interimResults = true;
       rec.continuous = true;
@@ -1705,9 +1708,31 @@
   function setVoiceButtons(listening){
     const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn');
     const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn ny jobb';
-    if(start){ start.textContent = label; start.disabled = !!listening; }
-    if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(stop){ stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb'; stop.classList.toggle('voice-on', !!listening); stop.disabled = !listening && !val('voiceJobbText'); }
+    if(start){
+      start.textContent = label;
+      start.disabled = !!listening;
+      start.classList.toggle('hidden', !!listening);
+      start.style.display = listening ? 'none' : '';
+    }
+    if(top){
+      top.textContent = label;
+      top.disabled = !!listening;
+    }
+    if(stop){
+      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb';
+      stop.classList.toggle('voice-on', !!listening);
+      stop.classList.toggle('hidden', !listening);
+      stop.hidden = !listening;
+      stop.disabled = !listening;
+      stop.style.display = listening ? 'block' : 'none';
+      stop.style.width = listening ? '100%' : '';
+      stop.style.marginTop = listening ? '12px' : '';
+      stop.style.fontSize = listening ? '18px' : '';
+      stop.style.padding = listening ? '16px' : '';
+      stop.style.position = listening ? 'sticky' : '';
+      stop.style.bottom = listening ? '12px' : '';
+      stop.style.zIndex = listening ? '9999' : '';
+    }
   }
   function stopVoiceJobb(silent){
     const rec = app.voiceRecognition;
@@ -1715,6 +1740,10 @@
     app.voiceActive = false;
     app.voiceRecognition = null;
     setVoiceButtons(false);
+
+    // Skjul stoppknappen med en gang når bruker har trykket stopp.
+    const stopBtn = $('voiceStopJobbBtn');
+    if(stopBtn){ stopBtn.classList.add('hidden'); stopBtn.hidden = true; stopBtn.style.display = 'none'; }
 
     // Viktig: lagre fra teksten som allerede står i feltet med en gang.
     // Chrome kan bruke lang tid på rec.stop(), og da virker det som Stopp-knappen ikke gjør noe.
