@@ -447,6 +447,15 @@ table{
   #voiceJobbText{min-height:150px;font-size:17px}
   .voice-saved-actions{display:grid;grid-template-columns:1fr}
 }
+
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
 </style>
 <style>
 /* Beskrivelse-tale */
@@ -454,6 +463,15 @@ table{
 #voiceBeskrivelseStopBtn{display:none}
 #voiceBeskrivelseStopBtn.voice-on{display:inline-flex}
 @media(max-width:800px){.description-voice-actions{grid-column:span 12!important;display:grid;grid-template-columns:1fr;gap:8px}}
+
+
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
 
 </style>
 
@@ -536,6 +554,15 @@ table{
     margin:8px 0;
   }
 }
+
+
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
 
 </style>
 
@@ -628,6 +655,15 @@ table{
   .main-tabs{grid-template-columns:1fr 1fr 1fr 1fr!important}
   .nav-more{grid-column:1 / -1!important}
 }
+
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
 </style>
 
 
@@ -681,6 +717,15 @@ table{
   .main-tabs{grid-template-columns:.9fr 1.15fr .58fr!important;gap:6px!important;padding:6px!important;}
   .main-tabs > button,.main-tabs > .nav-more > summary{font-size:13px!important;padding:9px 6px!important;}
 }
+
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
 </style>
 </head>
 <body>
@@ -708,7 +753,7 @@ table{
 
       <nav class="tabs card main-tabs">
         <button data-tab="jobber" class="primary-tab">Jobber</button>
-        <button id="navReadLastJobbBtn" type="button" class="secondary quick-read-tab">🎙 Snakk inn eller skriv inn ny jobb</button>
+        <button id="navReadLastJobbBtn" type="button" class="secondary quick-read-tab">🎙 Les inn jobb</button>
         <button data-tab="priser" class="secondary">Priser</button>
         <details class="nav-more">
           <summary>Mer</summary>
@@ -757,17 +802,17 @@ table{
         <h2>Jobber</h2>
         <p class="muted">Klikk på en rad i listen for å vise jobben. Trykk Rediger jobb for å endre.</p>
         <div class="quick-job card soft-card">
-          <h3>Snakk inn eller skriv inn ny jobb</h3>
-          <p class="muted">Trykk på mikrofonen eller skriv i feltet under. Si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du trykker Stopp eller det blir stille, lagres jobben automatisk. Innlest tekst vises i feltet under.</p>
+          <h3>Les inn jobb</h3>
+          <p class="muted">Trykk knappen og si for eksempel: «Skodde Jack, kjørte 18 km». Trykk samme knapp igjen for å stoppe og lagre. Hvis hesten ikke finnes, spør appen om den skal opprettes eller om navnet er feil.</p>
+          <label class="wide">Innlest eller skrevet tekst<textarea id="voiceJobbText" placeholder="Teksten vises her mens du snakker. Du kan også skrive her og trykke Lagre jobb."></textarea></label>
           <div class="actions">
-            <button id="voiceNewJobbBtn" type="button">🎙 Snakk inn eller skriv inn ny jobb</button>
-            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp</button>
-            <button id="voiceUseTextJobbBtn" type="button" class="secondary">Bruk og lagre skrevet tekst</button>
-            <button id="newJobbFromDashBtn" type="button" class="secondary">Åpne tom ny jobb</button>
+            <button id="voiceNewJobbBtn" type="button">🎙 Les inn jobb</button>
+            <button id="voiceStopJobbBtn" type="button" class="secondary hidden">Stopp</button>
+            <button id="voiceUseTextJobbBtn" type="button" class="secondary hidden">Bruk og lagre skrevet tekst</button>
+            <button id="newJobbFromDashBtn" type="button" class="secondary hidden">Åpne tom ny jobb</button>
           </div>
-          <label class="wide">Snakk inn eller skriv inn ny jobb<textarea id="voiceJobbText" placeholder="Snakk inn eller skriv teksten her, og trykk Bruk skrevet tekst."></textarea></label>
           <div id="voiceJobbMsg"></div>
-          <div id="voiceSavedActions" class="actions hidden voice-saved-actions"><button id="voiceNewAgainBtn" type="button" class="secondary">🎙 Les inn på nytt</button><button id="voiceOpenLastJobbBtn" type="button" class="secondary">Vis lagret jobb</button><button id="voiceDeleteLastJobbBtn" type="button" class="danger">Slett innlest jobb</button></div>
+          <div id="voiceSavedActions" class="actions hidden voice-saved-actions"><button id="voiceNewAgainBtn" type="button" class="secondary">🎙 Les inn ny jobb</button><button id="voiceOpenLastJobbBtn" type="button" class="secondary hidden">Vis lagret jobb</button><button id="voiceDeleteLastJobbBtn" type="button" class="danger hidden">Slett innlest jobb</button></div>
         </div>
         <div id="jobbList"></div>
         <h3 id="jobbFormTitle">Ny jobb</h3>
@@ -1282,10 +1327,11 @@ table{
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
     $('navReadLastJobbBtn')?.addEventListener('click', startVoiceNyJobb);
-    $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
+    $('voiceNewJobbBtn')?.addEventListener('click', handleOneVoiceJobbButton);
     $('voiceStopJobbBtn')?.addEventListener('click', ()=>stopVoiceJobb(false));
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:true, restart:false}));
     $('voiceNewAgainBtn')?.addEventListener('click', startVoiceNyJobb);
+    $('voiceJobbText')?.addEventListener('input', ()=>setVoiceButtons(!!app.voiceActive));
     $('voiceOpenLastJobbBtn')?.addEventListener('click', openLastVoiceJobb);
     $('voiceDeleteLastJobbBtn')?.addEventListener('click', deleteLastVoiceJobb);
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
@@ -2314,7 +2360,16 @@ table{
     const logo=settings.logo ? `<img class="logo" src="${esc(settings.logo)}" alt="Logo">` : '';
     const printScript = opts?.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
-      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}.top{display:flex;justify-content:space-between;gap:40px;align-items:flex-start}.logo{max-height:85px;max-width:220px;margin-bottom:12px}h1{margin:0 0 10px}.sender{text-align:right;line-height:1.45}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#666}.status{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:6px 10px}.footer{margin-top:35px;border-top:1px solid #ddd;padding-top:12px;color:#555;white-space:pre-line}</style>
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}.top{display:flex;justify-content:space-between;gap:40px;align-items:flex-start}.logo{max-height:85px;max-width:220px;margin-bottom:12px}h1{margin:0 0 10px}.sender{text-align:right;line-height:1.45}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#666}.status{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:6px 10px}.footer{margin-top:35px;border-top:1px solid #ddd;padding-top:12px;color:#555;white-space:pre-line}
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
+</style>
       </head><body>
       <div class="top"><div>${logo}<h1>${esc(title)}</h1><div class="status">${esc(f.status||'sendt')}</div></div><div class="sender"><strong>${esc(settings.brevhode||'Rettilomma')}</strong><br>${settings.orgnr ? 'Org.nr: '+esc(settings.orgnr)+'<br>' : ''}${esc(settings.adresse||'')}<br>${esc(settings.epost||'')}<br>${esc(settings.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
@@ -2500,7 +2555,16 @@ table{
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
     const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
+</style>
       </head><body>
       <div class="top"><div><h1>${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
@@ -2807,7 +2871,7 @@ table{
   }
   function voiceSavedMessage(){
     showVoiceSavedActions(true);
-    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Kontroller den, eller velg Les inn på nytt / Slett innlest jobb hvis den ble feil.','ok');
+    msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -2849,6 +2913,13 @@ table{
     setTimeout(()=>{ const section=$('jobber'); if(section) section.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
 
+  function handleOneVoiceJobbButton(){
+    if(app.voiceActive || app.voiceRecognition){ stopVoiceJobb(false); return; }
+    if(app.lastVoiceJobbId && val('voiceJobbText')){ startVoiceNyJobb(); return; }
+    if(val('voiceJobbText')){ finishVoiceJobbFromText('Skrevet tekst'); return; }
+    startVoiceNyJobb();
+  }
+
   function startVoiceNyJobb(){
     // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
@@ -2858,11 +2929,11 @@ table{
     app.edit.jobb = null;
     app.voiceStopping = false;
     app.voiceProcessing = false;
+    app.lastVoiceJobbId = null;
     showVoiceSavedActions(false);
     clearJobbForm();
     showTab('jobber');
     setJobbLayout('formFirst');
-    setTimeout(()=>{ const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
     setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
@@ -2936,28 +3007,26 @@ table{
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), txt=$('voiceJobbText');
-    const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
-    if(start){ start.textContent = label; start.disabled = !!listening; }
-    if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(stop){
-      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : '⏹ Stopp og lagre jobb';
-      stop.classList.toggle('voice-on', !!listening);
-      stop.classList.remove('hidden');
-      stop.hidden = false;
-      stop.disabled = !listening;
-      stop.style.display = 'inline-flex';
-      stop.style.width = listening ? '100%' : '';
-      stop.style.justifyContent = listening ? 'center' : '';
-      stop.style.fontSize = listening ? '20px' : '';
-      stop.style.padding = listening ? '18px' : '';
-      stop.style.marginTop = listening ? '12px' : '';
-      stop.style.position = listening ? 'sticky' : '';
-      stop.style.bottom = listening ? '12px' : '';
-      stop.style.zIndex = listening ? '9999' : '';
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), use=$('voiceUseTextJobbBtn'), empty=$('newJobbFromDashBtn'), txt=$('voiceJobbText');
+    const hasText = !!val('voiceJobbText');
+    let label = '🎙 Les inn jobb';
+    if(listening) label = '⏹ Stopp og lagre';
+    else if(app.lastVoiceJobbId && hasText) label = '🎙 Les inn ny jobb';
+    else if(hasText) label = '💾 Lagre jobb';
+    if(start){
+      start.textContent = label;
+      start.disabled = false;
+      start.classList.toggle('voice-on', !!listening);
+      start.style.width = listening ? '100%' : '';
+      start.style.justifyContent = listening ? 'center' : '';
+      start.style.fontSize = listening ? '20px' : '';
+      start.style.padding = listening ? '18px' : '';
     }
+    if(top){ top.style.display='none'; top.hidden=true; }
+    for(const b of [stop,use,empty]){ if(b){ b.style.display='none'; b.hidden=true; b.disabled=true; } }
     if(txt) txt.classList.toggle('voice-listening', !!listening);
   }
+
   function stopVoiceJobb(silent){
     clearVoiceAutoStop();
     const rec = app.voiceRecognition;
@@ -3101,6 +3170,61 @@ table{
     return '';
   }
 
+
+  function extractVoiceHorseName(text){
+    const raw = String(text || '').replace(/[.,;:!?]/g, ' ').replace(/\s+/g, ' ').trim();
+    if(!raw) return '';
+    const stopWords = new Set(['jeg','vi','du','han','hun','den','det','i','på','pa','og','for','med','hos','til','fra','kjørte','kjorte','kjørt','kjort','kjøring','kjoring','km','kilometer','arbeid','jobb','beløp','belop','pris','varer','utlegg','materialer','beskrivelse','notat','kommentar']);
+    const patterns = [
+      /\b(?:skodde|sko(?:dde|dd|ing)?|beskar|beskjærte|beskjaerte|trimmet)\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i,
+      /\bhest(?:en)?\s+(?:heter\s+)?([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i,
+      /\bfor\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i
+    ];
+    for(const re of patterns){
+      const m = raw.match(re);
+      if(!m) continue;
+      const words = String(m[1] || '').trim().split(/\s+/).filter(Boolean);
+      const name = [];
+      for(const w of words){
+        const nw = normText(w).replace(/[^a-z0-9æøå]/g,'');
+        if(!nw || stopWords.has(nw) || /^\d+$/.test(nw)) break;
+        name.push(w.replace(/[^A-Za-zÆØÅæøå0-9'\-]/g,''));
+        if(name.length >= 2) break;
+      }
+      const out = name.join(' ').trim();
+      if(out) return out;
+    }
+    return '';
+  }
+
+  async function createHorseFromVoiceName(name, kundeId){
+    const horseName = String(name || '').trim();
+    if(!horseName) return null;
+    const payload = {firma_id: app.firmaId, kunde_id: kundeId || null, navn: horseName, rase: null, sist_skodd: null, neste_besok: null, notater: 'Opprettet fra innlest jobb'};
+    const {data,error} = await app.sb.from('hov_hester').insert(payload).select('*').single();
+    if(error) throw new Error('Hesten kunne ikke opprettes: ' + error.message);
+    app.data.hester = [data, ...(app.data.hester || []).filter(h => String(h.id) !== String(data.id))];
+    try{ fillHestSelects(); renderHester(); }catch(_){ }
+    return data;
+  }
+
+
+
+  function openCreateHorseFromVoice(spokenHestName, voiceText){
+    const name = String(spokenHestName || '').trim();
+    app.pendingVoiceJobbText = String(voiceText || val('voiceJobbText') || '').trim();
+    try{ clearHestForm(); }catch(_){ app.edit.hest=null; }
+    showTab('hester');
+    setHestLayout('formFirst');
+    setVal('hestNavn', name);
+    setVal('hestNotater', 'Opprettet fra innlest jobb. Husk å velge riktig eier/kunde før lagring.');
+    setText('hestFormTitle','Ny hest fra innlest jobb');
+    setText('saveHestBtn','Lagre hest');
+    $('deleteHestBtn')?.classList.add('hidden');
+    msg('hestMsg','Velg eier/kunde for "' + name + '" og trykk Lagre hest. Jobben er IKKE lagret ennå. Gå tilbake til Les inn jobb etterpå for å lagre/redigere jobben.', 'err');
+    setTimeout(()=>{ const el=$('hestKunde'); if(el) el.focus(); }, 80);
+  }
+
   function numText(v){ return Number(String(v||'0').replace(/\s/g,'').replace(',', '.')) || 0; }
 
 
@@ -3152,13 +3276,40 @@ table{
       // Ikke hopp til jobblisten / redigeringsliste når innlesingen stoppes.
       // Vi lager payload direkte fra teksten og lar brukeren bli stående i Les inn-feltet.
       app.edit.jobb = null;
-      const hest = findNamed(app.data.hester, text, ['navn']);
+      let hest = findNamed(app.data.hester, text, ['navn']);
       const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
+      const spokenHestName = extractVoiceHorseName(text);
+      let allowTemporaryUnknownHorse = false;
+      if(!hest && spokenHestName){
+        const svar = prompt('Fant ikke hesten "' + spokenHestName + '".\n\nSkriv 1 for å opprette hesten og velge eier/kunde.\nSkriv 2 hvis smeden vil lagre jobben foreløpig og redigere senere.\nTrykk Avbryt hvis navnet er feil og skal rettes.', '1');
+        if(svar === null){
+          app.voiceProcessing = false;
+          msg('voiceJobbMsg','Hesten "' + spokenHestName + '" finnes ikke. Jobben er IKKE lagret. Rett navnet i feltet og lagre på nytt.','err');
+          return false;
+        }
+        const valg = String(svar).trim();
+        if(valg === '1'){
+          app.voiceProcessing = false;
+          openCreateHorseFromVoice(spokenHestName, text);
+          msg('voiceJobbMsg','Hesten "' + spokenHestName + '" finnes ikke. Jobben er IKKE lagret før hest/eier er valgt.','err');
+          return false;
+        }
+        if(valg === '2'){
+          allowTemporaryUnknownHorse = true;
+        } else {
+          app.voiceProcessing = false;
+          msg('voiceJobbMsg','Ugyldig valg. Jobben er IKKE lagret. Skriv 1 for eierbildet eller 2 for foreløpig lagring.','err');
+          return false;
+        }
+      }
       const pris = findBestPrisFromVoiceText(text);
       const km = numberNear(text, ['km','kilometer','kjoring','kjøring','kjorte','kjørte','kjort','kjørt','kjoriig','kjøriig']);
       const arbeidTale = numberAfter(text, ['arbeid','jobb','belop','beløp','pris']);
       const varer = numberAfter(text, ['varer','utlegg','materialer']);
-      const beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
+      let beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
+      if(allowTemporaryUnknownHorse && spokenHestName){
+        beskrivelse = '[FORELØPIG LAGRET - ukjent hest/eier: ' + spokenHestName + ']\n' + beskrivelse;
+      }
 
       let kundeId = kunde?.id || null;
       let hestId = hest?.id || null;
@@ -3207,7 +3358,8 @@ table{
         showVoiceSavedActions(!!app.lastVoiceJobbId);
         setJobbLayout('formFirst');
         const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'});
-        msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
+        if(allowTemporaryUnknownHorse && spokenHestName) msg('voiceJobbMsg','⚠️ Jobben er lagret foreløpig uten hest/eier. Rediger jobben senere og koble riktig hest/eier.','err');
+        else msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
         app.voiceProcessing = false;
         return true;
       }

@@ -1072,7 +1072,16 @@
     const logo=settings.logo ? `<img class="logo" src="${esc(settings.logo)}" alt="Logo">` : '';
     const printScript = opts?.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
-      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}.top{display:flex;justify-content:space-between;gap:40px;align-items:flex-start}.logo{max-height:85px;max-width:220px;margin-bottom:12px}h1{margin:0 0 10px}.sender{text-align:right;line-height:1.45}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#666}.status{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:6px 10px}.footer{margin-top:35px;border-top:1px solid #ddd;padding-top:12px;color:#555;white-space:pre-line}</style>
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}.top{display:flex;justify-content:space-between;gap:40px;align-items:flex-start}.logo{max-height:85px;max-width:220px;margin-bottom:12px}h1{margin:0 0 10px}.sender{text-align:right;line-height:1.45}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.total{font-size:20px;font-weight:bold}.muted{color:#666}.status{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:6px 10px}.footer{margin-top:35px;border-top:1px solid #ddd;padding-top:12px;color:#555;white-space:pre-line}
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
+</style>
       </head><body>
       <div class="top"><div>${logo}<h1>${esc(title)}</h1><div class="status">${esc(f.status||'sendt')}</div></div><div class="sender"><strong>${esc(settings.brevhode||'Rettilomma')}</strong><br>${settings.orgnr ? 'Org.nr: '+esc(settings.orgnr)+'<br>' : ''}${esc(settings.adresse||'')}<br>${esc(settings.epost||'')}<br>${esc(settings.telefon||'')}</div></div>
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
@@ -1311,7 +1320,16 @@
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:42px 48px;color:#111827;background:#fff;font-size:14px;line-height:1.45}.page{max-width:900px;margin:0 auto}.letterhead{display:flex;justify-content:space-between;gap:36px;align-items:flex-start;border-bottom:1px solid #d1d5db;padding-bottom:22px;margin-bottom:34px}.brand{min-width:260px}.logo-wrap{min-height:70px;margin-bottom:12px}.logo{display:block;max-width:190px;max-height:92px;object-fit:contain}.sender{text-align:right;color:#374151}.sender strong{display:block;color:#111827;font-size:20px;margin-bottom:5px}.invoice-title{margin:0;font-size:34px;letter-spacing:-.03em}.subtitle{margin-top:4px;color:#4b5563}.preview{display:inline-block;margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:6px 11px;color:#9a3412;font-weight:700}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:24px 0}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;background:#fff}.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin:0 0 10px}.meta{display:grid;gap:7px}.meta div{display:flex;justify-content:space-between;gap:18px}.meta span:first-child{color:#6b7280}.section-title{font-size:16px;font-weight:700;margin:26px 0 10px}table{width:100%;border-collapse:collapse;margin-top:10px}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;text-align:left;border-bottom:1px solid #d1d5db;padding:10px 8px}td{border-bottom:1px solid #e5e7eb;padding:13px 8px;vertical-align:top}.right{text-align:right}.muted{color:#6b7280}.totals{width:330px;margin:18px 0 0 auto}.totals .row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:8px 0}.totals .pay{font-size:22px;font-weight:800;border-bottom:0;padding-top:14px}.payment{margin-top:28px;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.payment strong{display:block;margin-bottom:6px}.footer{margin-top:44px;border-top:1px solid #d1d5db;padding-top:12px;color:#4b5563;font-size:12px}.nowrap{white-space:nowrap}@media print{body{padding:30px 42px}.page{max-width:none}.card,.payment{break-inside:avoid}.no-print{display:none}}
-      </style>
+      
+/* MOBILVENNLIG LES-INN: bare én funksjon/knapp vises */
+#navReadLastJobbBtn{display:none!important}
+#voiceStopJobbBtn,#voiceUseTextJobbBtn,#newJobbFromDashBtn,#voiceOpenLastJobbBtn,#voiceDeleteLastJobbBtn{display:none!important}
+#voiceNewJobbBtn.voice-on{position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+.voice-saved-actions{display:none!important}
+.quick-job .muted{font-size:15px;line-height:1.35}
+@media(max-width:800px){.quick-job{padding:14px}.quick-job .actions{display:grid;grid-template-columns:1fr}.quick-job textarea{min-height:130px}}
+
+</style>
       </head><body><div class="page">
       <div class="letterhead"><div class="brand"><div class="logo-wrap">${logoHtml}</div><h1 class="invoice-title">${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div class="sender"><strong>${esc(firma.navn||'')}</strong>${orgnr ? '<br>Org.nr: '+esc(orgnr) : ''}${firma.adresse ? '<br>'+esc(firma.adresse) : ''}${firmaSted ? '<br>'+esc(firmaSted) : ''}${firma.epost ? '<br>E-post: '+esc(firma.epost) : ''}${firma.telefon ? '<br>Telefon: '+esc(firma.telefon) : ''}${firma.kontonr ? '<br>Kontonr: '+esc(firma.kontonr) : ''}</div></div>
       <div class="grid"><div class="card"><h2>Mottaker</h2><strong>${esc(kunde.navn||'')}</strong>${kunde.adresse ? '<br>'+esc(kunde.adresse) : ''}${kunde.epost ? '<br>'+esc(kunde.epost) : ''}${kunde.telefon ? '<br>'+esc(kunde.telefon) : ''}</div><div class="card meta"><h2>Fakturadetaljer</h2><div><span>Fakturadato</span><strong>${esc(f.dato||'')}</strong></div><div><span>Forfallsdato</span><strong>${esc(f.forfallsdato||'')}</strong></div><div><span>Status</span><strong>${esc(f.betalingsstatus||f.status||'')}</strong></div></div></div>
@@ -1636,7 +1654,7 @@
   }
   function voiceSavedMessage(){
     showVoiceSavedActions(true);
-    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Kontroller den, eller velg Les inn på nytt / Slett innlest jobb hvis den ble feil.','ok');
+    msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -1678,6 +1696,13 @@
     setTimeout(()=>{ const section=$('jobber'); if(section) section.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
 
+  function handleOneVoiceJobbButton(){
+    if(app.voiceActive || app.voiceRecognition){ stopVoiceJobb(false); return; }
+    if(app.lastVoiceJobbId && val('voiceJobbText')){ startVoiceNyJobb(); return; }
+    if(val('voiceJobbText')){ finishVoiceJobbFromText('Skrevet tekst'); return; }
+    startVoiceNyJobb();
+  }
+
   function startVoiceNyJobb(){
     // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
@@ -1687,11 +1712,11 @@
     app.edit.jobb = null;
     app.voiceStopping = false;
     app.voiceProcessing = false;
+    app.lastVoiceJobbId = null;
     showVoiceSavedActions(false);
     clearJobbForm();
     showTab('jobber');
     setJobbLayout('formFirst');
-    setTimeout(()=>{ const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
     setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
@@ -1765,28 +1790,26 @@
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), txt=$('voiceJobbText');
-    const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
-    if(start){ start.textContent = label; start.disabled = !!listening; }
-    if(top){ top.textContent = label; top.disabled = !!listening; }
-    if(stop){
-      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : '⏹ Stopp og lagre jobb';
-      stop.classList.toggle('voice-on', !!listening);
-      stop.classList.remove('hidden');
-      stop.hidden = false;
-      stop.disabled = !listening;
-      stop.style.display = 'inline-flex';
-      stop.style.width = listening ? '100%' : '';
-      stop.style.justifyContent = listening ? 'center' : '';
-      stop.style.fontSize = listening ? '20px' : '';
-      stop.style.padding = listening ? '18px' : '';
-      stop.style.marginTop = listening ? '12px' : '';
-      stop.style.position = listening ? 'sticky' : '';
-      stop.style.bottom = listening ? '12px' : '';
-      stop.style.zIndex = listening ? '9999' : '';
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), use=$('voiceUseTextJobbBtn'), empty=$('newJobbFromDashBtn'), txt=$('voiceJobbText');
+    const hasText = !!val('voiceJobbText');
+    let label = '🎙 Les inn jobb';
+    if(listening) label = '⏹ Stopp og lagre';
+    else if(app.lastVoiceJobbId && hasText) label = '🎙 Les inn ny jobb';
+    else if(hasText) label = '💾 Lagre jobb';
+    if(start){
+      start.textContent = label;
+      start.disabled = false;
+      start.classList.toggle('voice-on', !!listening);
+      start.style.width = listening ? '100%' : '';
+      start.style.justifyContent = listening ? 'center' : '';
+      start.style.fontSize = listening ? '20px' : '';
+      start.style.padding = listening ? '18px' : '';
     }
+    if(top){ top.style.display='none'; top.hidden=true; }
+    for(const b of [stop,use,empty]){ if(b){ b.style.display='none'; b.hidden=true; b.disabled=true; } }
     if(txt) txt.classList.toggle('voice-listening', !!listening);
   }
+
   function stopVoiceJobb(silent){
     clearVoiceAutoStop();
     const rec = app.voiceRecognition;
@@ -1930,6 +1953,159 @@
     return '';
   }
 
+
+  function extractVoiceHorseName(text){
+    const raw = String(text || '').replace(/[.,;:!?]/g, ' ').replace(/\s+/g, ' ').trim();
+    if(!raw) return '';
+    const stopWords = new Set(['jeg','vi','du','han','hun','den','det','i','på','pa','og','for','med','hos','til','fra','kjørte','kjorte','kjørt','kjort','kjøring','kjoring','km','kilometer','arbeid','jobb','beløp','belop','pris','varer','utlegg','materialer','beskrivelse','notat','kommentar']);
+    const patterns = [
+      /\b(?:skodde|sko(?:dde|dd|ing)?|beskar|beskjærte|beskjaerte|trimmet)\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i,
+      /\bhest(?:en)?\s+(?:heter\s+)?([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i,
+      /\bfor\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9'\- ]{0,60})/i
+    ];
+    for(const re of patterns){
+      const m = raw.match(re);
+      if(!m) continue;
+      const words = String(m[1] || '').trim().split(/\s+/).filter(Boolean);
+      const name = [];
+      for(const w of words){
+        const nw = normText(w).replace(/[^a-z0-9æøå]/g,'');
+        if(!nw || stopWords.has(nw) || /^\d+$/.test(nw)) break;
+        name.push(w.replace(/[^A-Za-zÆØÅæøå0-9'\-]/g,''));
+        if(name.length >= 2) break;
+      }
+      const out = name.join(' ').trim();
+      if(out) return out;
+    }
+    return '';
+  }
+
+  async function createHorseFromVoiceName(name, kundeId){
+    const horseName = String(name || '').trim();
+    if(!horseName) return null;
+    const payload = {firma_id: app.firmaId, kunde_id: kundeId || null, navn: horseName, rase: null, sist_skodd: null, neste_besok: null, notater: 'Opprettet fra innlest jobb'};
+    const {data,error} = await app.sb.from('hov_hester').insert(payload).select('*').single();
+    if(error) throw new Error('Hesten kunne ikke opprettes: ' + error.message);
+    app.data.hester = [data, ...(app.data.hester || []).filter(h => String(h.id) !== String(data.id))];
+    try{ fillHestSelects(); renderHester(); }catch(_){ }
+    return data;
+  }
+
+
+  function stripVoiceWordsForName(v){
+    return String(v||'')
+      .replace(/[.,!?;:]+/g,' ')
+      .replace(/\b(i dag|idag|mandag|tirsdag|onsdag|torsdag|fredag|lordag|lørdag|sondag|søndag|morgen|kveld|km|kilometer|kjoring|kjøring|kjorte|kjørte|arbeid|pris|belop|beløp|varer|utlegg|materialer|beskrivelse|notat|kommentar|med|hos|til|for|og)\b.*$/i,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function inferHestNameFromVoiceText(text){
+    const raw=String(text||'').trim();
+    if(!raw) return '';
+    const patterns=[
+      /\bhest(?:en)?\s+(?:heter\s+)?([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9 '\-]{1,40})/i,
+      /\b(?:skodde|sko|skoing|beskar|beskjærte|beskjaerte|beskjaring|beskjæring|fullbeslag|barfot|trimmet)\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9 '\-]{1,40})/i,
+      /\b(?:på|pa)\s+([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9 '\-]{1,40})/i
+    ];
+    for(const re of patterns){
+      const m=raw.match(re);
+      if(m && m[1]){
+        const name=stripVoiceWordsForName(m[1]);
+        if(name && name.length>=2) return name;
+      }
+    }
+    return '';
+  }
+
+  async function ensureVoiceKundeByName(name){
+    const wanted = String(name || '').trim();
+    if(!wanted) return null;
+    const existing = (app.data.kunder || []).find(k => normText(k.navn) === normText(wanted) || normText(k.kontaktperson) === normText(wanted));
+    if(existing) return existing;
+    const payload = {firma_id: app.firmaId, navn: wanted, telefon: null, epost: null, kontaktperson: null, adresse: null};
+    const {data,error} = await app.sb.from('hov_kunder').insert(payload).select('*').single();
+    if(error) throw new Error('Kunne ikke opprette eier/kunde "'+wanted+'": '+error.message);
+    app.data.kunder = [data, ...(app.data.kunder || []).filter(k => String(k.id) !== String(data.id))];
+    try{ fillKundeSelects(); renderKunder(); }catch(_){ }
+    return data;
+  }
+
+  async function ensureForelopigVoiceKunde(){
+    return await ensureVoiceKundeByName('Foreløpig / ukjent eier');
+  }
+
+  async function chooseVoiceOwnerForHorse(horseName){
+    const kunder = (app.data.kunder || []).slice().sort((a,b)=>String(a.navn||'').localeCompare(String(b.navn||''),'nb'));
+    const top = kunder.slice(0, 30);
+    const lines = top.map((k,i)=>`${i+1}: ${k.navn}${k.kontaktperson ? ' ('+k.kontaktperson+')' : ''}`);
+    const answer = prompt(
+      'Hesten "'+horseName+'" finnes ikke. Velg eier før hesten opprettes.\n\n' +
+      (lines.length ? lines.join('\n')+'\n\n' : '') +
+      'Skriv nummer på eier, eller skriv navn på ny eier.\n' +
+      'Skriv FORELØPIG hvis eier er ukjent.\n' +
+      'Trykk Avbryt for å lagre jobben uten hest/eier og redigere senere.'
+    );
+    if(answer === null) return null;
+    const value = String(answer || '').trim();
+    if(!value) return null;
+    if(/^forel[oø]pig|ukjent$/i.test(normText(value))) return await ensureForelopigVoiceKunde();
+    const nr = Number(value);
+    if(Number.isInteger(nr) && nr >= 1 && nr <= top.length) return top[nr-1];
+    const existing = (app.data.kunder || []).find(k => normText(k.navn) === normText(value) || normText(k.kontaktperson) === normText(value));
+    if(existing) return existing;
+    if(confirm('Opprette ny eier/kunde "'+value+'" og knytte hesten til denne?')) return await ensureVoiceKundeByName(value);
+    return null;
+  }
+
+  async function resolveVoiceHestFromText(text, kunde){
+    const existing = findNamed(app.data.hester, text, ['navn']);
+    if(existing) return existing;
+    const suggested = inferHestNameFromVoiceText(text) || extractVoiceHorseName(text);
+    if(!suggested) return null;
+
+    const answer = prompt(
+      'Hesten "'+suggested+'" finnes ikke.\n\n' +
+      'Skriv 1 for å åpne hest/eier-bildet og velge eier. Jobben lagres IKKE nå.\n' +
+      'Skriv 2 hvis smeden vil lagre jobben foreløpig og redigere senere.\n' +
+      'Trykk Avbryt hvis navnet er feil og skal rettes.',
+      '1'
+    );
+    if(answer === null){
+      msg('voiceJobbMsg','Hesten "'+suggested+'" finnes ikke. Jobben er IKKE lagret. Rett navnet og prøv igjen.','err');
+      throw new Error('Hesten finnes ikke: '+suggested);
+    }
+    const valg = String(answer || '').trim();
+    if(valg === '1'){
+      openCreateHorseFromVoice(suggested, text);
+      throw new Error('Hesten må opprettes med eier før jobben lagres.');
+    }
+    if(valg === '2'){
+      msg('voiceJobbMsg','Lagrer foreløpig jobb uten hest/eier. Rediger jobben senere og velg riktig hest.','ok');
+      return {id:null, navn:suggested, kunde_id:null, _voiceForelopig:true};
+    }
+    msg('voiceJobbMsg','Ugyldig valg. Jobben er IKKE lagret.','err');
+    throw new Error('Ugyldig valg for ukjent hest.');
+  }
+
+
+
+
+  function openCreateHorseFromVoice(spokenHestName, voiceText){
+    const name = String(spokenHestName || '').trim();
+    app.pendingVoiceJobbText = String(voiceText || val('voiceJobbText') || '').trim();
+    try{ clearHestForm(); }catch(_){ app.edit.hest=null; }
+    showTab('hester');
+    setHestLayout('formFirst');
+    setVal('hestNavn', name);
+    setVal('hestNotater', 'Opprettet fra innlest jobb. Husk å velge riktig eier/kunde før lagring.');
+    setText('hestFormTitle','Ny hest fra innlest jobb');
+    setText('saveHestBtn','Lagre hest');
+    $('deleteHestBtn')?.classList.add('hidden');
+    msg('hestMsg','Velg eier/kunde for "' + name + '" og trykk Lagre hest. Jobben er IKKE lagret ennå. Gå tilbake til Les inn jobb etterpå for å lagre/redigere jobben.', 'err');
+    setTimeout(()=>{ const el=$('hestKunde'); if(el) el.focus(); }, 80);
+  }
+
   function numText(v){ return Number(String(v||'0').replace(/\s/g,'').replace(',', '.')) || 0; }
 
 
@@ -1981,13 +2157,16 @@
       // Ikke hopp til jobblisten / redigeringsliste når innlesingen stoppes.
       // Vi lager payload direkte fra teksten og lar brukeren bli stående i Les inn-feltet.
       app.edit.jobb = null;
-      const hest = findNamed(app.data.hester, text, ['navn']);
       const kunde = findNamed(app.data.kunder, text, ['navn','kontaktperson']);
+      const hest = await resolveVoiceHestFromText(text, kunde);
       const pris = findBestPrisFromVoiceText(text);
       const km = numberNear(text, ['km','kilometer','kjoring','kjøring','kjorte','kjørte','kjort','kjørt','kjoriig','kjøriig']);
       const arbeidTale = numberAfter(text, ['arbeid','jobb','belop','beløp','pris']);
       const varer = numberAfter(text, ['varer','utlegg','materialer']);
-      const beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
+      let beskrivelse = textAfter(text, ['beskrivelse','notat','kommentar']) || text;
+      if(hest && hest._voiceForelopig){
+        beskrivelse = '[FORELØPIG LAGRET - ukjent hest/eier: ' + (hest.navn || '') + ']\n' + beskrivelse;
+      }
 
       let kundeId = kunde?.id || null;
       let hestId = hest?.id || null;
@@ -2036,13 +2215,14 @@
         showVoiceSavedActions(!!app.lastVoiceJobbId);
         setJobbLayout('formFirst');
         const q=document.querySelector('.quick-job'); if(q) q.scrollIntoView({behavior:'smooth', block:'start'});
-        msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
+        if(hest && hest._voiceForelopig) msg('voiceJobbMsg','⚠️ Jobben er lagret foreløpig uten hest/eier. Rediger jobben senere og koble riktig hest/eier.','err');
+        else msg('voiceJobbMsg','✅ Jobben er lagret. Du står fortsatt på Les inn.','ok');
         app.voiceProcessing = false;
         return true;
       }
 
       app.voiceProcessing = false;
-      msg('voiceJobbMsg','Teksten er lagt inn i ny jobb. Trykk Bruk og lagre skrevet tekst for å lagre.','ok');
+      msg('voiceJobbMsg','Teksten er lagt inn i ny jobb. Trykk Lagre jobb når du er klar.','ok');
       return true;
     }catch(err){
       app.voiceProcessing = false;
