@@ -2804,7 +2804,7 @@ table{
   }
 
   function renderPriser(){
-    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td><td><button type="button" class="danger small delete-pris-row" data-id="${esc(p.id)}">Slett</button></td></tr>`);
+    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(displayPrisVarenr(p))}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td><td><button type="button" class="danger small delete-pris-row" data-id="${esc(p.id)}">Slett</button></td></tr>`);
     $('prisList').innerHTML = table(['Kategori','Varenr','Navn','Enhet','Eks. mva','Inkl. mva','Aktiv','Beskrivelse',''], rows);
     bindClickableRows('prisList','pris', editPris);
     document.querySelectorAll('#prisList .delete-pris-row').forEach(btn=>btn.addEventListener('click', async (e)=>{ e.preventDefault(); e.stopPropagation(); await deletePrisById(btn.dataset.id); }));
@@ -3544,21 +3544,32 @@ table{
   }
 
 
-  function prisVarenrPrefix(kategori){
-    const k = normText(kategori || val('prisKategori') || '');
-    return /beh|behandling|massasje|terapi|laser|fysio/.test(k) ? 'beh-' : 'hov-';
+  function prisErBehandling(kategori, navn){
+    const k = normText((kategori || '') + ' ' + (navn || ''));
+    return /\b(beh|behandling|behandler|massasje|terapi|laser|fysio|akupunktur|osteopati|kinesiologi)\b/.test(k);
   }
-  function generatePrisVarenr(kategori){
-    const prefix = prisVarenrPrefix(kategori);
-    const used = new Set((app.data.priser || []).map(p => String(p?.varenr || '').trim().toLowerCase()).filter(Boolean));
+  function prisVarenrPrefix(kategori, navn){
+    return prisErBehandling(kategori || val('prisKategori') || '', navn || val('prisNavn') || '') ? 'beh-' : 'hov-';
+  }
+  function normalizePrisVarenr(value, kategori, navn){
+    const prefix = prisVarenrPrefix(kategori, navn);
+    const raw = String(value || '').trim().toLowerCase();
+    if(!raw) return '';
+    const digits = raw.match(/(\d{1,8})/);
+    if(!digits) return raw;
+    return prefix + String(Number(digits[1]));
+  }
+  function displayPrisVarenr(p){
+    return normalizePrisVarenr(p?.varenr, p?.kategori, prisNavn(p)) || '';
+  }
+  function generatePrisVarenr(kategori, navn){
+    const prefix = prisVarenrPrefix(kategori, navn);
+    const used = new Set((app.data.priser || []).map(p => displayPrisVarenr(p).toLowerCase()).filter(Boolean));
     let max = 1000;
     for(const p of (app.data.priser || [])){
-      const raw = String(p?.varenr || '').trim().toLowerCase();
-      const m = raw.match(/^(hov-|beh-|vare-|var-|v-)?(\d{1,8})$/i);
-      if(!m) continue;
-      const itemPrefix = (m[1] || '').toLowerCase();
-      if(itemPrefix && itemPrefix !== prefix) continue;
-      if(!itemPrefix && prefix !== 'hov-') continue;
+      const normalized = displayPrisVarenr(p).toLowerCase();
+      const m = normalized.match(/^(hov-|beh-)(\d{1,8})$/i);
+      if(!m || m[1].toLowerCase() !== prefix) continue;
       max = Math.max(max, Number(m[2]) || 0);
     }
     let next = max + 1;
@@ -3570,9 +3581,15 @@ table{
     return varenr;
   }
   function ensurePrisVarenr(){
+    const kategori = val('prisKategori');
+    const navn = val('prisNavn');
     const existing = val('prisVarenr');
-    if(existing) return existing;
-    const generated = generatePrisVarenr(val('prisKategori'));
+    if(existing){
+      const normalized = normalizePrisVarenr(existing, kategori, navn);
+      setVal('prisVarenr', normalized);
+      return normalized;
+    }
+    const generated = generatePrisVarenr(kategori, navn);
     setVal('prisVarenr', generated);
     return generated;
   }
@@ -3580,10 +3597,10 @@ table{
   function editPris(id){
     const p = app.data.priser.find(x=>String(x.id)===String(id)); if(!p) return;
     app.edit.pris = p.id;
-    setVal('prisKategori',p.kategori); setVal('prisVarenr',p.varenr); setVal('prisNavn',p.navn||p.jobbtype||p.vare||p.type); setVal('prisEnhet',p.enhet||'stk'); setVal('prisEksMva',p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva ?? 0); setVal('prisMvaSats',p.mva_sats ?? app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',p.pris_inkl_mva ?? 0); setChecked('prisAktiv',p.aktiv !== false); setVal('prisBeskrivelse',p.beskrivelse);
+    setVal('prisKategori',p.kategori); setVal('prisVarenr',displayPrisVarenr(p)); setVal('prisNavn',p.navn||p.jobbtype||p.vare||p.type); setVal('prisEnhet',p.enhet||'stk'); setVal('prisEksMva',p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva ?? 0); setVal('prisMvaSats',p.mva_sats ?? app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',p.pris_inkl_mva ?? 0); setChecked('prisAktiv',p.aktiv !== false); setVal('prisBeskrivelse',p.beskrivelse);
     setText('prisFormTitle','Rediger pris'); setText('savePrisBtn','Oppdater pris'); $('deletePrisBtn')?.classList.remove('hidden'); renderPriser(); msg('prisImportMsg','Redigerer pris: '+(p.navn||p.jobbtype||p.vare||''),'ok');
   }
-  function clearPrisForm(){ app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg','Varenr genereres automatisk som hov-1001 eller beh-1001 når prisen lagres.','ok'); }
+  function clearPrisForm(){ app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg','Varenr genereres automatisk som hov-1001 eller beh-1001 når prisen lagres. Eksisterende tall rettes til riktig prefix.','ok'); }
   async function savePris(){
     const eks=num('prisEksMva'); const sats=num('prisMvaSats'); const inkl = num('prisInklMva') || +(eks * (1 + sats/100)).toFixed(2);
     const payload={firma_id:app.firmaId, kategori:val('prisKategori')||null, varenr:ensurePrisVarenr(), navn:val('prisNavn'), enhet:val('prisEnhet')||'stk', pris_eks_mva:eks, mva_sats:sats, pris_inkl_mva:inkl, aktiv:$('prisAktiv')?.checked !== false, beskrivelse:val('prisBeskrivelse')||null};
@@ -3723,7 +3740,7 @@ table{
       rows.push({
         firma_id: app.firmaId,
         kategori: obj.kategori || null,
-        varenr: obj.varenr || obj.varenummer || null,
+        varenr: normalizePrisVarenr(obj.varenr || obj.varenummer || '', obj.kategori || '', obj.navn || obj.jobbtype || obj.vare || '' ) || null,
         navn: obj.navn || obj.jobbtype || obj.vare || null,
         beskrivelse: obj.beskrivelse || null,
         enhet: obj.enhet || 'stk',
