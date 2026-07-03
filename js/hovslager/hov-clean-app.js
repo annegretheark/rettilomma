@@ -1575,9 +1575,10 @@
   }
 
   function renderPriser(){
-    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td></tr>`);
+    const rows=(app.data.priser||[]).map(p=>`<tr class="click-row${selectedRowClass('pris',p.id)}" data-id="${esc(p.id)}"><td>${esc(p.kategori||'')}</td><td>${esc(p.varenr||'')}</td><td>${esc(p.navn||p.jobbtype||p.vare||p.type||'')}</td><td>${esc(p.enhet||'')}</td><td>${kr(p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva)}</td><td>${kr(p.pris_inkl_mva ?? 0)}</td><td>${esc(p.aktiv === false ? 'Nei' : 'Ja')}</td><td>${esc(p.beskrivelse||'')}</td><td><button type="button" class="danger small delete-pris-row" data-id="${esc(p.id)}">Slett</button></td></tr>`);
     $('prisList').innerHTML = table(['Kategori','Varenr','Navn','Enhet','Eks. mva','Inkl. mva','Aktiv','Beskrivelse',''], rows);
     bindClickableRows('prisList','pris', editPris);
+    document.querySelectorAll('#prisList .delete-pris-row').forEach(btn=>btn.addEventListener('click', async (e)=>{ e.preventDefault(); e.stopPropagation(); await deletePrisById(btn.dataset.id); }));
   }
 
   function fillSelect(sel, rows, valueKey, textFn, empty){ const el=$(sel); if(!el) return; const old=el.value; el.innerHTML = `<option value="">${empty||'Velg'}</option>` + rows.map(r=>`<option value="${esc(r[valueKey])}">${esc(textFn(r))}</option>`).join(''); if(old) el.value=old; }
@@ -2349,6 +2350,40 @@
     msg('jobbMsg', error?error.message:'Jobb slettet.', error?'err':'ok'); if(!error){ clearJobbForm(); await loadJobber(); }
   }
 
+
+  function prisVarenrPrefix(kategori){
+    const k = normText(kategori || val('prisKategori') || '');
+    return /beh|behandling|massasje|terapi|laser|fysio/.test(k) ? 'beh-' : 'hov-';
+  }
+  function generatePrisVarenr(kategori){
+    const prefix = prisVarenrPrefix(kategori);
+    const used = new Set((app.data.priser || []).map(p => String(p?.varenr || '').trim().toLowerCase()).filter(Boolean));
+    let max = 1000;
+    for(const p of (app.data.priser || [])){
+      const raw = String(p?.varenr || '').trim().toLowerCase();
+      const m = raw.match(/^(hov-|beh-|vare-|var-|v-)?(\d{1,8})$/i);
+      if(!m) continue;
+      const itemPrefix = (m[1] || '').toLowerCase();
+      if(itemPrefix && itemPrefix !== prefix) continue;
+      if(!itemPrefix && prefix !== 'hov-') continue;
+      max = Math.max(max, Number(m[2]) || 0);
+    }
+    let next = max + 1;
+    let varenr = prefix + next;
+    while(used.has(varenr.toLowerCase())){
+      next += 1;
+      varenr = prefix + next;
+    }
+    return varenr;
+  }
+  function ensurePrisVarenr(){
+    const existing = val('prisVarenr');
+    if(existing) return existing;
+    const generated = generatePrisVarenr(val('prisKategori'));
+    setVal('prisVarenr', generated);
+    return generated;
+  }
+
   function editPris(id){
     setPrisLayout('formFirst');
     const p = app.data.priser.find(x=>String(x.id)===String(id)); if(!p) return;
@@ -2357,20 +2392,27 @@
     setText('prisFormTitle','Rediger pris'); setText('savePrisBtn','Oppdater pris'); $('deletePrisBtn')?.classList.remove('hidden'); renderPriser(); msg('prisImportMsg','Redigerer pris: '+(p.navn||p.jobbtype||p.vare||''),'ok');
   }
   function clearPrisForm(){
-    setPrisLayout('formFirst'); app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg',''); }
+    setPrisLayout('formFirst'); app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg','Varenr genereres automatisk som hov-1001 eller beh-1001 når prisen lagres.','ok'); }
   async function savePris(){
     const eks=num('prisEksMva'); const sats=num('prisMvaSats'); const inkl = num('prisInklMva') || +(eks * (1 + sats/100)).toFixed(2);
-    const payload={firma_id:app.firmaId, kategori:val('prisKategori')||null, varenr:val('prisVarenr')||null, navn:val('prisNavn'), enhet:val('prisEnhet')||'stk', pris_eks_mva:eks, mva_sats:sats, pris_inkl_mva:inkl, aktiv:$('prisAktiv')?.checked !== false, beskrivelse:val('prisBeskrivelse')||null};
+    const payload={firma_id:app.firmaId, kategori:val('prisKategori')||null, varenr:ensurePrisVarenr(), navn:val('prisNavn'), enhet:val('prisEnhet')||'stk', pris_eks_mva:eks, mva_sats:sats, pris_inkl_mva:inkl, aktiv:$('prisAktiv')?.checked !== false, beskrivelse:val('prisBeskrivelse')||null};
     if(!payload.navn){ msg('prisImportMsg','Skriv navn på prisen.','err'); return; }
     const q = app.edit.pris ? app.sb.from('hov_priser').update(payload).eq('id',app.edit.pris).select('*').single() : app.sb.from('hov_priser').insert(payload).select('*').single();
     const {error}=await q;
     msg('prisImportMsg', error?error.message:(app.edit.pris?'Pris oppdatert.':'Pris lagret.'), error?'err':'ok'); if(!error){ clearPrisForm(); await loadPriser(); renderPriser(); }
   }
+  async function deletePrisById(id){
+    if(!id){ msg('prisImportMsg','Velg en pris først.','err'); return; }
+    const p = (app.data.priser || []).find(x=>String(x.id)===String(id));
+    const navn = p ? (p.navn || p.jobbtype || p.vare || p.type || p.varenr || 'valgt pris') : 'valgt pris';
+    if(!confirm('Slette pris: ' + navn + '?')) return;
+    const {error}=await app.sb.from('hov_priser').delete().eq('id',id).eq('firma_id',app.firmaId);
+    msg('prisImportMsg', error?error.message:'Pris slettet.', error?'err':'ok');
+    if(!error){ if(String(app.edit.pris||'')===String(id)) clearPrisForm(); await loadPriser(); renderPriser(); fillJobbTypeSelect(); }
+  }
   async function deletePris(){
-    if(!app.edit.pris){ msg('prisImportMsg','Velg en pris først.','err'); return; }
-    if(!confirm('Slette valgt pris?')) return;
-    const {error}=await app.sb.from('hov_priser').delete().eq('id',app.edit.pris).eq('firma_id',app.firmaId);
-    msg('prisImportMsg', error?error.message:'Pris slettet.', error?'err':'ok'); if(!error){ clearPrisForm(); await loadPriser(); renderPriser(); }
+    if(!app.edit.pris){ msg('prisImportMsg','Velg en pris først, eller trykk Slett i prislisten.','err'); return; }
+    await deletePrisById(app.edit.pris);
   }
 
   async function saveKunde(){
