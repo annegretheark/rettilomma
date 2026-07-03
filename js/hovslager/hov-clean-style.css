@@ -352,28 +352,6 @@ table{
   margin-top:6px;
   font-size:13px;
 }
-@media(max-width:700px){
-  #jobbList tr{
-    padding:8px 10px;
-    margin-bottom:6px;
-    border-radius:12px;
-  }
-
-  #jobbList td{
-    padding:4px 2px;
-    font-size:15px;
-  }
-
-  #jobbList td::before{
-    min-width:78px;
-    font-size:14px;
-  }
-
-  #jobbList td[data-label="Bilder"],
-  #jobbList td[data-label="Fakturert"]{
-    display:none;
-  }
-}
 
 
 /* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
@@ -401,4 +379,43 @@ table{
   #fakturaList td.actions::before,#appFakturaList td.actions::before{display:none}
   #fakturaList .small-btn,#appFakturaList .small-btn{width:100%;min-height:44px}
   .thumb.small{width:76px;height:58px}.thumb{max-width:160px;height:auto}
+}
+
+/* MOBIL: kompakt jobbliste - hele raden er en klikkbar linje */
+@media(max-width:700px){
+  #jobbList table{
+    border-collapse:separate!important;
+    border-spacing:0 6px!important;
+    margin-top:8px!important;
+  }
+  #jobbList tbody{display:block!important;}
+  #jobbList tr{
+    display:grid!important;
+    grid-template-columns:62px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 70px!important;
+    gap:6px!important;
+    align-items:center!important;
+    padding:9px 10px!important;
+    margin:0 0 6px!important;
+    border-radius:12px!important;
+    cursor:pointer!important;
+  }
+  #jobbList td{
+    display:block!important;
+    border:0!important;
+    padding:0!important;
+    min-width:0!important;
+    font-size:13px!important;
+    line-height:1.2!important;
+    text-align:left!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    word-break:normal!important;
+  }
+  #jobbList td::before{content:none!important;display:none!important;}
+  #jobbList td:nth-child(1){font-size:12px!important;color:var(--muted)!important;}
+  #jobbList td:nth-child(3){font-weight:800!important;}
+  #jobbList td:nth-child(5){text-align:right!important;font-weight:900!important;}
+  #jobbList td:nth-child(6),
+  #jobbList td:nth-child(7){display:none!important;}
 }
