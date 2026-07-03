@@ -407,10 +407,6 @@ table{
   
   #jobber{scroll-margin-top:260px;}
 
-/* FIX: Dato for nye bilder skal ligge til venstre i jobbskjemaet */
-.jobb-bilde-dato-label{grid-column:1 / span 4 !important;}
-@media(max-width:800px){.jobb-bilde-dato-label{grid-column:span 12!important;}}
-
 
 /* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
 @media(max-width:700px){
@@ -440,143 +436,30 @@ table{
 }
 
 
-
-/* APPFAKTURAER: kompakt én-linjes liste */
-#appFakturaList{
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-  border:1px solid var(--border);
-  border-radius:14px;
-  background:#0b1220;
-}
-#appFakturaList table{
-  min-width:1320px;
-  margin-top:0;
-  table-layout:auto;
-}
-#appFakturaList th,
-#appFakturaList td{
-  white-space:nowrap;
-  vertical-align:middle;
-  padding:9px 10px;
-  font-size:14px;
-}
-#appFakturaList th{
-  position:sticky;
-  top:0;
-  z-index:2;
-}
-#appFakturaList tr.click-row:hover{background:rgba(214,168,79,.10)}
-#appFakturaList td.app-actions{
-  display:flex;
-  flex-direction:row;
-  align-items:center;
-  gap:6px;
-  flex-wrap:nowrap;
-  white-space:nowrap;
-  min-width:max-content;
-}
-#appFakturaList .small-btn{
-  min-height:32px!important;
-  padding:6px 9px!important;
-  font-size:12px!important;
-  border-radius:8px!important;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  text-decoration:none;
-}
-.app-faktura-toolbar{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-  margin:12px 0;
-}
-.app-faktura-toolbar input{max-width:300px}
-.app-faktura-toolbar select{max-width:230px}
-.app-status-pill{
-  display:inline-flex;
-  align-items:center;
-  border-radius:999px;
-  padding:4px 8px;
-  background:#334155;
-  color:#f8fafc;
-  font-size:12px;
-  font-weight:800;
-}
-.app-status-pill.betalt{background:#22c55e;color:#052e16}
-.app-status-pill.forfalt,.app-status-pill.deaktivert{background:#ef4444;color:#fff}
-.app-status-pill.opprettet{background:#334155;color:#f8fafc}
-.app-gratis-pill{
-  display:inline-flex;
-  border-radius:999px;
-  padding:4px 8px;
-  background:#d6a84f;
-  color:#111827;
-  font-size:12px;
-  font-weight:800;
-}
-@media(max-width:700px){
-  #appFakturaList table{min-width:1180px!important}
-  #appFakturaList thead{display:table-header-group!important}
-  #appFakturaList tbody{display:table-row-group!important}
-  #appFakturaList tr{display:table-row!important;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;margin:0!important;box-shadow:none!important}
-  #appFakturaList td{display:table-cell!important;text-align:left!important;border-bottom:1px solid var(--border)!important}
-  #appFakturaList td::before{display:none!important}
-  #appFakturaList td.app-actions{display:flex!important;flex-direction:row!important}
-  .app-faktura-toolbar{display:grid;grid-template-columns:1fr}
-  .app-faktura-toolbar input,.app-faktura-toolbar select{max-width:none;width:100%}
-}
-
-
-
-/* MOBIL: kompakt jobbliste - hele raden er en klikkbar linje */
-@media(max-width:700px){
-  #jobbList table{
-    border-collapse:separate!important;
-    border-spacing:0 6px!important;
-    margin-top:8px!important;
-  }
-  #jobbList tbody{display:block!important;}
-  #jobbList tr{
-    display:grid!important;
-    grid-template-columns:62px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 70px!important;
-    gap:6px!important;
-    align-items:center!important;
-    padding:9px 10px!important;
-    margin:0 0 6px!important;
-    border-radius:12px!important;
-    cursor:pointer!important;
-  }
-  #jobbList td{
-    display:block!important;
-    border:0!important;
-    padding:0!important;
-    min-width:0!important;
-    font-size:13px!important;
-    line-height:1.2!important;
-    text-align:left!important;
-    white-space:nowrap!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-    word-break:normal!important;
-  }
-  #jobbList td::before{content:none!important;display:none!important;}
-  #jobbList td:nth-child(1){font-size:12px!important;color:var(--muted)!important;}
-  #jobbList td:nth-child(3){font-weight:800!important;}
-  #jobbList td:nth-child(5){text-align:right!important;font-weight:900!important;}
-  #jobbList td:nth-child(6),
-  #jobbList td:nth-child(7){display:none!important;}
-}
-
-/* Snakk inn: tydelige valg etter lagring */
 .voice-saved-actions.hidden{display:none!important}
-.voice-saved-actions{margin-top:10px!important;padding:10px!important;border:2px solid #22c55e!important;border-radius:14px!important;background:rgba(34,197,94,.08)!important}
-.voice-saved-actions .danger{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+.voice-saved-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+#voiceStopJobbBtn{display:none}
+#voiceStopJobbBtn.voice-on{display:inline-flex}
+#voiceJobbText.voice-listening{border:3px solid #f59e0b;min-height:130px;background:#fff7ed;color:#111827}
 @media(max-width:700px){
-  .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
-  .voice-saved-actions button{width:100%!important;min-height:54px!important;font-size:17px!important}
+  .quick-job .actions{display:grid;grid-template-columns:1fr;gap:10px}
+  #voiceStopJobbBtn.voice-on{display:flex!important;position:sticky;bottom:12px;z-index:50;width:100%;justify-content:center;font-size:20px;padding:18px;border-radius:16px}
+  #voiceJobbText{min-height:150px;font-size:17px}
+  .voice-saved-actions{display:grid;grid-template-columns:1fr}
+}
+
+
+/* Mobil: tydelig taleinnlesing */
+#voiceStopJobbBtn.hidden{display:none!important}
+#voiceStopJobbBtn.voice-on{display:block!important;background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+.voice-readback{margin-top:10px;padding:12px;border:1px solid #38bdf8;border-radius:12px;background:rgba(14,165,233,.12);font-size:16px;line-height:1.4;white-space:pre-wrap}
+.voice-saved-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.voice-saved-actions.hidden{display:none!important}
+@media(max-width:700px){
+  #voiceStopJobbBtn.voice-on{position:sticky!important;bottom:12px!important;z-index:9999!important;width:100%!important;font-size:20px!important;padding:18px!important;border-radius:16px!important}
+  .quick-job textarea#voiceJobbText{min-height:130px;font-size:17px}
+  .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important}
+  .voice-saved-actions button{width:100%;padding:14px;font-size:17px}
 }
 
 </style>
@@ -669,34 +552,12 @@ table{
   }
 }
 
-
-/* PEN ADMINLISTE: skjul teknisk ID og ryddigere firmaoversikt */
-#adminFirmaList table{min-width:0!important;width:100%;table-layout:auto}
-#adminFirmaList td,#adminFirmaList th{vertical-align:middle}
-.admin-firma-name strong{display:block;font-size:1.04rem;margin-bottom:3px}
-.admin-firma-name .muted{display:block;font-size:.9rem}
-.admin-firma-actions{display:flex!important;gap:7px!important;flex-wrap:wrap!important;align-items:center!important;white-space:normal!important}
-.admin-firma-actions .small-btn{min-height:38px!important;padding:7px 11px!important}
-#adminFirmaList .sub-pill{margin-top:6px}
-
 </style>
 
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
 
 <style>
-
-/* APPFAKTURAER: ryddig klikkbar liste */
-.app-faktura-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
-.app-faktura-toolbar input,.app-faktura-toolbar select{max-width:260px;margin-top:0}
-.app-faktura-row{cursor:pointer}
-.app-faktura-row:hover{background:rgba(214,168,79,.10)}
-.app-faktura-pdf{display:inline-flex;align-items:center;gap:6px}
-.app-faktura-status{display:inline-block;border-radius:999px;padding:4px 8px;background:#334155;color:#f8fafc;font-size:12px;font-weight:800}
-.app-faktura-status.betalt{background:#22c55e;color:#052e16}
-.app-faktura-status.opprettet{background:#d6a84f;color:#111827}
-@media(max-width:700px){#appFakturaList table{min-width:0!important;width:100%}.app-faktura-toolbar{display:grid;grid-template-columns:1fr}.app-faktura-toolbar input,.app-faktura-toolbar select{max-width:none;width:100%}}
-
 /* MOBIL/ENKEL MENY 2026-07-01: færre valg først */
 .main-tabs{
   display:flex;
@@ -836,18 +697,6 @@ table{
   .main-tabs > button,.main-tabs > .nav-more > summary{font-size:13px!important;padding:9px 6px!important;}
 }
 </style>
-<style>
-/* MOBILFIX: tydelig Snakk inn-status og synlig stoppknapp */
-#voiceStopJobbBtn{display:inline-flex!important;align-items:center;justify-content:center}
-#voiceStopJobbBtn.voice-on{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
-#voiceJobbMsg.voice-saved-msg .msg{font-size:18px!important;font-weight:900!important;border:3px solid #22c55e!important;box-shadow:0 8px 24px rgba(34,197,94,.35)!important}
-@media(max-width:800px){
-  #voiceJobbMsg{position:sticky;top:8px;z-index:300;margin:10px 0}
-  #voiceJobbMsg .msg{font-size:17px!important;line-height:1.35!important;padding:14px 16px!important;border-radius:14px!important;text-align:center!important}
-  #voiceStopJobbBtn{display:flex!important;width:100%!important;min-height:56px!important;font-size:18px!important;margin-top:8px!important}
-  #voiceStopJobbBtn.voice-on{position:sticky!important;top:72px!important;z-index:299!important}
-}
-</style>
 </head>
 <body>
   <main class="wrap">
@@ -884,7 +733,6 @@ table{
             <button id="adminTabBtn" data-tab="admin" class="hidden">Admin</button>
             <button data-tab="dashboard">Oversikt</button>
             <button data-tab="fakturaer">Faktura</button>
-            <button id="appFakturaTabBtn" data-tab="appfakturaer" class="hidden">Appfakturaer</button>
             <button data-tab="firma">Firma</button>
           </div>
         </details>
@@ -898,17 +746,13 @@ table{
           <p class="muted">Trykk på mikrofonen eller skriv i feltet under. Si for eksempel: «Skodde Jack, kjørte 18 km». Da settes jobbtype til Fullbeslag, hesten Jack velges hvis den finnes, og kilometer legges inn automatisk. Når du stopper mikrofonen, fylles jobben ut, lagres automatisk og mikrofonen starter på nytt for neste jobb.</p>
           <div class="actions">
             <button id="voiceNewJobbBtn" type="button">🎙 Snakk inn eller skriv inn ny jobb</button>
-            <button id="voiceStopJobbBtn" type="button" class="secondary">Stopp og lagre jobb</button>
+            <button id="voiceStopJobbBtn" type="button" class="secondary hidden" hidden>⏹ Stopp og lagre jobb</button>
             <button id="voiceUseTextJobbBtn" type="button" class="secondary">Bruk skrevet tekst</button>
             <button id="newJobbFromDashBtn" type="button" class="secondary">Åpne tom ny jobb</button>
           </div>
-          <div id="voiceSavedActions" class="actions voice-saved-actions hidden">
-            <button id="voiceNewAgainBtn" type="button" class="secondary">🎤 Les inn på nytt</button>
-            <button id="voiceOpenLastJobbBtn" type="button" class="secondary">Vis lagret jobb</button>
-            <button id="voiceDeleteLastJobbBtn" type="button" class="danger">🗑️ Slett innlest jobb</button>
-          </div>
           <label class="wide">Snakk inn eller skriv inn ny jobb<textarea id="voiceJobbText" placeholder="Snakk inn eller skriv teksten her, og trykk Bruk skrevet tekst."></textarea></label>
           <div id="voiceJobbMsg"></div>
+          <div id="voiceSavedActions" class="actions hidden voice-saved-actions"><button id="voiceNewAgainBtn" type="button" class="secondary">🎙 Les inn på nytt</button><button id="voiceOpenLastJobbBtn" type="button" class="secondary">Vis lagret jobb</button><button id="voiceDeleteLastJobbBtn" type="button" class="danger">Slett innlest jobb</button></div>
         </div>
         <div class="actions"><button id="readLastJobbBtn" type="button" class="secondary">Les inn siste jobb som mal</button></div>
         <p class="muted">«Les inn siste jobb som mal» lager en ny jobb basert på siste registrerte jobb.</p>
@@ -929,15 +773,14 @@ table{
 
       <section id="hester" class="tab card hidden">
         <h2>Hester</h2>
-        <p class="muted">Klikk på en rad i listen for å vise jobben. Trykk Rediger jobb for å endre.</p>
-        <div id="hestList"></div>
         <h3 id="hestFormTitle">Ny hest</h3>
+        <p class="muted">Klikk på en rad i listen for å vise jobben. Trykk Rediger jobb for å endre.</p>
         <div class="grid formgrid">
           <label>Kunde<select id="hestKunde"></select></label><label>Navn<input id="hestNavn"></label>
           <label>Rase/type<input id="hestRase"></label><label>Sist skodd<input id="hestSist" type="date"></label>
           <label>Neste besøk<input id="hestNeste" type="date"></label><label>Bilde av hest<input id="hestBildeFile" type="file" accept="image/*"></label><label class="wide">Notater<textarea id="hestNotater"></textarea></label><div id="hestBildePreview" class="image-preview wide"><span class="muted">Ingen bilde valgt.</span></div>
         </div>
-        <div class="actions"><button id="saveHestBtn">Lagre hest</button><button id="newHestBtn" type="button" class="secondary">Ny hest</button><button id="deleteHestBtn" type="button" class="danger hidden">Slett hest</button></div><div id="hestMsg"></div>
+        <div class="actions"><button id="saveHestBtn">Lagre hest</button><button id="newHestBtn" type="button" class="secondary">Ny hest</button><button id="deleteHestBtn" type="button" class="danger hidden">Slett hest</button></div><div id="hestMsg"></div><div id="hestList"></div>
       </section>
 
       <section id="jobber" class="tab card hidden">
@@ -950,7 +793,7 @@ table{
           <label>Hest<select id="jobbHest"></select></label><label>Jobbtype<select id="jobbType"></select></label>
           <label>Km<input id="jobbKm" type="number" step="0.1" placeholder="Blankt hvis ingen km"></label><label>Km-pris<input id="jobbKmPris" type="text" inputmode="decimal" value="5,30"></label>
           <label>Arbeid beløp<input id="jobbArbeid" type="number" step="0.01" value="0"></label><label>Utlegg/varer beløp<input id="jobbVarer" type="number" step="0.01" placeholder="Blankt hvis ingen utlegg"></label>
-          <label class="wide">Beskrivelse<textarea id="jobbBeskrivelse"></textarea><span class="muted">Bruk knappen under for å lese inn mer beskrivelse. Ny tekst legges til nederst.</span></label><div class="wide actions description-voice-actions"><button id="voiceBeskrivelseBtn" type="button" class="secondary">🎤 Les inn beskrivelse</button><button id="voiceBeskrivelseStopBtn" type="button" class="secondary">Stopp beskrivelse</button></div><div id="voiceBeskrivelseMsg" class="wide"></div><label class="jobb-bilde-dato-label">Dato for nye bilder<input id="jobbBildeDato" type="date"></label><label class="wide">Bilder fra jobben<input id="jobbBildeFiles" type="file" accept="image/*" multiple><span class="muted">Du kan laste opp flere bilder. De lagres med datoen over.</span></label><div id="jobbBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
+          <label class="wide">Beskrivelse<textarea id="jobbBeskrivelse"></textarea><span class="muted">Bruk knappen under for å lese inn mer beskrivelse. Ny tekst legges til nederst.</span></label><div class="wide actions description-voice-actions"><button id="voiceBeskrivelseBtn" type="button" class="secondary">🎤 Les inn beskrivelse</button><button id="voiceBeskrivelseStopBtn" type="button" class="secondary">Stopp beskrivelse</button></div><div id="voiceBeskrivelseMsg" class="wide"></div><label>Dato for nye bilder<input id="jobbBildeDato" type="date"></label><label class="wide">Bilder fra jobben<input id="jobbBildeFiles" type="file" accept="image/*" multiple><span class="muted">Du kan laste opp flere bilder. De lagres med datoen over.</span></label><div id="jobbBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
         </div>
         <div class="actions"><button id="editSelectedJobbBtn" type="button" class="secondary hidden">Rediger jobb</button><button id="saveJobbBtn">Lagre jobb</button><button id="newJobbBtn" type="button" class="secondary">Ny jobb</button><button id="deleteJobbBtn" type="button" class="danger hidden">Slett jobb</button></div><div id="jobbMsg"></div>
       </section>
@@ -1105,7 +948,7 @@ table{
             <label>E-post<input id="appFakturaAvsenderEpost" type="email" placeholder="salg@rettilomma.com"></label>
             <label>Telefon<input id="appFakturaAvsenderTelefon" placeholder="Telefon"></label>
             <label class="wide">Adresse<input id="appFakturaAvsenderAdresse" placeholder="Adresse"></label>
-            <label class="wide">Standard tekst på faktura<input id="appFakturaStandardTekst" value="Abonnement"></label>
+            <label class="wide">Standard tekst på faktura<input id="appFakturaStandardTekst" value="Abonnement HovslagerSystem"></label>
             <label class="wide">Bunntekst<textarea id="appFakturaBunntekst" rows="3" placeholder="Takk for handelen"></textarea></label>
           </div>
           <div class="actions">
@@ -1122,18 +965,18 @@ table{
           <p class="muted">Her fakturerer greknuts/sysadm hovslagere for abonnement på appen. Dette er adskilt fra vanlig fakturering, der hver hovslager fakturerer sine egne hesteeiere.</p>
           <div class="grid formgrid">
             <label>Hovslager/firma<select id="appFakturaFirma"></select></label>
-            <label>Pris eks. mva<input id="appFakturaBelop" type="number" step="0.01" value="400"></label>
+            <label>Beløp inkl. mva<input id="appFakturaBelop" type="number" step="0.01" value="399"></label>
             <label>Forfallsdager<input id="appFakturaForfallDager" type="number" value="14"></label>
-            <label class="wide">Tekst<input id="appFakturaTekst" value="Abonnement"></label>
+            <label class="wide">Tekst<input id="appFakturaTekst" value="Abonnement HovslagerSystem"></label>
           </div>
           <div class="actions">
             <button id="appLagFakturaBtn" type="button">Lag faktura</button>
             <button id="appDagligFaktureringBtn" type="button" class="secondary">Kjør daglig testfakturering</button>
             <button id="appOppdaterFakturaBtn" type="button" class="secondary">Oppdater liste</button>
           </div>
-          <p class="muted">Daglig appfakturering kjøres automatisk av Supabase Edge Function. Første 30 dager lages ingen fakturafil. Etter 30 dager lages faktura på 400 kr + mva. Fakturafilene lagres i Storage-bucket <code>hov-firma-faktura</code>, mappe <code>hovslager/fakturaer</code>.</p>
-          <div id="appFakturaMsgAdmin" class="muted"></div>
-          <div id="appFakturaListAdmin" class="msg">Åpne fanen <strong>Appfakturaer</strong> for klikkbar liste over PDF-fakturaer.</div>
+          <p class="muted">Daglig testfakturering sjekker om appen har vært brukt siste døgn. Ved bruk lages vanlig faktura. Uten bruk lages 0-faktura, kunden deaktiveres og stopp-epost kan sendes.</p>
+          <div id="appFakturaMsg"></div>
+          <div id="appFakturaList"></div>
         </div>
 
         <div class="card soft-card admin-backup-card">
@@ -1164,29 +1007,9 @@ table{
         <div id="adminProfileList"></div>
       </section>
 
-      <section id="appfakturaer" class="tab card hidden">
-        <h2>Appfakturaer</h2>
-        <p class="muted">Klikk på en rad eller bruk PDF-knappen for å åpne fakturaen fra Storage.</p>
-        <div class="app-faktura-toolbar">
-          <button id="refreshAppFakturaListBtn" type="button" class="secondary">Oppdater liste</button>
-          <button id="runDailyAppFakturaBtn" type="button">Kjør daglig fakturering</button>
-          <input id="appFakturaSearch" type="search" placeholder="Søk firma, e-post eller fakturanr">
-          <select id="appFakturaStatusFilter">
-            <option value="">Alle statuser</option>
-            <option value="opprettet">Opprettet</option>
-            <option value="betalt">Betalt</option>
-            <option value="deaktivert">Deaktivert</option>
-          </select>
-        </div>
-        <div id="appFakturaMsg"></div>
-        <div id="appFakturaList"></div>
-      </section>
-
-
       <section id="priser" class="tab card hidden">
         <h2>Prisliste</h2>
         <p class="muted">Importer prislisten fra CSV-filen, eller se eksisterende priser fra databasen.</p>
-        <div id="prisList"></div>
         <div class="card soft-card">
           <h3 id="prisFormTitle">Ny pris</h3>
           <p class="muted">Klikk på en prislinje i listen for å redigere.</p>
@@ -1210,6 +1033,7 @@ table{
           </div>
           <div id="prisImportMsg"></div>
         </div>
+        <div id="prisList"></div>
       </section>
     </section>
   </main>
@@ -1238,7 +1062,6 @@ table{
     const d = new Date(v);
     if(Number.isNaN(d.getTime())) return String(v || '').replace('T',' ').slice(0,19);
     return d.toLocaleString('nb-NO', {
-      timeZone:'Europe/Oslo',
       year:'numeric',
       month:'2-digit',
       day:'2-digit',
@@ -1477,7 +1300,7 @@ table{
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
     $('navReadLastJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
-    $('voiceStopJobbBtn')?.addEventListener('click', ()=>stopVoiceJobb(false));
+    $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
     $('voiceNewAgainBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceOpenLastJobbBtn')?.addEventListener('click', openLastVoiceJobb);
@@ -1485,10 +1308,7 @@ table{
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
     $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
     $('newJobbFromDashBtn')?.addEventListener('click', openBlankJobbFromDashboard);
-    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='priser'){ setPrisLayout('listFirst'); }
-        if(b.dataset.tab==='hester'){ setHestLayout('listFirst'); }
-        if(b.dataset.tab==='kunder'){ setKundeLayout('listFirst'); }
-        if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ showTab(b.dataset.tab); if(b.dataset.tab==='jobber'){ setJobbLayout('listFirst'); setTimeout(()=>{ const list=$('jobbList'); if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 50); } }));
     document.querySelectorAll('.nav-more [data-tab]').forEach(b=>b.addEventListener('click',()=>{ const d=b.closest('details'); if(d) d.open=false; }));
     $('saveFirmaBtn')?.addEventListener('click', saveFirma);
     $('uploadLogoBtn')?.addEventListener('click', uploadLogo);
@@ -1531,12 +1351,7 @@ table{
     $('adminRestoreReloadBtn')?.addEventListener('click', loadBackupLogg);
     $('adminRestoreBackupBtn')?.addEventListener('click', adminRestoreBackup);
     $('appLagFakturaBtn')?.addEventListener('click', lagAppFaktura);
-    $('appDagligFaktureringBtn')?.addEventListener('click', kjørDagligAppFakturering);
-    $('runDailyAppFakturaBtn')?.addEventListener('click', kjørDagligAppFakturering);
     $('appOppdaterFakturaBtn')?.addEventListener('click', renderAppFakturaer);
-    $('refreshAppFakturaListBtn')?.addEventListener('click', renderAppFakturaer);
-    $('appFakturaSearch')?.addEventListener('input', renderAppFakturaer);
-    $('appFakturaStatusFilter')?.addEventListener('change', renderAppFakturaer);
     $('appLagreFakturaDesignBtn')?.addEventListener('click', saveAppFakturaSettings);
     $('appFjernFakturaLogoBtn')?.addEventListener('click', clearAppFakturaLogo);
     $('appFakturaLogoFile')?.addEventListener('change', readAppFakturaLogo);
@@ -1705,13 +1520,6 @@ table{
     app.profile = profile;
     app.role = profile?.rolle || 'hovslager';
     app.isSysadm = app.role === 'sysadm';
-
-    // FAST SYSADM: greknuts skal alltid ha systemadministrator-tilgang
-    if(String(email || '').trim().toLowerCase() === 'greknuts@online.no'){
-      app.role = 'sysadm';
-      app.isSysadm = true;
-    }
-
     if(app.role === 'deaktivert'){
       showLogin(false);
       const card=$('appCard');
@@ -1755,15 +1563,7 @@ table{
           rolle: 'hovslager',
           epost: email
         }, { onConflict:'auth_user_id' }).select('*').single();
-        if(!r.error){
-          app.profile = r.data;
-          app.role = r.data.rolle || 'hovslager';
-          app.isSysadm = app.role === 'sysadm';
-          if(String(email || '').trim().toLowerCase() === 'greknuts@online.no'){
-            app.role = 'sysadm';
-            app.isSysadm = true;
-          }
-        }
+        if(!r.error){ app.profile = r.data; app.role = r.data.rolle || 'hovslager'; app.isSysadm = app.role === 'sysadm'; }
       }catch(e){ console.warn('Kunne ikke opprette profil automatisk', e); }
     }
 
@@ -1784,8 +1584,6 @@ table{
   function updateAdminVisibility(){
     const btn=$('adminTabBtn');
     if(btn) btn.classList.toggle('hidden', !app.isSysadm);
-    const appBtn=$('appFakturaTabBtn');
-    if(appBtn) appBtn.classList.toggle('hidden', !app.isSysadm);
   }
 
   function updateHeader(){
@@ -1801,9 +1599,7 @@ table{
   function showTab(id){
     document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('hidden', s.id!==id));
     if(id==='firma'){ renderFirma(); loadFirmaBackupLogg(); }
-    if(id==='priser'){ setPrisLayout('listFirst'); renderPriser(); }
-    if(id==='hester'){ setHestLayout('listFirst'); renderHester(); }
-    if(id==='appfakturaer'){ if(!app.isSysadm){ msg('dashMsg','Appfakturaer er bare for systemadministrator.','err'); showTab('dashboard'); return; } renderAppFakturaer(); }
+    if(id==='priser') renderPriser();
     if(id==='admin'){ if(!app.isSysadm){ msg('dashMsg','SysAdm-panelet er bare for systemadministrator.','err'); showTab('dashboard'); return; } loadAdminData(); loadBackupLogg(); loadAppFakturaSettingsForm(); renderAppFakturaer(); }
   }
 
@@ -1906,7 +1702,7 @@ table{
     setVal('appFakturaFirma', firmaId);
     setVal('appFakturaBelop', abonnementPris(f));
     setVal('appFakturaForfallDager','14');
-    setVal('appFakturaTekst','Abonnement - '+kr(abonnementPris(f))+' kr/mnd eks. mva');
+    setVal('appFakturaTekst','Abonnement HovslagerSystem - '+kr(abonnementPris(f))+' kr/mnd eks. mva');
     await lagAppFaktura();
     msg('adminSubInfo','Faktura for abonnement er laget. Se SysAdm: fakturer hovslagere.','ok');
   }
@@ -1948,14 +1744,16 @@ table{
     ['adminActiveFirma','adminSubFirma','adminProfileFirma','adminUserFirma','adminBackupFirma','appFakturaFirma'].forEach(id=>{ const el=$(id); if(el){ const old=el.value; el.innerHTML=opts; el.value = old || ((id==='adminActiveFirma' || id==='adminBackupFirma') ? app.firmaId : ''); }});
 
     const firmaRows = firmaer.map(f=>`<tr>
-      <td class="admin-firma-name"><strong>${esc(f.navn||'Uten navn')}</strong><span class="muted">${esc(f.epost||'')}</span>${String(f.id)===String(app.firmaId)?'<span class="pill">Valgt nå</span>':''}${subscriptionBadge(f)}</td>
-      <td>${esc(f.telefon||'-')}</td>
-      <td>${esc(f.orgnr || f.org_nr || f.bedriftsnr || '-')}</td>
-      <td class="admin-firma-actions"><button type="button" class="small-btn" data-admin-use-firma="${esc(f.id)}">Åpne</button><button type="button" class="small-btn secondary" data-admin-edit-firma="${esc(f.id)}">Rediger</button><button type="button" class="small-btn secondary" data-admin-user-firma="${esc(f.id)}">Lag bruker</button><button type="button" class="small-btn secondary" data-admin-password-firma="${esc(f.id)}">Passord</button><button type="button" class="small-btn danger" data-admin-delete-firma="${esc(f.id)}">Slett</button></td>
+      <td><strong>${esc(f.navn||'Uten navn')}</strong>${String(f.id)===String(app.firmaId)?'<br><span class="pill">Aktivt firma</span>':''}<br>${subscriptionBadge(f)}</td>
+      <td>${esc(f.epost||'')}</td>
+      <td>${esc(f.telefon||'')}</td>
+      <td>${esc(f.orgnr || f.org_nr || f.bedriftsnr || '')}</td>
+      <td><code>${esc(f.id)}</code></td>
+      <td class="admin-firma-actions"><button type="button" class="small-btn secondary" data-admin-use-firma="${esc(f.id)}">Åpne</button><button type="button" class="small-btn" data-admin-edit-firma="${esc(f.id)}">Rediger</button><button type="button" class="small-btn secondary" data-admin-user-firma="${esc(f.id)}">Lag bruker</button><button type="button" class="small-btn secondary" data-admin-password-firma="${esc(f.id)}">Sett passord</button><button type="button" class="small-btn danger" data-admin-delete-firma="${esc(f.id)}">Slett</button></td>
     </tr>`);
     const firmaList=$('adminFirmaList');
     if(firmaList){
-      firmaList.innerHTML = `<div class="msg">Antall lagrede firmaer vist: ${firmaer.length}. Hvis du forventer flere, må de finnes i Supabase-tabellen <code>hov_firma</code> og SysAdm-brukeren må ha tilgang via RLS.</div>` + table(['Firma','Telefon','Org.nr','Handling'], firmaRows);
+      firmaList.innerHTML = `<div class="msg">Antall lagrede firmaer vist: ${firmaer.length}. Hvis du forventer flere, må de finnes i Supabase-tabellen <code>hov_firma</code> og SysAdm-brukeren må ha tilgang via RLS.</div>` + table(['Firma / abonnement','E-post','Telefon','Org.nr','ID','Handling'], firmaRows);
       firmaList.querySelectorAll('[data-admin-use-firma]').forEach(btn=>btn.addEventListener('click', async ()=>{
         setVal('adminActiveFirma', btn.dataset.adminUseFirma);
         await adminSwitchFirma();
@@ -2230,9 +2028,9 @@ table{
     const el=$('firmaBackupList');
     if(el) el.innerHTML='<div class="msg">Laster backup-logg...</div>';
     try{
-      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list', firma_id:app.firmaId } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list' } });
       if(error){ if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message)+'</div>'; return; }
-      const backups=((data && data.ok) ? (data.backups||[]) : []).slice().sort((a,b)=>String(b.created_at||b.file_path||'').localeCompare(String(a.created_at||a.file_path||'')));
+      const backups=(data && data.ok) ? (data.backups||[]) : [];
       renderBackupOptions(backups);
       const rows=backups.map(b=>{
         const dl=b.signed_url ? `<a href="${esc(b.signed_url)}" target="_blank" rel="noopener">Last ned</a>` : '';
@@ -2245,12 +2043,12 @@ table{
   async function restoreFirmaBackup(){
     const filePath=val('firmaRestoreSelect');
     if(!filePath){ msg('firmaBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
-    if(!confirm('Gjenopprette valgt backup? Dette overskriver data for eget firma.')) return;
+    if(!confirm('Gjenopprette valgt backup? Dette oppdaterer data med innholdet i backupen.')) return;
     msg('firmaBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', backup_path:filePath, firma_id:app.firmaId, confirm:true } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', filsti:filePath, file_path:filePath, backup_path:filePath, confirm:true } });
       if(error){ msg('firmaBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
-      if(data && data.ok){ msg('firmaBackupMsg','Backup er gjenopprettet ('+(data.format||'backup')+'). Laster data på nytt...','ok'); await loadAll(); await loadFirmaBackupLogg(); }
+      if(data && data.ok){ msg('firmaBackupMsg','Backup er gjenopprettet. Laster data på nytt...','ok'); await loadAll(); await loadFirmaBackupLogg(); }
       else msg('firmaBackupMsg','Restore svarte uventet: '+esc(JSON.stringify(data||{})),'err');
     }catch(err){ msg('firmaBackupMsg','Restore feilet: '+(err.message||String(err)),'err'); }
   }
@@ -2263,7 +2061,7 @@ table{
     try{
       // Bruk Edge Function i stedet for direkte tabell-lesing.
       // Da får sysadm også signed_url, og samme logikk fungerer for slettede firma.
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'list' } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'list' } });
       if(error){
         if(el) el.innerHTML='<div class="msg err">Kunne ikke lese backup-logg: '+esc(error.message||JSON.stringify(error))+'</div>';
         return;
@@ -2314,7 +2112,7 @@ table{
       const size=b.file_size ? ` - ${Math.round(Number(b.file_size)/1024)} KB` : '';
       const label=`${t} - ${firma}${eier ? ' - '+eier : ''}${org ? ' - org '+org : ''}${size}`;
       // Bruk backup-logg ID i GUI. Edge Function finner file_path selv.
-      return `<option value="${esc(b.id||'')}" data-file-path="${esc(b.file_path||'')}">${esc(label)}</option>`;
+      return `<option value="${esc(b.id||b.file_path||'')}" data-file-path="${esc(b.file_path||'')}">${esc(label)}</option>`;
     }).join('');
     if(old) sel.value=old;
   }
@@ -2373,7 +2171,7 @@ table{
       const deleted=isDeleted ? '<br><span class="pill">Slettet firma</span>' : (b.backup_scope==='firma' ? '<br><span class="pill">Aktivt firma</span>' : '');
       const dl=b.signed_url ? `<a href="${esc(b.signed_url)}" target="_blank" rel="noopener">Last ned</a>` : '';
       const restoreBtn=(b.status==='ok' && b.file_path && String(b.backup_type||'') !== 'restore')
-        ? `<button type="button" class="small-btn ok" data-admin-restore-id="${esc(b.id||'')}">Gjenopprett</button>` : '<span class="muted">Logg</span>';
+        ? `<button type="button" class="small-btn ok" data-admin-restore-id="${esc(b.id||b.file_path||'')}">Gjenopprett</button>` : '<span class="muted">Logg</span>';
       const actions=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${restoreBtn}${dl}</div>`;
       return `<tr><td>${esc(fmtDateTime(b.created_at))}</td><td>${esc(b.status||'')}</td><td>${esc(b.backup_scope||'system')}</td><td><strong>${esc(firmaNavn)}</strong>${deleted}${org ? '<br><span class="muted">Org: '+esc(org)+'</span>' : ''}</td><td>${esc(eier)}</td><td>${esc(b.backup_type||'')}</td><td>${esc(file)}</td><td>${b.file_size ? esc(Math.round(Number(b.file_size)/1024)+' KB') : ''}</td><td>${actions}</td><td>${esc(b.error_message||'')}</td></tr>`;
     });
@@ -2392,12 +2190,12 @@ table{
     if(!app.isSysadm){ msg('adminBackupMsg','Bare sysadm kan gjenopprette backup fra adminpanelet.','err'); return; }
     const backupId=backupIdArg || val('adminRestoreSelect');
     if(!backupId){ msg('adminBackupMsg','Velg backup som skal gjenopprettes.','err'); return; }
-    const backup=(app.data.backupLogg||[]).find(b=>String(b.id)===String(backupId));
+    const backup=(app.data.backupLogg||[]).find(b=>String(b.id)===String(backupId) || String(b.file_path)===String(backupId));
     const firma=backup ? (adminBackupFirmaNavn(backup) || 'slettet/ukjent firma') : 'valgt backup';
     if(!confirm('Gjenopprette backup for '+firma+'? Dette vil skrive tilbake data fra backupfilen. Fortsette?')) return;
     msg('adminBackupMsg','Gjenoppretter backup...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body:{ action:'restore', backup_id:backupId } });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body:{ action:'restore', backup_id:backup?.id||'', filsti:backup?.file_path||backupId, file_path:backup?.file_path||backupId, backup_path:backup?.file_path||backupId, confirm:true } });
       if(error){ msg('adminBackupMsg','Restore feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         msg('adminBackupMsg','Backup er gjenopprettet. Laster adminliste og backup-logg på nytt...','ok');
@@ -2416,7 +2214,7 @@ table{
     if(!app.isSysadm){ msg('adminBackupMsg','Bare sysadm kan ta backup fra adminpanelet.','err'); return; }
     msg('adminBackupMsg','Starter backup. Dette kan ta litt tid...');
     try{
-      const {data,error}=await app.sb.functions.invoke('hov-backup', { body });
+      const {data,error}=await app.sb.functions.invoke('backup-hovslager-firma', { body });
       if(error){ msg('adminBackupMsg','Backup feilet: '+(error.message||JSON.stringify(error)),'err'); return; }
       if(data && data.ok){
         msg('adminBackupMsg','Backup ferdig: '+(data.file_path||data.prefix||'')+' ('+(data.backup_scope||body.scope||'')+')','ok');
@@ -2446,7 +2244,7 @@ table{
       epost:f.epost || 'salg@rettilomma.com',
       telefon:f.telefon || '',
       kontonr:f.kontonr || '',
-      standardTekst:'Abonnement',
+      standardTekst:'Abonnement HovslagerSystem',
       bunntekst:'Takk for handelen.'
     };
   }
@@ -2480,7 +2278,7 @@ table{
       epost:val('appFakturaAvsenderEpost'),
       telefon:val('appFakturaAvsenderTelefon'),
       adresse:val('appFakturaAvsenderAdresse'),
-      standardTekst:val('appFakturaStandardTekst') || 'Abonnement',
+      standardTekst:val('appFakturaStandardTekst') || 'Abonnement HovslagerSystem',
       bunntekst:val('appFakturaBunntekst')
     };
     saveAppFakturaSettingsObject(settings);
@@ -2537,7 +2335,7 @@ table{
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
       <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfall||'')}</p>
       <table><thead><tr><th>Beskrivelse</th><th class="right">Beløp inkl. mva</th></tr></thead><tbody>
-      <tr><td>${esc(f.tekst||settings.standardTekst||'Abonnement')}</td><td class="right">${kr(f.belop||0)}</td></tr>
+      <tr><td>${esc(f.tekst||settings.standardTekst||'Abonnement HovslagerSystem')}</td><td class="right">${kr(f.belop||0)}</td></tr>
       </tbody></table>
       <p class="right total">Å betale: ${kr(f.belop||0)}</p>
       <div class="box"><strong>Betaling</strong><br>Kontonr: ${esc(settings.kontonr||'')}</div>
@@ -2613,122 +2411,19 @@ table{
     const firmaId=val('appFakturaFirma');
     const kunde=appFirmaById(firmaId);
     if(!firmaId || !kunde.id){ msg('appFakturaMsg','Velg hovslager/firma først.','err'); return; }
-    const eksMva=num('appFakturaBelop');
-    if(!eksMva){ msg('appFakturaMsg','Skriv beløp først.','err'); return; }
-    msg('appFakturaMsg','Lager faktura via Supabase ...');
-    try{
-      const {data,error}=await app.sb.functions.invoke('daglig-appfaktura', { body:{ action:'manual', firma_id:firmaId, belop_eks_mva:eksMva, mva_sats:25, tekst:val('appFakturaTekst')||'Abonnement', forfallsdager:Number(val('appFakturaForfallDager')||14) } });
-      if(error) throw error;
-      if(!data || data.ok===false) throw new Error(data?.error || 'Ukjent feil fra daglig-appfaktura.');
-      msg('appFakturaMsg','Faktura laget og lagret i hov-firma-faktura/hovslager/fakturaer.','ok');
-      if(data.faktura?.file_url) window.open(data.faktura.file_url, '_blank');
-      await loadAdminData();
-      await renderAppFakturaer();
-      return;
-    }catch(err){
-      console.warn('Edge Function feilet, bruker lokal fallback', err);
-      const rows=loadAppFakturaerLocal();
-      const settings=loadAppFakturaSettings();
-      const belop=eksMva*1.25;
-      const f={id:String(Date.now())+'-'+Math.random().toString(36).slice(2), nr:appFakturaNr(), firma_id:firmaId, kunde:{navn:kunde.navn||'', epost:kunde.epost||'', adresse:kunde.adresse||''}, dato:today(), forfall:datePlusDays(val('appFakturaForfallDager')||14), tekst:val('appFakturaTekst')||settings.standardTekst||'Abonnement', belop, status:'opprettet', mappe:'hov-firma-faktura/hovslager/fakturaer'};
-      rows.unshift(f); saveAppFakturaerLocal(rows); renderAppFakturaer(); msg('appFakturaMsg','Faktura laget lokalt. Edge Function må deployes for automatisk lagring i Supabase Storage.','ok'); visAppFaktura(f.id);
-    }
+    const belop=num('appFakturaBelop');
+    if(!belop){ msg('appFakturaMsg','Skriv beløp først.','err'); return; }
+    const rows=loadAppFakturaerLocal();
+    const settings=loadAppFakturaSettings();
+    const f={id:String(Date.now())+'-'+Math.random().toString(36).slice(2), nr:appFakturaNr(), firma_id:firmaId, kunde:{navn:kunde.navn||'', epost:kunde.epost||'', adresse:kunde.adresse||''}, dato:today(), forfall:datePlusDays(val('appFakturaForfallDager')||14), tekst:val('appFakturaTekst')||settings.standardTekst||'Abonnement HovslagerSystem', belop, status:'opprettet'};
+    rows.unshift(f); saveAppFakturaerLocal(rows); renderAppFakturaer(); msg('appFakturaMsg','Faktura '+f.nr+' er laget. Bruk Vis og Send e-post.','ok'); visAppFaktura(f.id);
   }
-
-  async function kjørDagligAppFakturering(){
-    if(!app.isSysadm){ msg('appFakturaMsg','Bare sysadm kan kjøre daglig appfakturering.','err'); return; }
-    msg('appFakturaMsg','Kjører daglig appfakturering ...');
-    try{
-      const {data,error}=await app.sb.functions.invoke('daglig-appfaktura', { body:{ action:'daily' } });
-      if(error) throw error;
-      if(!data || data.ok===false) throw new Error(data?.error || 'Ukjent feil fra daglig-appfaktura.');
-      msg('appFakturaMsg','Daglig appfakturering ferdig. Sjekket '+(data.checked_count||0)+' firma, laget '+(data.created_count||0)+' faktura(er).','ok');
-      await loadAdminData();
-      await renderAppFakturaer();
-    }catch(err){
-      msg('appFakturaMsg','Kunne ikke kjøre automatisk fakturering. Deploy Edge Function daglig-appfaktura og kjør SQL-filen først. Feil: '+(err.message||String(err)),'err');
-    }
-  }
-  async function renderAppFakturaer(){
+  function renderAppFakturaer(){
     const el=$('appFakturaList'); if(!el) return;
     if(!app.isSysadm){ el.innerHTML=''; return; }
-    let rows=loadAppFakturaerLocal();
-    try{
-      const {data,error}=await app.sb.from('rettilomma_app_fakturaer').select('*').order('created_at',{ascending:false}).limit(300);
-      if(!error && data){
-        rows=data.map(r=>({
-          id:r.id,
-          nr:r.fakturanr,
-          firma_id:r.firma_id,
-          kunde:{navn:r.kunde_navn||'', epost:r.kunde_epost||'', adresse:r.kunde_adresse||''},
-          dato:String(r.fakturadato||'').slice(0,10),
-          forfall:String(r.forfallsdato||'').slice(0,10),
-          tekst:r.tekst||'',
-          belop:Number(r.total_inkl_mva||0),
-          status:r.status||'',
-          file_url:r.pdf_url||r.file_url||'',
-          mappe:r.storage_folder||'',
-          gratis_dager_igjen: (r.gratis_dager_igjen ?? ''),
-          trial_end: String(r.trial_end||'').slice(0,10),
-          fakturaperiode: r.fakturaperiode || ''
-        }));
-      }
-    }catch(_){ }
-
-    const search=(val('appFakturaSearch')||'').toLowerCase();
-    const statusFilter=val('appFakturaStatusFilter');
-    if(search){
-      rows=rows.filter(f=>[
-        f.nr,
-        f.kunde?.navn,
-        f.kunde?.epost,
-        f.dato,
-        f.status,
-        f.fakturaperiode
-      ].map(x=>String(x||'').toLowerCase()).join(' ').includes(search));
-    }
-    if(statusFilter){ rows=rows.filter(f=>String(f.status||'')===statusFilter); }
-
-    function shortDate(d){
-      const t=String(d||'');
-      if(/^\d{4}-\d{2}-\d{2}$/.test(t)) return t.slice(8,10)+'.'+t.slice(5,7)+'.'+t.slice(0,4);
-      return t;
-    }
-    function statusPill(st){
-      const key=String(st||'').toLowerCase() || 'opprettet';
-      return `<span class="app-status-pill ${esc(key)}">${esc(st||'opprettet')}</span>`;
-    }
-    function gratisText(f){
-      if(f.gratis_dager_igjen === '' || f.gratis_dager_igjen === null || f.gratis_dager_igjen === undefined) return '-';
-      return `<span class="app-gratis-pill">${esc(f.gratis_dager_igjen)} dager</span>`;
-    }
-
-    const htmlRows=rows.map(f=>{
-      const firma=esc((f.kunde&&f.kunde.navn)||appFirmaById(f.firma_id).navn||'');
-      const epost=esc((f.kunde&&f.kunde.epost)||'');
-      const pdfBtn=f.file_url
-        ? `<a class="small-btn secondary" href="${esc(f.file_url)}" target="_blank" rel="noopener">📄 PDF</a>`
-        : `<button type="button" class="small-btn secondary" data-app-vis="${esc(f.id)}">Vis</button>`;
-      return `<tr class="click-row" data-app-open="${esc(f.file_url||'')}" data-id="${esc(f.id)}">`+
-        `<td>${esc(shortDate(f.dato))}</td>`+
-        `<td>${esc(f.nr||'')}</td>`+
-        `<td>${firma}</td>`+
-        `<td>${epost}</td>`+
-        `<td style="text-align:right">${kr(f.belop||0)}</td>`+
-        `<td>${gratisText(f)}</td>`+
-        `<td>${esc(shortDate(f.forfall))}</td>`+
-        `<td>${statusPill(f.status)}</td>`+
-        `<td class="app-actions">${pdfBtn}<button type="button" class="small-btn" data-app-send="${esc(f.id)}">✉ Send</button>${f.status==='betalt'?'':`<button type="button" class="small-btn ok" data-app-betalt="${esc(f.id)}">✓ Betalt</button>`}<button type="button" class="small-btn danger" data-app-deaktiver="${esc(f.id)}">🚫 Deaktiver</button></td>`+
-        `</tr>`;
-    });
-
-    el.innerHTML=table(['Dato','Faktura','Firma','E-post','Beløp','Gratis','Forfall','Status','Handling'], htmlRows.length ? htmlRows : ['<tr><td colspan="9">Ingen appfakturaer funnet.</td></tr>']);
-    el.querySelectorAll('tr[data-app-open]').forEach(row=>row.addEventListener('click',(ev)=>{
-      if(ev.target.closest('button,a')) return;
-      const url=row.dataset.appOpen;
-      if(url) window.open(url, '_blank');
-      else if(row.dataset.id) visAppFaktura(row.dataset.id);
-    }));
+    const rows=loadAppFakturaerLocal();
+    const html=rows.map(f=>`<tr><td>${esc(f.dato||'')}</td><td>${esc(f.nr||'')}</td><td>${esc((f.kunde&&f.kunde.navn)||appFirmaById(f.firma_id).navn||'')}</td><td>${esc((f.kunde&&f.kunde.epost)||'')}</td><td>${kr(f.belop||0)}</td><td>${esc(f.forfall||'')}</td><td>${esc(f.status||'')}</td><td class="actions"><button type="button" class="small-btn secondary" data-app-vis="${esc(f.id)}">Vis</button><button type="button" class="small-btn" data-app-send="${esc(f.id)}">Send e-post</button>${f.status==='betalt'?'':`<button type="button" class="small-btn ok" data-app-betalt="${esc(f.id)}">Sett betalt</button>`}<button type="button" class="small-btn danger" data-app-deaktiver="${esc(f.id)}">Deaktiver</button></td></tr>`);
+    el.innerHTML=table(['Dato','Nr','Hovslager','E-post','Beløp','Forfall','Status','Handling'], html);
     el.querySelectorAll('[data-app-vis]').forEach(b=>b.addEventListener('click',()=>visAppFaktura(b.dataset.appVis)));
     el.querySelectorAll('[data-app-send]').forEach(b=>b.addEventListener('click',()=>sendAppFakturaEpost(b.dataset.appSend)));
     el.querySelectorAll('[data-app-betalt]').forEach(b=>b.addEventListener('click',()=>appFakturaBetalt(b.dataset.appBetalt)));
@@ -2810,29 +2505,6 @@ table{
     visFaktura(data);
   }
 
-  function firmaLogoUrl(firma){
-    const f = firma || app.firma || {};
-    const direct = f.logo_url || f.logo || f.logoUrl || f.bilde_url || f.image_url || f.foto_url || f.photo_url || '';
-    if(direct) return String(direct);
-    const path = f.logo_path || f.logoPath || '';
-    if(path && app.sb){
-      try{
-        const pub = app.sb.storage.from('hovslager-logo').getPublicUrl(path);
-        return pub?.data?.publicUrl || '';
-      }catch(_){ return ''; }
-    }
-    return '';
-  }
-
-  async function refreshFirmaForFaktura(){
-    if(!app.sb || !app.firmaId) return app.firma || {};
-    try{
-      const {data,error}=await app.sb.from('hov_firma').select('*').eq('id', app.firmaId).maybeSingle();
-      if(!error && data){ app.firma=data; updateHeader(); renderFirma(); }
-    }catch(e){ console.warn('Kunne ikke oppdatere firma før fakturavisning', e); }
-    return app.firma || {};
-  }
-
   function fakturaHtml(f, opts){
     const options = opts || {};
     const kunde=(app.data.kunder||[]).find(k=>String(k.id)===String(f.kunde_id)) || {};
@@ -2841,57 +2513,27 @@ table{
     const firma=app.firma||{};
     const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : '');
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
-    const logoUrl = firmaLogoUrl(firma);
-    const logoHtml = logoUrl ? `<img class="logo" src="${esc(logoUrl)}" alt="Firmalogo" crossorigin="anonymous" onerror="this.style.display='none'; this.closest('.logo-wrap')?.classList.add('logo-missing')">` : '';
-    const orgnr = firma.orgnr || firma.org_nr || firma.bedriftsnr || firma.mva_nr || '';
-    const vipps = firma.vippsnummer || firma.vippsnr || '';
-    const vippsMottaker = firma.vipps_mottaker || firma.navn || '';
-    const firmaSted = [firma.postnr, firma.poststed].filter(Boolean).join(' ');
-    const footerParts = [
-      firma.navn || '',
-      orgnr ? 'Org.nr: '+orgnr : '',
-      firma.adresse || '',
-      firmaSted,
-      firma.epost || '',
-      firma.telefon || '',
-      firma.kontonr ? 'Kontonr: '+firma.kontonr : '',
-      firma.nettside || ''
-    ].filter(Boolean);
-    const beskrivelse = jobb.jobbtype || f.tekst || 'Hovslagerjobb';
-    const ekstraTekst = jobb.beskrivelse || f.tekst || '';
-    const printScript = options.autoPrint === false ? '' : `<script>
-      (function(){
-        function runPrint(){ if(window.print) window.print(); }
-        var imgs = Array.from(document.images || []);
-        if(!imgs.length){ setTimeout(runPrint, 250); return; }
-        var left = imgs.length;
-        function done(){ left--; if(left <= 0) setTimeout(runPrint, 250); }
-        imgs.forEach(function(img){ if(img.complete) done(); else { img.onload=done; img.onerror=done; } });
-        setTimeout(runPrint, 1500);
-      })();
-    <\/script>`;
+    const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>
-        *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:42px 48px;color:#111827;background:#fff;font-size:14px;line-height:1.45}.page{max-width:900px;margin:0 auto}.letterhead{display:flex;justify-content:space-between;gap:36px;align-items:flex-start;border-bottom:1px solid #d1d5db;padding-bottom:22px;margin-bottom:34px}.brand{min-width:260px}.logo-wrap{min-height:70px;margin-bottom:12px}.logo{display:block;max-width:190px;max-height:92px;object-fit:contain}.sender{text-align:right;color:#374151}.sender strong{display:block;color:#111827;font-size:20px;margin-bottom:5px}.invoice-title{margin:0;font-size:34px;letter-spacing:-.03em}.subtitle{margin-top:4px;color:#4b5563}.preview{display:inline-block;margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:6px 11px;color:#9a3412;font-weight:700}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:24px 0}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;background:#fff}.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin:0 0 10px}.meta{display:grid;gap:7px}.meta div{display:flex;justify-content:space-between;gap:18px}.meta span:first-child{color:#6b7280}.section-title{font-size:16px;font-weight:700;margin:26px 0 10px}table{width:100%;border-collapse:collapse;margin-top:10px}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;text-align:left;border-bottom:1px solid #d1d5db;padding:10px 8px}td{border-bottom:1px solid #e5e7eb;padding:13px 8px;vertical-align:top}.right{text-align:right}.muted{color:#6b7280}.totals{width:330px;margin:18px 0 0 auto}.totals .row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:8px 0}.totals .pay{font-size:22px;font-weight:800;border-bottom:0;padding-top:14px}.payment{margin-top:28px;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.payment strong{display:block;margin-bottom:6px}.footer{margin-top:44px;border-top:1px solid #d1d5db;padding-top:12px;color:#4b5563;font-size:12px}.nowrap{white-space:nowrap}@media print{body{padding:30px 42px}.page{max-width:none}.card,.payment{break-inside:avoid}.no-print{display:none}}
-      </style>
-      </head><body><div class="page">
-      <div class="letterhead"><div class="brand"><div class="logo-wrap">${logoHtml}</div><h1 class="invoice-title">${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div class="sender"><strong>${esc(firma.navn||'')}</strong>${orgnr ? '<br>Org.nr: '+esc(orgnr) : ''}${firma.adresse ? '<br>'+esc(firma.adresse) : ''}${firmaSted ? '<br>'+esc(firmaSted) : ''}${firma.epost ? '<br>E-post: '+esc(firma.epost) : ''}${firma.telefon ? '<br>Telefon: '+esc(firma.telefon) : ''}${firma.kontonr ? '<br>Kontonr: '+esc(firma.kontonr) : ''}</div></div>
-      <div class="grid"><div class="card"><h2>Mottaker</h2><strong>${esc(kunde.navn||'')}</strong>${kunde.adresse ? '<br>'+esc(kunde.adresse) : ''}${kunde.epost ? '<br>'+esc(kunde.epost) : ''}${kunde.telefon ? '<br>'+esc(kunde.telefon) : ''}</div><div class="card meta"><h2>Fakturadetaljer</h2><div><span>Fakturadato</span><strong>${esc(f.dato||'')}</strong></div><div><span>Forfallsdato</span><strong>${esc(f.forfallsdato||'')}</strong></div><div><span>Status</span><strong>${esc(f.betalingsstatus||f.status||'')}</strong></div></div></div>
-      <div class="section-title">Beskrivelse</div><table><thead><tr><th>Arbeid</th><th>Hest</th><th class="right nowrap">Beløp eks. mva</th></tr></thead><tbody><tr><td><strong>${esc(beskrivelse)}</strong>${ekstraTekst ? '<br><span class="muted">'+esc(ekstraTekst)+'</span>' : ''}</td><td>${esc(hest.navn||'')}</td><td class="right nowrap">${kr(f.eks_mva||0)} kr</td></tr></tbody></table>
-      <div class="totals"><div class="row"><span>Beløp eks. mva</span><strong>${kr(f.eks_mva||0)} kr</strong></div><div class="row"><span>MVA</span><strong>${kr(f.mva||0)} kr</strong></div><div class="row pay"><span>Å betale</span><span>${kr(f.inkl_mva||0)} kr</span></div></div>
-      <div class="payment"><strong>Betaling</strong>${firma.kontonr ? 'Kontonr: '+esc(firma.kontonr)+'<br>' : ''}${vipps ? 'Vipps: '+esc(vipps)+(vippsMottaker ? ' ('+esc(vippsMottaker)+')' : '')+'<br>' : ''}<span class="muted">Merk betalingen med fakturanummer ${esc(f.fakturanr||'')}.</span></div>
-      <div class="footer">${esc(footerParts.join(' · '))}</div>
-      ${printScript}</div></body></html>`;
+      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
+      </head><body>
+      <div class="top"><div><h1>${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
+      <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
+      <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfallsdato||'')}</p>
+      <table><thead><tr><th>Beskrivelse</th><th>Hest</th><th class="right">Beløp eks. mva</th></tr></thead><tbody>
+      <tr><td>${esc(jobb.jobbtype||f.tekst||'Hovslagerjobb')}<br><span class="muted">${esc(jobb.beskrivelse||'')}</span></td><td>${esc(hest.navn||'')}</td><td class="right">${kr(f.eks_mva||0)}</td></tr>
+      </tbody></table>
+      <p class="right">MVA: ${kr(f.mva||0)}</p>
+      <p class="right total">Å betale: ${kr(f.inkl_mva||0)}</p>
+      <div class="box"><strong>Betaling</strong><br>Kontonr: ${esc(firma.kontonr||'')}<br>Vipps: ${esc(firma.vippsnummer||'')} ${esc(firma.vipps_mottaker||'')}</div>
+      ${printScript}
+      </body></html>`;
   }
 
-  async function visFaktura(f, opts){
+  function visFaktura(f, opts){
     if(!f){ msg('fakturaMsg','Fant ikke faktura.','err'); return; }
     const w=window.open('', '_blank');
     if(!w){ msg('fakturaMsg','Nettleseren blokkerte popup. Tillat popup for å vise faktura.','err'); return; }
-    w.document.open();
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Laster faktura</title></head><body style="font-family:Arial,sans-serif;padding:30px">Laster faktura ...</body></html>');
-    w.document.close();
-    await refreshFirmaForFaktura();
     w.document.open(); w.document.write(fakturaHtml(f, opts)); w.document.close();
   }
 
@@ -3052,59 +2694,6 @@ table{
   function hestNavn(id){ return app.data.hester.find(h=>String(h.id)===String(id))?.navn || id || ''; }
   function renderKunder(){ $('kundeList').innerHTML = table(['Navn','Telefon','E-post','Adresse',''], app.data.kunder.map(k=>`<tr class="click-row${selectedRowClass('kunde',k.id)}" data-id="${esc(k.id)}"><td>${esc(k.navn)}</td><td>${esc(k.telefon)}</td><td>${esc(k.epost)}</td><td>${esc(k.adresse)}</td></tr>`)); bindClickableRows('kundeList','kunde', editKunde); }
   function renderHester(){ $('hestList').innerHTML = table(['Bilde','Navn','Eier','Rase','Neste besøk',''], app.data.hester.map(h=>`<tr class="click-row${selectedRowClass('hest',h.id)}" data-id="${esc(h.id)}"><td>${imgUrl(h)?`<img class="thumb small" src="${esc(imgUrl(h))}" alt="Hest">`:''}</td><td>${esc(h.navn)}</td><td>${esc(kundeNavn(h.kunde_id))}</td><td>${esc(h.rase)}</td><td>${esc(h.neste_besok)}</td></tr>`)); bindClickableRows('hestList','hest', editHest); }
-  function setPrisLayout(mode){
-    const section=$('priser'), list=$('prisList'), title=$('prisFormTitle');
-    if(!section || !list || !title) return;
-    const formCard = title.closest('.soft-card') || title.parentElement;
-    if(!formCard) return;
-    if(mode === 'formFirst'){
-      section.insertBefore(formCard, list);
-      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
-    } else {
-      section.insertBefore(list, formCard);
-    }
-  }
-
-
-  function setKundeLayout(mode){
-    const section=$('kunder'), list=$('kundeList'), title=$('kundeFormTitle');
-    if(!section || !list || !title) return;
-    const hint = title.nextElementSibling;
-    const grid = hint ? hint.nextElementSibling : null;
-    const actions = grid ? grid.nextElementSibling : null;
-    const msgEl = $('kundeMsg');
-    if(mode === 'formFirst'){
-      section.insertBefore(title, list);
-      if(hint) section.insertBefore(hint, list);
-      if(grid) section.insertBefore(grid, list);
-      if(actions) section.insertBefore(actions, list);
-      if(msgEl) section.insertBefore(msgEl, list);
-      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
-    } else {
-      section.insertBefore(list, title);
-    }
-  }
-
-
-  function setHestLayout(mode){
-    const section=$('hester'), list=$('hestList'), title=$('hestFormTitle');
-    if(!section || !list || !title) return;
-    const hint = title.previousElementSibling && title.previousElementSibling.id === 'hestList' ? null : title.nextElementSibling;
-    const grid = hint ? hint.nextElementSibling : title.nextElementSibling;
-    const actions = grid ? grid.nextElementSibling : null;
-    const msgEl = $('hestMsg');
-    if(mode === 'formFirst'){
-      section.insertBefore(title, list);
-      if(hint) section.insertBefore(hint, list);
-      if(grid) section.insertBefore(grid, list);
-      if(actions) section.insertBefore(actions, list);
-      if(msgEl) section.insertBefore(msgEl, list);
-      setTimeout(()=>{ title.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
-    } else {
-      section.insertBefore(list, title);
-    }
-  }
-
   function setJobbLayout(mode){
     const section=$('jobber'), list=$('jobbList'), title=$('jobbFormTitle');
     if(!section || !list || !title) return;
@@ -3199,20 +2788,65 @@ table{
 
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
-  function openNewJobbWindowFromNav(){
-    // Toppknappen skal starte Snakk inn direkte.
-    startVoiceNyJobb();
-  }
-
-
   function showVoiceSavedActions(show){
     $('voiceSavedActions')?.classList.toggle('hidden', !show);
   }
   function voiceSavedMessage(){
     showVoiceSavedActions(true);
-    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Velg Les inn på nytt, Vis lagret jobb eller Slett innlest jobb.','ok');
-    const voiceMsgEl = $('voiceJobbMsg');
-    if(voiceMsgEl){ voiceMsgEl.classList.add('voice-saved-msg'); setTimeout(()=>voiceMsgEl.classList.remove('voice-saved-msg'), 9000); }
+    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Kontroller den, eller velg Les inn på nytt / Slett innlest jobb hvis den ble feil.','ok');
+  }
+  function openLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
+    showTab('jobber');
+    editJobb(app.lastVoiceJobbId);
+  }
+  async function deleteLastVoiceJobb(){
+    if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å slette.','err'); return; }
+    if(!confirm('Slette den innleste jobben? Dette kan ikke angres.')) return;
+    const id=app.lastVoiceJobbId;
+    const {error}=await app.sb.from('hov_jobber').delete().eq('id',id).eq('firma_id',app.firmaId);
+    if(error){ msg('voiceJobbMsg','Kunne ikke slette jobben: '+error.message,'err'); return; }
+    app.lastVoiceJobbId=null;
+    showVoiceSavedActions(false);
+    await loadJobber(); renderAll();
+    msg('voiceJobbMsg','🗑️ Den innleste jobben er slettet. Du kan lese inn på nytt.','ok');
+  }
+  async function finishVoiceJobbFromText(reason){
+    if(app.voiceProcessing) return;
+    const textNow=val('voiceJobbText');
+    setVoiceButtons(false);
+    if(!textNow){ msg('voiceJobbMsg','Stoppet. Ingen tekst å lagre.','ok'); return; }
+    msg('voiceJobbMsg',(reason||'Stoppet')+'. Lager og lagrer jobben nå ...','ok');
+    await applyVoiceTextAsJobb({autoSave:true, restart:false});
+  }
+
+
+  function openNewJobbWindowFromNav(){
+    // Toppknappen skal åpne ny jobb-vinduet, ikke starte/skjule mikrofon direkte.
+    stopVoiceJobb(true);
+    clearJobbForm();
+    setJobbFormReadOnly(false);
+    showTab('jobber');
+    setText('jobbFormTitle','Ny jobb');
+    setText('saveJobbBtn','Lagre jobb');
+    $('deleteJobbBtn')?.classList.add('hidden');
+    msg('jobbMsg','Ny jobb er åpnet. Skriv inn jobben, eller bruk Les inn beskrivelse på skjemaet.','ok');
+    setJobbLayout('formFirst');
+    setTimeout(()=>{ const section=$('jobber'); if(section) section.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+  }
+
+
+  function showVoiceSavedActions(show){
+    const el=$('voiceSavedActions');
+    if(el) el.classList.toggle('hidden', !show);
+  }
+  function voiceSavedMessage(){
+    setVoiceButtons(false);
+    showVoiceSavedActions(true);
+    const text = val('voiceJobbText');
+    const preview = text ? '<div class="voice-readback"><strong>Dette ble lest inn:</strong><br>'+esc(text)+'</div>' : '';
+    const el=$('voiceJobbMsg');
+    if(el) el.innerHTML = '<div class="msg ok">✅ Jobben er lest inn og lagret. Kontroller jobben. Hvis den ble feil kan du slette den.</div>' + preview;
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -3233,9 +2867,9 @@ table{
   }
 
   function startVoiceNyJobb(){
-    // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
-      msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+      msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
+      setVoiceButtons(true);
       return;
     }
     app.edit.jobb = null;
@@ -3247,40 +2881,61 @@ table{
     setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
-    if(!val('voiceJobbText')) setVal('voiceJobbText','');
+    setVal('voiceJobbText','');
     startVoiceJobb();
   }
   function startVoiceJobb(){
     const Speech = speechApi();
-    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android, eller skriv teksten i feltet og trykk Bruk tekst i ny jobb.','err'); return; }
+    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome på Android, eller skriv teksten i feltet og trykk Bruk skrevet tekst.','err'); return; }
     try{
       if(app.voiceActive || app.voiceRecognition){
-        msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+        msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
+        setVoiceButtons(true);
         return;
       }
       const rec = new Speech();
       app.voiceRecognition = rec;
       app.voiceActive = true;
       app.voiceStopping = false;
+      setVoiceButtons(true); // Må skje med en gang på mobil, ikke vente på onstart.
+      msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       rec.lang = 'nb-NO';
       rec.interimResults = true;
       rec.continuous = true;
-      let finalText = val('voiceJobbText');
+      let finalText = '';
+      let autoStopTimer = null;
+      const scheduleAutoStop = () => {
+        clearTimeout(autoStopTimer);
+        autoStopTimer = setTimeout(()=>{
+          if(app.voiceActive && val('voiceJobbText')) stopVoiceJobb(false);
+        }, 4500);
+      };
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig, eller skriv i feltet og trykk Bruk skrevet tekst.','ok');
+        msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       };
       rec.onerror = (ev) => {
+        if(app.voiceStopping || ev.error === 'aborted') return;
         app.voiceActive = false;
+        app.voiceStopping = false;
+        clearTimeout(autoStopTimer);
         setVoiceButtons(false);
+        if(app.voiceRecognition === rec) app.voiceRecognition = null;
         msg('voiceJobbMsg','Mikrofon/tale feilet: '+(ev.error || 'ukjent feil')+'. Sjekk at siden har tilgang til mikrofon.','err');
       };
       rec.onend = () => {
-        const wasActive = app.voiceActive;
+        const shouldSave = !app.voiceStopping && val('voiceJobbText');
         app.voiceActive = false;
+        clearTimeout(autoStopTimer);
         setVoiceButtons(false);
         if(app.voiceRecognition === rec) app.voiceRecognition = null;
-        if(wasActive && !app.voiceStopping) msg('voiceJobbMsg','Mikrofon stoppet av nettleseren. Trykk Les inn ny jobb for å starte igjen.','ok');
+        if(shouldSave){
+          msg('voiceJobbMsg','Mikrofonen stoppet. Lager og lagrer jobben ...','ok');
+          applyVoiceTextAsJobb({autoSave:true, restart:false});
+        }else if(!app.voiceStopping){
+          msg('voiceJobbMsg','Mikrofon stoppet uten tekst. Trykk Snakk inn ny jobb for å prøve igjen.','ok');
+        }
+        app.voiceStopping = false;
       };
       rec.onresult = (ev) => {
         let interim = '';
@@ -3289,25 +2944,40 @@ table{
           if(ev.results[i].isFinal) finalText = (finalText + ' ' + txt).trim();
           else interim += txt;
         }
-        setVal('voiceJobbText', (finalText + (interim ? ' ' + interim : '')).trim());
+        const combined = (finalText + (interim ? ' ' + interim : '')).trim();
+        setVal('voiceJobbText', combined);
+        const el=$('voiceJobbMsg');
+        if(el) el.innerHTML = '<div class="msg ok">🎙️ Lytter ...</div><div class="voice-readback"><strong>Dette hører jeg:</strong><br>'+esc(combined || '...')+'</div>';
+        if(combined) scheduleAutoStop();
       };
       rec.start();
     }catch(err){
       app.voiceActive = false;
+      app.voiceStopping = false;
       setVoiceButtons(false);
       msg('voiceJobbMsg','Kunne ikke starte mikrofon: '+(err.message || err),'err');
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn');
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), use=$('voiceUseTextJobbBtn');
     const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
-    if(start){ start.textContent = label; start.disabled = !!listening; }
+    if(start){ start.textContent = label; start.disabled = !!listening; start.classList.toggle('hidden', !!listening); start.style.display = listening ? 'none' : ''; }
     if(top){ top.textContent = label; top.disabled = !!listening; }
+    if(use){ use.disabled = !!listening; }
     if(stop){
-      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb';
-      stop.disabled = !listening && !val('voiceJobbText');
-      stop.hidden = false;
+      stop.textContent = '⏹ Stopp og lagre jobb';
       stop.classList.toggle('voice-on', !!listening);
+      stop.classList.toggle('hidden', !listening);
+      stop.hidden = !listening;
+      stop.disabled = !listening;
+      stop.style.display = listening ? 'block' : 'none';
+      stop.style.width = listening ? '100%' : '';
+      stop.style.margin = listening ? '12px 0 0 0' : '';
+      stop.style.fontSize = listening ? '18px' : '';
+      stop.style.padding = listening ? '16px' : '';
+      stop.style.position = listening ? 'sticky' : '';
+      stop.style.bottom = listening ? '12px' : '';
+      stop.style.zIndex = listening ? '9999' : '';
     }
   }
   function stopVoiceJobb(silent){
@@ -3316,9 +2986,6 @@ table{
     app.voiceActive = false;
     app.voiceRecognition = null;
     setVoiceButtons(false);
-
-    // Viktig: lagre fra teksten som allerede står i feltet med en gang.
-    // Chrome kan bruke lang tid på rec.stop(), og da virker det som Stopp-knappen ikke gjør noe.
     if(!silent){
       const textNow = val('voiceJobbText');
       if(textNow){
@@ -3328,13 +2995,15 @@ table{
         msg('voiceJobbMsg','Stoppet. Ingen tekst å lagre.','ok');
       }
     }
-
     if(rec){
-      try{ rec.onresult = null; rec.onerror = null; rec.onend = null; rec.stop(); }
+      try{ rec.stop(); }
       catch(_){ try{ rec.abort(); }catch(__){} }
-      setTimeout(()=>{ try{ rec.abort(); }catch(_){} }, 500);
+      setTimeout(()=>{ try{ rec.abort(); }catch(_){} app.voiceStopping=false; setVoiceButtons(false); }, 1200);
+    }else{
+      app.voiceStopping = false;
     }
   }
+
   function cleanDictationText(text){
     let out=String(text||'').trim();
     if(!out) return '';
@@ -3490,12 +3159,10 @@ table{
       app.edit.jobb = null;
       const ok = await saveJobb({fromVoice:true, forceNew:true});
       if(ok){
-        app.lastVoiceJobbId = ok.id || app.lastVoiceJobbId;
+        if(ok.id) app.lastVoiceJobbId = ok.id;
         setVal('voiceJobbText','');
         showTab('dashboard');
         voiceSavedMessage();
-        if(navigator.vibrate) try{ navigator.vibrate([80,40,80]); }catch(_){}
-        
       }else{
         msg('voiceJobbMsg','Jobben ble ikke lagret. Sjekk feilmeldingen i jobbskjemaet, rett feltene og trykk Lagre jobb.','err');
       }
@@ -3650,14 +3317,12 @@ table{
   }
 
   function editPris(id){
-    setPrisLayout('formFirst');
     const p = app.data.priser.find(x=>String(x.id)===String(id)); if(!p) return;
     app.edit.pris = p.id;
     setVal('prisKategori',p.kategori); setVal('prisVarenr',p.varenr); setVal('prisNavn',p.navn||p.jobbtype||p.vare||p.type); setVal('prisEnhet',p.enhet||'stk'); setVal('prisEksMva',p.pris_eks_mva ?? p.pris ?? p.belop ?? p.eks_mva ?? 0); setVal('prisMvaSats',p.mva_sats ?? app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',p.pris_inkl_mva ?? 0); setChecked('prisAktiv',p.aktiv !== false); setVal('prisBeskrivelse',p.beskrivelse);
     setText('prisFormTitle','Rediger pris'); setText('savePrisBtn','Oppdater pris'); $('deletePrisBtn')?.classList.remove('hidden'); renderPriser(); msg('prisImportMsg','Redigerer pris: '+(p.navn||p.jobbtype||p.vare||''),'ok');
   }
-  function clearPrisForm(){
-    setPrisLayout('formFirst'); app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg',''); }
+  function clearPrisForm(){ app.edit.pris=null; ['prisKategori','prisVarenr','prisNavn','prisBeskrivelse'].forEach(id=>setVal(id,'')); setVal('prisEnhet','stk'); setVal('prisEksMva',0); setVal('prisMvaSats',app.firma?.standard_mva_sats ?? 25); setVal('prisInklMva',0); setChecked('prisAktiv',true); setText('prisFormTitle','Ny pris'); setText('savePrisBtn','Lagre pris'); $('deletePrisBtn')?.classList.add('hidden'); renderPriser(); msg('prisImportMsg',''); }
   async function savePris(){
     const eks=num('prisEksMva'); const sats=num('prisMvaSats'); const inkl = num('prisInklMva') || +(eks * (1 + sats/100)).toFixed(2);
     const payload={firma_id:app.firmaId, kategori:val('prisKategori')||null, varenr:val('prisVarenr')||null, navn:val('prisNavn'), enhet:val('prisEnhet')||'stk', pris_eks_mva:eks, mva_sats:sats, pris_inkl_mva:inkl, aktiv:$('prisAktiv')?.checked !== false, beskrivelse:val('prisBeskrivelse')||null};
