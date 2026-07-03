@@ -468,7 +468,7 @@ table{
 .jobb-status.warn{background:rgba(245,158,11,.18);color:#fde68a!important}
 @media(max-width:800px){#jobber h2{margin-bottom:4px}.jobb-desktop-list{display:none}.jobb-mobile-list{display:block}.quick-job{margin-top:14px}.jobb-mobile-card{font-size:14px}.jobb-card-top strong{font-size:17px}}
 
-.post-save-prompt{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0 16px;background:rgba(22,163,74,.08)}
+.post-save-prompt{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0 16px;background:rgba(22,163,74,.08)}.post-save-prompt .ok{font-size:1.05rem;font-weight:800;margin-bottom:12px}.post-save-actions{gap:10px}.post-save-actions .button-label,.post-save-actions button{flex:1 1 180px}
 .button-label{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:12px 18px;font-weight:800;background:var(--accent);color:#08111f;cursor:pointer}
 .visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 </style>
@@ -832,15 +832,13 @@ table{
         </div>
         <h3 id="jobbFormTitle">Ny jobb</h3>
         <div id="jobbSavedPrompt" class="post-save-prompt hidden">
-          <div class="ok">✅ Jobben er lagret.</div>
-          <p class="muted">Neste steg: legg til bilde(r), eller start en ny jobb.</p>
-          <div class="actions">
+          <div class="actions post-save-actions">
             <label class="button-label" for="jobbSavedBildeFiles">📷 Legg til bilde(r)</label>
             <input id="jobbSavedBildeFiles" type="file" accept="image/*" multiple class="visually-hidden">
-            <button id="uploadSavedJobbBilderBtn" type="button">Lagre bilde(r)</button>
+            <button id="uploadSavedJobbBilderBtn" type="button" class="secondary hidden">Lagre valgte bilde(r)</button>
             <button id="postSaveNewJobbBtn" type="button" class="secondary">Ny jobb</button>
           </div>
-          <div id="jobbSavedBildePreview" class="image-preview wide"><span class="muted">Ingen bilder valgt.</span></div>
+          <div id="jobbSavedBildePreview" class="image-preview wide hidden"></div>
         </div>
         <div id="jobbFormGrid" class="grid formgrid">
           <label>Dato<input id="jobbDato" type="date"></label><label>Kunde<select id="jobbKunde"></select></label>
@@ -1268,7 +1266,8 @@ table{
     $('jobbSavedPrompt')?.classList.add('hidden');
     app.postSaveJobbId = null;
     const input=$('jobbSavedBildeFiles'); if(input) input.value='';
-    const preview=$('jobbSavedBildePreview'); if(preview) preview.innerHTML='<span class="muted">Ingen bilder valgt.</span>';
+    const preview=$('jobbSavedBildePreview'); if(preview){ preview.innerHTML=''; preview.classList.add('hidden'); }
+    $('uploadSavedJobbBilderBtn')?.classList.add('hidden');
   }
   function showPostSavePrompt(saved){
     app.postSaveJobbId = saved?.id || app.postSaveJobbId || null;
@@ -1276,14 +1275,16 @@ table{
     setText('jobbFormTitle','Jobb lagret');
     $('jobbSavedPrompt')?.classList.remove('hidden');
     setJobbFormVisible(false);
-    msg('jobbMsg','Jobben er lagret. Legg gjerne til bilde(r), eller start ny jobb.','ok');
+    msg('jobbMsg','','ok');
     setTimeout(()=>{ $('jobbFormTitle')?.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
   function previewSavedJobbBilder(){
     const files=Array.from($('jobbSavedBildeFiles')?.files || []);
     const preview=$('jobbSavedBildePreview');
     if(!preview) return;
-    preview.innerHTML = files.length ? files.map(f=>`<figure class="timeline-photo"><img class="thumb" src="${esc(URL.createObjectURL(f))}" alt="Valgt bilde"><figcaption>${esc(f.name||'Bilde')}</figcaption></figure>`).join('') : '<span class="muted">Ingen bilder valgt.</span>';
+    preview.classList.toggle('hidden', !files.length);
+    $('uploadSavedJobbBilderBtn')?.classList.toggle('hidden', !files.length);
+    preview.innerHTML = files.length ? files.map(f=>`<figure class="timeline-photo"><img class="thumb" src="${esc(URL.createObjectURL(f))}" alt="Valgt bilde"><figcaption>${esc(f.name||'Bilde')}</figcaption></figure>`).join('') : '';
   }
   async function uploadSavedJobbBilder(){
     const jobbId=app.postSaveJobbId;
@@ -2852,7 +2853,11 @@ table{
   }
 
   function renderJobber(){
-    const rows=(app.data.jobber||[]).map(j=>`<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato||'')}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype||'')}</td><td>${kr(j.total||0)}</td><td>${jobBilder(j).length}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`);
+    const rows=(app.data.jobber||[]).map(j=>{
+      const bildeAnt = jobBilder(j).length;
+      const bildeTekst = bildeAnt ? ('📷 ' + bildeAnt) : '–';
+      return `<tr class="click-row${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><td>${esc(j.dato||'')}</td><td>${esc(kundeNavn(j.kunde_id))}</td><td>${esc(hestNavn(j.hest_id))}</td><td>${esc(j.jobbtype||'')}</td><td>${kr(j.total||0)}</td><td>${esc(bildeTekst)}</td><td>${j.fakturert?'Ja':'Nei'}</td></tr>`;
+    });
     const cards=(app.data.jobber||[]).map(j=>{
       const faktura = (typeof fakturaForJobb === 'function') ? fakturaForJobb(j.id) : null;
       const mangler = !j.hest_id || !j.kunde_id;
@@ -2861,7 +2866,9 @@ table{
       const statusClass = j.fakturert || faktura ? 'ok' : forelopig ? 'warn' : 'plain';
       const hest = hestNavn(j.hest_id) || (mangler ? 'Mangler hest' : 'Ukjent hest');
       const kunde = kundeNavn(j.kunde_id) || (mangler ? 'Mangler eier' : 'Ukjent kunde');
-      return `<button type="button" class="jobb-mobile-card ${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><span class="jobb-card-top"><strong>🐴 ${esc(hest)}</strong><span>${kr(j.total||0)}</span></span><span>👤 ${esc(kunde)}</span><span class="jobb-card-bottom"><span>📅 ${esc(j.dato||'')}</span><span class="jobb-status ${statusClass}">${esc(status)}</span></span></button>`;
+      const bildeAnt = jobBilder(j).length;
+      const bildeTekst = bildeAnt ? ('📷 ' + bildeAnt + ' bilde' + (bildeAnt === 1 ? '' : 'r')) : 'Ingen bilder';
+      return `<button type="button" class="jobb-mobile-card ${selectedRowClass('jobb',j.id)}" data-id="${esc(j.id)}"><span class="jobb-card-top"><strong>🐴 ${esc(hest)}</strong><span>${kr(j.total||0)}</span></span><span>👤 ${esc(kunde)}</span><span>${esc(bildeTekst)}</span><span class="jobb-card-bottom"><span>📅 ${esc(j.dato||'')}</span><span class="jobb-status ${statusClass}">${esc(status)}</span></span></button>`;
     }).join('');
     $('jobbList').innerHTML = `<div class="jobb-desktop-list">${table(['Dato','Kunde','Hest','Jobbtype','Total','Bilder','Fakturert'], rows)}</div><div class="jobb-mobile-list">${cards || '<div class="msg">Ingen jobber registrert ennå.</div>'}</div>`;
     bindClickableRows('jobbList','jobb', editJobb);
@@ -3239,8 +3246,21 @@ table{
     const ntext = normText(text);
     return /\b(skodde|sko(dd|ing|e)?|skoing|beslag|fullbeslag)\b/i.test(ntext);
   }
+  function isAkupunkturText(text){
+    const ntext = normText(text).replace(/[^a-z0-9æøå]+/g,' ');
+    const compact = ntext.replace(/[^a-z0-9æøå]/g,'');
+    return /\bakupunktur\b/i.test(ntext)
+      || /\bakup?ung?tur\b/i.test(ntext)
+      || compact.includes('akupunktur')
+      || compact.includes('akuoungtur')
+      || compact.includes('akoungtur')
+      || compact.includes('akupungtur');
+  }
   function findFullbeslagPris(){
     return (app.data.priser||[]).find(p=>/full\s*beslag|fullbeslag/i.test(normText(prisNavn(p)))) || null;
+  }
+  function findAkupunkturPris(){
+    return (app.data.priser||[]).find(p=>/akupunktur|aku\s*punktur/i.test(normText(prisNavn(p)))) || null;
   }
   function setJobbTypeByName(name){
     fillJobbTypeSelect();
@@ -3323,34 +3343,49 @@ table{
 
   function findBestPrisFromVoiceText(text){
     const ntext = normText(text);
+    const compactText = ntext.replace(/[^a-z0-9æøå]/g,'');
     const priser = (app.data.priser || []).filter(p => p && p.aktiv !== false);
     if(!priser.length) return null;
     const containsAny = (words) => words.some(w => new RegExp('\\b'+w+'\\b','i').test(ntext));
-    const scorePris = (p) => {
-      const name = normText(prisNavn(p));
-      const desc = normText(p.beskrivelse || p.kategori || '');
+    const aliasScore = (name) => {
       let score = 0;
-      if(name && ntext.includes(name)) score += 100 + Math.min(name.length, 40);
-      const parts = name.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 3);
-      for(const w of parts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 8; }
-      if(desc){
-        const dparts = desc.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 4);
-        for(const w of dparts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 2; }
-      }
-      if(/full\s*beslag|fullbeslag/.test(name) && containsAny(['skodde','sko','skoing','fullbeslag','beslag'])) score += 80;
-      if(/halv\s*beslag|halvbeslag/.test(name) && containsAny(['halvbeslag'])) score += 80;
-      if(/barfot/.test(name) && containsAny(['barfot','beskjaering','beskjæring'])) score += 80;
-      if(/sko/.test(name) && containsAny(['skodde','sko','skoing'])) score += 20;
+      if(/akupunktur|aku\s*punktur/.test(name) && isAkupunkturText(text)) score += 160;
+      if(/full\s*beslag|fullbeslag/.test(name) && !isAkupunkturText(text) && containsAny(['fullbeslag','full','skodde','skoing'])) score += 90;
+      if(/halv\s*beslag.*foran|foran.*halv\s*beslag/.test(name) && containsAny(['halvbeslag','foran','fram','frem'])) score += 90;
+      if(/halv\s*beslag.*bak|bak.*halv\s*beslag/.test(name) && containsAny(['halvbeslag','bak'])) score += 90;
+      if(/barfot|beskj/.test(name) && containsAny(['barfot','beskjaering','beskjæring','trim','trimmet'])) score += 90;
+      if(/akutt/.test(name) && containsAny(['akutt','akuttbesok','akuttbesøk','haster'])) score += 100;
+      if(/kontroll/.test(name) && containsAny(['kontroll','etterkontroll','sjekk'])) score += 90;
+      if(/lim/.test(name) && containsAny(['lim','limbeslag','liming'])) score += 90;
+      if(/syke|sjuke/.test(name) && containsAny(['sykebeslag','sjukebeslag','syke','sjuke'])) score += 90;
+      if(/brodd/.test(name) && containsAny(['brodd','brodder'])) score += 90;
+      if(/såle|sale|pads|pad/.test(name) && containsAny(['såle','sale','saler','såler','pads','pad'])) score += 90;
       return score;
     };
-    let best = null;
-    let bestScore = 0;
+    const scorePris = (p) => {
+      const name = normText(prisNavn(p));
+      const compactName = name.replace(/[^a-z0-9æøå]/g,'');
+      const desc = normText(p.beskrivelse || p.kategori || '');
+      let score = 0;
+      if(name && ntext.includes(name)) score += 120 + Math.min(name.length, 40);
+      if(compactName && compactName.length >= 5 && compactText.includes(compactName)) score += 120;
+      const parts = name.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 3);
+      for(const w of parts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 14; }
+      if(desc){
+        const dparts = desc.split(/[^a-z0-9æøå]+/).filter(w => w.length >= 4);
+        for(const w of dparts){ if(new RegExp('\\b'+w+'\\b','i').test(ntext)) score += 3; }
+      }
+      score += aliasScore(name);
+      return score;
+    };
+    let best = null, bestScore = 0, secondScore = 0;
     for(const p of priser){
       const s = scorePris(p);
-      if(s > bestScore){ bestScore = s; best = p; }
+      if(s > bestScore){ secondScore = bestScore; bestScore = s; best = p; }
+      else if(s > secondScore){ secondScore = s; }
     }
-    if(best && bestScore > 0) return best;
-    if(isSkoingText(text)) return findFullbeslagPris();
+    // Ikke gjett. Behandlingen velges bare automatisk ved tydelig treff.
+    if(best && bestScore >= 35 && bestScore >= secondScore + 10) return best;
     return null;
   }
 
@@ -3406,8 +3441,30 @@ table{
       if(hest && hest.kunde_id) kundeId = hest.kunde_id;
 
       let jobbtype = pris ? prisNavn(pris) : '';
-      if(!jobbtype && isSkoingText(text)) jobbtype = 'Fullbeslag';
-      if(!jobbtype) jobbtype = 'Innlest jobb';
+      if(!jobbtype){
+        setVal('jobbDato', today());
+        setJobbKundeLocked(false);
+        if(kundeId) setVal('jobbKunde', kundeId);
+        fillJobbHester();
+        if(hestId) setVal('jobbHest', hestId);
+        syncJobbKundeHestLock();
+        fillJobbTypeSelect();
+        setVal('jobbType', '');
+        setVal('jobbKm', km ? numText(km) : '');
+        setVal('jobbKmPris', '5,30');
+        setVal('jobbArbeid', arbeidTale ? numText(arbeidTale) : '');
+        setVal('jobbVarer', varer ? numText(varer) : '');
+        setVal('jobbBeskrivelse', beskrivelse);
+        setJobbFormVisible(true);
+        showTab('jobber');
+        setJobbLayout('formFirst');
+        setText('jobbFormTitle','Velg behandling for innlest jobb');
+        app.voiceProcessing = false;
+        msg('voiceJobbMsg','Fant hest, men ingen sikker behandling. Velg behandling i Jobbtype/pris og trykk Lagre jobb. Jobben er IKKE lagret ennå.','err');
+        msg('jobbMsg','Velg behandling i Jobbtype/pris. Jobben er ikke lagret før du trykker Lagre jobb.','err');
+        setTimeout(()=>{ const el=$('jobbType'); if(el) el.focus(); }, 100);
+        return false;
+      }
 
       const prisArbeid = pris ? (prisEksMva(pris) || 0) : 0;
       const arbeid = arbeidTale ? numText(arbeidTale) : prisArbeid;

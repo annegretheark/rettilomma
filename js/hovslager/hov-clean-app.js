@@ -138,7 +138,8 @@
     $('jobbSavedPrompt')?.classList.add('hidden');
     app.postSaveJobbId = null;
     const input=$('jobbSavedBildeFiles'); if(input) input.value='';
-    const preview=$('jobbSavedBildePreview'); if(preview) preview.innerHTML='<span class="muted">Ingen bilder valgt.</span>';
+    const preview=$('jobbSavedBildePreview'); if(preview){ preview.innerHTML=''; preview.classList.add('hidden'); }
+    $('uploadSavedJobbBilderBtn')?.classList.add('hidden');
   }
   function showPostSavePrompt(saved){
     app.postSaveJobbId = saved?.id || app.lastVoiceJobbId || app.postSaveJobbId || null;
@@ -146,14 +147,16 @@
     setText('jobbFormTitle','Jobb lagret');
     $('jobbSavedPrompt')?.classList.remove('hidden');
     setJobbFormVisible(false);
-    msg('jobbMsg','Jobben er lagret. Legg gjerne til bilde(r), eller start ny jobb.','ok');
+    msg('jobbMsg','','ok');
     setTimeout(()=>{ $('jobbFormTitle')?.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
   }
   function previewSavedJobbBilder(){
     const files=Array.from($('jobbSavedBildeFiles')?.files || []);
     const preview=$('jobbSavedBildePreview');
     if(!preview) return;
-    preview.innerHTML = files.length ? files.map(f=>`<figure class="timeline-photo"><img class="thumb" src="${esc(URL.createObjectURL(f))}" alt="Valgt bilde"><figcaption>${esc(f.name||'Bilde')}</figcaption></figure>`).join('') : '<span class="muted">Ingen bilder valgt.</span>';
+    preview.classList.toggle('hidden', !files.length);
+    $('uploadSavedJobbBilderBtn')?.classList.toggle('hidden', !files.length);
+    preview.innerHTML = files.length ? files.map(f=>`<figure class="timeline-photo"><img class="thumb" src="${esc(URL.createObjectURL(f))}" alt="Valgt bilde"><figcaption>${esc(f.name||'Bilde')}</figcaption></figure>`).join('') : '';
   }
   async function uploadSavedJobbBilder(){
     const jobbId=app.postSaveJobbId || app.lastVoiceJobbId;
