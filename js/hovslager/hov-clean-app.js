@@ -160,6 +160,7 @@
     $('logoutBtn')?.addEventListener('click', logout);
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
+    $('navReadLastJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
@@ -1601,12 +1602,18 @@
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
 
+
   function showVoiceSavedActions(show){
-    $('voiceSavedActions')?.classList.toggle('hidden', !show);
+    const el=$('voiceSavedActions');
+    if(el) el.classList.toggle('hidden', !show);
   }
   function voiceSavedMessage(){
+    setVoiceButtons(false);
     showVoiceSavedActions(true);
-    msg('voiceJobbMsg','✅ Jobben er lest inn og lagret. Velg Les inn på nytt, Vis lagret jobb eller Slett innlest jobb.','ok');
+    const text = val('voiceJobbText');
+    const preview = text ? '<div class="voice-readback"><strong>Dette ble lest inn:</strong><br>'+esc(text)+'</div>' : '';
+    const el=$('voiceJobbMsg');
+    if(el) el.innerHTML = '<div class="msg ok">✅ Jobben er lest inn og lagret. Kontroller jobben. Hvis den ble feil kan du slette den.</div>' + preview;
   }
   function openLastVoiceJobb(){
     if(!app.lastVoiceJobbId){ msg('voiceJobbMsg','Fant ingen nylig innlest jobb å vise.','err'); return; }
@@ -1627,9 +1634,9 @@
   }
 
   function startVoiceNyJobb(){
-    // Egen flyt for NY jobb: aldri rediger eksisterende jobb.
     if(app.voiceActive || app.voiceRecognition){
-      msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+      msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
+      setVoiceButtons(true);
       return;
     }
     app.edit.jobb = null;
@@ -1641,53 +1648,61 @@
     setText('jobbFormTitle','Ny jobb');
     setText('saveJobbBtn','Lagre jobb');
     $('deleteJobbBtn')?.classList.add('hidden');
-    if(!val('voiceJobbText')) setVal('voiceJobbText','');
+    setVal('voiceJobbText','');
     startVoiceJobb();
   }
   function startVoiceJobb(){
     const Speech = speechApi();
-    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome/Edge på PC eller Android, eller skriv teksten i feltet og trykk Bruk tekst i ny jobb.','err'); return; }
+    if(!Speech){ msg('voiceJobbMsg','Denne nettleseren støtter ikke talegjenkjenning. Bruk Chrome på Android, eller skriv teksten i feltet og trykk Bruk skrevet tekst.','err'); return; }
     try{
       if(app.voiceActive || app.voiceRecognition){
-        msg('voiceJobbMsg','Lytter allerede. Trykk Stopp når du er ferdig.','ok');
+        msg('voiceJobbMsg','Lytter allerede. Trykk Stopp og lagre jobb når du er ferdig.','ok');
+        setVoiceButtons(true);
         return;
       }
       const rec = new Speech();
       app.voiceRecognition = rec;
       app.voiceActive = true;
       app.voiceStopping = false;
-      // Vis Stopp-knappen med en gang. På mobil kan onstart komme sent eller ikke trigge synlig UI.
-      setVoiceButtons(true);
-      msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig.','ok');
+      setVoiceButtons(true); // Må skje med en gang på mobil, ikke vente på onstart.
+      msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       rec.lang = 'nb-NO';
       rec.interimResults = true;
       rec.continuous = true;
-      let finalText = val('voiceJobbText');
+      let finalText = '';
+      let autoStopTimer = null;
+      const scheduleAutoStop = () => {
+        clearTimeout(autoStopTimer);
+        autoStopTimer = setTimeout(()=>{
+          if(app.voiceActive && val('voiceJobbText')) stopVoiceJobb(false);
+        }, 4500);
+      };
       rec.onstart = () => {
         setVoiceButtons(true);
-        msg('voiceJobbMsg','🎙️ Lytter ... snakk inn jobben. Trykk den store Stopp og lagre-knappen når du er ferdig.','ok');
+        msg('voiceJobbMsg','🎙️ Lytter ... teksten vises i feltet under. Trykk Stopp og lagre jobb når du er ferdig.','ok');
       };
       rec.onerror = (ev) => {
-        // Android/Chrome kan sende "aborted" når brukeren trykker Stopp.
-        // Da skal vi ikke vise feil eller bli stående i Lytter-modus.
-        if(app.voiceStopping || ev.error === 'aborted' || ev.error === 'no-speech'){
-          app.voiceActive = false;
-          setVoiceButtons(false);
-          return;
-        }
+        if(app.voiceStopping || ev.error === 'aborted') return;
         app.voiceActive = false;
         app.voiceStopping = false;
+        clearTimeout(autoStopTimer);
         setVoiceButtons(false);
         if(app.voiceRecognition === rec) app.voiceRecognition = null;
         msg('voiceJobbMsg','Mikrofon/tale feilet: '+(ev.error || 'ukjent feil')+'. Sjekk at siden har tilgang til mikrofon.','err');
       };
       rec.onend = () => {
-        const wasActive = app.voiceActive;
+        const shouldSave = !app.voiceStopping && val('voiceJobbText');
         app.voiceActive = false;
-        app.voiceStopping = false;
+        clearTimeout(autoStopTimer);
         setVoiceButtons(false);
         if(app.voiceRecognition === rec) app.voiceRecognition = null;
-        if(wasActive) msg('voiceJobbMsg','Mikrofon stoppet. Trykk Snakk inn ny jobb for å starte igjen.','ok');
+        if(shouldSave){
+          msg('voiceJobbMsg','Mikrofonen stoppet. Lager og lagrer jobben ...','ok');
+          applyVoiceTextAsJobb({autoSave:true, restart:false});
+        }else if(!app.voiceStopping){
+          msg('voiceJobbMsg','Mikrofon stoppet uten tekst. Trykk Snakk inn ny jobb for å prøve igjen.','ok');
+        }
+        app.voiceStopping = false;
       };
       rec.onresult = (ev) => {
         let interim = '';
@@ -1696,37 +1711,35 @@
           if(ev.results[i].isFinal) finalText = (finalText + ' ' + txt).trim();
           else interim += txt;
         }
-        setVal('voiceJobbText', (finalText + (interim ? ' ' + interim : '')).trim());
+        const combined = (finalText + (interim ? ' ' + interim : '')).trim();
+        setVal('voiceJobbText', combined);
+        const el=$('voiceJobbMsg');
+        if(el) el.innerHTML = '<div class="msg ok">🎙️ Lytter ...</div><div class="voice-readback"><strong>Dette hører jeg:</strong><br>'+esc(combined || '...')+'</div>';
+        if(combined) scheduleAutoStop();
       };
       rec.start();
     }catch(err){
       app.voiceActive = false;
+      app.voiceStopping = false;
       setVoiceButtons(false);
       msg('voiceJobbMsg','Kunne ikke starte mikrofon: '+(err.message || err),'err');
     }
   }
   function setVoiceButtons(listening){
-    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn');
-    const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn ny jobb';
-    if(start){
-      start.textContent = label;
-      start.disabled = !!listening;
-      start.classList.toggle('hidden', !!listening);
-      start.style.display = listening ? 'none' : '';
-    }
-    if(top){
-      top.textContent = label;
-      top.disabled = !!listening;
-    }
+    const start=$('voiceNewJobbBtn'), top=$('navReadLastJobbBtn'), stop=$('voiceStopJobbBtn'), use=$('voiceUseTextJobbBtn');
+    const label = listening ? '🎙 Lytter ...' : '🎙 Snakk inn eller skriv inn ny jobb';
+    if(start){ start.textContent = label; start.disabled = !!listening; start.classList.toggle('hidden', !!listening); start.style.display = listening ? 'none' : ''; }
+    if(top){ top.textContent = label; top.disabled = !!listening; }
+    if(use){ use.disabled = !!listening; }
     if(stop){
-      stop.textContent = listening ? '⏹ Stopp og lagre jobb' : 'Stopp og lagre jobb';
+      stop.textContent = '⏹ Stopp og lagre jobb';
       stop.classList.toggle('voice-on', !!listening);
       stop.classList.toggle('hidden', !listening);
       stop.hidden = !listening;
       stop.disabled = !listening;
       stop.style.display = listening ? 'block' : 'none';
       stop.style.width = listening ? '100%' : '';
-      stop.style.marginTop = listening ? '12px' : '';
+      stop.style.margin = listening ? '12px 0 0 0' : '';
       stop.style.fontSize = listening ? '18px' : '';
       stop.style.padding = listening ? '16px' : '';
       stop.style.position = listening ? 'sticky' : '';
@@ -1740,13 +1753,6 @@
     app.voiceActive = false;
     app.voiceRecognition = null;
     setVoiceButtons(false);
-
-    // Skjul stoppknappen med en gang når bruker har trykket stopp.
-    const stopBtn = $('voiceStopJobbBtn');
-    if(stopBtn){ stopBtn.classList.add('hidden'); stopBtn.hidden = true; stopBtn.style.display = 'none'; }
-
-    // Viktig: lagre fra teksten som allerede står i feltet med en gang.
-    // Chrome kan bruke lang tid på rec.stop(), og da virker det som Stopp-knappen ikke gjør noe.
     if(!silent){
       const textNow = val('voiceJobbText');
       if(textNow){
@@ -1756,29 +1762,15 @@
         msg('voiceJobbMsg','Stoppet. Ingen tekst å lagre.','ok');
       }
     }
-
     if(rec){
-      try{
-        // Ikke nullstill onend/onerror her. På mobil trengs onend for å rydde opp,
-        // ellers kan appen bli hengende som "Lytter" selv om knappen er trykket.
-        rec.stop();
-      }catch(_){
-        try{ rec.abort(); }catch(__){}
-      }
-      // Sikkerhetsnett for mobil: hvis nettleseren ikke avslutter pent, aborter etter litt.
-      setTimeout(()=>{
-        if(app.voiceRecognition === rec || app.voiceStopping){
-          try{ rec.abort(); }catch(_){}
-          app.voiceActive = false;
-          app.voiceStopping = false;
-          if(app.voiceRecognition === rec) app.voiceRecognition = null;
-          setVoiceButtons(false);
-        }
-      }, 1200);
+      try{ rec.stop(); }
+      catch(_){ try{ rec.abort(); }catch(__){} }
+      setTimeout(()=>{ try{ rec.abort(); }catch(_){} app.voiceStopping=false; setVoiceButtons(false); }, 1200);
     }else{
       app.voiceStopping = false;
     }
   }
+
   function normText(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
   function findNamed(rows, text, keys){
     const ntext = normText(text);
@@ -1868,7 +1860,6 @@
       const ok = await saveJobb({fromVoice:true, forceNew:true});
       if(ok){
         app.lastVoiceJobbId = ok.id || app.lastVoiceJobbId;
-        setVal('voiceJobbText','');
         showTab('dashboard');
         voiceSavedMessage();
       }else{

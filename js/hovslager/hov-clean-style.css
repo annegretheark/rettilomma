@@ -419,3 +419,17 @@ table{
   #jobbList td:nth-child(6),
   #jobbList td:nth-child(7){display:none!important;}
 }
+
+
+/* Mobil: tydelig taleinnlesing */
+#voiceStopJobbBtn.hidden{display:none!important}
+#voiceStopJobbBtn.voice-on{display:block!important;background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+.voice-readback{margin-top:10px;padding:12px;border:1px solid #38bdf8;border-radius:12px;background:rgba(14,165,233,.12);font-size:16px;line-height:1.4;white-space:pre-wrap}
+.voice-saved-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.voice-saved-actions.hidden{display:none!important}
+@media(max-width:700px){
+  #voiceStopJobbBtn.voice-on{position:sticky!important;bottom:12px!important;z-index:9999!important;width:100%!important;font-size:20px!important;padding:18px!important;border-radius:16px!important}
+  .quick-job textarea#voiceJobbText{min-height:130px;font-size:17px}
+  .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important}
+  .voice-saved-actions button{width:100%;padding:14px;font-size:17px}
+}
