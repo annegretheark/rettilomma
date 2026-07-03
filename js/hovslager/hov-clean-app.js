@@ -983,7 +983,7 @@
       epost:f.epost || 'salg@rettilomma.com',
       telefon:f.telefon || '',
       kontonr:f.kontonr || '',
-      standardTekst:'Abonnement HovslagerSystem',
+      standardTekst:'Abonnement',
       bunntekst:'Takk for handelen.'
     };
   }
@@ -1017,7 +1017,7 @@
       epost:val('appFakturaAvsenderEpost'),
       telefon:val('appFakturaAvsenderTelefon'),
       adresse:val('appFakturaAvsenderAdresse'),
-      standardTekst:val('appFakturaStandardTekst') || 'Abonnement HovslagerSystem',
+      standardTekst:val('appFakturaStandardTekst') || 'Abonnement',
       bunntekst:val('appFakturaBunntekst')
     };
     saveAppFakturaSettingsObject(settings);
@@ -1074,7 +1074,7 @@
       <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
       <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfall||'')}</p>
       <table><thead><tr><th>Beskrivelse</th><th class="right">Beløp inkl. mva</th></tr></thead><tbody>
-      <tr><td>${esc(f.tekst||settings.standardTekst||'Abonnement HovslagerSystem')}</td><td class="right">${kr(f.belop||0)}</td></tr>
+      <tr><td>${esc(f.tekst||settings.standardTekst||'Abonnement')}</td><td class="right">${kr(f.belop||0)}</td></tr>
       </tbody></table>
       <p class="right total">Å betale: ${kr(f.belop||0)}</p>
       <div class="box"><strong>Betaling</strong><br>Kontonr: ${esc(settings.kontonr||'')}</div>
@@ -1154,7 +1154,7 @@
     if(!belop){ msg('appFakturaMsg','Skriv beløp først.','err'); return; }
     const rows=loadAppFakturaerLocal();
     const settings=loadAppFakturaSettings();
-    const f={id:String(Date.now())+'-'+Math.random().toString(36).slice(2), nr:appFakturaNr(), firma_id:firmaId, kunde:{navn:kunde.navn||'', epost:kunde.epost||'', adresse:kunde.adresse||''}, dato:today(), forfall:datePlusDays(val('appFakturaForfallDager')||14), tekst:val('appFakturaTekst')||settings.standardTekst||'Abonnement HovslagerSystem', belop, status:'opprettet'};
+    const f={id:String(Date.now())+'-'+Math.random().toString(36).slice(2), nr:appFakturaNr(), firma_id:firmaId, kunde:{navn:kunde.navn||'', epost:kunde.epost||'', adresse:kunde.adresse||''}, dato:today(), forfall:datePlusDays(val('appFakturaForfallDager')||14), tekst:val('appFakturaTekst')||settings.standardTekst||'Abonnement', belop, status:'opprettet'};
     rows.unshift(f); saveAppFakturaerLocal(rows); renderAppFakturaer(); msg('appFakturaMsg','Faktura '+f.nr+' er laget. Bruk Vis og Send e-post.','ok'); visAppFaktura(f.id);
   }
   function renderAppFakturaer(){
@@ -1244,6 +1244,29 @@
     visFaktura(data);
   }
 
+  function firmaLogoUrl(firma){
+    const f = firma || app.firma || {};
+    const direct = f.logo_url || f.logo || f.logoUrl || f.bilde_url || f.image_url || f.foto_url || f.photo_url || '';
+    if(direct) return String(direct);
+    const path = f.logo_path || f.logoPath || '';
+    if(path && app.sb){
+      try{
+        const pub = app.sb.storage.from('hovslager-logo').getPublicUrl(path);
+        return pub?.data?.publicUrl || '';
+      }catch(_){ return ''; }
+    }
+    return '';
+  }
+
+  async function refreshFirmaForFaktura(){
+    if(!app.sb || !app.firmaId) return app.firma || {};
+    try{
+      const {data,error}=await app.sb.from('hov_firma').select('*').eq('id', app.firmaId).maybeSingle();
+      if(!error && data){ app.firma=data; updateHeader(); renderFirma(); }
+    }catch(e){ console.warn('Kunne ikke oppdatere firma før fakturavisning', e); }
+    return app.firma || {};
+  }
+
   function fakturaHtml(f, opts){
     const options = opts || {};
     const kunde=(app.data.kunder||[]).find(k=>String(k.id)===String(f.kunde_id)) || {};
@@ -1252,27 +1275,57 @@
     const firma=app.firma||{};
     const label = options.label || (f._preview ? 'Forhåndsvisning - ikke fakturert' : '');
     const title = f._preview ? `Fakturautkast ${esc(f.fakturanr||'')}` : `Faktura ${esc(f.fakturanr||'')}`;
-    const printScript = options.autoPrint === false ? '' : '<script>window.print && setTimeout(()=>window.print(),300)<\\/script>';
+    const logoUrl = firmaLogoUrl(firma);
+    const logoHtml = logoUrl ? `<img class="logo" src="${esc(logoUrl)}" alt="Firmalogo" crossorigin="anonymous" onerror="this.style.display='none'; this.closest('.logo-wrap')?.classList.add('logo-missing')">` : '';
+    const orgnr = firma.orgnr || firma.org_nr || firma.bedriftsnr || firma.mva_nr || '';
+    const vipps = firma.vippsnummer || firma.vippsnr || '';
+    const vippsMottaker = firma.vipps_mottaker || firma.navn || '';
+    const firmaSted = [firma.postnr, firma.poststed].filter(Boolean).join(' ');
+    const footerParts = [
+      firma.navn || '',
+      orgnr ? 'Org.nr: '+orgnr : '',
+      firma.adresse || '',
+      firmaSted,
+      firma.epost || '',
+      firma.telefon || '',
+      firma.kontonr ? 'Kontonr: '+firma.kontonr : '',
+      firma.nettside || ''
+    ].filter(Boolean);
+    const beskrivelse = jobb.jobbtype || f.tekst || 'Hovslagerjobb';
+    const ekstraTekst = jobb.beskrivelse || f.tekst || '';
+    const printScript = options.autoPrint === false ? '' : `<script>
+      (function(){
+        function runPrint(){ if(window.print) window.print(); }
+        var imgs = Array.from(document.images || []);
+        if(!imgs.length){ setTimeout(runPrint, 250); return; }
+        var left = imgs.length;
+        function done(){ left--; if(left <= 0) setTimeout(runPrint, 250); }
+        imgs.forEach(function(img){ if(img.complete) done(); else { img.onload=done; img.onerror=done; } });
+        setTimeout(runPrint, 1500);
+      })();
+    <\/script>`;
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{margin:0 0 10px}.top{display:flex;justify-content:space-between;gap:40px}.box{border:1px solid #ddd;padding:14px;margin:14px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}.right{text-align:right}.muted{color:#666}.total{font-size:20px;font-weight:bold}.preview{display:inline-block;background:#fff3cd;border:1px solid #e0b94f;border-radius:999px;padding:6px 10px;color:#6b4e00;font-weight:bold}</style>
-      </head><body>
-      <div class="top"><div><h1>${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div><strong>${esc(firma.navn||'')}</strong><br>${esc(firma.adresse||'')}<br>${esc(firma.postnr||'')} ${esc(firma.poststed||'')}<br>${esc(firma.epost||'')}<br>${esc(firma.telefon||'')}</div></div>
-      <div class="box"><strong>Kunde</strong><br>${esc(kunde.navn||'')}<br>${esc(kunde.adresse||'')}<br>${esc(kunde.epost||'')}</div>
-      <p><strong>Dato:</strong> ${esc(f.dato||'')}<br><strong>Forfall:</strong> ${esc(f.forfallsdato||'')}</p>
-      <table><thead><tr><th>Beskrivelse</th><th>Hest</th><th class="right">Beløp eks. mva</th></tr></thead><tbody>
-      <tr><td>${esc(jobb.jobbtype||f.tekst||'Hovslagerjobb')}<br><span class="muted">${esc(jobb.beskrivelse||'')}</span></td><td>${esc(hest.navn||'')}</td><td class="right">${kr(f.eks_mva||0)}</td></tr>
-      </tbody></table>
-      <p class="right">MVA: ${kr(f.mva||0)}</p>
-      <p class="right total">Å betale: ${kr(f.inkl_mva||0)}</p>
-      <div class="box"><strong>Betaling</strong><br>Kontonr: ${esc(firma.kontonr||'')}<br>Vipps: ${esc(firma.vippsnummer||'')} ${esc(firma.vipps_mottaker||'')}</div>
-      ${printScript}
-      </body></html>`;
+      <style>
+        *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:42px 48px;color:#111827;background:#fff;font-size:14px;line-height:1.45}.page{max-width:900px;margin:0 auto}.letterhead{display:flex;justify-content:space-between;gap:36px;align-items:flex-start;border-bottom:1px solid #d1d5db;padding-bottom:22px;margin-bottom:34px}.brand{min-width:260px}.logo-wrap{min-height:70px;margin-bottom:12px}.logo{display:block;max-width:190px;max-height:92px;object-fit:contain}.sender{text-align:right;color:#374151}.sender strong{display:block;color:#111827;font-size:20px;margin-bottom:5px}.invoice-title{margin:0;font-size:34px;letter-spacing:-.03em}.subtitle{margin-top:4px;color:#4b5563}.preview{display:inline-block;margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:6px 11px;color:#9a3412;font-weight:700}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:24px 0}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;background:#fff}.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin:0 0 10px}.meta{display:grid;gap:7px}.meta div{display:flex;justify-content:space-between;gap:18px}.meta span:first-child{color:#6b7280}.section-title{font-size:16px;font-weight:700;margin:26px 0 10px}table{width:100%;border-collapse:collapse;margin-top:10px}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;text-align:left;border-bottom:1px solid #d1d5db;padding:10px 8px}td{border-bottom:1px solid #e5e7eb;padding:13px 8px;vertical-align:top}.right{text-align:right}.muted{color:#6b7280}.totals{width:330px;margin:18px 0 0 auto}.totals .row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:8px 0}.totals .pay{font-size:22px;font-weight:800;border-bottom:0;padding-top:14px}.payment{margin-top:28px;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.payment strong{display:block;margin-bottom:6px}.footer{margin-top:44px;border-top:1px solid #d1d5db;padding-top:12px;color:#4b5563;font-size:12px}.nowrap{white-space:nowrap}@media print{body{padding:30px 42px}.page{max-width:none}.card,.payment{break-inside:avoid}.no-print{display:none}}
+      </style>
+      </head><body><div class="page">
+      <div class="letterhead"><div class="brand"><div class="logo-wrap">${logoHtml}</div><h1 class="invoice-title">${title}</h1>${label ? `<div class="preview">${esc(label)}</div>` : ''}</div><div class="sender"><strong>${esc(firma.navn||'')}</strong>${orgnr ? '<br>Org.nr: '+esc(orgnr) : ''}${firma.adresse ? '<br>'+esc(firma.adresse) : ''}${firmaSted ? '<br>'+esc(firmaSted) : ''}${firma.epost ? '<br>E-post: '+esc(firma.epost) : ''}${firma.telefon ? '<br>Telefon: '+esc(firma.telefon) : ''}${firma.kontonr ? '<br>Kontonr: '+esc(firma.kontonr) : ''}</div></div>
+      <div class="grid"><div class="card"><h2>Mottaker</h2><strong>${esc(kunde.navn||'')}</strong>${kunde.adresse ? '<br>'+esc(kunde.adresse) : ''}${kunde.epost ? '<br>'+esc(kunde.epost) : ''}${kunde.telefon ? '<br>'+esc(kunde.telefon) : ''}</div><div class="card meta"><h2>Fakturadetaljer</h2><div><span>Fakturadato</span><strong>${esc(f.dato||'')}</strong></div><div><span>Forfallsdato</span><strong>${esc(f.forfallsdato||'')}</strong></div><div><span>Status</span><strong>${esc(f.betalingsstatus||f.status||'')}</strong></div></div></div>
+      <div class="section-title">Beskrivelse</div><table><thead><tr><th>Arbeid</th><th>Hest</th><th class="right nowrap">Beløp eks. mva</th></tr></thead><tbody><tr><td><strong>${esc(beskrivelse)}</strong>${ekstraTekst ? '<br><span class="muted">'+esc(ekstraTekst)+'</span>' : ''}</td><td>${esc(hest.navn||'')}</td><td class="right nowrap">${kr(f.eks_mva||0)} kr</td></tr></tbody></table>
+      <div class="totals"><div class="row"><span>Beløp eks. mva</span><strong>${kr(f.eks_mva||0)} kr</strong></div><div class="row"><span>MVA</span><strong>${kr(f.mva||0)} kr</strong></div><div class="row pay"><span>Å betale</span><span>${kr(f.inkl_mva||0)} kr</span></div></div>
+      <div class="payment"><strong>Betaling</strong>${firma.kontonr ? 'Kontonr: '+esc(firma.kontonr)+'<br>' : ''}${vipps ? 'Vipps: '+esc(vipps)+(vippsMottaker ? ' ('+esc(vippsMottaker)+')' : '')+'<br>' : ''}<span class="muted">Merk betalingen med fakturanummer ${esc(f.fakturanr||'')}.</span></div>
+      <div class="footer">${esc(footerParts.join(' · '))}</div>
+      ${printScript}</div></body></html>`;
   }
 
-  function visFaktura(f, opts){
+  async function visFaktura(f, opts){
     if(!f){ msg('fakturaMsg','Fant ikke faktura.','err'); return; }
     const w=window.open('', '_blank');
     if(!w){ msg('fakturaMsg','Nettleseren blokkerte popup. Tillat popup for å vise faktura.','err'); return; }
+    w.document.open();
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Laster faktura</title></head><body style="font-family:Arial,sans-serif;padding:30px">Laster faktura ...</body></html>');
+    w.document.close();
+    await refreshFirmaForFaktura();
     w.document.open(); w.document.write(fakturaHtml(f, opts)); w.document.close();
   }
 
