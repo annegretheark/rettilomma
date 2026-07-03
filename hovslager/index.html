@@ -1448,9 +1448,9 @@ table{
     $('rememberLogin')?.addEventListener('change', ()=>localStorage.setItem(REMEMBER_LOGIN_KEY, $('rememberLogin')?.checked ? '1' : '0'));
     $('refreshBtn')?.addEventListener('click', loadAll);
     $('readLastJobbBtn')?.addEventListener('click', readLastJobbAsNew);
-    $('navReadLastJobbBtn')?.addEventListener('click', openNewJobbWindowFromNav);
+    $('navReadLastJobbBtn')?.addEventListener('click', startVoiceNyJobb);
     $('voiceNewJobbBtn')?.addEventListener('click', startVoiceNyJobb);
-    $('voiceStopJobbBtn')?.addEventListener('click', stopVoiceJobb);
+    $('voiceStopJobbBtn')?.addEventListener('click', ()=>stopVoiceJobb(false));
     $('voiceUseTextJobbBtn')?.addEventListener('click', ()=>applyVoiceTextAsJobb({autoSave:false}));
     $('voiceBeskrivelseBtn')?.addEventListener('click', startVoiceBeskrivelse);
     $('voiceBeskrivelseStopBtn')?.addEventListener('click', stopVoiceBeskrivelse);
@@ -3170,17 +3170,8 @@ table{
   function speechApi(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
   function openNewJobbWindowFromNav(){
-    // Toppknappen skal åpne ny jobb-vinduet, ikke starte/skjule mikrofon direkte.
-    stopVoiceJobb(true);
-    clearJobbForm();
-    setJobbFormReadOnly(false);
-    showTab('jobber');
-    setText('jobbFormTitle','Ny jobb');
-    setText('saveJobbBtn','Lagre jobb');
-    $('deleteJobbBtn')?.classList.add('hidden');
-    msg('jobbMsg','Ny jobb er åpnet. Skriv inn jobben, eller bruk Les inn beskrivelse på skjemaet.','ok');
-    setJobbLayout('formFirst');
-    setTimeout(()=>{ const section=$('jobber'); if(section) section.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
+    // Toppknappen skal starte Snakk inn direkte.
+    startVoiceNyJobb();
   }
 
   function startVoiceNyJobb(){
