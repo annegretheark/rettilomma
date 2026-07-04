@@ -8,7 +8,7 @@
           "value": "demo.hovslager.rettilomma.com"
         }
       ],
-      "destination": "/hovslager/public/demo/index.html"
+      "destination": "/demo"
     },
     {
       "source": "/demo",
