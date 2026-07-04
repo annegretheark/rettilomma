@@ -2,6 +2,8 @@
 <html lang="no">
 <head>
 <script>
+// Domene-routing for Rett i Lomma
+// Må ligge i rotens index.html.
 if (location.hostname === "hov.rettilomma.com" && location.pathname === "/") {
   location.replace("/hovslager-login.html");
 }
@@ -24,10 +26,10 @@ a{display:block;margin:14px auto;padding:16px;max-width:360px;border-radius:10px
 <div class="box">
 <h1>Rett i Lomma</h1>
 <p>Velg system</p>
-<a href="/hov">Hovslager</a>
+<a href="/hovslager-login.html">Hovslager</a>
 <a href="/handverker">Håndverker</a>
 <a href="/veterinaer">Veterinær / behandler</a>
-<a class="small" href="/demo">Demo Hovslager</a>
+<a class="small" href="/demo/index.html">Demo Hovslager</a>
 </div>
 </body>
 </html>

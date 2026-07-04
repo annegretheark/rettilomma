@@ -22,6 +22,16 @@
       ],
       "destination": "/demo/index.html",
       "permanent": false
+    },
+    {
+      "source": "/hov",
+      "destination": "/hovslager-login.html",
+      "permanent": false
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo/index.html",
+      "permanent": false
     }
   ]
 }
