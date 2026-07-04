@@ -26,7 +26,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
   <header class="top">
     <div class="brand">
       <div class="logo">🐴</div>
-      <div class="title"><h1>Hovslager Demo</h1><p>Demo med eksempeldata - ingen ekte lagring eller faktura sendes.</p></div>
+      <div class="title"><h1>Rett i Lomma Hovslager – Demo</h1><p>Versjon 1.0 • Gratis første måned • Deretter kr 500 pr. måned.</p></div>
     </div>
     <div class="actions">
       <button class="btn gold" onclick="show('jobber')">Jobber</button>
@@ -40,8 +40,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
 
   <section id="demoGuide" class="demo-guide">
     <div>
-      <h2 id="demoTitle">Demoen starter automatisk</h2>
-      <p id="demoText">Den viser jobbliste, ny jobb, tale/innlesing, bilder, framgang, kunder og Registrer firma. Du kan stoppe når som helst.</p>
+      <h2 id="demoTitle">Velkommen til Rett i Lomma Hovslager versjon 1.0</h2>
+      <p id="demoText">Dette er en demonstrasjon av versjon 1.0. Du får én måned gratis. Deretter koster systemet kun kr 500 per måned. Klikk på et bilde for å se det i større format.</p>
     </div>
     <div class="demo-progress" aria-label="Demo fremdrift"><span id="demoProgress"></span></div>
     <div class="actions">
@@ -88,7 +88,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
 
   <main id="bilder" class="panel view" style="display:none">
     <h2>Bilder og framgang</h2>
-    <p class="muted photo-intro"><b>Bilder kan vise framgang i jobben.</b> Legg inn bilder av hoven før behandling, under arbeid og ved kontroll. Trykk på et lite bilde for å se det større.</p>
+    <p class="muted photo-intro"><b>Bilder kan vise framgang i jobben.</b> Legg inn bilder av hoven før behandling, under arbeid og ved kontroll. Klikk på et bilde for å se det i større format.</p>
     <div class="photo-demo real-photos">
       <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Hoof%20crack.jpg" alt="Ekte hovfoto med sprekk" loading="lazy"><figcaption>1. Sprekk</figcaption></figure>
       <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/American%20Cream%20Draft%20being%20trimmed%20(2204771424).jpg" alt="Ekte foto av hov som trimmes" loading="lazy"><figcaption>2. Behandling</figcaption></figure>
@@ -122,8 +122,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
   <main id="registrer" class="panel view help" style="display:none">
     <h2>Registrer firma</h2>
     <div class="notice">
-      <p><b>Dette er 1.0 versjon av dette systemet.</b></p>
-      <p>Systemet er kostnadsfritt i 1 måned mot at brukeren gir tilbakemelding på feil og endringsønsker.</p>
+      <p><b>Dette er versjon 1.0 av Rett i Lomma Hovslager.</b></p>
+      <p>Du får systemet gratis den første måneden. Deretter er prisen kr 500 per måned. Vi setter pris på tilbakemeldinger om feil og forbedringsforslag.</p>
       <p>I fremtidige versjoner kan appen kobles til andre apper, for eksempel regnskap.</p>
       <p>For å få bruker sender du kontaktopplysninger og betalingsopplysninger på e-post.</p>
       <p><a class="btn gold" href="mailto:greknuts@online.no?subject=Rettilomma%20hovslager&body=Hei%2C%0A%0AJeg%20%C3%B8nsker%20bruker%20til%20Rettilomma%20hovslager.%0A%0AKontaktopplysninger%3A%0ANavn%3A%0ATelefon%3A%0AE-post%3A%0A%0ABetalingsopplysninger%3A%0AKontonummer%3A%0A%0AMvh" style="text-decoration:none">Klikk her for å få bruker</a></p>
