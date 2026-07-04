@@ -4,7 +4,7 @@
     {
       "source": "/",
       "has": [{ "type": "host", "value": "hov.rettilomma.com" }],
-      "destination": "/hovslager-login.html"
+      "destination": "/hovslager/index.html"
     },
     {
       "source": "/:path*",
