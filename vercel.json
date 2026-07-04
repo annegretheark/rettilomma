@@ -1,3 +1,17 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/hov",
+      "destination": "/hovslager-login.html",
+      "permanent": false
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo/hovslagerdemo/index.html",
+      "permanent": false
+    }
+  ]
 }
