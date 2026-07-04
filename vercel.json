@@ -9,18 +9,7 @@
           "value": "hov.rettilomma.com"
         }
       ],
-      "destination": "/hovslager/index.html",
-      "permanent": false
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "hov.rettilomma.com"
-        }
-      ],
-      "destination": "/hovslager/:path*",
+      "destination": "/hovslager-login.html",
       "permanent": false
     },
     {
@@ -32,17 +21,6 @@
         }
       ],
       "destination": "/demo/index.html",
-      "permanent": false
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "demo.hovslager.rettilomma.com"
-        }
-      ],
-      "destination": "/demo/:path*",
       "permanent": false
     }
   ]

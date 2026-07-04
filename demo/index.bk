@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo - Hov app</title>
+<style>
+:root{--bg:#0f172a;--panel:#111c31;--card:#18243a;--muted:#9aa8bd;--text:#f8fafc;--gold:#d9a83f;--blue:#334155;--green:#22c55e;--red:#dc2626;--border:#30425f}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111f,#0f172a);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.app{max-width:760px;margin:0 auto;padding:6px}.top{display:flex;gap:6px;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:6px;margin-bottom:6px;position:static}
+.brand{display:flex;gap:10px;align-items:center}.logo{width:30px;height:30px;border-radius:9px;background:#000;display:grid;place-items:center;font-size:18px}.title h1{margin:0;font-size:17px}.title p{margin:1px 0 0;color:var(--muted);font-size:12px}
+.actions{display:flex;gap:5px;flex-wrap:wrap}.btn{border:0;border-radius:9px;padding:7px 9px;font-weight:800;cursor:pointer;color:#fff;background:var(--blue);font-size:13px}.btn.gold{background:var(--gold);color:#111827}.btn.red{background:var(--red)}.btn.green{background:var(--green);color:#052e16}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:18px}.panel{background:rgba(17,28,49,.88);border:1px solid var(--border);border-radius:13px;padding:9px}
+h2{margin:0 0 6px;font-size:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}.stat b{font-size:26px}.muted{color:var(--muted)}
+table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{color:#cbd5e1;background:#101a2c;position:sticky;top:0}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#243652;color:#dbeafe;font-weight:700;font-size:12px}.tag.ok{background:#064e3b;color:#bbf7d0}.tag.no{background:#3f2630;color:#fecaca}.photo{font-weight:900}
+.form label{display:block;margin:7px 0 3px;color:#cbd5e1;font-weight:700}.form input,.form select{width:100%;background:#0b1220;color:#fff;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:14px}.notice{background:#052e2b;border:1px solid #15803d;border-radius:14px;padding:12px;margin-top:12px}
+.mobile-card{display:none;background:var(--gold);color:#fff;border-radius:13px;padding:9px;margin:6px 0}.mobile-card h3{margin:0 0 3px;font-size:16px}.mobile-card p{margin:2px 0;color:#e8eef7;font-size:13px}.mobile-card .bar{background:#30445f;border-radius:999px;padding:4px 8px;margin-top:5px;font-weight:800;font-size:12px}
+.help{line-height:1.55}.help li{margin-bottom:8px}.photo-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.photo-demo figure{margin:0;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer}.photo-demo img{width:100%;height:58px;object-fit:cover;display:block;background:#0b1220}.photo-demo figcaption{padding:4px;font-weight:800;font-size:10.5px;line-height:1.1}.photo-intro{font-size:13px;line-height:1.35;margin:0 0 7px}.photo-credit{font-size:10.5px;margin:5px 0 0}.timeline{margin-top:6px;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:7px;font-size:12px}.timeline .line{height:10px;background:#334155;border-radius:999px;overflow:hidden}.timeline .line span{display:block;height:100%;width:75%;background:var(--gold)}.img-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.img-modal.open{display:flex}.img-modal-box{max-width:720px;width:100%;background:#0b1220;border:1px solid var(--border);border-radius:16px;overflow:hidden}.img-modal img{width:100%;max-height:70vh;object-fit:contain;background:#000;display:block}.img-modal p{margin:0;padding:10px;font-weight:800}.img-modal button{float:right;margin:8px}
+.demo-guide{margin:0 0 6px;background:rgba(5,46,43,.92);border:1px solid #15803d;border-radius:12px;padding:7px;display:flex;gap:6px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.demo-guide h2{font-size:15px;margin:0 0 2px}.demo-guide p{margin:0;color:#d1fae5;font-size:12px;line-height:1.25}.demo-guide .actions{margin:0}.demo-progress{height:8px;background:#0b1220;border:1px solid var(--border);border-radius:999px;overflow:hidden;flex:1 1 180px;max-width:260px}.demo-progress span{display:block;height:100%;width:0%;background:var(--gold);transition:width .35s ease}.demo-finished{background:#111827;border-color:var(--gold)}.btn.outline{background:transparent;color:#f8fafc;border:1px solid var(--border)}
+@media(max-width:800px){.grid{grid-template-columns:1fr;gap:8px}.top{align-items:flex-start;flex-direction:column}.top .actions{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.demo-guide .actions{width:auto;display:flex}.btn{min-width:0}.desktop-table{display:none}.mobile-card{display:block}th{top:0}.title h1{font-size:17px}.title p{display:none}.photo-demo{grid-template-columns:repeat(3,1fr)}.photo-demo img{height:54px}.photo-demo figcaption{font-size:10px;padding:4px}.notice{padding:8px}.help{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">🐴</div>
+      <div class="title"><h1>Rett i Lomma Hovslager – Demo</h1><p>Versjon 1.0 • Gratis første måned • Deretter kr 500 pr. måned.</p></div>
+    </div>
+    <div class="actions">
+      <button class="btn gold" onclick="show('jobber')">Jobber</button>
+      <button class="btn" onclick="show('ny')">Ny jobb</button>
+      <button class="btn" onclick="show('bilder')">Bilder</button>
+      <button class="btn" onclick="show('kunder')">Kunder</button>
+      <button class="btn" onclick="show('hjelp')">Hjelp</button>
+      <button class="btn gold" onclick="show('registrer')">Registrer firma</button>
+    </div>
+  </header>
+
+  <section id="demoGuide" class="demo-guide">
+    <div>
+      <h2 id="demoTitle">Velkommen til Rett i Lomma Hovslager versjon 1.0</h2>
+      <p id="demoText">Dette er en demonstrasjon av versjon 1.0. Du får én måned gratis. Deretter koster systemet kun kr 500 per måned. Klikk på et bilde for å se det i større format.</p>
+    </div>
+    <div class="demo-progress" aria-label="Demo fremdrift"><span id="demoProgress"></span></div>
+    <div class="actions">
+      <button id="demoStartBtn" class="btn green" type="button" onclick="startAutoDemo(true)">Start demo</button>
+      <button id="demoStopBtn" class="btn red" type="button" onclick="stopAutoDemo()">Stopp</button>
+    </div>
+  </section>
+
+  <section id="statsCards" class="cards compact-stats" aria-hidden="true" style="display:none">
+    <div class="stat"><span class="muted">Jobber denne måneden</span><br><b id="statJobs">0</b></div>
+    <div class="stat"><span class="muted">Ikke fakturert</span><br><b id="statSum">0</b></div>
+    <div class="stat"><span class="muted">Bilder</span><br><b id="statPhotos">0</b></div>
+  </section>
+
+  <main id="jobber" class="panel view">
+    <h2>Jobbliste</h2>
+    <p class="muted">Jobblisten viser dato, kunde, hest, behandling, pris, bilder og fakturastatus.</p>
+    <div class="desktop-table"><table><thead><tr><th>Dato</th><th>Kunde</th><th>Hest</th><th>Behandling</th><th>Pris</th><th>Bilder</th><th>Fakturert</th></tr></thead><tbody id="jobRows"></tbody></table></div>
+    <div id="jobCards"></div>
+  </main>
+
+  <main id="ny" class="panel view" style="display:none">
+    <h2>Ny jobb</h2>
+    <div class="grid">
+      <div class="form">
+        <label>Dato</label><input id="dato" type="date" value="2026-07-03">
+        <label>Kunde</label><select id="kunde"></select>
+        <label>Hest</label><select id="hest"></select>
+        <label>Jobbtype/pris</label><select id="type"></select>
+        <label>Km</label><input id="km" placeholder="Blankt hvis ingen km">
+        <button class="btn gold" style="margin-top:14px;width:100%" onclick="saveJob()">💾 Lagre jobb</button>
+        <div id="saveMsg"></div>
+      </div>
+      <div>
+        <h2>Les inn demo</h2>
+        <p class="muted">Trykk på et eksempel for å fylle ut skjemaet slik en taleinnlesing kunne gjort.</p>
+        <button class="btn" onclick="demoRead('ANDOR','Akupunktur')">Les: Andor akupunktur</button><br><br>
+        <button class="btn" onclick="demoRead('ANDROMEDA','Halvbeslag foran')">Les: Andromeda halvbeslag foran</button><br><br>
+        <button class="btn" onclick="uncertain()">Usikker behandling</button>
+        <div class="notice" id="readMsg">Systemet gjetter ikke ved usikker behandling. Bruker må velge jobbtype manuelt.</div>
+      </div>
+    </div>
+  </main>
+
+  <main id="bilder" class="panel view" style="display:none">
+    <h2>Bilder og framgang</h2>
+    <p class="muted photo-intro"><b>Bilder kan vise framgang i jobben.</b> Legg inn bilder av hoven før behandling, under arbeid og ved kontroll. Klikk på et bilde for å se det i større format.</p>
+    <div class="photo-demo real-photos">
+      <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Hoof%20crack.jpg" alt="Ekte hovfoto med sprekk" loading="lazy"><figcaption>1. Sprekk</figcaption></figure>
+      <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/American%20Cream%20Draft%20being%20trimmed%20(2204771424).jpg" alt="Ekte foto av hov som trimmes" loading="lazy"><figcaption>2. Behandling</figcaption></figure>
+      <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Repair%20a%20hoof%20crack.jpg" alt="Ekte hovfoto med reparert sprekk og groing" loading="lazy"><figcaption>3. Groing</figcaption></figure>
+    </div>
+    <p class="muted photo-credit">Ekte gratisbilder fra Wikimedia Commons. Kun demoeksempler.</p>
+    <div class="timeline">
+      <b>Framgang på samme jobb</b>
+      <p class="muted">Sprekk, behandling og groing kan ligge samlet på jobben, så både hovslager og kunde kan se utviklingen over tid.</p>
+      <div class="line"><span></span></div>
+      <p>📷 Før → 🔧 Under arbeid → 🌱 Kontroll/groing</p>
+    </div>
+  </main>
+
+  <main id="kunder" class="panel view" style="display:none">
+    <h2>Kunder og hester</h2>
+    <table><thead><tr><th>Kunde</th><th>Telefon</th><th>Hester</th></tr></thead><tbody id="customerRows"></tbody></table>
+  </main>
+
+  <main id="hjelp" class="panel view help" style="display:none">
+    <h2>Hjelp / demo</h2>
+    <ul>
+      <li><b>Før start:</b> Brukeren sender e-postadresse og kontonummer. Firmaopplysninger registreres selv etter tilgang.</li>
+      <li><b>Mobilapp:</b> Åpne siden i Safari/Chrome og velg «Legg til på hjem-skjerm».</li>
+      <li><b>Digitale lister:</b> Excel, CSV eller eksport fra andre systemer kan muligens importeres automatisk.</li>
+      <li><b>Bilder og framgang:</b> Jobber kan ha bilder, før/etter-visning og kontroll over utvikling.</li>
+      <li><b>Usikker behandling:</b> Appen ber bruker velge manuelt i stedet for å gjette.</li>
+    </ul>
+  </main>
+
+  <main id="registrer" class="panel view help" style="display:none">
+    <h2>Registrer firma</h2>
+    <div class="notice">
+      <p><b>Dette er versjon 1.0 av Rett i Lomma Hovslager.</b></p>
+      <p>Du får systemet gratis den første måneden. Deretter er prisen kr 500 per måned. Vi setter pris på tilbakemeldinger om feil og forbedringsforslag.</p>
+      <p>I fremtidige versjoner kan appen kobles til andre apper, for eksempel regnskap.</p>
+      <p>For å få bruker sender du kontaktopplysninger og betalingsopplysninger på e-post.</p>
+      <p><a class="btn gold" href="mailto:greknuts@online.no?subject=Rettilomma%20hovslager&body=Hei%2C%0A%0AJeg%20%C3%B8nsker%20bruker%20til%20Rettilomma%20hovslager.%0A%0AKontaktopplysninger%3A%0ANavn%3A%0ATelefon%3A%0AE-post%3A%0A%0ABetalingsopplysninger%3A%0AKontonummer%3A%0A%0AMvh" style="text-decoration:none">Klikk her for å få bruker</a></p>
+    </div>
+  </main>
+</div>
+<div id="imgModal" class="img-modal" onclick="closePhoto()">
+  <div class="img-modal-box" onclick="event.stopPropagation()">
+    <button class="btn red" type="button" onclick="closePhoto()">Lukk</button>
+    <img id="modalImg" alt="Større hovbilde">
+    <p id="modalCaption"></p>
+  </div>
+</div>
+
+<script>
+const customers=[
+ {name:"Andersen Kunde 01", phone:"900 00 001", horses:["ANDOR","ANDROMEDA"]},
+ {name:"Andersen Kunde 02", phone:"900 00 002", horses:["ANDREA"]},
+ {name:"Andersen Kunde 06", phone:"900 00 006", horses:["ANDORRA"]},
+ {name:"Andersen Kunde 10", phone:"900 00 010", horses:["ANDREAS"]}
+];
+const treatments=[
+ ["Fullbeslag",2838.75],["Halvbeslag foran",2096.25],["Halvbeslag bak",2096.25],
+ ["Akupunktur",1125],["Akuttbesøk",1125],["Beskjæring",850],["Skoing spesial",3250],["Kontroll",550]
+];
+let jobs=[
+ {date:"2026-07-03",customer:"Andersen Kunde 10",horse:"ANDREAS",type:"Fullbeslag",price:2838.75,photos:0,invoiced:false},
+ {date:"2026-07-03",customer:"Andersen Kunde 02",horse:"ANDREA",type:"Fullbeslag",price:2971.25,photos:0,invoiced:false},
+ {date:"2026-07-03",customer:"Andersen Kunde 06",horse:"ANDORRA",type:"Fullbeslag",price:2706.25,photos:0,invoiced:false},
+ {date:"2026-07-02",customer:"Andersen Kunde 07",horse:"ANDROMEDA",type:"Halvbeslag foran",price:2096.25,photos:0,invoiced:false},
+ {date:"2026-07-02",customer:"Andersen Kunde 07",horse:"ANDROMEDA",type:"Halvbeslag bak",price:2096.25,photos:3,invoiced:false},
+ {date:"2026-07-01",customer:"Andersen Kunde 01",horse:"ANDOR",type:"Akupunktur",price:1125,photos:1,invoiced:false}
+];
+
+function fmt(n){return new Intl.NumberFormat('nb-NO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)}
+function render(){
+ document.getElementById('statJobs').textContent=jobs.length;
+ document.getElementById('statSum').textContent=fmt(jobs.filter(j=>!j.invoiced).reduce((s,j)=>s+j.price,0));
+ document.getElementById('statPhotos').textContent=jobs.reduce((s,j)=>s+j.photos,0);
+ document.getElementById('jobRows').innerHTML=jobs.map(j=>`<tr><td>${j.date}</td><td>${j.customer}</td><td>${j.horse||'–'}</td><td>${j.type}</td><td>${fmt(j.price)}</td><td class="photo">${j.photos?`📷 ${j.photos}`:'–'}</td><td><span class="tag ${j.invoiced?'ok':'no'}">${j.invoiced?'Ja':'Nei'}</span></td></tr>`).join('');
+ document.getElementById('jobCards').innerHTML=jobs.map(j=>`<div class="mobile-card"><h3>🐴 ${j.horse||'Ingen hest'}</h3><p>${fmt(j.price)}</p><p>👤 ${j.customer}</p><p>📅 ${j.date}</p><p>${j.type} · ${j.photos?`📷 ${j.photos}`:'Ingen bilder'}</p><div class="bar">${j.invoiced?'Fakturert':'Ikke fakturert'}</div></div>`).join('');
+ document.getElementById('customerRows').innerHTML=customers.map(c=>`<tr><td>${c.name}</td><td>${c.phone}</td><td>${c.horses.join(', ')}</td></tr>`).join('');
+}
+function initForms(){
+ const k=document.getElementById('kunde'), t=document.getElementById('type');
+ k.innerHTML='<option value="">Velg kunde</option>'+customers.map(c=>`<option>${c.name}</option>`).join('');
+ t.innerHTML='<option value="">Velg jobbtype/pris</option>'+treatments.map(x=>`<option value="${x[0]}">${x[0]} - ${fmt(x[1])}</option>`).join('');
+ k.onchange=()=>updateHorses(); updateHorses();
+}
+function updateHorses(){
+ const c=customers.find(x=>x.name===document.getElementById('kunde').value);
+ document.getElementById('hest').innerHTML='<option value="">Velg hest</option>'+(c?c.horses.map(h=>`<option>${h}</option>`).join(''):'');
+}
+function show(id){document.querySelectorAll('.view').forEach(v=>v.style.display='none');document.getElementById(id).style.display='block'}
+function openPhoto(fig){const img=fig.querySelector('img'), cap=fig.querySelector('figcaption');document.getElementById('modalImg').src=img.src;document.getElementById('modalCaption').textContent=cap.textContent+' - trykk utenfor bildet eller Lukk for å gå tilbake.';document.getElementById('imgModal').classList.add('open');}
+function closePhoto(){document.getElementById('imgModal').classList.remove('open');}
+function keepDemoVisible(){window.scrollTo({top:0,behavior:'smooth'});}
+function priceFor(type){return (treatments.find(x=>x[0]===type)||['',0])[1]}
+function saveJob(){
+ const kunde=document.getElementById('kunde').value, hest=document.getElementById('hest').value, type=document.getElementById('type').value;
+ if(!kunde||!hest||!type){document.getElementById('saveMsg').innerHTML='<div class="notice">Velg kunde, hest og jobbtype før lagring.</div>';return false}
+ jobs.unshift({date:document.getElementById('dato').value,customer:kunde,horse:hest,type,price:priceFor(type),photos:2,invoiced:false});
+ document.getElementById('saveMsg').innerHTML='<div class="notice">✅ Jobben er lagret. Neste steg: legg til bilde(r), eller start en ny jobb.</div>';
+ render(); show('jobber'); return true;
+}
+function demoRead(horse,type){
+ let cust=customers.find(c=>c.horses.includes(horse));
+ document.getElementById('kunde').value=cust.name; updateHorses();
+ document.getElementById('hest').value=horse; document.getElementById('type').value=type;
+ document.getElementById('readMsg').textContent=`Innlesing fant ${horse} og ${type}. Kontroller før lagring.`;
+}
+function uncertain(){
+ document.getElementById('type').value='';
+ document.getElementById('readMsg').textContent='Behandling ble ikke sikkert gjenkjent. Velg jobbtype/pris manuelt før lagring.';
+}
+
+let autoDemoTimer=null;
+let autoDemoStep=0;
+const autoDemoSteps=[
+ {view:'jobber', title:'1. Jobbliste', text:'Demoen starter med jobblisten, summer, bilder og fakturastatus.', run:()=>{}},
+ {view:'ny', title:'2. Ny jobb', text:'Deretter åpnes skjemaet for ny jobb.', run:()=>{document.getElementById('saveMsg').innerHTML='';}},
+ {view:'ny', title:'3. Innlesing', text:'Demoen fyller ut kunde, hest og behandling slik taleinnlesing kan gjøre.', run:()=>demoRead('ANDOR','Akupunktur')},
+ {view:'jobber', title:'4. Lagring', text:'Jobben lagres i demoen og vises øverst i jobblisten med bilder på jobben.', run:()=>saveJob()},
+ {view:'bilder', title:'5. Bilder viser framgang', text:'Bildedelen går saktere: små bilder viser sprekk, behandling og groing. Brukeren kan trykke på hvert bilde for å se det større.', duration:6200, run:()=>{}},
+ {view:'kunder', title:'6. Kunder og hester', text:'Så vises kunderegisteret med hestene som er koblet til hver kunde.', run:()=>{}},
+ {view:'hjelp', title:'7. Hjelp', text:'Demoen viser hvor brukeren finner hjelp, mobilapp og import av kundelister.', run:()=>{}},
+ {view:'registrer', title:'8. Registrer firma', text:'Til slutt vises Registrer firma i demoen, med vilkår for 1 måned gratis og knappen for å få bruker.', run:()=>{}}
+];
+function setDemoGuide(title,text,progress){
+ const titleEl=document.getElementById('demoTitle'), textEl=document.getElementById('demoText'), bar=document.getElementById('demoProgress');
+ if(titleEl) titleEl.textContent=title;
+ if(textEl) textEl.textContent=text;
+ if(bar) bar.style.width=Math.max(0,Math.min(100,progress))+'%';
+}
+function runAutoDemoStep(){
+ const step=autoDemoSteps[autoDemoStep];
+ if(!step){finishAutoDemo(); return;}
+ show(step.view);
+ keepDemoVisible();
+ setDemoGuide(step.title, step.text, ((autoDemoStep+1)/autoDemoSteps.length)*100);
+ if(typeof step.run==='function') step.run();
+ autoDemoStep++;
+ if(autoDemoStep < autoDemoSteps.length){
+   autoDemoTimer=setTimeout(runAutoDemoStep, step.duration || 2600);
+ } else {
+   autoDemoTimer=setTimeout(finishAutoDemo, 4200);
+ }
+}
+function startAutoDemo(reset){
+ const startBtn=document.getElementById('demoStartBtn');
+ const stopBtn=document.getElementById('demoStopBtn');
+ if(startBtn){ startBtn.textContent='Start demo på nytt'; startBtn.style.display='none'; }
+ if(stopBtn) stopBtn.style.display='inline-block';
+ if(reset){ autoDemoStep=0; document.getElementById('demoGuide').classList.remove('demo-finished'); }
+ clearTimeout(autoDemoTimer);
+ runAutoDemoStep();
+}
+function stopAutoDemo(){
+ clearTimeout(autoDemoTimer);
+ setDemoGuide('Demoen er stoppet','Brukeren kan klikke rundt selv eller starte demoen på nytt.',100);
+ const stopBtn=document.getElementById('demoStopBtn'); if(stopBtn) stopBtn.style.display='none';
+ const startBtn=document.getElementById('demoStartBtn'); if(startBtn){ startBtn.textContent='Start demo på nytt'; startBtn.style.display='inline-block'; }
+ document.getElementById('demoGuide').classList.add('demo-finished');
+}
+function finishAutoDemo(){
+ clearTimeout(autoDemoTimer);
+ show('registrer');
+ keepDemoVisible();
+ setDemoGuide('Demoen er ferdig','Registrer firma vises nå i demoen under. Der ligger den eneste knappen for å få bruker.',100);
+
+ const stopBtn=document.getElementById('demoStopBtn');
+ if(stopBtn) stopBtn.style.display='none';
+ const startBtn=document.getElementById('demoStartBtn'); if(startBtn){ startBtn.textContent='Start demo på nytt'; startBtn.style.display='inline-block'; }
+ document.getElementById('demoGuide').classList.add('demo-finished');
+}
+initForms(); render();
+window.addEventListener('load',()=>setTimeout(()=>startAutoDemo(true),700));
+</script>
+</body>
+</html>
