@@ -1,20 +1,85 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/demo",
-      "destination": "/demo/index.html"
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/public/demo/index.html"
     },
     {
-      "source": "/hovslager",
-      "destination": "/hovslager/index.html"
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/public/demo/$1"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "hov.rettilomma.com"
+        }
+      ],
+      "destination": "/hovslager-login.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "handverker.rettilomma.com"
+        }
+      ],
+      "destination": "/handverker-login.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "veterinaer.rettilomma.com"
+        }
+      ],
+      "destination": "/behandler-login.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "behandler.rettilomma.com"
+        }
+      ],
+      "destination": "/behandler-login.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/public/demo/index.html"
+    },
+    {
+      "source": "/hov",
+      "destination": "/hovslager-login.html"
     },
     {
       "source": "/handverker",
-      "destination": "/handverker/index.html"
+      "destination": "/handverker-login.html"
     },
     {
       "source": "/veterinaer",
-      "destination": "/veterinaer/index.html"
+      "destination": "/behandler-login.html"
+    },
+    {
+      "source": "/behandler",
+      "destination": "/behandler-login.html"
     }
   ]
 }
