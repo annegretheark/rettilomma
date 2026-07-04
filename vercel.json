@@ -1,25 +1,49 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "hov.rettilomma.com" }],
-      "destination": "/hovslager/index.html"
+      "has": [
+        {
+          "type": "host",
+          "value": "hov.rettilomma.com"
+        }
+      ],
+      "destination": "/hovslager/index.html",
+      "permanent": false
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "hov.rettilomma.com" }],
-      "destination": "/hovslager/:path*"
+      "has": [
+        {
+          "type": "host",
+          "value": "hov.rettilomma.com"
+        }
+      ],
+      "destination": "/hovslager/:path*",
+      "permanent": false
     },
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "demo.hovslager.rettilomma.com" }],
-      "destination": "/demo/index.html"
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/demo/index.html",
+      "permanent": false
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "demo.hovslager.rettilomma.com" }],
-      "destination": "/demo/:path*"
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/demo/:path*",
+      "permanent": false
     }
   ]
 }
