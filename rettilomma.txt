@@ -1,0 +1,55 @@
+ Volume in drive C is OS
+ Volume Serial Number is AE53-DFA0
+
+ Directory of C:\inetpub\wwwroot\rettilomma
+
+04.07.2026  13:44    <DIR>          .
+02.07.2026  08:01    <DIR>          ..
+20.06.2026  23:35    <DIR>          .agents
+31.05.2026  00:13               141 .gitignore
+30.06.2026  00:42    <DIR>          arne
+04.06.2026  19:20             1ÿ277 auth.js
+04.06.2026  19:20             4ÿ586 backup.js
+30.06.2026  22:06    <DIR>          backupsqltabell
+30.06.2026  22:06    <DIR>          behandler
+18.06.2026  20:22             8ÿ054 behandler-login.html
+03.06.2026  21:24    <DIR>          bilder
+30.06.2026  22:06    <DIR>          css
+13.06.2026  08:16    <DIR>          demo
+03.06.2026  21:24             3ÿ921 direkteFakturaVarer.md
+15.06.2026  19:23    <DIR>          docs
+03.06.2026  21:24               171 eksempel_priser.csv
+03.06.2026  21:24             5ÿ992 filer.txt
+03.07.2026  00:03    <DIR>          handverker
+13.06.2026  09:35             1ÿ112 handverker-login.html
+03.06.2026  21:24               884 handverker-login.old
+30.06.2026  22:06           425ÿ784 handverkerapp.zip
+30.06.2026  22:06           396ÿ179 handverkerjs.zip
+04.07.2026  13:41    <DIR>          hovslager
+15.06.2026  20:37             1ÿ787 hovslager-login-tekst.js
+03.06.2026  21:24             1ÿ004 hovslager-login.html
+03.06.2026  21:24    <DIR>          import
+17.06.2026  10:40             1ÿ033 index.html
+03.06.2026  21:24               512 index.old
+03.06.2026  21:24               384 installasjon.rd
+30.06.2026  00:42    <DIR>          js
+17.06.2026  22:51    <DIR>          konsulent
+30.06.2026  22:06             1ÿ199 LES-MEG-KUNDESIKKERHET.txt
+15.06.2026  18:06    <DIR>          lise
+15.06.2026  22:47             6ÿ442 logs.txt
+04.06.2026  19:20               307 moduler.js
+25.06.2026  21:23    <DIR>          Ny mappe
+30.06.2026  22:06               549 reset.html
+04.07.2026  13:44                 0 rettilomma.txt
+30.06.2026  22:06    <DIR>          script
+30.06.2026  22:06    <DIR>          sql
+04.06.2026  19:20                49 state.js
+03.06.2026  21:24    <DIR>          supabase
+30.06.2026  22:06                46 tatus
+05.06.2026  06:25           237ÿ714 utfil.txt
+04.07.2026  13:42               576 vercel.json
+15.06.2026  14:18    <DIR>          veterinaer
+04.06.2026  19:23             3ÿ816 veterinaer-login.html
+03.06.2026  21:24               257 web.config
+              27 File(s)      1ÿ103ÿ776 bytes
+              21 Dir(s)  223ÿ682ÿ473ÿ984 bytes free

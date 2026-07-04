@@ -8,11 +8,11 @@
           "value": "demo.hovslager.rettilomma.com"
         }
       ],
-      "destination": "/public/demo/index.html"
+      "destination": "/hovslager/public/demo/index.html"
     },
     {
       "source": "/demo",
-      "destination": "/public/demo/index.html"
+      "destination": "/hovslager/public/demo/index.html"
     },
     {
       "source": "/handverker",
