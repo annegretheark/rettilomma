@@ -1,12 +1,20 @@
 {
   "rewrites": [
     {
-      "source": "/",
+      "source": "/demo",
       "destination": "/demo/index.html"
     },
     {
-      "source": "/demo",
-      "destination": "/demo/index.html"
+      "source": "/hovslager",
+      "destination": "/hovslager/index.html"
+    },
+    {
+      "source": "/handverker",
+      "destination": "/handverker/index.html"
+    },
+    {
+      "source": "/veterinaer",
+      "destination": "/veterinaer/index.html"
     }
   ]
 }
