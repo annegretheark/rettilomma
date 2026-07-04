@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/demo",
-      "destination": "/public/demo/index.html"
+      "destination": "/hovslager/public/demo/index.html"
     }
   ]
 }
