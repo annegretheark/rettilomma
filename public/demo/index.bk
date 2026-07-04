@@ -40,8 +40,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
 
   <section id="demoGuide" class="demo-guide">
     <div>
-      <h2 id="demoTitle">Velkommen til versjon 1.0 av Rett i Lomma Hovslager</h2>
-      <p id="demoText">Intro: Dette er versjon 1.0 av Rett i Lomma Hovslager. Du får én måned gratis. Deretter koster systemet kr 500 per måned. Klikk på bildene for større bilde. Når du er klar, trykk «Start demo».</p>
+      <h2 id="demoTitle">Velkommen til Rett i Lomma Hovslager versjon 1.0</h2>
+      <p id="demoText">Dette er en demonstrasjon av versjon 1.0. Du får én måned gratis. Deretter koster systemet kun kr 500 per måned. Klikk på et bilde for å se det i større format.</p>
     </div>
     <div class="demo-progress" aria-label="Demo fremdrift"><span id="demoProgress"></span></div>
     <div class="actions">
@@ -88,7 +88,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px so
 
   <main id="bilder" class="panel view" style="display:none">
     <h2>Bilder og framgang</h2>
-    <p class="muted photo-intro"><b>Bilder kan vise framgang i jobben.</b> Legg inn bilder av hoven før behandling, under arbeid og ved kontroll. Klikk på bildene for større bilde.</p>
+    <p class="muted photo-intro"><b>Bilder kan vise framgang i jobben.</b> Legg inn bilder av hoven før behandling, under arbeid og ved kontroll. Klikk på et bilde for å se det i større format.</p>
     <div class="photo-demo real-photos">
       <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Hoof%20crack.jpg" alt="Ekte hovfoto med sprekk" loading="lazy"><figcaption>1. Sprekk</figcaption></figure>
       <figure onclick="openPhoto(this)"><img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/American%20Cream%20Draft%20being%20trimmed%20(2204771424).jpg" alt="Ekte foto av hov som trimmes" loading="lazy"><figcaption>2. Behandling</figcaption></figure>
@@ -203,15 +203,14 @@ function uncertain(){
 let autoDemoTimer=null;
 let autoDemoStep=0;
 const autoDemoSteps=[
- {view:'jobber', title:'1. Intro', text:'Velkommen til versjon 1.0. Klikk på bildene for større bilde. Trykk Start demo for å begynne.', run:()=>{}},
- {view:'jobber', title:'2. Jobbliste', text:'Her vises jobblisten med summer, bilder og fakturastatus.', run:()=>{}},
+ {view:'jobber', title:'1. Jobbliste', text:'Demoen starter med jobblisten, summer, bilder og fakturastatus.', run:()=>{}},
  {view:'ny', title:'2. Ny jobb', text:'Deretter åpnes skjemaet for ny jobb.', run:()=>{document.getElementById('saveMsg').innerHTML='';}},
- {view:'ny', title:'4. Innlesing', text:'Demoen fyller ut kunde, hest og behandling slik taleinnlesing kan gjøre.', run:()=>demoRead('ANDOR','Akupunktur')},
- {view:'jobber', title:'5. Lagring', text:'Jobben lagres i demoen og vises øverst i jobblisten med bilder på jobben.', run:()=>saveJob()},
- {view:'bilder', title:'6. Bilder viser framgang', text:'Bildedelen går saktere: små bilder viser sprekk, behandling og groing. Brukeren kan trykke på hvert bilde for å se det større.', duration:6200, run:()=>{}},
- {view:'kunder', title:'7. Kunder og hester', text:'Så vises kunderegisteret med hestene som er koblet til hver kunde.', run:()=>{}},
- {view:'hjelp', title:'8. Hjelp', text:'Demoen viser hvor brukeren finner hjelp, mobilapp og import av kundelister.', run:()=>{}},
- {view:'registrer', title:'9. Registrer firma', text:'Til slutt vises Registrer firma i demoen, med vilkår for 1 måned gratis og knappen for å få bruker.', run:()=>{}}
+ {view:'ny', title:'3. Innlesing', text:'Demoen fyller ut kunde, hest og behandling slik taleinnlesing kan gjøre.', run:()=>demoRead('ANDOR','Akupunktur')},
+ {view:'jobber', title:'4. Lagring', text:'Jobben lagres i demoen og vises øverst i jobblisten med bilder på jobben.', run:()=>saveJob()},
+ {view:'bilder', title:'5. Bilder viser framgang', text:'Bildedelen går saktere: små bilder viser sprekk, behandling og groing. Brukeren kan trykke på hvert bilde for å se det større.', duration:6200, run:()=>{}},
+ {view:'kunder', title:'6. Kunder og hester', text:'Så vises kunderegisteret med hestene som er koblet til hver kunde.', run:()=>{}},
+ {view:'hjelp', title:'7. Hjelp', text:'Demoen viser hvor brukeren finner hjelp, mobilapp og import av kundelister.', run:()=>{}},
+ {view:'registrer', title:'8. Registrer firma', text:'Til slutt vises Registrer firma i demoen, med vilkår for 1 måned gratis og knappen for å få bruker.', run:()=>{}}
 ];
 function setDemoGuide(title,text,progress){
  const titleEl=document.getElementById('demoTitle'), textEl=document.getElementById('demoText'), bar=document.getElementById('demoProgress');
@@ -261,7 +260,7 @@ function finishAutoDemo(){
  document.getElementById('demoGuide').classList.add('demo-finished');
 }
 initForms(); render();
-window.addEventListener('load',()=>{ show('jobber'); });
+window.addEventListener('load',()=>setTimeout(()=>startAutoDemo(true),700));
 </script>
 </body>
 </html>
