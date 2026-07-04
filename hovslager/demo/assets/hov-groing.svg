@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#20301f"/><stop offset="1" stop-color="#0f172a"/></linearGradient>
+<radialGradient id="hoof" cx="50%" cy="35%" r="70%"><stop stop-color="#c28b5d"/><stop offset="0.55" stop-color="#8b5a34"/><stop offset="1" stop-color="#3e291a"/></radialGradient>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2"/><feColorMatrix type="saturate" values="0.2"/><feBlend mode="multiply" in2="SourceGraphic"/></filter>
+</defs>
+<rect width="420" height="280" rx="28" fill="url(#bg)"/>
+<ellipse cx="210" cy="148" rx="96" ry="112" fill="url(#hoof)" filter="url(#grain)"/>
+<path d="M130 158c9 74 45 106 80 106s71-32 80-106c-22 26-49 38-80 38s-58-12-80-38z" fill="#0b111b" opacity=".93"/>
+<path d="M146 76c36 17 92 17 128 0" fill="none" stroke="#d6a06a" stroke-width="13" stroke-linecap="round" opacity=".85"/>
+<path d="M146 189c38 15 90 15 128 0" fill="none" stroke="#22c55e" stroke-width="10" stroke-linecap="round"/>
+<path d="M147 118c42 15 84 15 126 0M142 145c46 13 90 13 136 0M145 172c43 11 87 11 130 0" fill="none" stroke="#f6c991" stroke-width="3" opacity=".45"/>
+<path d="M185 86c8 34 8 75-2 118M235 86c-8 34-8 75 2 118" fill="none" stroke="#3b2416" stroke-width="4" opacity=".5"/>
+<circle cx="164" cy="214" r="5" fill="#cbd5e1"/><circle cx="210" cy="226" r="5" fill="#cbd5e1"/><circle cx="256" cy="214" r="5" fill="#cbd5e1"/>
+<text x="210" y="36" fill="#f8fafc" font-family="Arial" font-size="24" font-weight="700" text-anchor="middle">Groing / framgang</text>
+<text x="210" y="262" fill="#bbf7d0" font-family="Arial" font-size="17" font-weight="700" text-anchor="middle">Ny vekst kan følges over tid</text>
+</svg>

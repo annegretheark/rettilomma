@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280">
+<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#334155"/><stop offset="1" stop-color="#0f172a"/></linearGradient></defs>
+<rect width="420" height="280" rx="28" fill="url(#b)"/>
+<ellipse cx="210" cy="152" rx="98" ry="118" fill="#7c4a28"/>
+<path d="M128 155c8 82 45 118 82 118s74-36 82-118c-18 34-47 48-82 48s-64-14-82-48z" fill="#101827"/>
+<path d="M144 70c38 20 94 20 132 0" fill="none" stroke="#c08457" stroke-width="16" stroke-linecap="round"/>
+<path d="M135 180c40 22 110 22 150 0" fill="none" stroke="#d9a83f" stroke-width="10" stroke-linecap="round" stroke-dasharray="22 18"/>
+<circle cx="164" cy="215" r="7" fill="#94a3b8"/><circle cx="256" cy="215" r="7" fill="#94a3b8"/>
+<text x="210" y="36" fill="#f8fafc" font-family="Arial" font-size="28" font-weight="700" text-anchor="middle">Før</text>
+</svg>

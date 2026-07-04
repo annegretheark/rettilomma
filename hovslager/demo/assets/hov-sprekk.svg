@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#2b2118"/><stop offset="1" stop-color="#0f172a"/></linearGradient>
+<radialGradient id="hoof" cx="50%" cy="35%" r="70%"><stop stop-color="#b98555"/><stop offset="0.55" stop-color="#7a4a2b"/><stop offset="1" stop-color="#3a2417"/></radialGradient>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0.15"/><feBlend mode="multiply" in2="SourceGraphic"/></filter>
+</defs>
+<rect width="420" height="280" rx="28" fill="url(#bg)"/>
+<ellipse cx="210" cy="150" rx="102" ry="116" fill="url(#hoof)" filter="url(#grain)"/>
+<path d="M126 158c10 78 47 110 84 110s74-32 84-110c-20 29-49 42-84 42s-64-13-84-42z" fill="#0b111b" opacity=".92"/>
+<path d="M148 74c38 18 86 18 124 0" fill="none" stroke="#d6a06a" stroke-width="13" stroke-linecap="round" opacity=".85"/>
+<path d="M188 84l12 28-16 24 20 30-12 35 18 28" fill="none" stroke="#1f130d" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M188 84l12 28-16 24 20 30-12 35 18 28" fill="none" stroke="#f3d0a5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".35"/>
+<path d="M138 188c36 17 108 17 144 0" fill="none" stroke="#d9a83f" stroke-width="9" stroke-linecap="round" stroke-dasharray="18 15"/>
+<text x="210" y="36" fill="#f8fafc" font-family="Arial" font-size="24" font-weight="700" text-anchor="middle">Sprekk før behandling</text>
+<text x="210" y="262" fill="#fde68a" font-family="Arial" font-size="17" font-weight="700" text-anchor="middle">Sprekk dokumenteres med bilde</text>
+</svg>

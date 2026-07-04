@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280">
+<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1e3a2f"/><stop offset="1" stop-color="#0f172a"/></linearGradient></defs>
+<rect width="420" height="280" rx="28" fill="url(#b)"/>
+<ellipse cx="210" cy="152" rx="94" ry="112" fill="#8b5a34"/>
+<path d="M127 158c8 78 45 112 83 112s75-34 83-112c-20 29-49 41-83 41s-63-12-83-41z" fill="#111827"/>
+<path d="M150 78c34 16 86 16 120 0" fill="none" stroke="#d6a06a" stroke-width="14" stroke-linecap="round"/>
+<path d="M137 184c38 18 108 18 146 0" fill="none" stroke="#22c55e" stroke-width="12" stroke-linecap="round"/>
+<circle cx="160" cy="215" r="6" fill="#cbd5e1"/><circle cx="210" cy="228" r="6" fill="#cbd5e1"/><circle cx="260" cy="215" r="6" fill="#cbd5e1"/>
+<text x="210" y="36" fill="#f8fafc" font-family="Arial" font-size="28" font-weight="700" text-anchor="middle">Etter</text>
+</svg>
