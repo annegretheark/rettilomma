@@ -1,15 +1,12 @@
 {
-  "redirects": [
+  "rewrites": [
     {
       "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "demo.hovslager.rettilomma.com"
-        }
-      ],
-      "destination": "/demo",
-      "permanent": false
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo/index.html"
     }
   ]
 }
