@@ -2,6 +2,16 @@
   "rewrites": [
     {
       "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/hovslager/public/demo/index.html"
+    },
+    {
+      "source": "/demo",
       "destination": "/hovslager/public/demo/index.html"
     },
     {
