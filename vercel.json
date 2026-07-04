@@ -1,17 +1,25 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": false,
-  "trailingSlash": false,
-  "redirects": [
+  "rewrites": [
     {
-      "source": "/hov",
-      "destination": "/hovslager-login.html",
-      "permanent": false
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/demo/index.html"
     },
     {
-      "source": "/demo",
-      "destination": "/demo/hovslagerdemo/index.html",
-      "permanent": false
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.hovslager.rettilomma.com"
+        }
+      ],
+      "destination": "/demo/:path*"
     }
   ]
 }
