@@ -7,4 +7,5 @@ js/backup-supabase.ps1
 js/hovslager/config.old
 *.old
 env.ps1
-*.ps1
+*.ps1*.zip
+*.zip
