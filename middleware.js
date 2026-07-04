@@ -3,7 +3,7 @@ export default function middleware(request) {
   const host = request.headers.get("host") || "";
 
   if (host === "hov.rettilomma.com" && (url.pathname === "/" || url.pathname === "")) {
-    url.pathname = "/hovslager-login.html";
+    url.pathname = "/hovslager/index.html";
     return Response.redirect(url, 307);
   }
 
