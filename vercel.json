@@ -2,23 +2,23 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "hov.rettilomma.com"
-        }
-      ],
-      "destination": "/hovslager/:path*"
+      "source": "/",
+      "has": [{ "type": "host", "value": "hov.rettilomma.com" }],
+      "destination": "/hovslager/index.html"
     },
     {
       "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "demo.hovslager.rettilomma.com"
-        }
-      ],
+      "has": [{ "type": "host", "value": "hov.rettilomma.com" }],
+      "destination": "/hovslager/:path*"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "demo.hovslager.rettilomma.com" }],
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "demo.hovslager.rettilomma.com" }],
       "destination": "/demo/:path*"
     }
   ]
