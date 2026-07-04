@@ -1,23 +1,25 @@
 <!doctype html>
 <html lang="no">
 <head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
 <script>
-(function(){
-  var host = location.hostname;
-  var path = location.pathname;
-  if ((host === "hov.rettilomma.com") && (path === "/" || path === "")) {
-    location.replace("/hovslager-login.html");
+(function () {
+  var host = window.location.hostname;
+
+  if (host === "demo.hovslager.rettilomma.com") {
+    window.location.replace("/demo/index.html");
     return;
   }
-  if ((host === "demo.hovslager.rettilomma.com") && (path === "/" || path === "")) {
-    location.replace("/demo/hovslagerdemo/index.html");
+
+  if (host === "hov.rettilomma.com") {
+    window.location.replace("/hovslager-login.html");
     return;
   }
 })();
 </script>
 
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rett i Lomma</title>
 <style>
 body{font-family:Arial,sans-serif;background:#151819;color:white;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -31,9 +33,9 @@ a{display:block;margin:14px auto;padding:16px;max-width:360px;border-radius:10px
 <h1>Rett i Lomma</h1>
 <p>Velg system</p>
 <a href="/hovslager-login.html">Hovslager</a>
-<a href="/handverker">Håndverker</a>
-<a href="/veterinaer">Veterinær / behandler</a>
-<a class="small" href="/demo/hovslagerdemo/index.html">Demo Hovslager</a>
+<a href="/handverker-login.html">Håndverker</a>
+<a href="/veterinaer-login.html">Veterinær / behandler</a>
+<a class="small" href="/demo/index.html">Demo Hovslager</a>
 </div>
 </body>
 </html>
