@@ -506,8 +506,7 @@
   document.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('#adminMenyPanel button') : null;
     if (!btn) return;
-    setTimeout(closeAdminMenu, 0);
-    setTimeout(closeAdminMenu, 80);
+    closeAdminMenu();
   }, true);
   document.addEventListener('handPartialerLastet', normalizeTopbar);
   document.addEventListener('DOMContentLoaded', function(){ setTimeout(normalizeTopbar, 0); setTimeout(normalizeTopbar, 300); });

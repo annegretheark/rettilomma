@@ -235,3 +235,119 @@ textarea[name="kommentar"]{
 /* PROD 7069: demp blinking fra oppstarts- og rollejusteringer */
 html:not(.ril-role-ready) #handTopbarKort{visibility:hidden;}
 #appSide.ril-starter > section:not(#handTopbarKort){display:none!important;}
+
+
+/* RIL trygg login-stil v1 */
+#loginSide,
+#nyttPassordSide{
+  max-width:430px;
+  margin:7vh auto;
+  border-radius:22px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,#151c28,#101722);
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+  padding:32px;
+}
+#loginSide h1,
+#nyttPassordSide h2{text-align:center;margin-top:0;}
+#loginSide input[type="email"],
+#loginSide input[type="password"],
+#nyttPassordSide input[type="password"]{width:100%;}
+#loginKnapp,
+#lagreNyttPassordKnapp{width:100%;margin-top:14px;font-weight:700;}
+#glemtPassordKnapp,
+#tilbakeTilLoginKnapp{width:100%;}
+
+/* === RIL HANDVERKER: lik kortbredde i appen 2026-07-05 ===
+   Gjør toppkortet like bredt som innholdskortene og sentrerer de vanligste modulene.
+   Dette er kun layout/CSS og endrer ikke login- eller app-logikk. */
+:root{
+  --hand-card-width: 760px;
+  --hand-wide-card-width: 900px;
+}
+
+#handTopbarKort,
+#timerSide,
+#jobberSide,
+#fravaerSide,
+#bilerSide,
+#varerSide,
+#kundeSide,
+#kunderSide,
+#tilbudSide,
+#fakturaSide,
+#ansattSide,
+#ansatteSide,
+#lonnPanel,
+#lonnSide,
+#modulerSide,
+#testSide,
+#testpanelSide{
+  width: 100% !important;
+  max-width: var(--hand-card-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+#firmaSide,
+#adminSide,
+#sysadminPanelSide,
+#handSystemadminBlokk,
+#adminKonsollSide{
+  width: 100% !important;
+  max-width: var(--hand-wide-card-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+#handTopbarKort .topplinje{
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+#handTopbarKort button,
+#handTopbarKort .knapp,
+#handTopbarKort a[role="button"]{
+  margin: 0 !important;
+}
+
+#handTopbarKort #loggUtKnapp{
+  margin-left: auto !important;
+}
+
+@media (max-width: 820px){
+  #handTopbarKort,
+  #timerSide,
+  #jobberSide,
+  #fravaerSide,
+  #bilerSide,
+  #varerSide,
+  #kundeSide,
+  #kunderSide,
+  #tilbudSide,
+  #fakturaSide,
+  #ansattSide,
+  #ansatteSide,
+  #lonnPanel,
+  #lonnSide,
+  #modulerSide,
+  #testSide,
+  #testpanelSide,
+  #firmaSide,
+  #adminSide,
+  #sysadminPanelSide,
+  #handSystemadminBlokk,
+  #adminKonsollSide{
+    max-width: 100% !important;
+  }
+
+  #handTopbarKort #loggUtKnapp{
+    margin-left: 0 !important;
+  }
+}
+
+/* RIL 20260706: fjern blinking/overganger i Admin-meny. */
+#adminMenyGruppe,#adminMenyKnapp,#adminMenyPanel,#handTopbarKort{animation:none!important;transition:none!important;}
+#adminMenyPanel{opacity:1!important;}

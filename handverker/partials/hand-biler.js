@@ -3155,20 +3155,44 @@ window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
 
   async function renderVisibleCarList() {
     const box = ensureBox();
-    box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3><p>Laster biler...</p></div>';
+    box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Min bil</h3><p>Laster biler...</p></div>';
 
     const { cars, employees } = await loadCarsAndEmployees();
     const activeId = el("bilLagerBilValg")?.value || localStorage.getItem("aktivBilId") || window.aktivBilId || "";
 
+    // Vanlig bruker skal ikke se hele bilregisteret.
+    // Admin beholder full liste. Vanlig bruker ser egen tildelte bil + valgt bil hvis han må bytte.
+    const vanligBrukerBilIds = new Set();
+    const erAdminListe = window.erAdmin === true && localStorage.getItem("rilAdminModus") === "ja";
+    if (!erAdminListe) {
+      const epost = String(window.innloggetEpost || window.handInnloggetEpost || localStorage.getItem("handInnloggetEpost") || localStorage.getItem("innloggetEpost") || "").toLowerCase();
+      const ansattId = String(window.innloggetAnsattId || localStorage.getItem("innloggetAnsattId") || "");
+      (employees || []).forEach(a => {
+        const aId = String(a?.id || "");
+        const aEpost = String(a?.epost || a?.email || "").toLowerCase();
+        const tilhorerBruker = (ansattId && aId === ansattId) || (epost && aEpost === epost);
+        if (tilhorerBruker && a?.standard_bil_id) vanligBrukerBilIds.add(String(a.standard_bil_id));
+      });
+      if (activeId) vanligBrukerBilIds.add(String(activeId));
+    }
+
+    const visibleCars = erAdminListe ? cars : cars.filter(car => vanligBrukerBilIds.has(String(car.id)));
+
+
     if (!cars.length) {
-      box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3><p>Ingen biler funnet. Dropdownen er også tom.</p></div>';
+      box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Min bil</h3><p>Ingen biler funnet. Dropdownen er også tom.</p></div>';
+      return;
+    }
+
+    if (!erAdminListe && !visibleCars.length) {
+      box.innerHTML = '<div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px;"><h3 style="margin-top:0;">Min bil</h3><p>Du har ikke fått tildelt standardbil ennå. Velg bil under <strong>Bil som skal fylles</strong> hvis du må fylle en bil.</p></div>';
       return;
     }
 
     box.innerHTML = `
       <div style="margin:16px 0 18px 0; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px; overflow-x:auto;">
-        <h3 style="margin-top:0;">Eksisterende biler og tildelt ansatt</h3>
-        <p class="info">Klikk på en bil for å se varer på bilen.</p>
+        <h3 style="margin-top:0;">${erAdminListe ? "Eksisterende biler og tildelt ansatt" : "Min bil"}</h3>
+        <p class="info">${erAdminListe ? "Klikk på en bil for å se varer på bilen." : "Dette er bilen som er valgt for deg. Du kan bytte bil i feltet under hvis du må."}</p>
         <table class="bil-tabell" style="width:100%; border-collapse:collapse;">
           <thead>
             <tr>
@@ -3178,7 +3202,7 @@ window.kobleBilLagerListeKnappRobust = kobleBilLagerListeKnappRobust;
             </tr>
           </thead>
           <tbody>
-            ${cars.map(car => {
+            ${visibleCars.map(car => {
               const selected = String(car.id) === String(activeId);
               return `<tr class="ril-synlig-bilrad" data-bil-id="${esc(car.id)}" style="cursor:pointer;${selected ? 'background:rgba(34,197,94,.14); outline:2px solid rgba(34,197,94,.6);' : ''}">
                 <td style="padding:8px; border-top:1px solid rgba(255,255,255,.12); font-weight:bold;">${esc(car.navn || "Bil")}</td>

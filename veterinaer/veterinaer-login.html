@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Veterinær innlogging - Rett i Lomma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body{font-family:Arial,sans-serif;background:#151819;color:#f3f4f6;margin:0;padding:20px;}
+    .kort{background:#171a1b;max-width:500px;margin:40px auto;padding:22px;border-radius:12px;border:1px solid #2b3135;box-shadow:0 2px 10px rgba(0,0,0,.22);}
+    label{display:block;margin-top:12px;font-weight:bold;}
+    input{width:100%;box-sizing:border-box;padding:11px;margin-top:5px;border:1px solid #4b5563;border-radius:8px;background:#f8fafc;color:#111827;}
+    button{padding:11px 14px;margin:12px 6px 0 0;border:0;border-radius:8px;background:#1f6feb;color:white;cursor:pointer;font-size:15px;}
+    button.secondary{background:#555;}
+    button:disabled{opacity:.6;cursor:not-allowed;}
+    .melding{margin-top:12px;color:#fca5a5;font-weight:bold;white-space:pre-wrap;line-height:1.35;}
+    .ok{color:#86efac;}
+    .lite{color:#cbd5e1;font-size:13px;line-height:1.35;}
+    a{color:#93c5fd;}
+
+    @media (max-width:600px){body{padding:10px;} .kort{max-width:none;margin:10px auto;padding:16px;} input,button{font-size:16px;min-height:44px;} button{width:100%;}}
+  </style>
+<script src="js/vet-password-redirect.js"></script>
+</head>
+<body>
+  <div class="kort">
+    <h1>Veterinær</h1>
+    <p class="lite">Logg inn med e-post og passord.</p>
+
+    <label for="epost">E-post</label>
+    <input id="epost" type="email" autocomplete="username">
+
+    <label for="passord">Passord</label>
+    <input id="passord" type="password" autocomplete="current-password">
+
+    <button id="loggInnKnapp" type="button">Logg inn</button>
+    <button id="glemtPassordKnapp" type="button" class="secondary">Glemt passord</button>
+
+    <div id="melding" class="melding"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    function tekst(id){ return String(document.getElementById(id)?.value || "").trim(); }
+    function visMelding(tekst, ok){
+      const el = document.getElementById("melding");
+      if (!el) return;
+      el.textContent = tekst || "";
+      el.classList.toggle("ok", !!ok);
+    }
+    function loginSideUrl(){
+      return window.location.href.split("#")[0].split("?")[0];
+    }
+    function nyttPassordUrl(){
+      // Veterinærmodulen skal alltid sende til veterinaer-nytt-passord.html i samme mappe.
+      // Når filene ligger under /rettilomma/veterinaer/, blir dette /rettilomma/veterinaer-nytt-passord.html.
+      return new URL("veterinaer-nytt-passord.html", window.location.href.split("#")[0].split("?")[0]).href;
+    }
+    function sjekkSupabase(){
+      if (!window.supabaseClient || !window.supabaseClient.auth) {
+        throw new Error("Supabase er ikke lastet. Sjekk at js/config.js finnes og at internett/CDN er tilgjengelig.");
+      }
+    }
+
+    async function loggInn(){
+      const email = tekst("epost").toLowerCase();
+      const password = tekst("passord");
+      if (!email || !password) { visMelding("Skriv e-post og passord."); return; }
+      try { sjekkSupabase(); } catch(e) { visMelding(e.message); return; }
+      visMelding("Logger inn ...", true);
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) { visMelding("Innlogging feilet: " + error.message); return; }
+      localStorage.setItem("rettilommaSistEpost", email);
+      window.location.href = "index.html";
+    }
+
+    async function sjekkAppBruker(email){
+      try {
+        const { data, error } = await supabaseClient
+          .from("vet_klinikk_brukere")
+          .select("id, epost, navn, aktiv")
+          .eq("epost", email)
+          .limit(1);
+        if (error) return { ok:false, tekst:"Kunne ikke sjekke app-bruker: " + error.message };
+        if (!data || !data.length) return { ok:false, tekst:"E-posten finnes ikke i vet_klinikk_brukere." };
+        if (data[0].aktiv === false) return { ok:false, tekst:"Brukeren finnes i appen, men er satt inaktiv." };
+        return { ok:true, tekst:"Brukeren finnes i app-tabellen." };
+      } catch(e) {
+        return { ok:false, tekst:"Kunne ikke sjekke app-bruker: " + (e && e.message ? e.message : e) };
+      }
+    }
+
+    async function glemtPassord(){
+      const knapp = document.getElementById("glemtPassordKnapp");
+      const email = tekst("epost").toLowerCase();
+      if (!email) { visMelding("Skriv inn e-postadressen først, og trykk Glemt passord igjen."); return; }
+      try { sjekkSupabase(); } catch(e) { visMelding(e.message); return; }
+
+      const redirectTo = nyttPassordUrl();
+      knapp.disabled = true;
+      visMelding("Sjekker bruker og sender passordlenke ...", true);
+
+      const appSjekk = await sjekkAppBruker(email);
+
+      try {
+        const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) {
+          visMelding(
+            "Supabase avviste passordlenken: " + error.message +
+            "\n\nApp-sjekk: " + appSjekk.tekst +
+            "\n\nRedirect URL som brukes:\n" + redirectTo +
+            "\n\nLegg denne inn i Supabase: Authentication > URL Configuration > Redirect URLs."
+          );
+          return;
+        }
+
+        // Viktig: Supabase returnerer ofte OK selv om e-posten ikke finnes i Authentication > Users.
+        // Derfor viser vi ikke lenger bare 'sendt' uten forklaring.
+        visMelding(
+          "Forespørselen er sendt til Supabase.\n\n" +
+          "App-sjekk: " + appSjekk.tekst + "\n\n" +
+          "Hvis e-posten fortsatt ikke kommer, er årsaken nesten alltid én av disse:\n" +
+          "1. E-posten finnes i app-tabellen, men IKKE i Supabase Authentication > Users.\n" +
+          "2. Supabase har ikke godkjent/konfigurert e-postutsending for prosjektet.\n" +
+          "3. E-posten ligger i spam/søppelpost.\n" +
+          "4. Redirect URL er ikke lagt inn i Supabase.\n\n" +
+          "Redirect URL som må være tillatt:\n" + redirectTo,
+          true
+        );
+      } catch (e) {
+        visMelding("Teknisk feil ved sending av passordlenke: " + (e && e.message ? e.message : e));
+      } finally {
+        knapp.disabled = false;
+      }
+    }
+
+    document.getElementById("loggInnKnapp")?.addEventListener("click", loggInn);
+    document.getElementById("glemtPassordKnapp")?.addEventListener("click", glemtPassord);
+    document.getElementById("passord")?.addEventListener("keydown", e => { if (e.key === "Enter") loggInn(); });
+  </script>
+</body>
+</html>

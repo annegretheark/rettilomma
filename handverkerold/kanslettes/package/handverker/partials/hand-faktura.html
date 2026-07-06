@@ -1,0 +1,75 @@
+<section id="fakturaSide" class="admin-only kort skjult" data-modul="faktura">
+      <h2>Faktura</h2>
+      <p>Velg kunde og lag faktura kun for den kunden. Timer og varelinjer som allerede er fakturert blir ikke tatt med.</p>
+
+      <label for="fakturaKundeValg">Kunde som skal faktureres</label>
+      <select id="fakturaKundeValg" class="hand-kunde-select">
+        <option value="">Velg kunde</option>
+      </select>
+
+      <div id="fakturaMelding" class="melding"></div>
+
+      <button id="pdfKnapp" type="button">Lag faktura til valgt kunde</button>
+      <button id="excelKnapp" type="button">MVA Excel</button>
+      <button id="purringKnapp" type="button">Kj&#248;r purring</button>
+      <button id="purrAlleKnapp" type="button">Purr alle forfalte</button>
+      <button id="fakturaKopiKnapp" type="button">Fakturakopi</button>
+      <button id="kreditnotaKnapp" type="button">Kreditnota</button>
+
+      <div id="fakturaKopiOmrade" style="display:none; margin-top:15px;">
+        <label for="fakturaKopiValg">Velg faktura for kopi</label>
+
+        <select id="fakturaKopiValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtFakturaKopiKnapp" type="button">
+          Skriv ut fakturakopi
+        </button>
+      </div>
+
+      <div id="kreditnotaOmrade" style="display:none; margin-top:15px;">
+        <label id="kreditnotaLabel" for="kreditnotaFakturaValg">
+          Velg faktura for kreditnota
+        </label>
+
+        <select id="kreditnotaFakturaValg">
+          <option value="">Velg faktura</option>
+        </select>
+
+        <button id="skrivUtKreditnotaKnapp" type="button">
+          Skriv ut kreditnota
+        </button>
+      </div>
+
+      <hr>
+
+      <h3>&#216;konomioversikt</h3>
+      <p>Se hva som ikke er fakturert, hva som er fakturert, og hva som er ubetalt eller forfalt.</p>
+
+      <div class="rad">
+        <div>
+          <label for="okonomiFraDato">Fra dato</label>
+          <input id="okonomiFraDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiTilDato">Til dato</label>
+          <input id="okonomiTilDato" type="date">
+        </div>
+
+        <div>
+          <label for="okonomiKundeValg">Kunde</label>
+          <select id="okonomiKundeValg" class="hand-kunde-select">
+            <option value="">Alle kunder</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="okonomiOversiktKnapp" type="button">Vis &#248;konomioversikt</button>
+
+      <div id="okonomiMelding" class="melding"></div>
+      <div id="okonomiDetalj" class="okonomi-detalj" style="display:none;"></div>
+      <div id="okonomiOversikt"></div>
+
+</section>

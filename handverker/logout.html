@@ -8,9 +8,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Logger ut...</title>
   <link rel="stylesheet" href="css/hand-main.css?v=20260620-logout">
+  <style>
+    body{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#070b10,#111827);}
+    .logout-kort{max-width:420px;text-align:center;border-radius:22px;padding:34px;background:#151c28;box-shadow:0 18px 50px rgba(0,0,0,.35);}
+    .spinner{width:42px;height:42px;border:4px solid rgba(255,255,255,.18);border-top-color:#60a5fa;border-radius:50%;margin:0 auto 18px;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
 </head>
 <body>
-  <section class="kort">
+  <section class="logout-kort">
+    <div class="spinner"></div>
     <h2>Logger ut...</h2>
     <p>Vent et øyeblikk.</p>
   </section>
@@ -19,31 +26,17 @@
   (function(){
     try {
       const keep = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        keep.push(localStorage.key(i));
-      }
+      for (let i = 0; i < localStorage.length; i++) keep.push(localStorage.key(i));
       keep.forEach(function(k){
-        if (
-          k === "rettilommaValgtModul" ||
-          k === "rettilommaSistEpost" ||
-          k === "handInnloggetEpost" ||
-          k === "innloggetEpost" ||
-          k === "handInnloggetRolle" ||
-          k === "rilAdminModus" ||
-          k === "rilSysadminModus" ||
-          k === "aktivBilId" ||
-          k === "aktivBilNavn" ||
-          k === "aktivFirmaId" ||
-          k === "firmaId" ||
-          k === "firma_id" ||
-          k.startsWith("sb-")
-        ) {
+        if (k === "rettilommaValgtModul" || k === "rettilommaSistEpost" || k === "handInnloggetEpost" ||
+            k === "innloggetEpost" || k === "handInnloggetRolle" || k === "rilAdminModus" ||
+            k === "rilSysadminModus" || k === "aktivBilId" || k === "aktivBilNavn" ||
+            k === "aktivFirmaId" || k === "firmaId" || k === "firma_id" || k.startsWith("sb-")) {
           localStorage.removeItem(k);
         }
       });
       sessionStorage.clear();
     } catch(e) {}
-
     window.location.replace("index.html?logout=1&t=" + Date.now());
   })();
   </script>

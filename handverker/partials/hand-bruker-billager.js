@@ -80,8 +80,10 @@
     }
 
     select.value = id;
-    select.disabled = true;
-    select.dataset.rilLåstTilAktivBil = "1";
+    // Vanlig bruker skal få foreslått egen/aktiv bil, men ikke låses.
+    // Da kan han bytte bil hvis han må fylle en annen bil.
+    select.disabled = false;
+    delete select.dataset.rilLåstTilAktivBil;
     window.aktivBilId = id;
     localStorage.setItem("aktivBilId", id);
     if (option && option.textContent) {
@@ -197,8 +199,9 @@
           window.aktivBilNavn = valgt.textContent || "";
           localStorage.setItem("aktivBilNavn", valgt.textContent || "");
         }
-        setTimeout(begrensBilValgTilAktivBil, 0);
+        // Ikke lås tilbake til standardbil etter manuell endring.
         if (typeof window.tegnFyllBilListe === "function") setTimeout(window.tegnFyllBilListe, 20);
+        if (typeof window.rilSkjulAndreBilerForVanligBruker === "function") setTimeout(window.rilSkjulAndreBilerForVanligBruker, 40);
       }
     }
   }, true);

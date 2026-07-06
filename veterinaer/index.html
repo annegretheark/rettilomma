@@ -174,6 +174,84 @@
     .vet-vipps-betaling { color:#d40000; font-weight:800; font-size:18px; margin-top:14px; }
     .vet-vipps-betaling .lite { color:#d40000; font-weight:700; font-size:14px; }
 
+
+
+    /* Mobiltilpasning: bedre vinduer/kort, faner, skjema og tabeller på små skjermer */
+    @media (max-width: 760px) {
+      html { -webkit-text-size-adjust: 100%; }
+      body { padding:8px; font-size:15px; }
+      .kort { max-width:none; width:100%; box-sizing:border-box; margin:0 0 10px 0; padding:12px; border-radius:10px; }
+      h1 { font-size:24px; line-height:1.15; }
+      h2 { font-size:21px; line-height:1.2; }
+      h3 { font-size:18px; line-height:1.25; }
+      input, select, textarea, button { font-size:16px; min-height:44px; }
+      button { width:100%; margin:5px 0; padding:11px 12px; }
+      .vet-meny, .lager-faner { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+      .vet-meny button, .lager-faner button { width:100%; margin:0; }
+      .vet-undermeny { grid-column:1 / -1; display:grid; grid-template-columns:1fr; gap:6px; width:auto; padding:8px; }
+      .vet-undermeny.skjult { display:none !important; }
+      .rad { grid-template-columns:1fr !important; gap:8px; }
+      .okonomi-grid { grid-template-columns:1fr !important; gap:8px; }
+      .okonomi-boks { padding:10px; }
+      .minbil-varelinje { grid-template-columns:1fr !important; gap:6px; }
+      .vare-regneark-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .vare-regneark { min-width:560px; }
+      #minBilFyllListe .vet-linje-kort,
+      #fyllBilFlerListe .vet-linje-kort,
+      #fyllBilFyllListe .vet-linje-kort {
+        grid-template-columns:26px 1fr !important;
+        gap:6px !important;
+        padding:7px !important;
+      }
+      #minBilFyllListe input[type="number"],
+      #fyllBilFlerListe input[type="number"],
+      #fyllBilFyllListe input[type="number"] {
+        grid-column:1 / -1;
+        width:100% !important;
+        min-width:0 !important;
+      }
+      #minBilFyllListe .lite,
+      #fyllBilFlerListe .lite,
+      #fyllBilFyllListe .lite { white-space:normal !important; }
+      .pasientliste-tittel { white-space:normal; font-size:19px; }
+      #eierSide .vet-klikk-rad,
+      #eierSide .vet-linje-kort,
+      #dyreeierListe .listekort { min-height:38px !important; padding:7px 8px !important; }
+      #eierSide .vet-klikk-rad span,
+      #eierSide .vet-linje-kort span,
+      #dyreeierListe .listekort span { white-space:normal !important; }
+      .vet-dyr-mini-bilde { width:44px !important; height:38px !important; }
+
+      .okonomi-tabell,
+      .okonomi-tabell thead,
+      .okonomi-tabell tbody,
+      .okonomi-tabell tr,
+      .okonomi-tabell th,
+      .okonomi-tabell td { display:block; width:100%; box-sizing:border-box; }
+      .okonomi-tabell thead { display:none; }
+      .okonomi-tabell tr { border:1px solid #374151; border-radius:10px; background:#1f2427; margin:0 0 10px 0; padding:8px; }
+      .okonomi-tabell td { border:0; padding:5px 0; display:grid; grid-template-columns:104px 1fr; gap:8px; align-items:start; }
+      .okonomi-tabell td::before { color:#cbd5e1; font-weight:bold; }
+      .okonomi-tabell td:nth-child(1)::before { content:"Dato"; }
+      .okonomi-tabell td:nth-child(2)::before { content:"Dyreeier"; }
+      .okonomi-tabell td:nth-child(3)::before { content:"Dyr"; }
+      .okonomi-tabell td:nth-child(4)::before { content:"Type"; }
+      .okonomi-tabell td:nth-child(5)::before { content:"Status"; }
+      .okonomi-tabell td:nth-child(6)::before { content:"Beløp"; }
+      .okonomi-tabell td:nth-child(7)::before { content:"Fakturanr"; }
+      .okonomi-tabell td:nth-child(8)::before { content:"Handling"; }
+      .okonomi-tabell td button { width:100%; margin:3px 0; min-height:36px; font-size:14px; padding:8px 10px; }
+    }
+
+    @media (max-width: 430px) {
+      body { padding:6px; }
+      .kort { padding:10px; }
+      .vet-meny, .lager-faner { grid-template-columns:1fr; }
+      .okonomi-tabell td { grid-template-columns:88px 1fr; }
+      h1 { font-size:22px; }
+      h2 { font-size:20px; }
+    }
+
   </style>
 </head>
 <body>
@@ -689,16 +767,17 @@ localStorage.setItem("rettilommaValgtModul", "veterinar");
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../js/core/config.js"></script>
-<script src="../js/veterinaer/vet-app.js?v=20260615stabilmeny1"></script>
-<script src="../js/veterinaer/vet-klinikk-priser-bilder.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-lager-bil.js?v=20260615pdf1"></script>
-<script src="../js/veterinaer/vet-eier-dyr-journal.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-faktura-okonomi.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-backup-import-admin.js?v=20260611split"></script>
-<script src="../js/veterinaer/vet-pasient-admin.js?v=20260615stabilmeny1"></script>
-<script src="../js/veterinaer/vet-journal-lager.js?v=20260612minimal"></script>
-<script src="../js/veterinaer/vet-admin-ekstra.js?v=20260615stabilmeny1"></script>
+<script src="js/config.js"></script>
+<script src="js/vet-app.js?v=20260705v4"></script>
+<script src="js/vet-klinikk-priser-bilder.js?v=20260705v4"></script>
+<script src="js/beh-prisliste.js?v=20260705v4"></script>
+<script src="js/vet-lager-bil.js?v=20260705v4"></script>
+<script src="js/vet-eier-dyr-journal.js?v=20260705v4"></script>
+<script src="js/vet-faktura-okonomi.js?v=20260705v6"></script>
+<script src="js/vet-backup-import-admin.js?v=20260705v4"></script>
+<script src="js/vet-pasient-admin.js?v=20260705v4"></script>
+<script src="js/vet-journal-lager.js?v=20260705v4"></script>
+<script src="js/vet-admin-ekstra.js?v=20260705v4"></script>
 <script>
 async function loggUtVeterinaer() {
   try {
@@ -707,7 +786,7 @@ async function loggUtVeterinaer() {
     console.error(e);
   }
 
-  window.location.href = "../veterinaer-login.html";
+  window.location.href = "veterinaer-login.html";
 }
 </script>
 
@@ -743,7 +822,7 @@ window.stoppTale = stoppTale;
 
 
 
-<script src="../js/veterinaer/vet-pasient-journal-ui.js?v=20260612NYBEHANDLINGFAST2"></script>
+<script src="js/vet-pasient-journal-ui.js?v=20260705v4"></script>
 
 <script>
 /* ENDLIG: Ny behandling fra alle pasientliste-knapper */

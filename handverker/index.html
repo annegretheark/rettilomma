@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="no" class="hand-role-locking">
+<html lang="no">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -7,7 +7,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Håndverker - Rett i Lomma</title>
-  <link rel="stylesheet" href="css/hand-main.css?v=20260623-titlefix">
+  <link rel="stylesheet" href="css/hand-main.css?v=20260706-admin-no-blink-final">
+  <link rel="stylesheet" href="css/hand-mobile.css?v=20260706-admin-no-blink-final">
 
 
 <style id="ril-clean-admin-menu-css">
@@ -52,9 +53,112 @@
   #visModulerKnapp,
   #velgModulKnapp { display:none !important; visibility:hidden !important; }
 </style>
+
+
+<style id="ril-admin-no-blink-final-20260706-css">
+  #adminMenyGruppe, #adminMenyKnapp, #adminMenyPanel { animation: none !important; transition: none !important; }
+  #adminMenyPanel { opacity: 1 !important; }
+  #adminMenyPanel[hidden], #adminMenyPanel:not(.apen):not(.open) { display: none !important; visibility: hidden !important; pointer-events: none !important; }
+  #adminMenyPanel.apen, #adminMenyPanel.open { display: block !important; visibility: visible !important; pointer-events: auto !important; opacity: 1 !important; }
+</style>
+<script id="ril-admin-no-blink-final-20260706">
+(function(){
+  'use strict';
+  if (window.__rilAdminNoBlinkFinal20260706) return;
+  window.__rilAdminNoBlinkFinal20260706 = true;
+
+  var sideIds = ['adminKonsollSide','timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','bilerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','testSide','testpanelSide','lonnPanel','lonnSide','modulerSide','sysadminPanelSide','adminSide'];
+  var lastClick = 0;
+  var lockUntil = 0;
+
+  function byId(id){ return document.getElementById(id); }
+  function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
+  function isAdmin(){
+    var r = norm(window.innloggetRolle || window.handInnloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle') || localStorage.getItem('rolle') || localStorage.getItem('handRolle'));
+    return window.erAdmin === true || window.erSystemadmin === true || r === 'admin' || r === 'administrator' || r === 'eier' || r === 'owner' || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin';
+  }
+  function hideSide(id){
+    var el = byId(id);
+    if(!el) return;
+    el.hidden = true;
+    el.classList.add('hidden','skjult');
+    el.classList.remove('ril-active-side');
+    el.style.setProperty('display','none','important');
+    el.setAttribute('aria-hidden','true');
+  }
+  function openMenu(){
+    var g = byId('adminMenyGruppe'), p = byId('adminMenyPanel'), b = byId('adminMenyKnapp'), app = byId('appSide');
+    if(!p) return;
+    lockUntil = Date.now() + 900;
+    document.documentElement.classList.add('ril-topmenu-only');
+    document.documentElement.classList.remove('ril-side-selected');
+    if(app){ app.hidden = false; app.classList.remove('skjult','hidden','ril-starter'); app.style.removeProperty('display'); app.style.removeProperty('visibility'); }
+    sideIds.forEach(hideSide);
+    if(g) g.classList.add('apen','open');
+    p.hidden = false;
+    p.classList.add('apen','open');
+    p.setAttribute('aria-hidden','false');
+    p.style.setProperty('display','block','important');
+    p.style.setProperty('visibility','visible','important');
+    p.style.setProperty('pointer-events','auto','important');
+    p.style.setProperty('opacity','1','important');
+    if(b) b.setAttribute('aria-expanded','true');
+  }
+  function closeMenu(){
+    var g = byId('adminMenyGruppe'), p = byId('adminMenyPanel'), b = byId('adminMenyKnapp');
+    if(g) g.classList.remove('apen','open');
+    if(p){
+      p.hidden = true;
+      p.classList.remove('apen','open');
+      p.setAttribute('aria-hidden','true');
+      p.style.setProperty('display','none','important');
+      p.style.setProperty('visibility','hidden','important');
+      p.style.setProperty('pointer-events','none','important');
+    }
+    if(b) b.setAttribute('aria-expanded','false');
+  }
+  function toggleMenu(){
+    if(!isAdmin()){ closeMenu(); return; }
+    var p = byId('adminMenyPanel');
+    var open = !!(p && !p.hidden && p.getAttribute('aria-hidden') !== 'true' && p.style.display !== 'none');
+    if(open) closeMenu(); else openMenu();
+  }
+
+  window.rilAdminMenuStableOpen = openMenu;
+  window.rilAdminMenuStableClose = closeMenu;
+  window.rilAdminMenuStableToggle = toggleMenu;
+
+  window.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest && e.target.closest('#adminMenyKnapp');
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    var now = Date.now();
+    if(now - lastClick < 250) return false;
+    lastClick = now;
+    toggleMenu();
+    return false;
+  }, true);
+
+  var mo = new MutationObserver(function(){
+    var p = byId('adminMenyPanel');
+    if(!p || Date.now() > lockUntil) return;
+    if(p.classList.contains('apen') || p.classList.contains('open')){
+      p.hidden = false;
+      p.style.setProperty('display','block','important');
+      p.style.setProperty('visibility','visible','important');
+      p.style.setProperty('pointer-events','auto','important');
+      p.setAttribute('aria-hidden','false');
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function(){ mo.observe(document.documentElement, {subtree:true, attributes:true, attributeFilter:['style','class','hidden','aria-hidden']}); });
+})();
+</script>
+
 </head>
 <body>
-  <img id="fakturaLogoBilde" src="../bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
+  <img id="fakturaLogoBilde" src="bilder/logo.png" style="position:absolute; left:-9999px; width:1px; height:1px;">
 
   <div data-hand-partial="partials/hand-login.html"></div>
 
@@ -145,129 +249,53 @@
 
 
 
-<script id="hand-minbil-prod-7084">
-/* PROD 7084: Min bil for ansatte. Denne ligger i index tidlig, etter partials og før alle andre moduler,
-   slik at knappen virker selv om senere admin/bestillingsscript har feil. */
-(function(){
-  'use strict';
-  function $(id){ return document.getElementById(id); }
-  function show(el){
-    if(!el) return;
-    el.hidden = false;
-    el.style.display = '';
-    el.style.visibility = 'visible';
-    if(el.classList) el.classList.remove('skjult','hidden','modul-skjult','ril-starter');
-    if(el.removeAttribute) el.removeAttribute('aria-hidden');
-  }
-  function hide(el){
-    if(!el) return;
-    el.hidden = true;
-    el.style.display = 'none';
-    if(el.classList) el.classList.add('skjult','hidden');
-    if(el.setAttribute) el.setAttribute('aria-hidden','true');
-  }
-  var sideIds = ['timerSide','jobberSide','fravaerSide','tilbudSide','backupSide','fakturaSide','varerSide','kundeSide','kunderSide','ansattSide','ansatteSide','firmaSide','testSide','testpanelSide','lonnPanel','lonnSide','bilBestillingerSide','adminBilBestillinger','adminBilBestillingerPanel','modulerSide','sysadminPanelSide','adminSide','adminKonsollSide'];
-  function ensureBilerSide(){
-    var side = $('bilerSide');
-    if(side) return side;
-    var app = $('appSide') || document.body;
-    side = document.createElement('section');
-    side.id = 'bilerSide';
-    side.className = 'kort';
-    side.setAttribute('data-modul','biler');
-    side.innerHTML = '<h2>Min bil / lager</h2><div id="bilMelding" class="melding"></div><div id="bilLagerListe"></div><div id="bilLagerFyllListe"></div>';
-    app.appendChild(side);
-    return side;
-  }
-  function initBiler(){
-    ['lastBiler','lastBilLager','lastBilerOgBilLager','handLastBiler','fyllAlleBilvalg','fyllBilvalg','fyllBilvalgTrygt','begrensBilLagerForVanligBruker','fyllBilLagerVareValg','fyllVarevalgFraAktivBil'].forEach(function(fn){
-      if(typeof window[fn] === 'function') setTimeout(function(){ try{ window[fn](); }catch(e){ console.warn('Min bil init feilet:', fn, e); } }, 20);
-    });
-  }
-  function openMinBil(ev){
-    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
-    var app = $('appSide');
-    show(app);
-    if(app){ app.classList.remove('ril-starter','skjult','hidden'); app.hidden=false; app.style.display=''; app.removeAttribute('aria-hidden'); }
-    sideIds.forEach(function(id){ hide($(id)); });
-    var side = ensureBilerSide();
-    show(side);
-    var h = $('handSideOverskrift') || document.querySelector('#appSide h1');
-    if(h) h.textContent = 'Min bil / fyll lager';
-    var h2 = side.querySelector('h2');
-    if(h2) h2.textContent = 'Min bil / lager';
-    initBiler();
-    [40,120,300,700].forEach(function(ms){ setTimeout(function(){ show(app); if(app) app.classList.remove('ril-starter'); show(side); }, ms); });
-    return false;
-  }
-  window.handOpenMinBilHard = openMinBil;
-  window.handOpenMinBil = openMinBil;
-  window.visBilerSide = openMinBil;
-  window.handVisMinBilAnsatt = openMinBil;
-  function bind(){
-    var b = $('visBilerKnapp');
-    if(!b) return;
-    b.type = 'button';
-    b.textContent = 'Min bil / fyll lager';
-    b.setAttribute('data-modul','biler');
-    b.setAttribute('data-role','ansatt-bil');
-    b.onclick = openMinBil;
-    show(b);
-  }
-  document.addEventListener('click', function(e){
-    var b = e.target && e.target.closest ? e.target.closest('#visBilerKnapp,[data-role="ansatt-bil"]') : null;
-    if(!b) return;
-    return openMinBil(e);
-  }, true);
-  document.addEventListener('handPartialerLastet', function(){ bind(); setTimeout(bind,50); setTimeout(bind,300); });
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
-  window.addEventListener('load', function(){ bind(); setTimeout(bind,300); });
-})();
-</script>
 
   <script charset="UTF-8" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script charset="UTF-8" src="../js/core/config.js?v=20260620-adminfix"></script>
-<script charset="UTF-8" src="../js/core/state.js?v=999"></script>
-<script charset="UTF-8" src="../js/core/moduler.js?v=7060"></script>
-<script charset="UTF-8" src="../js/handverker/hand-role-core.js?v=7076"></script>
-<script charset="UTF-8" src="../js/handverker/hand-navigation.js?v=9001"></script>
-<script charset="UTF-8" src="../js/handverker/hand-auth.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-sysadm-authority.js?v=20260701-structured"></script>
-<script charset="UTF-8" src="../js/handverker/hand-kunder.js?v=7089"></script>
-<script charset="UTF-8" src="../js/handverker/hand-prosjekter.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-ansatte.js?v=20260620-adminfix"></script>
-<script charset="UTF-8" src="../js/core/brevhode.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-firma.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-timer.js?v=20260620-adminfix"></script>
-<script charset="UTF-8" src="../js/handverker/hand-admin-timer-ansatt.js?v=7058"></script>
-<script charset="UTF-8" src="../js/handverker/hand-utils.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-faktura-data.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-vipps-faktura-fix.js?v=20260608"></script>
-<script charset="UTF-8" src="../js/handverker/hand-pdf-layout.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-faktura-pdf.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-faktura.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-okonomi.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-faktura-valg.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-backup.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-lonn.js?v=7100"></script>
-<script charset="UTF-8" src="../js/handverker/hand-fravaer.js?v=7090"></script>
-<script charset="UTF-8" src="../js/handverker/hand-tilbud.js?v=1"></script>
-<script charset="UTF-8" src="../js/handverker/hand-tester.js?v=5003"></script>
-<script charset="UTF-8" src="../js/handverker/hand-app.js?v=20260623-auth-no-admin-blink"></script>
-<script charset="UTF-8" src="../js/handverker/hand-systemadmin.js?v=20260701-structured"></script>
-<script charset="UTF-8" src="../js/handverker/hand-moduler-sysadmin.js?v=20260625-v13-redigerfirma"></script>
-<script charset="UTF-8" src="../js/handverker/hand-varer.js?v=7076"></script>
-<script charset="UTF-8" src="../js/handverker/hand-biler.js?v=7086"></script>
-<script charset="UTF-8" src="../js/handverker/hand-lager-patch.js?v=7300"></script>
-<script charset="UTF-8" src="../js/handverker/hand-jobber-rolle.js?v=7068"></script>
-<script charset="UTF-8" src="../js/handverker/hand-bruker-billager.js?v=7084"></script>
-<script charset="UTF-8" src="../js/handverker/hand-ui.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="js/core/config.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="js/core/state.js?v=999"></script>
+<script charset="UTF-8" src="js/handverker/hand-auth-authority.js?v=20260706-sysadm-lock1"></script>
+<script charset="UTF-8" src="js/core/moduler.js?v=7060"></script>
+<script charset="UTF-8" src="js/handverker/hand-role-core.js?v=20260706-email-authfix"></script>
+<script charset="UTF-8" src="js/handverker/hand-navigation.js?v=20260706-admin-no-blink-final"></script>
+<script charset="UTF-8" src="js/handverker/hand-auth.js?v=20260706-sysadm-lock1"></script>
+<script charset="UTF-8" src="js/handverker/hand-sysadm-authority.js?v=20260701-structured"></script>
+<script charset="UTF-8" src="js/handverker/hand-kunder.js?v=7089"></script>
+<script charset="UTF-8" src="js/handverker/hand-prosjekter.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-ansatte.js?v=20260706-authlocalfix3"></script>
+<script charset="UTF-8" src="js/core/brevhode.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-firma.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="js/handverker/hand-timer.js?v=20260620-adminfix"></script>
+<script charset="UTF-8" src="js/handverker/hand-admin-timer-ansatt.js?v=7058"></script>
+<script charset="UTF-8" src="js/handverker/hand-utils.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-faktura-data.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-vipps-faktura-fix.js?v=20260608"></script>
+<script charset="UTF-8" src="js/handverker/hand-pdf-layout.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-faktura-pdf.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-faktura.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="js/handverker/hand-okonomi.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="js/handverker/hand-faktura-valg.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-backup.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-lonn.js?v=7100"></script>
+<script charset="UTF-8" src="js/handverker/hand-fravaer.js?v=7090"></script>
+<script charset="UTF-8" src="js/handverker/hand-tilbud.js?v=1"></script>
+<script charset="UTF-8" src="js/handverker/hand-tester.js?v=5003"></script>
+<script charset="UTF-8" src="js/handverker/hand-app.js?v=20260623-auth-no-admin-blink"></script>
+<script charset="UTF-8" src="js/handverker/hand-systemadmin.js?v=20260701-structured"></script>
+<script charset="UTF-8" src="js/handverker/hand-moduler-sysadmin.js?v=20260625-v13-redigerfirma"></script>
+<script charset="UTF-8" src="js/handverker/hand-varer.js?v=7076"></script>
+<script charset="UTF-8" src="js/handverker/hand-biler.js?v=7087"></script>
+<script charset="UTF-8" src="js/handverker/hand-lager-patch.js?v=7300"></script>
+<script charset="UTF-8" src="js/handverker/hand-jobber-rolle.js?v=7068"></script>
+<script charset="UTF-8" src="js/handverker/hand-bruker-billager.js?v=20260705-no-unknown-db-fields"></script>
+<script charset="UTF-8" src="js/handverker/hand-ui.js?v=20260706-sysadm-lock1"></script>
+<script charset="UTF-8" src="js/handverker/hand-auth-authority.js?v=20260706-sysadm-lock1-late"></script>
+<script charset="UTF-8" src="js/handverker/hand-sysadm-full-ui-fix.js?v=20260706-fullsysadm"></script>
 
-<script charset="UTF-8" src="../js/handverker/hand-admin-vanlig-fix.js?v=20260621-vanligadmin"></script>
+<script charset="UTF-8" src="js/handverker/hand-admin-vanlig-fix.js?v=20260621-vanligadmin"></script>
 
 <!-- 7079: gamle kunde-lock scripts fjernet fordi de brukte hand_ansatt og filtrerte bort kunder. -->
 <!-- hand-title-auto-fix fjernet: ga Moduler-blink. -->
-<script charset="UTF-8" src="../js/handverker/hand-admin-bestillinger-no-pdf-final.js?v=7091"></script>
+<script charset="UTF-8" src="js/handverker/hand-admin-bestillinger-no-pdf-final.js?v=20260705-no-unknown-db-fields"></script>
 
 
 <script charset="UTF-8">
@@ -431,7 +459,7 @@
         vare_id:l.vare_id||null, varenr:l.varenr||v.varenr||v.varenr||v.nr||null, varenavn:l.varenavn||v.navn||v.varenavn||v.beskrivelse||null,
         bruker_epost:epost, bruker_navn:innloggetNavn()||epost, opprettet_av:epost,
         bestilt:l.antall, antall:l.antall, levert:0, mottatt:0, godkjent:0, rest:l.antall,
-        minimum_antall:l.minimum_antall||0, status:'venter', opprettet:now, created_at:now
+        minimum_antall:l.minimum_antall||0, status:'venter', opprettet:now
       }; });
       var res=await insertTrygt('hand_bil_bestilling', payload);
       if(res.error){ melding('Kunne ikke sende bestilling til admin: '+(res.error.message||res.error), true); return false; }
@@ -503,10 +531,18 @@
   }
   async function loadOrders(){
     var c=client(); if(!c) throw new Error('Supabase er ikke lastet.');
-    var q=c.from('hand_bil_bestilling').select('*').order('opprettet',{ascending:false}).limit(1000);
+    // Ikke bruk .order('created_at') eller andre ukjente DB-felt her.
+    // Tabellen hos deg har ikke created_at. Vi henter rader først og sorterer trygt i nettleseren.
+    var q=c.from('hand_bil_bestilling').select('*').limit(1000);
     try{ var fid=await firmaId(); if(fid) q=q.eq('firma_id', fid); }catch(e){}
     var r=await q; if(r.error) throw r.error;
-    return hydrateRows(r.data||[]);
+    var rows=(r.data||[]).slice();
+    rows.sort(function(a,b){
+      var av=String(a.opprettet || a.dato || a.bekreftet_at || a.id || '');
+      var bv=String(b.opprettet || b.dato || b.bekreftet_at || b.id || '');
+      return bv.localeCompare(av);
+    });
+    return hydrateRows(rows);
   }
   function renderOrders(rows){
     var msg=$('rilOrdersMsg'), content=$('rilOrdersContent'); if(!content) return;
@@ -541,7 +577,7 @@
       var ins=await insertTrygt('hand_bil_lager', [{firma_id:fid,bil_id:row.bil_id,vare_id:row.vare_id,antall:antall,minimum_antall:intNum(row.minimum_antall||0)}]);
       if(ins.error) return {ok:false,error:ins.error.message};
     }
-    await insertTrygt('hand_lagerlogg', [{firma_id:fid,type:'bestilling',handling:'ansatt_godkjent_lagt_pa_bil',bil_id:row.bil_id,bil_navn:row.bil_navn||null,vare_id:row.vare_id,varenr:row.varenr||null,varenavn:row.varenavn||null,antall:antall,hentet_av:admin||null,bruker_epost:row.bruker_epost||null,opprettet:nowIso(),created_at:nowIso()}]);
+    await insertTrygt('hand_lagerlogg', [{firma_id:fid,type:'bestilling',handling:'ansatt_godkjent_lagt_pa_bil',bil_id:row.bil_id,bil_navn:row.bil_navn||null,vare_id:row.vare_id,varenr:row.varenr||null,varenavn:row.varenavn||null,antall:antall,hentet_av:admin||null,bruker_epost:row.bruker_epost||null,opprettet:nowIso()}]);
     return {ok:true};
   }
   async function confirmGroup(ev){
@@ -766,7 +802,7 @@
 
 
 
-<!-- Kunde-overstyringer/tenant-lock fjernet i 7079. Kundelogikk ligger kun i ../js/handverker/hand-kunder.js -->
+<!-- Kunde-overstyringer/tenant-lock fjernet i 7079. Kundelogikk ligger kun i js/handverker/hand-kunder.js -->
 
 
 
@@ -878,7 +914,7 @@
   function erSysadm(){
     var r = norm(window.innloggetRolle || window.handInnloggetRolle || localStorage.getItem('handInnloggetRolle') || localStorage.getItem('innloggetRolle'));
     var e = norm(localStorage.getItem('rettilommaSistEpost') || localStorage.getItem('handInnloggetEpost') || localStorage.getItem('innloggetEpost') || '');
-    return window.erSystemadmin === true || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin' || e === 'greknuts@online.no';
+    return window.erSystemadmin === true || r === 'sysadm' || r === 'sysadmin' || r === 'systemadmin';
   }
   function firmaId(){ return String(($('redigerHandKundeId') && $('redigerHandKundeId').value) || '').trim(); }
   function panel(){ return $('handFirmaModulerPanel'); }
@@ -948,8 +984,88 @@
 })();
 </script>
 
-<script charset="UTF-8" src="../js/handverker/hand-send-admin-hardfix.js?v=20260626-hardfix"></script>
+<script charset="UTF-8" src="js/handverker/hand-send-admin-hardfix.js?v=20260626-hardfix"></script>
 
 <!-- ril-admin-menu-final-20260626 fjernet: håndteres stabilt i hand-navigation.js -->
+
+
+<script id="ril-login-black-screen-rescue">
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function isVisible(node){
+    if(!node) return false;
+    var cs = window.getComputedStyle(node);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && node.offsetParent !== null;
+  }
+  function show(node){
+    if(!node) return;
+    node.hidden = false;
+    node.classList.remove('skjult','hidden');
+    node.style.display = '';
+    node.style.visibility = 'visible';
+  }
+  function hide(node){
+    if(!node) return;
+    node.hidden = true;
+    node.classList.add('skjult');
+    node.style.display = 'none';
+  }
+  function fix(){
+    var login = el('loginSide');
+    var app = el('appSide');
+    var html = document.documentElement;
+
+    /* Hvis appen er åpnet, men rolle-lås gjør skjermen sort for vanlig bruker */
+    if(app && app.style.display !== 'none' && !login?.offsetParent){
+      html.classList.remove('hand-role-locking');
+      html.classList.add('ril-role-ready','hand-role-ready','ril-auth-ready');
+      app.classList.remove('ril-starter','skjult','hidden');
+      app.hidden = false;
+      app.style.display = '';
+      app.style.visibility = 'visible';
+      var timer = el('timerSide');
+      if(timer && !isVisible(timer) && !document.querySelector('#appSide section:not(.skjult):not(.hidden)')){
+        show(timer);
+      }
+    }
+
+    /* Hvis ingen ting vises, vis login i stedet for sort skjerm */
+    var somethingVisible = isVisible(login) || isVisible(app);
+    if(!somethingVisible && login){
+      html.classList.remove('hand-role-locking');
+      show(login);
+      hide(el('nyttPassordSide'));
+      if(app) hide(app);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(fix, 250);
+    setTimeout(fix, 900);
+    setTimeout(fix, 1800);
+  });
+  document.addEventListener('handPartialerLastet', function(){ setTimeout(fix, 50); });
+})();
+</script>
+
+
+
+<style id="ril-stable-login-minbil-css">
+  /* Stabilitet først: ikke la gammel rolle-lås gi sort skjerm. */
+  html.hand-role-locking #appSide,
+  html:not(.ril-role-ready) #handTopbarKort { visibility: visible !important; }
+
+  /* Vanlig bruker skal ikke se biladministrasjon/opprett bil. */
+  html.ril-vanlig-bruker #nyBilKnapp,
+  html.ril-vanlig-bruker #bilSkjemaOmrade,
+  html.ril-vanlig-bruker #bilListe,
+  html.ril-vanlig-bruker #bilerSide > p:first-of-type {
+    display: none !important;
+    visibility: hidden !important;
+  }
+</style>
+
+<script charset="UTF-8" src="js/handverker/hand-systematisk-minbil-lagerlogg.js?v=20260705-no-unknown-db-fields"></script>
+<script charset="UTF-8" src="js/hand-help.js?v=20260706-help"></script>
+<script charset="UTF-8" src="js/handverker/hand-sysadm-greknuts-lock.js?v=20260706-email-authfix"></script>
 </body>
 </html>

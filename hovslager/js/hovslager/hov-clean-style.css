@@ -1,0 +1,450 @@
+:root{--bg:#0f172a;--card:#111827;--soft:#1f2937;--text:#f8fafc;--muted:#94a3b8;--accent:#d6a84f;--danger:#ef4444;--ok:#22c55e;--border:#334155}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#0f172a,#111827);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{max-width:1200px;margin:0 auto;padding:18px}.card{background:rgba(17,24,39,.94);border:1px solid var(--border);border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}h1,h2,h3{margin:.2rem 0 .8rem}.muted{color:var(--muted)}.hidden{display:none!important}.login-card{max-width:430px;margin:8vh auto}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center}.brand{display:flex;gap:14px;align-items:center}.logo,.logo-fallback{width:64px;height:64px;border-radius:14px;object-fit:contain;background:#fff}.logo-fallback{display:grid;place-items:center;color:#111827;font-weight:800;font-size:22px}.userline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pill{background:var(--soft);padding:8px 12px;border-radius:999px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:8px}button{border:0;border-radius:10px;background:var(--accent);color:#111827;font-weight:700;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.08)}button.secondary{background:#334155;color:var(--text)}button.danger{background:var(--danger);color:white}label{display:block;font-size:14px;color:var(--muted);margin:8px 0}input,select,textarea{width:100%;margin-top:4px;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0b1220;color:var(--text)}textarea{min-height:80px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.formgrid>label{grid-column:span 4}.formgrid>.wide{grid-column:span 8}.col-3{grid-column:span 3}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.msg{border:1px solid var(--border);padding:10px;border-radius:10px;margin:10px 0;background:#0b1220}.msg.ok{border-color:var(--ok)}.msg.err{border-color:var(--danger);color:#fecaca}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--border);padding:9px;text-align:left}th{color:#f8fafc;background:#0b1220}.logo-box{border:1px dashed var(--border);border-radius:14px;padding:14px;margin-top:14px}.logo-preview{max-width:220px;max-height:110px;background:white;border-radius:10px;padding:8px;margin:8px 0}@media(max-width:800px){.topbar{display:block}.formgrid>label,.formgrid>.wide,.col-3{grid-column:span 12}.tabs button{flex:1 1 auto}}
+
+.click-row{cursor:pointer;transition:background .15s ease,outline .15s ease}
+.click-row:hover{background:rgba(214,168,79,.12)}
+.selected-row{background:rgba(214,168,79,.2);outline:1px solid var(--accent)}
+input[type="checkbox"]{width:auto;min-width:22px;height:22px;vertical-align:middle}
+
+.image-preview{grid-column:span 8;border:1px dashed var(--border);border-radius:14px;padding:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#0b1220}.thumb{width:110px;height:82px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#fff}.thumb.small{width:54px;height:42px}
+
+.timeline-photo{margin:0;display:flex;flex-direction:column;gap:5px;align-items:center}.timeline-photo figcaption{font-size:12px;color:var(--muted)}
+
+.locked-field{opacity:.75;border-color:var(--accent);background:#111827}
+.lock-note{font-size:12px;color:var(--muted);margin-top:4px}
+
+.small-btn{padding:6px 10px;border-radius:8px;font-size:13px}
+
+
+.quick-job{background:rgba(31,41,55,.78);margin-top:12px}.quick-job textarea{min-height:110px}.quick-job label{max-width:900px}.quick-job button:first-child{font-size:16px}.quick-job .msg{max-width:900px}
+
+code{background:#0b1220;border:1px solid var(--border);border-radius:6px;padding:2px 5px;color:#f8fafc}
+#admin .soft-card{margin-top:12px}
+#admin table code{font-size:12px;word-break:break-all}
+
+
+/* FIX 2026-06-29: tydelige knappefarger etter backup/tale-merge */
+button,
+button[type="button"],
+button[type="submit"],
+.tabs button,
+.actions button,
+.small-btn {
+  background: var(--accent) !important;
+  color: #111827 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+button.secondary,
+.actions button.secondary,
+.tabs button.secondary {
+  background: #334155 !important;
+  color: var(--text) !important;
+}
+button.danger,
+.actions button.danger {
+  background: var(--danger) !important;
+  color: #ffffff !important;
+}
+button:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+}
+
+
+/* HovslagerSystem 2.3 fakturaoversikt */
+#fakturaList .actions{margin:0;display:flex;gap:6px;flex-wrap:wrap}
+#fakturaList .pill{display:inline-block;background:#334155;color:#f8fafc;border-radius:999px;padding:4px 8px;font-size:12px}
+
+
+/* FIX 2026-06-29: fakturaknapper på én linje og forhåndsvisning */
+#fakturaList td.actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+  white-space:nowrap;
+  min-width:max-content;
+}
+#fakturaList .small-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  margin:0;
+}
+#fakturaList table{
+  table-layout:auto;
+}
+
+/* FIX 2026-06-29: sett betalt-knapp */
+button.ok,
+.actions button.ok,
+.small-btn.ok{
+  background: var(--ok) !important;
+  color: #052e16 !important;
+}
+
+
+/* HovslagerSystem 2.3.2 Mobiltilpasning */
+:root{
+  --tap-size:48px;
+}
+
+html{
+  -webkit-text-size-adjust:100%;
+}
+
+body{
+  overscroll-behavior-y:none;
+}
+
+button,
+button[type="button"],
+button[type="submit"],
+.small-btn,
+.help-link-top,
+.help-link-login{
+  min-height:var(--tap-size);
+  touch-action:manipulation;
+}
+
+input,
+select,
+textarea{
+  min-height:var(--tap-size);
+  font-size:16px;
+}
+
+textarea{
+  min-height:120px;
+}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  backdrop-filter:blur(10px);
+}
+
+.tabs{
+  position:sticky;
+  top:0;
+  z-index:40;
+}
+
+table{
+  min-width:760px;
+}
+
+#fakturaList table{
+  min-width:980px;
+}
+
+#fakturaList .actions{
+  white-space:nowrap;
+  flex-wrap:nowrap;
+  align-items:center;
+}
+
+#fakturaList .actions .small-btn{
+  flex:0 0 auto;
+}
+
+#newJobbFromDashBtn,
+#saveJobbBtn{
+  min-width:140px;
+}
+
+.mobile-only{
+  display:none;
+}
+
+@media(max-width:800px){
+  .wrap{
+    padding:10px;
+  }
+
+  .card{
+    padding:14px;
+    margin:10px 0;
+    border-radius:14px;
+  }
+
+  h1{
+    font-size:1.45rem;
+  }
+
+  h2{
+    font-size:1.25rem;
+  }
+
+  h3{
+    font-size:1.1rem;
+  }
+
+  .topbar{
+    display:block;
+  }
+
+  .brand{
+    align-items:flex-start;
+  }
+
+  .logo,
+  .logo-fallback{
+    width:48px;
+    height:48px;
+    border-radius:12px;
+    font-size:18px;
+  }
+
+  .userline{
+    margin-top:12px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .userline .pill{
+    grid-column:1 / -1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .userline button,
+  .userline a{
+    width:100%;
+    text-align:center;
+  }
+
+  .tabs{
+    display:flex;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    gap:8px;
+    padding-bottom:10px;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .tabs button{
+    flex:0 0 auto;
+    min-width:110px;
+  }
+
+  .formgrid>label,
+  .formgrid>.wide,
+  .image-preview,
+  .col-3{
+    grid-column:span 12!important;
+  }
+
+  .actions{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .actions button,
+  .actions a{
+    width:100%;
+  }
+
+  .quick-job .actions{
+    grid-template-columns:1fr;
+  }
+
+  .thumb{
+    width:100%;
+    max-width:220px;
+    height:auto;
+    aspect-ratio:4/3;
+  }
+
+  .thumb.small{
+    width:72px;
+    height:56px;
+  }
+
+  #fakturaList{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  #fakturaList .actions{
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    gap:6px;
+  }
+
+  #fakturaList .small-btn{
+    min-height:42px;
+    padding:8px 10px;
+    font-size:13px;
+  }
+
+  .help-link-login,
+  .help-link-top{
+    display:inline-flex;
+    justify-content:center;
+    align-items:center;
+  }
+}
+
+@media(max-width:520px){
+  body{
+    font-size:16px;
+  }
+
+  .wrap{
+    padding:8px;
+  }
+
+  .card{
+    padding:12px;
+  }
+
+  .tabs button{
+    min-width:96px;
+    padding:10px 12px;
+  }
+
+  .userline{
+    grid-template-columns:1fr;
+  }
+
+  #fakturaList table{
+    min-width:1040px;
+  }
+
+  #fakturaList .small-btn{
+    font-size:12px;
+    padding:8px 9px;
+  }
+
+  th,
+  td{
+    padding:8px;
+  }
+}
+
+
+/* Synlig Velg bilde-knapp for hestebilde */
+.visually-hidden-file{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+.file-choice-btn{
+  width:100%;
+  margin-top:6px;
+}
+.file-choice-name{
+  display:block;
+  margin-top:6px;
+  font-size:13px;
+}
+
+
+/* MOBILAPP-FIX 2026-07-02: kort/listevisning på telefon */
+@media(max-width:700px){
+  body{background:#0f172a;}
+  .wrap{padding:8px;max-width:100%;}
+  .card{border-radius:18px;padding:12px;margin:10px 0;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  .topbar{position:sticky;top:0;z-index:80;background:rgba(15,23,42,.96);border-bottom:1px solid var(--border);padding:10px 8px;margin:0 -8px 8px;backdrop-filter:blur(12px)}
+  .tabs{position:sticky;top:72px;z-index:70;background:rgba(15,23,42,.96);margin:0 -8px 10px;padding:8px;overflow-x:auto;flex-wrap:nowrap;scroll-snap-type:x proximity;border-bottom:1px solid var(--border)}
+  .tabs button{flex:0 0 auto;min-width:112px;scroll-snap-align:start;min-height:46px}
+  .grid{grid-template-columns:1fr!important;gap:10px}
+  .formgrid>label,.formgrid>.wide,.image-preview,.col-3{grid-column:1 / -1!important}
+  input,select,textarea,button,.small-btn{font-size:16px;min-height:48px}
+  .actions{display:grid!important;grid-template-columns:1fr;gap:8px;margin:10px 0}
+  .actions button,.actions .small-btn{width:100%;justify-content:center}
+  #kundeList table,#hestList table,#jobbList table,#prisList table,#fakturaList table,#appFakturaList table{min-width:0!important;width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:8px}
+  #kundeList thead,#hestList thead,#jobbList thead,#prisList thead,#fakturaList thead,#appFakturaList thead{display:none}
+  #kundeList tbody,#hestList tbody,#jobbList tbody,#prisList tbody,#fakturaList tbody,#appFakturaList tbody{display:block}
+  #kundeList tr,#hestList tr,#jobbList tr,#prisList tr,#fakturaList tr,#appFakturaList tr{display:block;background:#0b1220;border:1px solid var(--border);border-radius:16px;padding:10px;margin:0 0 10px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  #kundeList tr.click-row,#hestList tr.click-row,#jobbList tr.click-row,#prisList tr.click-row{cursor:pointer}
+  #kundeList td,#hestList td,#jobbList td,#prisList td,#fakturaList td,#appFakturaList td{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border:0;border-bottom:1px solid rgba(51,65,85,.65);padding:8px 2px;text-align:right;word-break:break-word}
+  #kundeList td:last-child,#hestList td:last-child,#jobbList td:last-child,#prisList td:last-child,#fakturaList td:last-child,#appFakturaList td:last-child{border-bottom:0}
+  #kundeList td::before,#hestList td::before,#jobbList td::before,#prisList td::before,#fakturaList td::before,#appFakturaList td::before{content:attr(data-label);font-weight:800;color:var(--muted);text-align:left;min-width:96px;max-width:44%}
+  #fakturaList td.actions,#appFakturaList td.actions{display:grid!important;grid-template-columns:1fr;min-width:0;white-space:normal;gap:8px;text-align:left;padding-top:10px}
+  #fakturaList td.actions::before,#appFakturaList td.actions::before{display:none}
+  #fakturaList .small-btn,#appFakturaList .small-btn{width:100%;min-height:44px}
+  .thumb.small{width:76px;height:58px}.thumb{max-width:160px;height:auto}
+}
+
+/* MOBIL: kompakt jobbliste - hele raden er en klikkbar linje */
+@media(max-width:700px){
+  #jobbList table{
+    border-collapse:separate!important;
+    border-spacing:0 6px!important;
+    margin-top:8px!important;
+  }
+  #jobbList tbody{display:block!important;}
+  #jobbList tr{
+    display:grid!important;
+    grid-template-columns:62px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 70px!important;
+    gap:6px!important;
+    align-items:center!important;
+    padding:9px 10px!important;
+    margin:0 0 6px!important;
+    border-radius:12px!important;
+    cursor:pointer!important;
+  }
+  #jobbList td{
+    display:block!important;
+    border:0!important;
+    padding:0!important;
+    min-width:0!important;
+    font-size:13px!important;
+    line-height:1.2!important;
+    text-align:left!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    word-break:normal!important;
+  }
+  #jobbList td::before{content:none!important;display:none!important;}
+  #jobbList td:nth-child(1){font-size:12px!important;color:var(--muted)!important;}
+  #jobbList td:nth-child(3){font-weight:800!important;}
+  #jobbList td:nth-child(5){text-align:right!important;font-weight:900!important;}
+  #jobbList td:nth-child(6),
+  #jobbList td:nth-child(7){display:none!important;}
+}
+
+
+/* Mobil: tydelig taleinnlesing */
+#voiceStopJobbBtn.hidden{display:none!important}
+#voiceStopJobbBtn.voice-on{display:block!important;background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;font-weight:900!important}
+.voice-readback{margin-top:10px;padding:12px;border:1px solid #38bdf8;border-radius:12px;background:rgba(14,165,233,.12);font-size:16px;line-height:1.4;white-space:pre-wrap}
+.voice-saved-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.voice-saved-actions.hidden{display:none!important}
+@media(max-width:700px){
+  #voiceStopJobbBtn.voice-on{position:sticky!important;bottom:12px!important;z-index:9999!important;width:100%!important;font-size:20px!important;padding:18px!important;border-radius:16px!important}
+  .quick-job textarea#voiceJobbText{min-height:130px;font-size:17px}
+  .voice-saved-actions{display:grid!important;grid-template-columns:1fr!important}
+  .voice-saved-actions button{width:100%;padding:14px;font-size:17px}
+}
+
+
+/* Mobilkort for jobbliste - listen øverst, skjema under */
+.jobb-mobile-list{display:none}
+.jobb-mobile-card{width:100%;text-align:left;margin:8px 0;padding:10px 12px;border:1px solid var(--border)!important;background:#0b1220!important;color:var(--text)!important;border-radius:14px!important;display:block!important}
+.jobb-mobile-card strong{font-size:16px;color:var(--text)}
+.jobb-card-top,.jobb-card-bottom{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.jobb-mobile-card span{display:block;color:var(--muted);font-weight:600}
+.jobb-status{padding:3px 8px;border-radius:999px;font-size:12px;background:#334155;color:#f8fafc!important;white-space:nowrap}
+.jobb-status.ok{background:rgba(34,197,94,.18);color:#bbf7d0!important}
+.jobb-status.warn{background:rgba(245,158,11,.18);color:#fde68a!important}
+@media(max-width:800px){#jobber h2{margin-bottom:4px}.jobb-desktop-list{display:none}.jobb-mobile-list{display:block}.quick-job{margin-top:14px}.jobb-mobile-card{font-size:14px}.jobb-card-top strong{font-size:17px}}
+.post-save-prompt{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0 16px;background:rgba(22,163,74,.08)}.post-save-prompt .ok{font-size:1.05rem;font-weight:800;margin-bottom:12px}.post-save-actions{gap:10px}.post-save-actions .button-label,.post-save-actions button{flex:1 1 180px}
+.button-label{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:12px 18px;font-weight:800;background:var(--accent);color:#08111f;cursor:pointer}
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
