@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo Håndverker App - alle funksjoner</title>
+<style>
+:root{--bg:#07111f;--panel:#111827;--card:#172033;--line:#263244;--text:#f8fafc;--muted:#aeb8c8;--brand:#38bdf8;--accent:#22c55e;--warn:#f59e0b;--danger:#ef4444}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#07111f,#12213a 55%,#082f49);color:var(--text);font-family:Arial,Helvetica,sans-serif}.wrap{display:grid;grid-template-columns:300px 1fr;min-height:100vh}.side{background:rgba(5,12,24,.94);border-right:1px solid var(--line);padding:22px;position:sticky;top:0;height:100vh;overflow:auto}.logo{font-size:24px;font-weight:900;line-height:1.1}.tag{color:var(--muted);font-size:13px;margin:8px 0 18px}.price{background:linear-gradient(135deg,#1d4ed8,#059669);border-radius:18px;padding:16px;margin:18px 0;box-shadow:0 18px 35px rgba(0,0,0,.25)}.price strong{font-size:27px;display:block}.price small{display:block;margin-top:7px;color:#e8fbff}.notice{border-left:5px solid var(--accent);background:#0f2e24;padding:13px;border-radius:12px}.nav button{display:block;width:100%;padding:12px 13px;margin:7px 0;border:1px solid var(--line);border-radius:12px;background:#111827;color:#e5e7eb;text-align:left;cursor:pointer;font-weight:800}.nav button.active,.nav button:hover{background:#1d4ed8;border-color:#60a5fa}.main{padding:26px;max-width:1180px}.hero{display:grid;grid-template-columns:1.25fr .85fr;gap:20px;margin-bottom:20px}.card{background:rgba(17,24,39,.9);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 20px 45px rgba(0,0,0,.22)}h1{font-size:40px;margin:0 0 10px}h2{margin:0 0 12px;font-size:28px}h3{margin:0 0 8px}.muted{color:var(--muted);line-height:1.5}.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#243044;color:#dbeafe;font-size:12px;font-weight:900}.btn{border:0;border-radius:12px;padding:12px 16px;background:var(--brand);color:#00111c;font-weight:900;cursor:pointer;text-decoration:none;display:inline-block}.btn.alt{background:#243044;color:#e5e7eb;border:1px solid #3a4961}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border-bottom:1px solid var(--line);padding:11px;text-align:left}.table th{color:#cbd5e1;font-size:13px}.jobimg{width:100%;border-radius:16px;border:1px solid var(--line);display:block;background:#0f172a}.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gallery img{width:100%;border-radius:14px;border:1px solid var(--line);background:#0f172a}.flow{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.flow span{padding:8px 11px;border-radius:999px;background:#182235;border:1px solid #334155;color:#dbeafe;font-weight:800;font-size:13px}.ok{color:#86efac}.warn{color:#fcd34d}.demo-controls{position:fixed;right:18px;bottom:18px;z-index:50;background:rgba(2,6,23,.94);border:1px solid var(--line);border-radius:18px;padding:12px;box-shadow:0 18px 38px rgba(0,0,0,.35);display:flex;gap:8px;align-items:center;flex-wrap:wrap}.demo-controls button{border:0;border-radius:11px;padding:10px 12px;font-weight:900;cursor:pointer}.demo-controls .primary{background:var(--accent);color:#04210f}.demo-controls .secondary{background:#243044;color:#e5e7eb;border:1px solid #3a4961}.demo-controls .stop{background:var(--danger);color:#fff}.demo-controls .status{font-size:12px;color:#cbd5e1;width:100%;text-align:center}.demo-progress{height:6px;background:#1f2937;border-radius:999px;overflow:hidden;margin-top:10px}.demo-progress span{display:block;height:100%;width:0;background:var(--brand);transition:width .35s linear}.mobile{max-width:330px;margin:auto;border:10px solid #020617;border-radius:34px;overflow:hidden;background:#0f172a}.mobile .screen{padding:14px}footer{margin-top:24px;color:#94a3b8;text-align:center}@media(max-width:920px){.wrap{grid-template-columns:1fr}.side{position:relative;height:auto}.hero,.grid,.grid2,.gallery{grid-template-columns:1fr}.main{padding:16px 16px 130px}h1{font-size:32px}.demo-controls{left:12px;right:12px;bottom:12px}.demo-controls button{flex:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside class="side">
+  <div class="logo">Rett i Lomma<br>Håndverkerapp</div>
+  <div class="tag">Selvstendig demo for håndverkere. Åpnes direkte i nettleser.</div>
+  <div class="price"><strong>500 kr</strong><small>for opptil 3 brukere<br>75 kr pr. ekstra bruker</small></div>
+  <div class="notice"><b>Ønsker du å teste?</b><br>Send e-post til <a style="color:#fff" href="mailto:greknuts@online.no">greknuts@online.no</a></div>
+  <div class="flow"><span>Kunder</span><span>Tilbud</span><span>Jobber</span><span>Timer</span><span>Bilder</span><span>Varer</span><span>Faktura</span><span>Biler</span><span>Ansatte</span><span>Fravær</span><span>Lønn</span><span>Firma</span><span>Admin</span><span>Backup</span></div>
+  <nav class="nav" id="nav"></nav>
+</aside>
+<main class="main">
+  <section class="hero">
+    <div class="card">
+      <span class="pill">Demo håndverker app - alle funksjoner</span>
+      <h1>Demo håndverker app</h1>
+      <p class="muted">Denne demoen viser alle hovedfunksjonene i håndverkerappen, men lagt opp som en enkel og naturlig arbeidsflyt for håndverkere: kunde, tilbud, jobb, timer, bilder, varer, faktura, biler, ansatte, fravær, lønn, firma og administrasjon.</p>
+      <p><a class="btn" href="mailto:greknuts@online.no?subject=Jeg%20vil%20teste%20H%C3%A5ndverkerapp">Send e-post for test</a> <button class="btn alt" onclick="startAuto()">Start guidet demo</button></p>
+      <div class="demo-progress"><span id="demoProgress"></span></div>
+<p style="margin-top:18px">
+  <button class="btn alt"
+          onclick="document.getElementById('pilotinfo').scrollIntoView({behavior:'smooth'})">
+    Sjekk mer
+  </button>
+</p>
+
+<div id="pilotinfo"
+     style="margin-top:18px;padding:18px;border:1px solid #334155;border-radius:14px;background:#111827">
+  <h3>Pilotinformasjon</h3>
+  <p><strong>Dette er en pilot.</strong></p>
+<p>Du kan selv velge hvilke moduler som skal være aktive. Appen kan tilpasses bedriften slik at kun funksjonene du trenger vises.</p><p><strong>Har du et eksisterende system?</strong> Da kan data lastes inn i appen, slik at du ikke trenger å skrive inn alt på nytt.</p><p><strong>Fremtidige muligheter:</strong> Appen er utviklet med tanke på videre utvidelser og kan i fremtiden integreres mot for eksempel regnskapssystemer, lønnssystemer og andre administrative løsninger.</p>
+  <p>Første måned er <strong>gratis</strong>.<br>
+  Deretter koster det <strong>500 kr for opptil 3 brukere</strong> og <strong>75 kr pr. ekstra bruker</strong>.</p>
+  <p>Ved feil eller ønske om endring, send e-post til
+  <a href="mailto:greknuts@online.no?subject=Rett%20i%20Lomma%20Handverker">greknuts@online.no</a>.</p>
+</div>
+
+    </div>
+    <div class="card">
+      <h2>Alle funksjoner med</h2>
+      <p class="muted">Oversikten er laget for håndverkerapp. Brukeren kan se alle funksjoner i menyen, eller starte automatisk demo som går gjennom hver modul.</p>
+      <table class="table"><tr><td>Aktiv jobb</td><td><b>Bad og service</b></td></tr><tr><td>Status</td><td class="ok">Klar til faktura</td></tr><tr><td>Kontakt</td><td>greknuts@online.no</td></tr></table>
+    </div>
+  </section>
+  <div id="content"></div>
+  <footer>Pris: 500 kr for tre brukere, 75 kr pr bruker over det. Kontakt: greknuts@online.no</footer>
+</main>
+</div>
+<div class="demo-controls">
+  <button class="primary" id="autoStart" type="button">Start</button>
+  <button class="secondary" id="autoPause" type="button">Pause</button>
+  <button class="stop" id="autoStop" type="button">Stopp</button>
+  <div class="status" id="autoStatus">Guidet demo er klar. Brukeren kan stoppe når som helst.</div>
+</div>
+<script>
+const imgs=['elektriker.svg','rorlegger.svg','tomrer.svg','maler.svg','servicebil.svg'].map(x=>'assets/jobbbilder/'+x);
+const steps={
+start:['Start','Oversikt for håndverkerbedrift','<div class="grid"><div class="card"><h3>Dagens jobber</h3><p class="muted">Se aktive oppdrag, status, ansvarlig ansatt og hva som er klart til faktura.</p></div><div class="card"><h3>Rask registrering</h3><p class="muted">Timer, bilder, varer og notater registreres direkte ute hos kunden.</p></div><div class="card"><h3>Kontroll</h3><p class="muted">Administrasjonen får samlet grunnlag for tilbud, faktura, lønn og drift.</p></div></div>'],
+kunder:['Kunder','Kunderegister og kontaktpersoner','<div class="card"><h3>Kunde: Hansen AS</h3><table class="table"><tr><th>Felt</th><th>Innhold</th></tr><tr><td>Adresse</td><td>Industriveien 12</td></tr><tr><td>Kontaktperson</td><td>Anne Hansen</td></tr><tr><td>E-post</td><td>greknuts@online.no</td></tr><tr><td>Notat</td><td>Fast servicekunde med flere oppdrag.</td></tr></table></div>'],
+tilbud:['Tilbud','Lag og følg opp tilbud','<div class="grid2"><div class="card"><h3>Tilbud T-1004</h3><p>Arbeid: service og montering<br>Materiell: standardpakke<br><b>Estimert sum: 18 750 kr</b></p></div><div class="card"><h3>Fra tilbud til jobb</h3><p class="muted">Når kunden godkjenner, kan tilbudet brukes videre som jobbgrunnlag.</p></div></div>'],
+jobber:['Jobber','Jobbkort med oppgaver, status og dokumentasjon','<div class="grid2"><div class="card"><h3>Jobb: Sikringsskap og service</h3><p>Status: Pågår<br>Ansvarlig: Ola Montør<br>Frist: denne uken<br>Prioritet: Normal</p></div><img class="jobimg" src="assets/jobbbilder/elektriker.svg" alt="elektriker jobb"></div>'],
+timer:['Timer','Registrer timer på riktig jobb','<div class="card"><table class="table"><tr><th>Ansatt</th><th>Arbeid</th><th>Timer</th><th>Status</th></tr><tr><td>Ola</td><td>Montering</td><td>7,5</td><td class="ok">Godkjent</td></tr><tr><td>Kari</td><td>Dokumentasjon</td><td>2,0</td><td>Sendt</td></tr><tr><td>Per</td><td>Transport</td><td>1,0</td><td>Kladd</td></tr></table></div>'],
+bilder:['Bilder','Dokumenter arbeid før, under og etter','<div class="gallery">'+imgs.slice(0,3).map(i=>`<img src="${i}" alt="jobb bilde">`).join('')+'</div><div class="card" style="margin-top:14px"><p class="muted">Bilder lagres på jobben og kan brukes i intern kontroll, kundeoppfølging og fakturagrunnlag.</p></div>'],
+varer:['Varer','Varer, materiell og lager','<div class="card"><table class="table"><tr><th>Vare</th><th>Antall</th><th>Status</th></tr><tr><td>Standard materiellpakke</td><td>1</td><td class="ok">På jobb</td></tr><tr><td>Sikringer</td><td>6</td><td class="ok">Reservert</td></tr><tr><td>Kabel</td><td>12 m</td><td class="warn">Lav beholdning</td></tr></table></div>'],
+faktura:['Faktura','Fakturagrunnlag fra jobb, timer, varer og bil','<div class="grid2"><div class="card"><h3>Fakturagrunnlag</h3><p>Timer: 9,5<br>Varer: 4 200 kr<br>Bil: 504 kr<br>MVA: 25%<br><b>Sum: 16 449 kr</b></p></div><div class="card"><h3>Klar til kontroll</h3><p class="muted">Grunnlaget samler kunde, jobb, timer, varer, bilder, bilbruk og notater.</p></div></div>'],
+biler:['Biler','Servicebiler og kjørebok','<div class="grid2"><img class="jobimg" src="assets/jobbbilder/servicebil.svg" alt="servicebil"><div class="card"><h3>Bil: EL-12345</h3><p>Fører: Ola Montør<br>Jobb: Hansen AS<br>Kjøring: 42 km<br>Status: Aktiv på jobb</p></div></div>'],
+ansatte:['Ansatte','Ansatte, roller og tilgang','<div class="card"><table class="table"><tr><th>Navn</th><th>Rolle</th><th>Tilgang</th></tr><tr><td>Ola Montør</td><td>Montør</td><td>Jobber og timer</td></tr><tr><td>Kari Kontor</td><td>Administrasjon</td><td>Kunder, faktura og lønn</td></tr><tr><td>Per Lærling</td><td>Lærling</td><td>Timer og bilder</td></tr></table></div>'],
+fravaer:['Fravær','Ferie, sykdom og fravær','<div class="card"><table class="table"><tr><th>Ansatt</th><th>Type</th><th>Periode</th><th>Status</th></tr><tr><td>Per</td><td>Ferie</td><td>Mandag-fredag</td><td class="ok">Godkjent</td></tr><tr><td>Ola</td><td>Sykdom</td><td>I dag</td><td>Registrert</td></tr></table></div>'],
+lonn:['Lønn','Lønnsgrunnlag fra timer og fravær','<div class="grid2"><div class="card"><h3>Lønnsgrunnlag</h3><p>Godkjente timer: 148<br>Fravær: 8 timer<br>Overtid: 6 timer</p></div><div class="card"><h3>Kontroll</h3><p class="muted">Timer fra jobber kan kontrolleres før lønnskjøring.</p></div></div>'],
+firma:['Firma','Firmainnstillinger og profil','<div class="card"><h3>Firmaoppsett</h3><p>Firmanavn, logo, adresse, organisasjonsnummer, standard timepris, mva og fakturatekst.</p><p class="muted">Pris i demo: 500 kr for tre brukere, 75 kr pr bruker over det.</p></div>'],
+admin:['Admin','Administrasjon, moduler og rettigheter','<div class="grid"><div class="card"><h3>Moduler</h3><p class="muted">Slå funksjoner av/på etter behov.</p></div><div class="card"><h3>Rettigheter</h3><p class="muted">Styr hvem som kan se økonomi, lønn og admin.</p></div><div class="card"><h3>System og backup</h3><p class="muted">Vedlikehold firma, brukere, demo/test og sikkerhetskopiering.</p></div></div>'],
+backup:['Backup','Automatisk sikkerhetskopiering','<div class="grid2"><div class="card"><span class="pill">Trygg lagring</span><h3>Backup hver natt</h3><p class="muted">Systemet tar automatisk sikkerhetskopi hver natt slik at viktige data fra kunder, jobber, timer, bilder, varer og faktura er bedre sikret.</p><table class="table"><tr><td>Status</td><td class="ok">Automatisk nattlig backup aktiv</td></tr><tr><td>Siste backup</td><td>I natt kl. 02:00</td></tr><tr><td>Neste backup</td><td>Kommende natt</td></tr></table></div><div class="card"><h3>Manuell backup</h3><p class="muted">Administrator kan også starte en manuell sikkerhetskopi når som helst, for eksempel før større endringer eller før import/eksport.</p><button class="btn" onclick="this.textContent=\'Backup kjørt manuelt ✓\';this.style.background=\'var(--accent)\'">Kjør manuell sikkerhetskopi</button></div></div>'],
+mobil:['Mobil','Mobilvennlig ute på jobb','<div class="mobile"><div class="screen"><h3>Dagens jobb</h3><p class="muted">Hansen AS</p><img class="jobimg" src="assets/jobbbilder/servicebil.svg"><p><b>Start jobb</b><br>Registrer timer, bilder, varer og notat.</p><button class="btn" style="width:100%">Registrer timer</button></div></div>']
+}
+const nav=document.getElementById('nav'), content=document.getElementById('content'), keys=Object.keys(steps);let autoTimer=null,autoRunning=false,autoPaused=false,autoIndex=0,delay=4500;const status=document.getElementById('autoStatus'),bar=document.getElementById('demoProgress');
+keys.forEach(k=>{const b=document.createElement('button');b.textContent=steps[k][0];b.id='nav_'+k;b.onclick=()=>{stopAuto('Brukeren valgte selv. Demo stoppet.');show(k)};nav.appendChild(b)});
+function show(k){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));document.getElementById('nav_'+k).classList.add('active');let s=steps[k];content.innerHTML=`<section><div class="card"><span class="pill">${s[0]}</span><h2>${s[1]}</h2><div class="muted">Demo håndverker app med alle funksjoner og eksempeldata.</div></div><br>${s[2]}</section>`;autoIndex=keys.indexOf(k);localStorage.setItem('handverkerDemoSide',k);bar.style.width=(((autoIndex+1)/keys.length)*100)+'%'}
+function nextAuto(){if(!autoRunning||autoPaused)return;autoIndex=(autoIndex+1)%keys.length;show(keys[autoIndex]);status.textContent='Demo kjører: '+steps[keys[autoIndex]][0]+' ('+(autoIndex+1)+'/'+keys.length+').';autoTimer=setTimeout(nextAuto,delay)}
+function startAuto(){clearTimeout(autoTimer);autoRunning=true;autoPaused=false;autoIndex=Math.max(0,keys.indexOf(localStorage.getItem('handverkerDemoSide')||'start'));show(keys[autoIndex]);status.textContent='Guidet demo kjører. Trykk Pause eller Stopp når som helst.';autoTimer=setTimeout(nextAuto,delay)}
+function pauseAuto(){if(!autoRunning){status.textContent='Demo er ikke startet.';return}autoPaused=!autoPaused;if(autoPaused){clearTimeout(autoTimer);status.textContent='Demo er pauset.'}else{status.textContent='Demo fortsetter.';autoTimer=setTimeout(nextAuto,800)}}
+function stopAuto(msg){clearTimeout(autoTimer);autoRunning=false;autoPaused=false;if(status)status.textContent=msg||'Demo stoppet. Brukeren styrer selv.'}
+document.getElementById('autoStart').onclick=startAuto;document.getElementById('autoPause').onclick=pauseAuto;document.getElementById('autoStop').onclick=()=>stopAuto();document.addEventListener('keydown',e=>{if(e.key==='Escape')stopAuto('Demo stoppet med Escape.');if(e.key===' ')pauseAuto()});show(localStorage.getItem('handverkerDemoSide')||'start');
+</script>
+</body>
+</html>
